@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { digestNext, digestSchedule, mapTeamSummary } from '../../worker/src/sports.js';
 import { env } from 'cloudflare:test';
 import worker from '../../worker/src/index.js';
-import { resetNjtToken, resetNjtSchedule } from '../../worker/src/njt.js';
+import { resetNjtToken, resetNjtSchedule, nyDate } from '../../worker/src/njt.js';
 import { mapRidePath } from '../../worker/src/path.js';
 import GtfsRt from 'gtfs-realtime-bindings';
 import { mapFerryFeed } from '../../worker/src/ferry.js';
@@ -240,6 +240,38 @@ describe('/njt/departures', () => {
     const res = await call('/njt/departures', {}, NJT_ENV);
     expect((await res.json()).trains).toHaveLength(2); // today's fetch, not the seeded prior day
     expect(calls.some((u) => /getStationSchedule/.test(u))).toBe(true);
+  });
+
+  it('refreshes a same-day snapshot older than the max age (escapes a midnight-rollover truncation)', async () => {
+    // The exact bug: NJT's ~midnight rollover lists only the outgoing day's
+    // overnight tail, so the once-daily fetch cached a stub that then served all
+    // day. A same-day copy older than the TTL must refetch today's full list.
+    const stub = { date: nyDate(), vm: { station: 'NY', updatedAt: Math.floor(Date.now() / 1000) - 40 * 60, stale: false, trains: [{ time: 1, dest: 'Overnight tail', line: 'X', direction: 'Westbound', track: null, status: '' }] } };
+    await env.CODES.put('njt:schedule', JSON.stringify(stub));
+    const calls = stubFetch([
+      { match: /getToken/, body: TOKEN_RESPONSE },
+      { match: /getStationSchedule/, body: SCHEDULE_RESPONSE },
+      { match: /getStationMSG/, body: [] },
+    ]);
+    const body = await (await call('/njt/departures', {}, NJT_ENV)).json();
+    expect(calls.some((u) => /getStationSchedule/.test(u))).toBe(true); // refetched
+    expect(body.trains).toHaveLength(2); // today's fresh list, not the stub
+    expect(body.trains.map((t) => t.dest)).not.toContain('Overnight tail');
+  });
+
+  it('serves a recent same-day snapshot from KV without refetching', async () => {
+    const recent = { date: nyDate(), vm: { station: 'NY', updatedAt: Math.floor(Date.now() / 1000) - 60, stale: false, trains: [{ time: 9999999999, dest: 'Cached', line: 'X', direction: 'Westbound', track: null, status: '' }] } };
+    await env.CODES.put('njt:schedule', JSON.stringify(recent));
+    const calls = stubFetch([
+      { match: /getToken/, body: TOKEN_RESPONSE },
+      { match: /getStationSchedule/, body: SCHEDULE_RESPONSE },
+      { match: /getStationMSG/, body: [] },
+    ]);
+    const body = await (await call('/njt/departures', {}, NJT_ENV)).json();
+    expect(calls.some((u) => /getStationSchedule/.test(u))).toBe(false); // served from KV
+    expect(body.trains).toHaveLength(1);
+    expect(body.trains[0].dest).toBe('Cached');
+    expect(body.stale).toBe(false);
   });
 
   it('502s when the schedule fetch fails and there is no stored copy', async () => {

@@ -213,22 +213,32 @@ export function nyDate(now = new Date()) {
   return now.toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
 }
 
-// getStationSchedule returns a STATIC full-day timetable, so we fetch it at most
-// ONCE per service day and serve it all day from KV. KV (not the Cache API)
-// because the Cache API is colo-local and evicts — which stranded the widget with
-// 502s mid-outage. ~1 write/day is the same low-write exception the token uses,
-// nowhere near the 1000/day cap. NJT's endpoint 500s most of the day and only
-// recovers after its ~midnight reset, so one good fetch in that window keeps the
-// widget correct for 24h even while the upstream is down. `stale:true` means we
-// could not get today's copy and are serving a prior day's.
+// getStationSchedule returns the full static day-timetable (verified live
+// 2026-07-25: ~267 items -> ~87 Penn departures, and it responds fine midday).
+// We cache it in KV (not the Cache API: that's colo-local and evicts, which
+// stranded the widget with 502s mid-outage) and REFRESH it on a TTL. The refresh
+// is the fix for a real bug: NJT lists only the outgoing service day's overnight
+// TAIL during its ~midnight rollover, so a single daily fetch landing in that
+// window cached ~8 already-departing trains, and the old "same date => keep for
+// 24h" rule then served them all day (the widget showed nothing by morning).
+// Refetching costs no getToken call — that 10/day token is cached separately and
+// reused; getStationSchedule itself allows 40k/day. On a refresh FAILURE we serve
+// the stored copy: today's timetable is static, so a same-day copy is still
+// correct (stale:false); only a prior day's is flagged stale.
 const SCHEDULE_KV_KEY = 'njt:schedule';
+const SCHEDULE_MAX_AGE_S = 30 * 60; // refresh the day-timetable at least this often
 let scheduleMemo = null; // { date, vm, until } per isolate
 
-const scheduleGood = (s, today) => s && s.date === today && s.vm?.trains?.length > 0;
+// Usable as-is only if it's today's timetable, has trains, AND was fetched
+// recently — the age check is what escapes a stale midnight-rollover snapshot.
+const scheduleFresh = (s, today, nowS) =>
+  s && s.date === today && s.vm?.trains?.length > 0 &&
+  nowS - (s.vm.updatedAt ?? 0) < SCHEDULE_MAX_AGE_S;
 
 export async function getNjtSchedule(env) {
   const today = nyDate();
-  if (scheduleMemo && scheduleMemo.until > Date.now() && scheduleGood(scheduleMemo, today)) {
+  const nowS = Math.floor(Date.now() / 1000);
+  if (scheduleMemo && scheduleMemo.until > Date.now() && scheduleFresh(scheduleMemo, today, nowS)) {
     return { ...scheduleMemo.vm, stale: false };
   }
   let stored = null;
@@ -236,7 +246,7 @@ export async function getNjtSchedule(env) {
     const raw = await env.CODES.get(SCHEDULE_KV_KEY);
     if (raw) stored = JSON.parse(raw);
   } catch { /* KV read failed — fall through and fetch fresh */ }
-  if (scheduleGood(stored, today)) {
+  if (scheduleFresh(stored, today, nowS)) {
     scheduleMemo = { date: today, vm: stored.vm, until: Date.now() + 5 * 60 * 1000 };
     return { ...stored.vm, stale: false };
   }
@@ -252,7 +262,9 @@ export async function getNjtSchedule(env) {
     }
     return { ...vm, stale: false };
   } catch (err) {
-    if (stored?.vm) return { ...stored.vm, stale: true }; // last resort: a prior day's timetable
+    // Refresh failed (e.g. NJT 500): fall back to the stored copy. A same-day
+    // timetable is static and still correct; only a prior day's is truly stale.
+    if (stored?.vm) return { ...stored.vm, stale: stored.date !== today };
     throw err;
   }
 }
