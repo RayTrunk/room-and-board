@@ -171,15 +171,15 @@ export const DEMO_VMS = {
   substack: {
     nowMs: 1783000000000,
     items: [
-      { text: 'The AI Superforecasters Are Here — What happens when the models start beating the humans at their own game', t: 1782998200000, source: 'Astral Codex Ten' },
-      { text: 'The Hidden Cost of Meetings — A field guide to reclaiming your calendar one recurring invite at a time', t: 1782910000000, source: 'Pragmatic Engineer' },
+      { title: 'The AI Superforecasters Are Here', desc: 'What happens when the models start beating the humans at their own game', t: 1782998200000, source: 'Astral Codex Ten', link: 'https://astralcodexten.substack.com/p/the-ai-superforecasters' },
+      { title: 'The Hidden Cost of Meetings', desc: 'A field guide to reclaiming your calendar one recurring invite at a time', t: 1782910000000, source: 'Pragmatic Engineer', link: 'https://newsletter.pragmaticengineer.com/p/the-hidden-cost-of-meetings' },
     ],
   },
   bsky: {
     nowMs: 1783000000000,
     items: [
-      { text: 'Breaking: newest ferry pier opens with a ribbon cutting at sunrise', t: 1782998000000, source: 'NYT' },
-      { text: 'Shipped a new feature today. The trick was deleting more code than I wrote.', t: 1782990000000, source: 'Jane Dev' },
+      { title: 'Breaking: newest ferry pier opens with a ribbon cutting at sunrise', t: 1782998000000, source: 'NYT', link: 'https://bsky.app/profile/nytimes.com/post/3kdemoferry1' },
+      { title: 'Shipped a new feature today. The trick was deleting more code than I wrote.', t: 1782990000000, source: 'Jane Dev', link: 'https://bsky.app/profile/janedev.bsky.social/post/3kdemoship2' },
     ],
   },
   art: {

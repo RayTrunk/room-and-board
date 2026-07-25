@@ -3,46 +3,19 @@
 // Bluesky (short-form, public AppView is CORS-open and keyless). They are
 // separate widgets because their cadences differ by an order of magnitude —
 // a merged newest-first feed would bury weekly essays under daily posts.
-// Rows reuse the Headlines markup so capacity math and the tap-to-read text
-// viewer work unchanged.
+// Rows ARE headlines: the widgets render through newscore's renderHeadlines,
+// so capacity fill-to-fit and the tap-to-read story view (summary + QR) work
+// exactly as they do on the Headlines and Markets News cards.
 
-import { escapeHtml, setMoreBadge } from '../util.js';
 import { WORKER_URL } from '../env.js';
-import { itemCapacity, cardSize } from '../capacity.js';
-import { ageLabel, mergeNews } from './news.js';
+import { mergeNews } from './news.js';
 
 export const BSKY_API = 'https://public.api.bsky.app/xrpc';
 
 export function mapPosts(perAccount, nowMs) {
-  // mergeNews sorts newest-first and dedupes on normalized "title" text.
-  const items = mergeNews(
-    perAccount.map((rows) => rows.map((r) => ({ ...r, title: r.text }))),
-    nowMs,
-  ).map(({ title, ...rest }) => rest);
-  return { nowMs, items };
-}
-
-export function renderPostRows(el, vm, widgetId, emptyHint) {
-  if (!vm.items?.length) {
-    el.innerHTML = `<div class="empty">${emptyHint}</div>`;
-    return;
-  }
-  const [w, h] = cardSize(el, [4, 4]);
-  const cap = itemCapacity(widgetId, w, h) ?? 4;
-  const shown = vm.items.slice(0, cap);
-  const hidden = vm.items.length - shown.length;
-  el.innerHTML = shown
-    .map(
-      (i) => `<div class="headline">
-        <div class="headline__meta">
-          <span class="headline__src">${escapeHtml(i.source)}</span>
-          <span class="headline__age">${ageLabel(i.t, vm.nowMs)}</span>
-        </div>
-        <div class="headline__title">${escapeHtml(i.text)}</div>
-      </div>`,
-    )
-    .join('');
-  setMoreBadge(el, hidden);
+  // Rows already carry `title` (the headline text) + optional link/desc, so they
+  // drop straight into mergeNews (newest-first, deduped on normalized title).
+  return { nowMs, items: mergeNews(perAccount, nowMs) };
 }
 
 export async function fetchBskyRows(acct, net) {
@@ -51,20 +24,32 @@ export async function fetchBskyRows(acct, net) {
   );
   return (feed.feed ?? [])
     .filter((it) => !it.reason) // skip reposts — their words, not others'
-    .map((it) => ({
-      text: String(it.post?.record?.text ?? '').trim(),
-      t: Date.parse(it.post?.record?.createdAt ?? '') || 0,
-      source: acct.label,
-    }))
-    .filter((r) => r.text);
+    .map((it) => {
+      // Web permalink for the tap-to-read QR: bsky.app/profile/<handle>/post/<rkey>.
+      // rkey is the last segment of the at:// post URI; handle (falls back to did)
+      // is the stable profile the app resolves. Empty link if either is missing.
+      const rkey = /\/app\.bsky\.feed\.post\/([^/]+)$/.exec(String(it.post?.uri ?? ''))?.[1] ?? '';
+      const who = it.post?.author?.handle || it.post?.author?.did || '';
+      return {
+        title: String(it.post?.record?.text ?? '').trim(),
+        t: Date.parse(it.post?.record?.createdAt ?? '') || 0,
+        source: acct.label,
+        link: rkey && who ? `https://bsky.app/profile/${who}/post/${rkey}` : '',
+      };
+    })
+    .filter((r) => r.title);
 }
 
 export async function fetchSubstackRows(acct, net) {
   const digest = await net.fetchJSON(
     `${WORKER_URL}/posts/substack?pub=${encodeURIComponent(acct.id)}`,
   );
+  // Title on the card (like a Headlines row); subtitle becomes the story-view
+  // summary above the QR; canonical url is the "read the full story" link.
   return (digest.posts ?? []).map((p) => ({
-    text: p.subtitle ? `${p.title} — ${p.subtitle}` : p.title,
+    title: p.title,
+    desc: p.subtitle || '',
+    link: p.url || '',
     t: p.t * 1000,
     source: acct.label,
   }));

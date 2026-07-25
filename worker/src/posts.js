@@ -10,6 +10,9 @@ export function mapSubstackPosts(json) {
     .map((p) => ({
       title: String(p?.title ?? '').trim(),
       subtitle: p?.subtitle ? String(p.subtitle).trim() : '',
+      // Canonical article URL for the board's tap-to-read QR. Only pass http(s)
+      // so a malformed field can't inject a junk/js: link into the QR.
+      url: /^https?:\/\//i.test(String(p?.canonical_url ?? '')) ? String(p.canonical_url) : '',
       t: Math.floor((Date.parse(p?.post_date ?? '') || 0) / 1000),
     }))
     .filter((p) => p.title);

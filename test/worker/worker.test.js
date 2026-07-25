@@ -714,8 +714,8 @@ describe('/ferry/departures', () => {
 
 describe('/posts/substack', () => {
   const SUB = [
-    { title: 'The AI Superforecasters', subtitle: 'Are here', post_date: '2026-07-02T12:00:00.000Z' },
-    { title: 'Untitled draftish', subtitle: null, post_date: null },
+    { title: 'The AI Superforecasters', subtitle: 'Are here', canonical_url: 'https://acx.substack.com/p/the-ai-superforecasters', post_date: '2026-07-02T12:00:00.000Z' },
+    { title: 'Untitled draftish', subtitle: null, canonical_url: 'javascript:alert(1)', post_date: null },
   ];
   beforeEach(() => clearCache('sub:acx'));
   it('digests the publication API', async () => {
@@ -723,8 +723,9 @@ describe('/posts/substack', () => {
     const res = await call('/posts/substack?pub=acx');
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.posts[0]).toEqual({ title: 'The AI Superforecasters', subtitle: 'Are here', t: Math.floor(Date.parse('2026-07-02T12:00:00.000Z') / 1000) });
+    expect(body.posts[0]).toEqual({ title: 'The AI Superforecasters', subtitle: 'Are here', url: 'https://acx.substack.com/p/the-ai-superforecasters', t: Math.floor(Date.parse('2026-07-02T12:00:00.000Z') / 1000) });
     expect(body.posts[1].t).toBe(0);
+    expect(body.posts[1].url).toBe(''); // non-http(s) canonical_url rejected (no js: in the QR)
     expect(mapSubstackPosts(null).posts).toEqual([]);
   });
   it('rejects bad slugs', async () => {

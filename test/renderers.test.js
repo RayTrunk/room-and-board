@@ -183,6 +183,18 @@ describe('widget renderers', () => {
     });
   }
 
+  // Substack/Bluesky route through renderHeadlines, so a row with a link is
+  // tap-to-read (.headline--more + data-link → the shared story view + QR).
+  it('substack and bsky rows are tap-to-read', () => {
+    for (const [id, mod] of [['substack', substack], ['bsky', bsky]]) {
+      const host = el();
+      mod.render(host, DEMO_VMS[id], CFG);
+      const more = host.querySelector('.headline--more[data-link]');
+      expect(more, id).toBeTruthy();
+      expect(more.getAttribute('data-link'), id).toMatch(/^https:\/\//);
+    }
+  });
+
   it('chart renders the infographic image only — no caption (title/branding are in the image)', () => {
     const host = el();
     chart.render(host, DEMO_VMS.chart, CFG);

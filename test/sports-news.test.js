@@ -1,4 +1,4 @@
-import { fetchAll } from '../site/js/widgets/posts.js';
+import { fetchAll, fetchBskyRows } from '../site/js/widgets/posts.js';
 import { describe, it, expect } from 'vitest';
 import { logoUrl } from '../site/js/widgets/sports.js';
 import { mapTeamSummary, digestSchedule, pickLogo, LEAGUE_PATHS } from '../worker/src/sports.js';
@@ -264,13 +264,29 @@ describe('pickLogo', () => {
 describe('mapPosts', () => {
   it('merges accounts newest-first and tolerates empty accounts', () => {
     const vm = mapPosts([
-      [{ text: 'Older post', t: 1000e3, source: 'ACX' }],
-      [{ text: 'Newest post', t: 2000e3, source: 'NYT' }],
+      [{ title: 'Older post', t: 1000e3, source: 'ACX' }],
+      [{ title: 'Newest post', t: 2000e3, source: 'NYT', link: 'https://ex.com/p', desc: 'summary' }],
       [],
     ], 2100e3);
-    expect(vm.items.map((i) => i.text)).toEqual(['Newest post', 'Older post']);
+    expect(vm.items.map((i) => i.title)).toEqual(['Newest post', 'Older post']);
     expect(vm.items[0].source).toBe('NYT');
+    // link + desc survive the merge so renderHeadlines makes the row tap-to-read.
+    expect(vm.items[0]).toMatchObject({ link: 'https://ex.com/p', desc: 'summary' });
     expect(vm.nowMs).toBe(2100e3);
+  });
+});
+
+describe('fetchBskyRows', () => {
+  const feed = { feed: [
+    { post: { uri: 'at://did:plc:abc/app.bsky.feed.post/3krkey1', author: { handle: 'jane.bsky.social', did: 'did:plc:abc' }, record: { text: 'hello world', createdAt: '2026-07-02T00:00:00Z' } } },
+    { reason: {}, post: { uri: 'at://x/app.bsky.feed.post/rp', author: { handle: 'h' }, record: { text: 'a repost' } } }, // reposts: their words, not others'
+    { post: { uri: 'not-an-at-uri', author: { handle: 'h' }, record: { text: 'unlinkable but shown' } } }, // malformed uri → no link
+  ] };
+  it('builds the bsky.app permalink from the post uri + handle, skips reposts', async () => {
+    const rows = await fetchBskyRows({ id: 'jane.bsky.social', label: 'Jane' }, { fetchJSON: async () => feed });
+    expect(rows).toHaveLength(2); // repost filtered out
+    expect(rows[0]).toMatchObject({ title: 'hello world', source: 'Jane', link: 'https://bsky.app/profile/jane.bsky.social/post/3krkey1' });
+    expect(rows[1].link).toBe(''); // malformed uri → still shown, just not tappable
   });
 });
 
@@ -288,7 +304,7 @@ describe('fetchAll total-failure resilience', () => {
     await expect(fetchAll([{ id: 'a' }, { id: 'b' }], rejecting, {})).rejects.toThrow();
   });
   it('resolves with the survivors on partial failure', async () => {
-    const one = async (acct) => (acct.id === 'a' ? [{ text: 'hi', t: 1e12, source: 'A' }] : Promise.reject(new Error('down')));
+    const one = async (acct) => (acct.id === 'a' ? [{ title: 'hi', t: 1e12, source: 'A' }] : Promise.reject(new Error('down')));
     const vm = await fetchAll([{ id: 'a' }, { id: 'b' }], one, {});
     expect(vm.items).toHaveLength(1);
   });
