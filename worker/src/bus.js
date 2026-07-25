@@ -58,7 +58,14 @@ export async function fetchBusStops(env, legs) {
     legs.map(async (leg) => {
       const res = await fetch(siriUrl(env.MTA_BUS_KEY, leg), { signal: AbortSignal.timeout(10000) });
       if (!res.ok) throw new Error(`bustime ${res.status}`);
-      return mapSiriStop(await res.json(), leg.stopId);
+      // Stamp the leg's identity (stopId + lineRef) onto each entry so the page
+      // can match results back to its OWN configured legs by key instead of by
+      // array position. The route's cache key is order-insensitive (the legs are
+      // sorted), so two boards with the same stops in a different order share
+      // one entry — positional matching then labels the wrong stop's arrivals.
+      // stopId alone is not enough: two legs may be different routes at the SAME
+      // stop, so the pair is the real key.
+      return { ...mapSiriStop(await res.json(), leg.stopId), lineRef: leg.lineRef };
     }),
   );
   return { updatedAt: Math.floor(Date.now() / 1000), stale: false, stops };

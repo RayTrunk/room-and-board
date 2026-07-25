@@ -2,7 +2,7 @@ import { fetchGolf, fetchTennis } from '../../worker/src/scores.js';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { digestNext, digestSchedule, mapTeamSummary } from '../../worker/src/sports.js';
 import { env } from 'cloudflare:test';
-import worker from '../../worker/src/index.js';
+import worker, { guardFetch } from '../../worker/src/index.js';
 import { resetNjtToken, resetNjtSchedule, nyDate } from '../../worker/src/njt.js';
 import { mapRidePath } from '../../worker/src/path.js';
 import GtfsRt from 'gtfs-realtime-bindings';
@@ -351,7 +351,10 @@ describe('/bus/stops', () => {
     const res = await call('/bus/stops?legs=550685:MTABC_QM24', {}, { MTA_BUS_KEY: 'k' });
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.stops).toEqual([{ id: '550685', name: '', arrivals: [] }]);
+    // Each stop carries its leg's identity (stopId + lineRef) so the page can
+    // join results to its own legs by key, not by array position — the cache key
+    // for this route is order-insensitive. See mapBus in site/js/widgets/bus.js.
+    expect(body.stops).toEqual([{ id: '550685', lineRef: 'MTABC_QM24', name: '', arrivals: [] }]);
   });
 });
 
@@ -540,6 +543,31 @@ describe('/code rate limiting', () => {
     await clearThrottle('5.6.7.8');
     expect((await call('/code/ZZZZZZ', { headers: ip })).status).toBe(404);
     expect((await call('/code/ZZZZZZ', { headers: ip })).status).toBe(429);
+  });
+});
+
+describe('guardFetch (last-resort error guard)', () => {
+  const req = () => new Request('https://api.test/anything', { method: 'GET' });
+
+  it('turns an unhandled throw into CORS-clean JSON 500 instead of an opaque 1101', async () => {
+    const res = await guardFetch(() => { throw new Error('boom'); })(req(), {}, {});
+    expect(res.status).toBe(500);
+    // The CORS header is the whole point: without it the board sees a network
+    // error with no diagnosable body.
+    expect(res.headers.get('access-control-allow-origin')).toBe('*');
+    expect(await res.json()).toEqual({ error: 'internal_error' });
+  });
+  it('also catches an async rejection', async () => {
+    const res = await guardFetch(async () => { throw new Error('async boom'); })(req(), {}, {});
+    expect(res.status).toBe(500);
+  });
+  it('passes a normal response straight through untouched', async () => {
+    const ok = new Response('hi', { status: 200 });
+    expect(await guardFetch(() => ok)(req(), {}, {})).toBe(ok);
+  });
+  it('survives an unparseable request url while logging (no throw from the guard itself)', async () => {
+    const res = await guardFetch(() => { throw new Error('boom'); })({ method: 'GET', url: 'not a url' }, {}, {});
+    expect(res.status).toBe(500);
   });
 });
 

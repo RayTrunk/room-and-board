@@ -5,6 +5,7 @@ import { mapHistory } from '../site/js/widgets/history.js';
 import { quoteOfDay } from '../site/js/widgets/quote.js';
 import { mapMarkets } from '../site/js/widgets/markets.js';
 import { mapBus } from '../site/js/widgets/bus.js';
+import { fitViewport } from '../site/js/util.js';
 import { mapSiriStop } from '../worker/src/bus.js';
 import { mapYahooChart } from '../worker/src/markets.js';
 import { pickChart, currentTopic } from '../site/js/widgets/chart.js';
@@ -227,7 +228,7 @@ describe('mapBus (legs)', () => {
   it('flags not-configured on the server error', () => {
     expect(mapBus({ error: 'bus_not_configured' }, 0, legs).configured).toBe(false);
   });
-  it('joins stops by index so two legs sharing a stopId keep their own route', () => {
+  it('falls back to an index join for a lineRef-less payload (old worker / deploy skew)', () => {
     const sharedLegs = [
       { route: 'QM1', stopId: 'x', stopName: 'Stop X' },
       { route: 'QM2', stopId: 'x', stopName: 'Stop X' },
@@ -241,6 +242,73 @@ describe('mapBus (legs)', () => {
     const vm = mapBus(payload, 1000, sharedLegs);
     expect(vm.stops[0].route).toBe('QM1');
     expect(vm.stops[1].route).toBe('QM2');
+  });
+
+  // The real bug: /bus/stops is cached under an order-INSENSITIVE (sorted) key,
+  // so a board whose legs are ordered differently from the board that populated
+  // the entry receives the stops in the other board's order. Joining by index
+  // then labels the wrong stop's arrivals.
+  it('matches stops to legs by (stopId, lineRef), not position, when the cached order differs', () => {
+    const legs = [
+      { route: 'QM2', stopId: 'y', lineRef: 'MTA NYCT_QM2', stopName: 'My second stop' },
+      { route: 'QM1', stopId: 'x', lineRef: 'MTA NYCT_QM1', stopName: 'My first stop' },
+    ];
+    // Payload order is the OTHER board's (x before y) — the opposite of `legs`.
+    const payload = { stops: [
+      { id: 'x', lineRef: 'MTA NYCT_QM1', name: 'RAW X', arrivals: [{ route: 'QM1', dest: 'A', time: 2000, distance: '' }] },
+      { id: 'y', lineRef: 'MTA NYCT_QM2', name: 'RAW Y', arrivals: [{ route: 'QM2', dest: 'B', time: 3000, distance: '' }] },
+    ] };
+    const vm = mapBus(payload, 1000, legs);
+    // Each returned stop keeps ITS OWN leg's label, not the one at the same index.
+    expect(vm.stops[0].route).toBe('QM1');
+    expect(vm.stops[0].name).toBe('My first stop');
+    expect(vm.stops[1].route).toBe('QM2');
+    expect(vm.stops[1].name).toBe('My second stop');
+  });
+
+  it('disambiguates two different routes at the SAME stop by lineRef', () => {
+    const legs = [
+      { route: 'QM1', stopId: 'x', lineRef: 'MTA NYCT_QM1', stopName: 'Shared stop' },
+      { route: 'QM2', stopId: 'x', lineRef: 'MTA NYCT_QM2', stopName: 'Shared stop' },
+    ];
+    const payload = { stops: [
+      { id: 'x', lineRef: 'MTA NYCT_QM2', name: 'RAW', arrivals: [{ route: 'QM2', dest: 'B', time: 3000, distance: '' }] },
+      { id: 'x', lineRef: 'MTA NYCT_QM1', name: 'RAW', arrivals: [{ route: 'QM1', dest: 'A', time: 2000, distance: '' }] },
+    ] };
+    const vm = mapBus(payload, 1000, legs);
+    expect(vm.stops[0].route).toBe('QM2'); // stopId alone could not tell these apart
+    expect(vm.stops[1].route).toBe('QM1');
+  });
+});
+
+describe('fitViewport (RoomOS panel fit — Room Navigator)', () => {
+  const fakeRoot = (clientWidth) => ({ clientWidth, style: {} });
+
+  it('no-ops on the Board Pro (1920 wide) so production is untouched', () => {
+    const root = fakeRoot(1920);
+    expect(fitViewport(root)).toBeNull();
+    expect(root.style.zoom).toBe(''); // reset only, never scaled
+  });
+  it('no-ops on anything wider than the layout', () => {
+    expect(fitViewport(fakeRoot(2560))).toBeNull();
+  });
+  it('scales down to fit a narrower panel (1280 -> 0.667)', () => {
+    const root = fakeRoot(1280);
+    expect(fitViewport(root)).toBeCloseTo(0.667, 3);
+    expect(root.style.zoom).toBe('0.667');
+  });
+  it('ignores an implausible or zero measurement rather than scaling to nothing', () => {
+    expect(fitViewport(fakeRoot(0))).toBeNull();
+    expect(fitViewport(fakeRoot(100))).toBeNull(); // < 0.25 scale
+    expect(fitViewport(fakeRoot(Number.NaN))).toBeNull();
+  });
+  it('is idempotent: re-measuring after a resize resets the previous zoom first', () => {
+    const root = fakeRoot(1280);
+    fitViewport(root);
+    expect(root.style.zoom).toBe('0.667');
+    root.clientWidth = 1920; // e.g. moved to a Board Pro / window widened
+    expect(fitViewport(root)).toBeNull();
+    expect(root.style.zoom).toBe(''); // cleared, not left stale
   });
 });
 

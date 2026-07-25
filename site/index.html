@@ -3,7 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https: data: blob:; media-src https: blob:; connect-src 'self' https: wss:; frame-src https://monitor.ui.com; object-src 'none'; base-uri 'none'; frame-ancestors 'none'">
-<meta name="viewport" content="width=1920, initial-scale=1">
+<!-- The layout is a fixed 1920x1080 box (see main.css). `width=1920` keeps that
+     the layout viewport; `initial-scale=1` was REMOVED 2026-07-25 because it
+     pinned the zoom at 1:1 on every device, so a smaller RoomOS panel (e.g. a
+     Cisco Room Navigator) showed only the top-left ~1280px and needed a
+     pinch-zoom. Without it the engine fits the 1920 layout to the device width:
+     a no-op on the Board Pro (device width already 1920, so scale stays 1).
+     main.js fitViewport() covers the case where this meta is ignored. -->
+<meta name="viewport" content="width=1920">
 <title>Room &amp; Board</title>
 <link rel="icon" type="image/png" sizes="32x32" href="assets/room-and-board-favicon-32.png">
 <link rel="apple-touch-icon" href="assets/room-and-board-icon-180.png">

@@ -510,4 +510,31 @@ const handlers = {
   },
 };
 
-export default handlers;
+// Last-resort guard. An unexpected throw anywhere in the route table would
+// otherwise surface to the board as an opaque CORS/network error (the raw 1101
+// error page carries no Access-Control-Allow-Origin), which is the hardest
+// failure to diagnose on a device with no console. Wrap the handler so every
+// response is CORS-clean JSON, and log the cause to Workers Logs.
+// NOTE: `handlers.fetch` stays the in-process entry for selfFetch (health
+// probes), which want the raw throw — probe() already classifies failures.
+// Last-resort guard around the whole route table. An unexpected throw would
+// otherwise reach the board as an opaque CORS/network error — Cloudflare's raw
+// 1101 error page carries no Access-Control-Allow-Origin — which is the hardest
+// failure to diagnose on a device with no console. This turns any such throw
+// into CORS-clean JSON 500 and logs the method + path to Workers Logs.
+// NOTE: selfFetch (health probes) deliberately calls the UNGUARDED handlers.fetch
+// so probe() still classifies a raw throw itself.
+export function guardFetch(inner) {
+  return async (request, env, ctx) => {
+    try {
+      return await inner(request, env, ctx);
+    } catch (err) {
+      let path = '?';
+      try { path = new URL(request.url).pathname; } catch { /* unparseable — keep '?' */ }
+      console.error('[worker] unhandled error', request?.method, path, err);
+      return json({ error: 'internal_error' }, 500);
+    }
+  };
+}
+
+export default { ...handlers, fetch: guardFetch(handlers.fetch) };

@@ -16,7 +16,17 @@ export function mapBus(payload, nowSec, legs) {
   return {
     configured: true,
     stops: payload.stops.map((stop, i) => {
-      const leg = legsArr[i];
+      // Match each returned stop to its configured leg by (stopId, lineRef), NOT
+      // by array position: the worker caches these under an order-insensitive
+      // (sorted) key, so a board whose legs are ordered differently from the one
+      // that populated the entry would otherwise take the wrong leg's route
+      // label and stop name. Two legs can also be different routes at the same
+      // stop, which is why the pair is the key rather than the id alone.
+      // A payload without `lineRef` predates that worker change (the site and
+      // worker deploy independently), so fall back to the old positional join.
+      const leg = stop.lineRef === undefined
+        ? legsArr[i]
+        : legsArr.find((l) => l.stopId === stop.id && l.lineRef === stop.lineRef) ?? legsArr[i];
       return {
         id: stop.id,
         route: leg?.route ?? '',

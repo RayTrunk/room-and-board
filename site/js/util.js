@@ -3,6 +3,38 @@ export function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 }
 
+// Fit the fixed 1920x1080 layout (main.css pins html/body to exactly that, with
+// overflow hidden) onto a smaller RoomOS panel such as a Cisco Room Navigator,
+// which otherwise renders only the top-left corner and needs a pinch-zoom to see
+// the board.
+//
+// `zoom`, not a transform: zoom scales the layout itself, so the body-level
+// full-screen overlays (story/text viewer, image viewer, settings) scale with
+// it. A transform on an ancestor would instead become the containing block for
+// their fixed positioning and break them.
+//
+// WIDTH ONLY, deliberately. The visible HEIGHT is polluted by OS chrome (the
+// RoomOS bar overlays the bottom ~40px), so including a height term risks
+// computing a <1 scale for the production Board Pro itself. Guarded to only ever
+// shrink and to never touch a viewport already >= 1920 wide, so the Board Pro is
+// untouched by construction.
+//
+// `documentElement.clientWidth` is the LAYOUT viewport width. That makes this
+// complementary to index.html's `width=1920` viewport meta rather than
+// redundant: where the meta is honored this reads 1920 and no-ops (the engine
+// already fit the page), and where the meta is ignored it reads the true panel
+// width and does the fitting here. Exactly one half ever applies.
+export function fitViewport(root = document.documentElement) {
+  if (!root?.style) return null;
+  root.style.zoom = ''; // reset first, so a resize re-measures unscaled (idempotent)
+  const w = root.clientWidth;
+  if (!Number.isFinite(w) || w <= 0 || w >= 1920) return null; // Board Pro and larger
+  const scale = Math.round((w / 1920) * 1000) / 1000;
+  if (scale < 0.25) return null; // implausible measurement — leave the page alone
+  root.style.zoom = String(scale);
+  return scale;
+}
+
 // Chaikin corner-cutting: rounds a polyline ([[x,y],...]) into a denser,
 // curve-like one so a chart reads smooth rather than angular. It stays inside
 // the data's convex hull (NO overshoot, so no phantom crossings), preserves the

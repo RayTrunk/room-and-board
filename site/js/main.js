@@ -3,7 +3,7 @@
 import { normalizeConfig, decodeConfig, CURATED_SOURCES } from './config.js';
 import { loadConfig, saveConfig, loadCache, saveCache } from './store.js';
 import { fetchJSON, fetchBuffer, fetchText } from './net.js';
-import { fmtClock } from './util.js';
+import { fmtClock, fitViewport } from './util.js';
 import { schedule } from './scheduler.js';
 import { resolveMode, ambientSource } from './modes.js';
 import { registerWidget, getWidget } from './registry.js';
@@ -62,6 +62,11 @@ const net = { fetchJSON, fetchBuffer, fetchText };
 const $ = (sel) => document.querySelector(sel);
 const params = new URLSearchParams(location.search);
 const DEMO = params.get('demo') === '1';
+
+// Scale the fixed 1920x1080 layout down onto smaller RoomOS panels (Cisco Room
+// Navigator). No-op on the Board Pro. See fitViewport in util.js for why.
+fitViewport();
+window.addEventListener('resize', () => fitViewport());
 
 let cfg = null;
 // Liveness heartbeat for the watchdog: bumped on every clock tick, NOT on
