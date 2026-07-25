@@ -357,7 +357,9 @@ function showWelcome() {
   welcome.querySelector('[data-action="quick-start"]').addEventListener('click', async () => {
     const { QUICKSTART_CONFIG } = await import('./quickstart.js');
     cfg = normalizeConfig({ ...QUICKSTART_CONFIG, t: Math.floor(Date.now() / 1000) });
-    await saveConfig(cfg);
+    // Best-effort: a storage-blocked kiosk must still start (config is held in
+    // memory); a failed persist means it re-quick-starts next boot, not a stall.
+    try { await saveConfig(cfg); } catch (e) { console.error('[boot] quick-start save failed', e); }
     welcome.hidden = true;
     $('#grid').hidden = false;
     startRuntime();
@@ -464,7 +466,12 @@ async function boot() {
     return;
   }
   cfg = chosen;
-  if (source === 'fragment') await saveConfig(cfg); // repair wiped storage
+  // Repair wiped storage from a decodable #fragment — but best-effort: on a
+  // storage-blocked board this MUST NOT reject boot() (which reload-loops it).
+  // The config is already in memory; a persist failure just re-repairs next boot.
+  if (source === 'fragment') {
+    try { await saveConfig(cfg); } catch (e) { console.error('[boot] config repair-save failed', e); }
+  }
   startRuntime();
 
   // Vault sync runs opportunistically after first paint; settings uses the
@@ -490,11 +497,17 @@ async function boot() {
   const host = $('#slideshow');
   let downX = 0;
   let downY = 0;
+  // Match pointerup to the SAME pointer that went down: a palm or 2nd finger on
+  // the wall panel fires its own pointerup and would otherwise fabricate a swipe.
+  let downId = null;
   host.addEventListener('pointerdown', (e) => {
     downX = e.clientX;
     downY = e.clientY;
+    downId = e.pointerId;
   });
   host.addEventListener('pointerup', (e) => {
+    if (e.pointerId !== downId) return;
+    downId = null;
     const action = swipeAction(e.clientX - downX, e.clientY - downY);
     if (action === 'next' || action === 'prev') slideshow?.step(action === 'next' ? 1 : -1);
   });
@@ -508,11 +521,15 @@ async function boot() {
   const host = $('#ambient');
   let downX = 0;
   let downY = 0;
+  let downId = null;
   host.addEventListener('pointerdown', (e) => {
     downX = e.clientX;
     downY = e.clientY;
+    downId = e.pointerId;
   });
   host.addEventListener('pointerup', (e) => {
+    if (e.pointerId !== downId) return;
+    downId = null;
     const action = swipeAction(e.clientX - downX, e.clientY - downY);
     if (action === 'next' || action === 'prev') stepBackdrop(action === 'next' ? 1 : -1);
   });

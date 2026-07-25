@@ -293,6 +293,21 @@ describe('mapTrainTime (LIRR fallback board)', () => {
     const { mapTrainTime } = trainTimeMod;
     expect(mapTrainTime(perOrigin, { dest: '999' }, now, stations).departures).toHaveLength(0);
   });
+  it('parses the real TrainTime NYK payload into a sane eastbound board (guards upstream schema drift)', async () => {
+    const { mapTrainTime } = trainTimeMod;
+    const payload = await jsonFixture('traintime-nyk.json'); // captured live LIRR v3 response
+    const arrivals = payload.arrivals ?? [];
+    expect(arrivals.length).toBeGreaterThan(0);
+    // Anchor "now" just before the earliest row so the time filter keeps them all;
+    // then only direction/stops/canceled thin the board.
+    const nowSec = Math.min(...arrivals.map((a) => a.time)) - 60;
+    const { departures } = mapTrainTime([{ key: 'nyk', arrivals }], {}, nowSec, []);
+    expect(departures.length).toBeGreaterThan(0);
+    expect(departures.length).toBeLessThanOrEqual(12); // slice cap
+    // Every row: future, eastbound-derived (has a dest), sane minutes, ascending.
+    expect(departures.every((d) => d.t > nowSec && d.min >= 1 && typeof d.dest === 'string' && d.dest)).toBe(true);
+    for (let i = 1; i < departures.length; i++) expect(departures[i].t).toBeGreaterThanOrEqual(departures[i - 1].t);
+  });
   let trainTimeMod;
   beforeAll(async () => { trainTimeMod = await import('../site/js/widgets/lirr.js'); });
 });

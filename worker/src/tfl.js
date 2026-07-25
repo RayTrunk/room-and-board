@@ -21,7 +21,10 @@ export function mapTfl(json) {
 
 export async function fetchTfl(env) {
   const key = env.TFL_KEY ? `?app_key=${env.TFL_KEY}` : '';
-  const res = await fetch(`https://api.tfl.gov.uk/Line/Mode/tube,dlr,overground,elizabeth-line/Status${key}`);
+  const res = await fetch(
+    `https://api.tfl.gov.uk/Line/Mode/tube,dlr,overground,elizabeth-line/Status${key}`,
+    { signal: AbortSignal.timeout(10000) },
+  );
   if (!res.ok) throw new Error(`tfl ${res.status}`);
   return mapTfl(await res.json());
 }

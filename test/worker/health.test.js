@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { CHECKS, runHealthChecks, notify, alertPlan } from '../../worker/src/health.js';
+import { CHECKS, runHealthChecks, notify, alertPlan, nextFailingState } from '../../worker/src/health.js';
 
 // Valid response bodies keyed by a unique substring of each check's URL, so a
 // mock fetch can answer every probe with a shape its validator accepts.
@@ -172,6 +172,37 @@ describe('notify', () => {
     const [, init] = fetchImpl.mock.calls[0];
     expect(init.headers.Title).toBe('Room & Board health');
     expect(init.body).toBe('markets (HTTP 503)');
+  });
+  // Delivery signal drives at-least-once persistence (see nextFailingState).
+  it('reports true when there is no channel to deliver to (unwired, not a failure to retry)', async () => {
+    expect(await notify({}, 'x', vi.fn())).toBe(true);
+  });
+  it('reports true on a 2xx delivery', async () => {
+    const fetchImpl = vi.fn(() => Promise.resolve({ ok: true, status: 200 }));
+    expect(await notify({ ALERT_WEBHOOK: 'https://hooks.slack.com/services/x' }, 'x', fetchImpl)).toBe(true);
+  });
+  it('reports false when a wired channel returns non-2xx', async () => {
+    const fetchImpl = vi.fn(() => Promise.resolve({ ok: false, status: 500 }));
+    expect(await notify({ ALERT_WEBHOOK: 'https://hooks.slack.com/services/x' }, 'x', fetchImpl)).toBe(false);
+  });
+  it('reports false when the POST throws', async () => {
+    const fetchImpl = vi.fn(() => Promise.reject(new Error('network')));
+    expect(await notify({ ALERT_WEBHOOK: 'https://hooks.slack.com/services/x' }, 'x', fetchImpl)).toBe(false);
+  });
+});
+
+describe('nextFailingState (at-least-once persistence)', () => {
+  it('holds the previous set when an alert was attempted but NOT delivered (re-pages next run)', () => {
+    const plan = { changed: true, text: '🔴 njt down', failing: ['njt'] };
+    expect(nextFailingState(plan, [], false)).toEqual([]);
+  });
+  it('advances to this run\'s set once the alert is delivered', () => {
+    const plan = { changed: true, text: '🔴 njt down', failing: ['njt'] };
+    expect(nextFailingState(plan, [], true)).toEqual(['njt']);
+  });
+  it('advances when there was nothing to send (unchanged set)', () => {
+    const plan = { changed: false, text: null, failing: ['njt'] };
+    expect(nextFailingState(plan, ['njt'], true)).toEqual(['njt']);
   });
 });
 

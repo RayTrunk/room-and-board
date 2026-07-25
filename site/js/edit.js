@@ -299,14 +299,19 @@ export function openEditMode(cfg, { root, onDone, onCancel, cellSize } = {}) {
         window.removeEventListener('pointerup', onUp);
         window.removeEventListener('pointercancel', onCancel);
       };
+      // Only the initiating pointer drives the gesture: a palm or 2nd finger on
+      // the wall panel fires window pointermove/up with a DIFFERENT pointerId,
+      // and without this guard its pointerup would commit the layout at a spot
+      // the user never chose.
       const onMove = (e) => {
+        if (e.pointerId !== down.pointerId) return;
         block.style.transform = `translate(${e.clientX - origin.x}px, ${e.clientY - origin.y}px)`;
         g.update(e);
       };
-      const onUp = (e) => { unbind(); g.update(e); g.finish(); };
-      // pointercancel (system gesture / palm): drop the listeners and abort, or
-      // the next stray pointerup elsewhere would commit this dead gesture.
-      const onCancel = () => { unbind(); g.cancel(); };
+      const onUp = (e) => { if (e.pointerId !== down.pointerId) return; unbind(); g.update(e); g.finish(); };
+      // pointercancel (system gesture / palm) for THIS pointer: drop the
+      // listeners and abort, or the next stray pointerup would commit it.
+      const onCancel = (e) => { if (e.pointerId !== down.pointerId) return; unbind(); g.cancel(); };
       window.addEventListener('pointermove', onMove);
       window.addEventListener('pointerup', onUp);
       window.addEventListener('pointercancel', onCancel);
@@ -339,9 +344,9 @@ export function openEditMode(cfg, { root, onDone, onCancel, cellSize } = {}) {
         window.removeEventListener('pointercancel', onCancel);
         blocksHost.classList.remove('is-resize-gesture');
       };
-      const onMove = (e) => g.update(e);
-      const onUp = (e) => { unbind(); g.update(e); g.finish(); };
-      const onCancel = () => { unbind(); g.cancel(); };
+      const onMove = (e) => { if (e.pointerId !== down.pointerId) return; g.update(e); };
+      const onUp = (e) => { if (e.pointerId !== down.pointerId) return; unbind(); g.update(e); g.finish(); };
+      const onCancel = (e) => { if (e.pointerId !== down.pointerId) return; unbind(); g.cancel(); };
       window.addEventListener('pointermove', onMove);
       window.addEventListener('pointerup', onUp);
       window.addEventListener('pointercancel', onCancel);

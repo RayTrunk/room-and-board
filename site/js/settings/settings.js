@@ -282,7 +282,17 @@ export function navStale(token) {
 }
 function renderSection() {
   navToken += 1;
-  SECTION_RENDERERS[state.section]();
+  const token = navToken;
+  // Several renderers await a fetch or a dynamic import (the deploy-skew
+  // SyntaxError vector). A rejection here left the wrong pane under the new nav
+  // highlight with no message on a console-less board. Surface a hint, unless
+  // the user has already navigated on (navStale guards the fast-nav clobber).
+  Promise.resolve(SECTION_RENDERERS[state.section]()).catch((err) => {
+    console.error('[settings] section render failed', err);
+    if (navStale(token)) return;
+    const pane = document.querySelector('.settings__pane');
+    if (pane) pane.innerHTML = '<p class="pane__empty">Couldn’t load this section. Check the connection and try again.</p>';
+  });
 }
 
 /* ---------- widgets ---------- */

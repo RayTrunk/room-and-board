@@ -68,7 +68,10 @@ describe('CORS and routing', () => {
 });
 
 const clearThrottle = (ip = 'anon') =>
-  caches.default.delete(new Request(`https://api.test/__throttle/code/${encodeURIComponent(ip)}`));
+  Promise.all([
+    caches.default.delete(new Request(`https://api.test/__throttle/code/${encodeURIComponent(ip)}`)),
+    caches.default.delete(new Request(`https://api.test/__throttle/getcode/${encodeURIComponent(ip)}`)),
+  ]);
 
 describe('/code exchange', () => {
   beforeEach(() => clearThrottle());
@@ -86,7 +89,9 @@ describe('/code exchange', () => {
     expect(get1.status).toBe(200);
     expect((await get1.json()).cfg).toBe('abc123_-');
 
-    const get2 = await call(`/code/${code}`);
+    // A second client (distinct IP, so the per-IP redemption throttle doesn't
+    // mask it) proves the code was consumed, not merely rate-limited.
+    const get2 = await call(`/code/${code}`, { headers: { 'CF-Connecting-IP': '9.9.9.9' } });
     expect(get2.status).toBe(404); // single use
   });
   it('is case-insensitive on retrieval', async () => {
@@ -495,6 +500,14 @@ describe('/code rate limiting', () => {
     const ip = { 'CF-Connecting-IP': '1.2.3.4' };
     expect((await call('/code', { method: 'POST', body: 'nope', headers: ip })).status).toBe(400);
     expect((await call('/code', { method: 'POST', body: JSON.stringify({ cfg: 'ok123' }), headers: ip })).status).toBe(200);
+  });
+  it('429s a second redemption from the same IP within the window', async () => {
+    // Redemption (GET /code/:code) shares the CODES read quota with the NJT
+    // token/schedule; a per-IP speed bump keeps a guessing flood from draining it.
+    const ip = { 'CF-Connecting-IP': '5.6.7.8' };
+    await clearThrottle('5.6.7.8');
+    expect((await call('/code/ZZZZZZ', { headers: ip })).status).toBe(404);
+    expect((await call('/code/ZZZZZZ', { headers: ip })).status).toBe(429);
   });
 });
 

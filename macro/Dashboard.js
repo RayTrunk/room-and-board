@@ -98,7 +98,10 @@ const PANEL_XML = `
 async function ensureConfig(node, label, value) {
   try {
     const current = await node.get();
-    if (current === value) return;
+    // Loose compare: xConfiguration reads come back as strings, so a numeric
+    // value (Standby Delay) never === its current string and would rewrite every
+    // run. String() both sides so the write-only-on-change guard actually holds.
+    if (String(current) === String(value)) return;
     await node.set(value);
     console.log(`[Dashboard] ${label}: '${current}' -> '${value}'`);
   } catch (err) {

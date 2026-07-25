@@ -18,6 +18,16 @@ routes = [
   { pattern = "signage-api.rvc.tech", custom_domain = true }
 ]
 
+# Workers Logs: retain invocation logs (console output, exceptions, the
+# cached()/notify() upstream-failure lines) so a bad deploy or an upstream
+# outage is diagnosable after the fact instead of only live via `wrangler tail`.
+# head_sampling_rate = 1 keeps every invocation (this worker's request volume is
+# tiny). Free-plan retention applies; delete this block to opt out.
+# (A table header — must sit AFTER all top-level keys like `routes` above.)
+[observability]
+enabled = true
+head_sampling_rate = 1
+
 # Health monitor (src/health.js): validates the key endpoints' CONTENT every
 # 20 min and posts to ALERT_WEBHOOK on failure. Delete this block to turn it off
 # (the /health route stays available for on-demand / external checks).

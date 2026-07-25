@@ -143,21 +143,39 @@ export function alertPlan(report, prevFailing = []) {
   return { changed: true, failing: names, text: `${text} — ${report.at}` };
 }
 
+// Which failing-set to persist for the next run's comparison. An attempted page
+// that was NOT delivered (Slack/ntfy blip) must hold the PREVIOUS set, so the
+// next run still sees a change and re-pages — otherwise a transient webhook
+// outage silently swallows the only alert (at-least-once). A delivered page (or
+// a run with nothing to send) advances to this run's set.
+export function nextFailingState(plan, prevFailing, delivered) {
+  if (plan.changed && plan.text && !delivered) return prevFailing;
+  return plan.failing;
+}
+
 // Posts a prebuilt message to ALERT_WEBHOOK. Understands Slack incoming webhooks
 // (JSON {text}) and ntfy.sh (plain body) by URL; no-ops with a log if the secret
 // isn't set, so the monitor can deploy before the alert channel is wired.
+// Returns true when the alert was DELIVERED (2xx) — or when there's no channel
+// to deliver to, an unwired config state, not a transient failure worth
+// retrying — and false when a wired channel rejected or errored, so the caller
+// can hold its state and re-page next run (at-least-once) instead of advancing
+// past an alert nobody received.
 export async function notify(env, text, fetchImpl = fetch) {
   const url = env?.ALERT_WEBHOOK;
-  if (!url) { console.error('[health]', text, '(ALERT_WEBHOOK not set)'); return; }
+  if (!url) { console.error('[health]', text, '(ALERT_WEBHOOK not set)'); return true; }
   const ntfy = url.includes('ntfy.sh');
   try {
-    await fetchImpl(url, {
+    const res = await fetchImpl(url, {
       method: 'POST',
       headers: ntfy ? { Title: 'Room & Board health' } : { 'content-type': 'application/json' },
       body: ntfy ? text : JSON.stringify({ text }),
       signal: AbortSignal.timeout(8000),
     });
+    if (!res.ok) console.error('[health] alert POST non-2xx', res.status);
+    return res.ok;
   } catch (err) {
     console.error('[health] alert POST failed', err);
+    return false;
   }
 }

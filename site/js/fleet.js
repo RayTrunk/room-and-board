@@ -54,7 +54,12 @@ export function postBeacon(payload, nav = navigator) {
 // Hourly loop. The page reloads on every deploy (self-healing version check),
 // so the running version is constant per page lifetime — fetched once here.
 export function startBeacon(getCfg) {
-  const id = deviceId(window.localStorage);
+  // Accessing window.localStorage THROWS (not returns null) on storage-blocked
+  // kiosks; deviceId(null) is safe (both accessors are guarded) and yields a
+  // per-session id.
+  let ls = null;
+  try { ls = window.localStorage; } catch { /* blocked storage */ }
+  const id = deviceId(ls);
   const versionP = fetchJSON('version.json').then((v) => v.version).catch(() => 'unknown');
   return schedule(async () => {
     const cfg = getCfg();

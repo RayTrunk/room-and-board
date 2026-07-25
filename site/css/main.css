@@ -1310,7 +1310,10 @@ body.ss-backdrop .cf-dial__svg, .ss-preview.ss-backdrop .cf-dial__svg {
   display: flex; align-items: center; justify-content: center;
 }
 /* Lower-right, next to the Desk Pro's physical volume up/down keys. */
-.iptv__mute { bottom: 28px; right: 28px; }
+/* Clear the RoomOS "Tap to start" bar: at bottom:28px the lower ~12px sat in
+   the overlaid 40px zone, cropping the app's only sound control and sending a
+   low tap to RoomOS (which exits signage). Matches the gear/ss-preview idiom. */
+.iptv__mute { bottom: calc(var(--roomos-bar) + 8px); right: 28px; }
 /* pointer-events:none so a tap always targets the button, never the glyph —
    keeps the stopPropagation guard against exiting full screen reliable. */
 .iptv__mute svg,

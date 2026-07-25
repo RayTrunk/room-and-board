@@ -22,7 +22,7 @@ import { fetchChart, CHART_TOPICS } from './chart.js';
 import { fetchF1 } from './f1.js';
 import { fetchGolf, fetchTennis } from './scores.js';
 import { fetchAmtrak } from './amtrak.js';
-import { runHealthChecks, notify, alertPlan } from './health.js';
+import { runHealthChecks, notify, alertPlan, nextFailingState } from './health.js';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -102,6 +102,17 @@ async function getCode(env, code) {
   // carry non-sensitive widget prefs and expire after an hour regardless.
   try { await env.CODES.delete(key); } catch { /* best-effort single-use */ }
   return json({ cfg });
+}
+
+// Best-effort per-IP speed bump (Cache API, colo-local — a bound, not a hard
+// limit, same caveat as postCode). Records the hit and returns false the first
+// time in the window; returns true (reject) for repeats within windowS.
+async function ipThrottled(origin, bucket, ip, windowS) {
+  const cache = caches.default;
+  const key = new Request(`${origin}/__throttle/${bucket}/${encodeURIComponent(ip)}`);
+  if (await cache.match(key)) return true;
+  try { await cache.put(key, new Response('1', { headers: { 'Cache-Control': `max-age=${windowS}` } })); } catch { /* fail open */ }
+  return false;
 }
 
 // Fresh-or-stale response cache shared by the upstream-proxy routes. Uses the
@@ -249,6 +260,21 @@ async function writeHealthFailing(failing) {
   } catch { /* best effort */ }
 }
 
+// /health must stay public (external uptime monitors hit it), which leaves the
+// manual ?test=alert channel-check open to whoever finds the URL. Rate-limit it
+// so a leaked URL can't flood the ops channel and drown a real alert: one test
+// ping per colo per 10 min. Colo-local + best-effort (fails open — a stray test
+// message is loud but harmless); costs no operator config, unlike a shared
+// secret the runbook would have to carry.
+const TEST_ALERT_GATE = new Request('https://api.roomboard.app/__health/testgate');
+async function testAlertAllowed() {
+  try {
+    if (await caches.default.match(TEST_ALERT_GATE)) return false;
+    await caches.default.put(TEST_ALERT_GATE, new Response('1', { headers: { 'Cache-Control': 'max-age=600' } }));
+  } catch { /* cache unavailable — fail open */ }
+  return true;
+}
+
 const handlers = {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -281,7 +307,15 @@ const handlers = {
     }
 
     const codeMatch = /^\/code\/([A-Za-z0-9]{6})$/.exec(path);
-    if (codeMatch && request.method === 'GET') return getCode(env, codeMatch[1]);
+    if (codeMatch && request.method === 'GET') {
+      // Speed-bump redemption per IP (colo-local, mirrors postCode) so a
+      // code-guessing flood can't drain the CODES read quota that the NJT
+      // token/schedule share; getCode's try/catch is the reliable backstop. A 3s
+      // window is invisible to a human re-typing a mistyped code.
+      const ip = request.headers.get('CF-Connecting-IP') ?? 'anon';
+      if (await ipThrottled(url.origin, 'getcode', ip, 3)) return json({ error: 'rate_limited' }, 429);
+      return getCode(env, codeMatch[1]);
+    }
 
     if (path === '/njt/departures' && request.method === 'GET') {
       if (!env.NJT_USER || !env.NJT_PASS) return json({ error: 'njt_not_configured' }, 503);
@@ -374,7 +408,11 @@ const handlers = {
     }
 
     if (path === '/citibike/status' && request.method === 'GET') {
-      const ids = (url.searchParams.get('ids') ?? '').split(',').filter(Boolean).slice(0, 6);
+      // Bound each id (GBFS station ids are short word-chars/UUIDs) so an
+      // attacker can't mint giant arbitrary cache keys; dedupe, cap at 6.
+      const ids = [...new Set(
+        (url.searchParams.get('ids') ?? '').split(',').map((s) => s.trim()).filter((s) => /^[\w-]{1,48}$/.test(s)),
+      )].slice(0, 6);
       if (!ids.length) return json({ error: 'bad_ids' }, 400);
       // 60s matches the GBFS feed ttl; sorted ids so permutations share a key.
       return cached(url.origin, `citibike:${[...ids].sort().join(',')}`, 60, () => fetchCitibike(ids));
@@ -441,7 +479,7 @@ const handlers = {
     // worthless. No-ops (like any alert) when the secret is unset.
     if (path === '/health' && request.method === 'GET') {
       const report = await runHealthChecks(env, selfFetch(env));
-      if (url.searchParams.get('test') === 'alert') {
+      if (url.searchParams.get('test') === 'alert' && await testAlertAllowed()) {
         await notify(env, `🔴 Room & Board health: test (manual channel-wiring check — not a real outage) — ${report.at}`);
       }
       return json(report, report.ok ? 200 : 503);
@@ -458,11 +496,17 @@ const handlers = {
   async scheduled(event, env, ctx) {
     const report = await runHealthChecks(env, selfFetch(env));
     // Alert only when the failing set changes (see alertPlan), so an ongoing
-    // outage doesn't page every 20 min. Persist this run's failing set for the
-    // next comparison regardless.
-    const plan = alertPlan(report, await readHealthFailing());
-    if (plan.changed && plan.text) ctx.waitUntil(notify(env, plan.text));
-    ctx.waitUntil(writeHealthFailing(plan.failing));
+    // outage doesn't page every 20 min.
+    const prevFailing = await readHealthFailing();
+    const plan = alertPlan(report, prevFailing);
+    if (plan.changed && plan.text) {
+      // At-least-once: only advance the persisted set once the page is actually
+      // delivered (nextFailingState holds prevFailing on a delivery failure so
+      // the next run re-pages instead of silently swallowing the alert).
+      ctx.waitUntil(notify(env, plan.text).then((ok) => writeHealthFailing(nextFailingState(plan, prevFailing, ok))));
+    } else {
+      ctx.waitUntil(writeHealthFailing(nextFailingState(plan, prevFailing, true)));
+    }
   },
 };
 

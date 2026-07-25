@@ -181,6 +181,12 @@ describe('widget label coverage', () => {
   it('board settings labels cover every widget id', () => {
     for (const id of ALL_IDS) expect(BOARD_LABELS[id], id).toBeTruthy();
   });
+  // The /setup phone wizard is an ADD surface, so it only needs labels for
+  // placeable (non-retired) widgets. Guards the recurring "added a widget,
+  // forgot its wizard label" plumbing gap that renders a titleless card.
+  it('setup wizard labels cover every placeable widget id', () => {
+    for (const id of LIVE_IDS) expect(SETUP_LABELS[id], id).toBeTruthy();
+  });
 });
 
 import { WIDGET_GROUPS } from '../site/js/config.js';

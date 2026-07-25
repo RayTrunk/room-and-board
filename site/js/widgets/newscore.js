@@ -17,7 +17,10 @@ function decodeEntities(s) {
   return s.replace(/&(#x[0-9a-f]+|#\d+|[a-z][a-z0-9]*);/gi, (m, code) => {
     if (code[0] === '#') {
       const n = /^#x/i.test(code) ? parseInt(code.slice(2), 16) : Number(code.slice(1));
-      return Number.isFinite(n) && n > 0 ? String.fromCodePoint(n) : m;
+      // Bound to valid Unicode: a malformed entity above 0x10FFFF makes
+      // String.fromCodePoint throw RangeError, which would kill this source's
+      // whole parse on every refresh. Out-of-range -> leave the raw ref.
+      return Number.isFinite(n) && n > 0 && n <= 0x10FFFF ? String.fromCodePoint(n) : m;
     }
     const c = NAMED_ENTITIES[code.toLowerCase()];
     return c === undefined ? m : c;
