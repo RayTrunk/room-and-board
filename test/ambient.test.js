@@ -6,6 +6,7 @@ import { createSlideshow, swipeAction } from '../site/js/imageshow.js';
 import { stripData, stripHtml } from '../site/js/ambient.js';
 import { ambientSource } from '../site/js/modes.js';
 import { resolvePhotosManifest } from '../site/js/photos-manifest.js';
+import { DEMO_VMS, DEMO_NOW_MS } from '../site/demo/fixtures.js';
 
 const MANIFEST = [
   { img: 'a.jpg', title: 'A', artist: 'AA', year: '1900', ar: 1.78 },
@@ -151,22 +152,72 @@ describe('createSlideshow', () => {
 });
 
 describe('stripData', () => {
+  const NOW = 1_800_000_000; // fixed "now" in epoch seconds
   const caches = {
     weather: { now: { temp: 84 } },
-    lirr: { departures: [{ min: 8, dest: 'Port Washington', track: '17' }] },
+    // Departures carry an absolute `t`; the countdown is derived from it, not
+    // from any cached `min` (see the staleness tests below).
+    lirr: { departures: [{ min: 999, t: NOW + 8 * 60, dest: 'Port Washington', track: '17' }] },
   };
   it('assembles temp and next departures from enabled widgets', () => {
-    const out = stripData(caches, { widgets: ['weather', 'lirr'] });
+    const out = stripData(caches, { widgets: ['weather', 'lirr'] }, { nowSec: NOW });
     expect(out.temp).toBe(84);
     expect(out.transit).toHaveLength(1);
     expect(out.transit[0].label).toContain('Port Washington');
     expect(out.transit[0].min).toBe(8);
   });
   it('omits missing/disabled sources', () => {
-    const out = stripData({ weather: caches.weather }, { widgets: ['weather'] });
+    const out = stripData({ weather: caches.weather }, { widgets: ['weather'] }, { nowSec: NOW });
     expect(out.temp).toBe(84);
     expect(out.transit).toEqual([]);
     expect(stripData({}, { widgets: [] }).temp).toBeNull();
+  });
+
+  // The bug this guards: the strip used to read the cached `min` straight
+  // through, so a wedged feed (or a cache restored from localStorage at boot)
+  // showed a confident wrong countdown forever.
+  it('recomputes the countdown from the absolute time, ignoring a frozen stale `min`', () => {
+    const stale = { lirr: { departures: [{ min: 8, t: NOW + 20 * 60, dest: 'Mineola' }] } };
+    const out = stripData(stale, { widgets: ['lirr'] }, { nowSec: NOW });
+    expect(out.transit[0].min).toBe(20); // 20, not the cached 8
+  });
+  it('goes quiet rather than lying when every cached departure is in the past', () => {
+    const hoursOld = {
+      lirr: { departures: [{ min: 8, t: NOW - 3 * 3600, dest: 'Mineola' }] },
+      njt: { trains: [{ min: 12, time: NOW - 2 * 3600, dest: 'Trenton' }] },
+    };
+    const out = stripData(hoursOld, { widgets: ['lirr', 'njt'] }, { nowSec: NOW });
+    expect(out.transit).toEqual([]);
+  });
+  it('skips already-departed entries instead of trusting index 0', () => {
+    // A stale cache still holds departed trains: the widget's own past filter
+    // ran at ITS render, not now.
+    const mixed = { njt: { trains: [
+      { min: 1, time: NOW - 600, dest: 'Departed' },
+      { min: 2, time: NOW - 60, dest: 'Also departed' },
+      { min: 3, time: NOW + 7 * 60, dest: 'Trenton', track: '3' },
+    ] } };
+    const out = stripData(mixed, { widgets: ['njt'] }, { nowSec: NOW });
+    expect(out.transit).toHaveLength(1);
+    expect(out.transit[0].label).toContain('Trenton');
+    expect(out.transit[0].label).toContain('Tk 3');
+    expect(out.transit[0].min).toBe(7);
+  });
+  it('drops an entry with no usable absolute time (unverifiable countdown)', () => {
+    const shapeless = { mnr: { departures: [{ min: 5, dest: 'Southeast' }] } };
+    expect(stripData(shapeless, { widgets: ['mnr'] }, { nowSec: NOW }).transit).toEqual([]);
+  });
+  it('never renders a sub-minute countdown as 0 min', () => {
+    const soon = { lirr: { departures: [{ t: NOW + 20, dest: 'Mineola' }] } };
+    expect(stripData(soon, { widgets: ['lirr'] }, { nowSec: NOW }).transit[0].min).toBe(1);
+  });
+  it('keeps the demo fixtures readable when given their own reference instant', () => {
+    const out = stripData(
+      { lirr: DEMO_VMS.lirr, mnr: DEMO_VMS.mnr, njt: DEMO_VMS.njt },
+      { widgets: ['lirr', 'mnr', 'njt'] },
+      { nowSec: Math.floor(DEMO_NOW_MS / 1000) },
+    );
+    expect(out.transit.map((t) => t.min)).toEqual([8, 6, 12]); // the fixtures' intended minutes
   });
 });
 

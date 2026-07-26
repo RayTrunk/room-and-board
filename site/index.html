@@ -32,6 +32,10 @@
     <div id="settings-root"></div>
     <div id="edit-root"></div>
   </main>
+  <!-- Classic script, and it MUST stay ahead of the module below: it exists to
+       catch a broken/stale static import that stops main.js's module graph from
+       executing at all, which a guard inside that graph could never detect. -->
+  <script src="js/bootguard.js"></script>
   <script type="module" src="js/main.js"></script>
 </body>
 </html>

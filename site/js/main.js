@@ -12,7 +12,7 @@ import { parseFragment } from './bridge.js';
 import { stripData, stripHtml } from './ambient.js';
 import { createSlideshow, swipeAction } from './imageshow.js';
 import { startBeacon } from './fleet.js';
-import { DEMO_VMS } from '../demo/fixtures.js';
+import { DEMO_VMS, DEMO_NOW_MS } from '../demo/fixtures.js';
 import { initTextViewer } from './textviewer.js';
 import { startClockFace, CLOCK_SOURCES } from './clockfaces.js';
 import { icon } from './icons.js';
@@ -185,6 +185,10 @@ function renderStrip() {
     ? stripData(
         { weather: DEMO_VMS.weather, lirr: DEMO_VMS.lirr, mnr: DEMO_VMS.mnr, njt: DEMO_VMS.njt },
         cfg,
+        // The fixtures are frozen at DEMO_NOW_MS; stripData derives countdowns
+        // from absolute times, so it needs the fixtures' own "now" or every demo
+        // departure reads as long past and the strip goes quiet.
+        { nowSec: Math.floor(DEMO_NOW_MS / 1000) },
       )
     : stripData(caches, cfg);
   // The clock-face screensavers already show the time large; drop it from the
@@ -566,6 +570,14 @@ $('#edit').addEventListener('click', async () => {
     },
   });
 });
+
+// Signal to bootguard.js (a classic script loaded ahead of this module) that the
+// page's code is alive: every import resolved and all synchronous top-level
+// setup above ran. This MUST stay the last top-level statement before boot() —
+// a broken/stale import or a throw during setup then leaves the flag unset and
+// the guard recovers. An async boot() failure past this point is handled by the
+// catch below, not by the guard.
+window.__signageLoaded = true;
 
 // A boot crash means no runtime and therefore no watchdog — reload is the
 // only recovery path on an unattended board.

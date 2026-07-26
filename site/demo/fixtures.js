@@ -1,6 +1,13 @@
 // Canned view-models for ?demo=1 — renders the full dashboard with zero
 // network. Also the substrate for renderer smoke tests and screenshots.
 
+// The instant every fixture is built around: the transit `t`/`time` stamps are
+// this plus their `min` (lirr min 8 -> +480s, njt min 12 -> +720s), and the news
+// / posts fixtures use it as their `nowMs`. Consumers that derive a countdown
+// from absolute times (see stripData in ambient.js) must pass this as "now",
+// otherwise every demo departure reads as long past.
+export const DEMO_NOW_MS = 1783000000000;
+
 export const DEMO_VMS = {
   weather: {
     now: { temp: 84, feels: 92, code: 1, label: 'Mostly clear', icon: 'clear' },
