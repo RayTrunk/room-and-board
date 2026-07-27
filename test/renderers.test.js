@@ -319,6 +319,15 @@ describe('widget renderers', () => {
     // 30% and up carries the sky-blue accent; below that stays quiet.
     expect([...row.querySelectorAll('.wx-pp--wet')].map((s) => s.textContent))
       .toEqual(['45%', '70%', '55%', '30%']);
+    // Every reading leads with a droplet, dry hours included.
+    expect([...row.children].map((s) => s.querySelectorAll('svg.wx-pp__drop').length))
+      .toEqual([1, 1, 1, 1, 1, 1, 1, 1]);
+    // The glyph must carry no colour of its own: currentColor is what makes it
+    // follow its cell between --ink-dim and the wet accent.
+    const drop = row.querySelector('svg.wx-pp__drop');
+    expect(drop.getAttribute('fill')).toBe('currentColor');
+    expect(drop.getAttribute('aria-hidden')).toBe('true');
+    expect(drop.outerHTML).not.toMatch(/#[0-9a-f]{3,6}\b|rgba?\(|stroke=|style=/i);
     // Directly under the hourly temperatures, above the chart.
     const rows = [...card.querySelectorAll('.wx-trend > *')].map((n) => n.getAttribute('class'));
     expect(rows).toEqual(['wx-trend__row', 'wx-trend__row wx-trend__row--precip', 'wx-trend__chart', 'wx-trend__row wx-trend__row--hours']);
@@ -340,6 +349,14 @@ describe('widget renderers', () => {
     card.dataset.h = '5';
     weather.render(body, { ...DEMO_VMS.weather, hourly: DEMO_VMS.weather.hourly.map((x) => ({ ...x, pp: null })) }, CFG);
     expect(card.querySelector('.wx-trend__row--precip')).toBeNull();
+
+    // A gap in the readings holds its column with a bare span: no number, and
+    // no orphan droplet either.
+    weather.render(body, { ...DEMO_VMS.weather, hourly: DEMO_VMS.weather.hourly.map((x, i) => ({ ...x, pp: i < 2 ? null : x.pp })) }, CFG);
+    const gappy = card.querySelector('.wx-trend__row--precip');
+    expect([...gappy.children].map((s) => s.querySelectorAll('svg.wx-pp__drop').length))
+      .toEqual([0, 0, 1, 1, 1, 1, 1, 1]);
+    expect(gappy.children[0].innerHTML).toBe('');
     card.remove();
   });
 

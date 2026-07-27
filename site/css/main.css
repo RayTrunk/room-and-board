@@ -206,8 +206,14 @@ html, body {
    renderer builds the row at h >= 5, where the dead band is; no container
    queries on gen1 boards). Text only, quiet by default, and sky-blue (the
    snow/sleet accent) once a column is worth planning around. */
-.wx-trend__row--precip > span { font-size: 15px; font-weight: 400; color: var(--ink-dim); } /* AA: ink-faint fails below 18px */
+/* nowrap: the glyph + number must stay one line whatever the value, or the row
+   grows and the measured height budget below goes with it. */
+.wx-trend__row--precip > span { font-size: 15px; font-weight: 400; color: var(--ink-dim); white-space: nowrap; } /* AA: ink-faint fails below 18px */
 .wx-trend__row--precip > span.wx-pp--wet { color: #7fc8e6; }
+/* Droplet sits on the numerals' optical baseline. Alignment and gap only: the
+   glyph is filled with currentColor, so it inherits whichever of the two
+   colours above its cell already has. */
+.wx-pp__drop { vertical-align: -1px; margin-right: 2px; }
 .wx-trend__chart { width: 100%; height: 60px; display: block; }
 .wx-trend__line { fill: none; stroke: var(--wx-accent); stroke-width: 3px; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
 .wx-trend__g0 { stop-color: var(--wx-accent); stop-opacity: 0.30; }

@@ -41,6 +41,20 @@ export function trendSvg(temps, gradId, minWindow = 6) {
     </svg>`;
 }
 
+// Droplet for the hourly precip row. Kept here rather than in icons.js: that
+// map is a stroke-based 24-box system sized for 20px+ glyphs, and a 1.6px
+// stroke scaled into a 9px box turns to mush on a board panel. This one is a
+// solid shape at its native size, and fill="currentColor" with no colour of its
+// own is what lets each cell tint its own droplet (dim when dry, accent when
+// wet) without a single extra CSS rule.
+// The viewBox is cropped to the shape (x 1..8) rather than the round 0..9 box:
+// the drawn droplet is identical, but the 2px of transparent side padding it
+// used to carry is exactly what a 3-wide card cannot spare when every hour
+// reads 100% (measured: 49.0px of content in a 48.9px column, versus 51.0px
+// with the padding).
+const DROP = '<svg class="wx-pp__drop" viewBox="1 0 7 11" width="7" height="11" fill="currentColor" aria-hidden="true">'
+  + '<path d="M4.5 0.5C3.2 2.6 1 5.4 1 7.1a3.5 3.5 0 0 0 7 0C8 5.4 5.8 2.6 4.5 0.5Z"/></svg>';
+
 // WMO weather interpretation codes → display label + icon key.
 const WMO = new Map([
   [0, ['Clear', 'clear']],
@@ -186,14 +200,15 @@ export function render(el, vm, cfg) {
   // `big`): a wide-but-shallow card has no spare height for another row. An
   // hour with no reading holds its column with an empty span so the row stays
   // aligned with the temps and the chart, and a row that would be blank
-  // everywhere is dropped entirely.
+  // everywhere is dropped entirely. Every reading carries a droplet, dry hours
+  // included, so the number's meaning is legible on a calm day too.
   const showPrecip = h >= 5 && hours.some((x) => x.pp != null);
   const precipRow = showPrecip
     ? `<div class="wx-trend__row wx-trend__row--precip">${hours
         .map((x) =>
           x.pp == null
             ? '<span></span>'
-            : `<span${x.pp >= 30 ? ' class="wx-pp--wet"' : ''}>${x.pp}%</span>`,
+            : `<span${x.pp >= 30 ? ' class="wx-pp--wet"' : ''}>${DROP}${x.pp}%</span>`,
         )
         .join('')}</div>`
     : '';
