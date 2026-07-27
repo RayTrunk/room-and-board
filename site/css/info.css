@@ -16,6 +16,10 @@
   --radius: 24px;
   --gap: 20px;
   --pad: 28px;
+  /* One reading measure for every long-form block on the page. 68ch keeps a
+     line at the 45-75 character range where the eye finds the next line without
+     hunting; the old 760px lede ran past 90 characters at desktop sizes. */
+  --measure: 68ch;
 }
 
 * { box-sizing: border-box; }
@@ -42,22 +46,55 @@ img { max-width: 100%; }
   scrollbar-width: none;
 }
 .nav__inner::-webkit-scrollbar { display: none; }
-.nav__brand { margin-right: auto; padding: 8px 0; display: flex; align-items: center; flex: none; }
+.nav__brand { margin-right: auto; padding: 9px 0; display: flex; align-items: center; flex: none; }
 .nav__brand img { display: block; height: 26px; width: auto; }
+/* 22px line + 11px top and bottom = a 44px target, the floor for a thumb. */
 .nav__link {
-  font-size: 15px; padding: 8px 14px; border-radius: 999px; white-space: nowrap;
+  font-size: 15px; line-height: 22px; padding: 11px 14px; border-radius: 999px; white-space: nowrap;
   color: var(--ink-dim); background: transparent; flex: none;
   transition: color 150ms cubic-bezier(0.22, 1, 0.36, 1), background 150ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 .nav__link:hover { color: var(--ink); }
 .nav__link.is-active { background: var(--bg-card-2); color: var(--ink); }
+/* Scrolled-off pills were invisible on a phone: the row just looked truncated.
+   info.js sets these classes from the scroll position, so the fade appears only
+   on the side that actually has more nav to reach. */
+.nav--fade-right .nav__inner {
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 48px), transparent);
+  mask-image: linear-gradient(to right, #000 calc(100% - 48px), transparent);
+}
+.nav--fade-left .nav__inner {
+  -webkit-mask-image: linear-gradient(to left, #000 calc(100% - 48px), transparent);
+  mask-image: linear-gradient(to left, #000 calc(100% - 48px), transparent);
+}
+.nav--fade-left.nav--fade-right .nav__inner {
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 48px, #000 calc(100% - 48px), transparent);
+  mask-image: linear-gradient(to right, transparent, #000 48px, #000 calc(100% - 48px), transparent);
+}
 
 /* ---------- hero ---------- */
 .hero { padding-top: 84px; padding-bottom: 12px; }
 .eyebrow { font-size: 13px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-dim); margin-bottom: 18px; }
 .hero__title { font-size: clamp(38px, 5vw, 56px); font-weight: 700; margin: 0 0 16px; letter-spacing: -0.015em; line-height: 1.05; }
-.hero__lede { font-size: clamp(19px, 2.2vw, 23px); line-height: 1.45; color: var(--ink-mid); margin: 0 0 14px; max-width: 720px; text-wrap: pretty; }
-.hero__note { font-size: 16px; color: var(--ink-dim); margin: 0; }
+.hero__lede { font-size: clamp(19px, 2.2vw, 23px); line-height: 1.45; color: var(--ink-mid); margin: 0 0 14px; max-width: var(--measure); text-wrap: pretty; }
+.hero__note { font-size: 16px; color: var(--ink-dim); margin: 0; max-width: var(--measure); }
+
+/* The hero shows the product: the board sits beside the lede once there is room
+   for both to stay legible, and drops below it before either gets squeezed.
+   The picture is deliberately compact here, which is why it is a shot__btn like
+   the section screenshots — the full board is one tap away in the lightbox. */
+.hero__shot { margin: 34px 0 0; }
+.hero__shot img {
+  display: block; width: 100%; height: auto;
+  border-radius: var(--radius); border: 1px solid var(--bg-card-2);
+}
+@media (min-width: 1100px) {
+  .hero {
+    display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
+    align-items: center; column-gap: 48px;
+  }
+  .hero__shot { margin-top: 0; }
+}
 
 /* ---------- sections ---------- */
 .section { padding-top: 72px; scroll-margin-top: 76px; }
@@ -67,8 +104,8 @@ img { max-width: 100%; }
 .h2--flush { margin: 0; }
 .head { display: flex; align-items: baseline; gap: 14px; margin-bottom: 6px; flex-wrap: wrap; }
 .count { font-size: 13px; color: var(--ink-dim); text-transform: uppercase; letter-spacing: 0.08em; }
-.section__sub { font-size: 17px; color: var(--ink-dim); margin: 0 0 26px; }
-.section__lede { font-size: 17px; line-height: 1.5; color: var(--ink-dim); margin: 0 0 26px; max-width: 760px; text-wrap: pretty; }
+.section__sub { font-size: 17px; color: var(--ink-dim); margin: 0 0 26px; max-width: var(--measure); }
+.section__lede { font-size: 17px; line-height: 1.5; color: var(--ink-dim); margin: 0 0 26px; max-width: var(--measure); text-wrap: pretty; }
 
 /* ---------- tiles (display modes, screensaver sources) ---------- */
 .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: var(--gap); }
@@ -136,6 +173,16 @@ img { max-width: 100%; }
 /* ---------- board screenshots ---------- */
 .shot { margin: 34px 0 0; border-radius: var(--radius); border: 1px solid var(--bg-card-2); overflow: hidden; }
 .shot img { display: block; width: 100%; height: auto; cursor: zoom-in; }
+/* Each screenshot is a real button, so the lightbox opens from the keyboard
+   (Enter or Space) as well as a tap. Stripped to nothing visually; the focus
+   ring is the only thing it draws, and it sits inside the figure's clip so it
+   follows the rounded corner. */
+.shot__btn {
+  display: block; width: 100%; padding: 0; margin: 0; border: 0;
+  background: none; color: inherit; font: inherit; cursor: zoom-in;
+}
+.shot__btn:focus { outline: none; }
+.shot__btn:focus-visible { outline: 3px solid var(--accent); outline-offset: -3px; border-radius: var(--radius); }
 .shots { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: var(--gap); margin-top: var(--gap); }
 .shot--half { margin: 0; position: relative; }
 .shot__cap {
@@ -149,7 +196,7 @@ img { max-width: 100%; }
 .subhead__title { font-size: 20px; font-weight: 600; margin: 0; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-dim); }
 .subhead__note { font-size: 15px; color: var(--ink-dim); }
 .notes { display: flex; flex-direction: column; gap: 10px; margin-top: var(--gap); background: var(--bg-card-2); border-radius: 12px; padding: 16px 18px; }
-.notes__p { font-size: 15px; line-height: 1.45; color: var(--ink-dim); margin: 0; }
+.notes__p { font-size: 15px; line-height: 1.45; color: var(--ink-dim); margin: 0; max-width: var(--measure); }
 
 /* ---------- what's new (built by info.js) ----------
    Deliberately the same geometry as the widget rows above: hairline per group,
@@ -160,8 +207,12 @@ img { max-width: 100%; }
 .log__group { display: flex; flex-wrap: wrap; gap: 4px 20px; padding: 15px 2px; border-top: 1px solid var(--bg-card-2); }
 .log__date { font-size: 16px; font-weight: 600; color: var(--ink-dim); margin: 0; flex: 0 0 150px; }
 .log__items { display: flex; flex-direction: column; gap: 10px; flex: 1 1 260px; min-width: 0; }
+.log__items { max-width: var(--measure); }
 .log__item { font-size: 16px; line-height: 1.5; color: var(--ink-mid); margin: 0; text-wrap: pretty; }
 .log__lead { font-weight: 600; color: var(--ink); margin-right: 0.4em; }
+/* Shown when the notes cannot be fetched, and by <noscript> when there is no
+   script at all. Quiet on purpose: it is an absence, not an error. */
+.log__empty { font-size: 16px; line-height: 1.5; color: var(--ink-dim); margin: 0; padding: 15px 2px; border-top: 1px solid var(--bg-card-2); max-width: var(--measure); }
 
 /* ---------- footer ---------- */
 .footer { margin-top: 96px; padding-top: 26px; padding-bottom: 72px; }
@@ -199,7 +250,7 @@ img { max-width: 100%; }
   .duo { grid-template-columns: 1fr; }
   .card--row { flex-direction: column; gap: 14px; }
   .shots { grid-template-columns: 1fr; }
-  .lightbox { padding: 16px; }
+  .lightbox { padding: 56px 12px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

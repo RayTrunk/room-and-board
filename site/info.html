@@ -28,10 +28,25 @@
 </nav>
 
 <header id="top" class="wrap hero">
-  <div class="eyebrow">Widget Guide</div>
-  <h1 class="hero__title">Room &amp; Board</h1>
-  <p class="hero__lede">A glanceable dashboard for your personal screen: your commute, your weather, your markets, your images.</p>
-  <p class="hero__note">Every widget is added and configured right on the board, or from your phone. 32 widgets, six groups.</p>
+  <div class="hero__text">
+    <div class="eyebrow">Widget Guide</div>
+    <h1 class="hero__title">Room &amp; Board</h1>
+    <p class="hero__lede">A glanceable dashboard for your personal screen: your commute, your weather, your markets, your images.</p>
+    <p class="hero__note">Every widget is added and configured right on the board, or from your phone. 32 widgets, six groups.</p>
+  </div>
+  <!-- The hero image is the LCP: eager and high priority. The asset name is
+       stable on purpose: hero-board.webp is swapped on disk, never here.
+       One full-board asset at every width — on a phone it simply renders
+       small and stays inside the viewport. It sits in the same shot__btn as
+       the section screenshots, so tapping it (or Enter from the keyboard)
+       opens the board in the lightbox.
+       NOTE: currently a stand-in copy of the Commute capture, pending Sean's
+       own board capture (same name, 1920w webp). -->
+  <figure class="hero__shot">
+    <button class="shot__btn" type="button">
+      <img src="assets/info/hero-board.webp" data-zoom data-caption="The Room &amp; Board dashboard" alt="A Room &amp; Board display showing Weather with hourly rain chances, Landscapes, World Clock, Cloud Services, Markets, Headlines, and Subway Status." width="1920" height="1080" loading="eager" fetchpriority="high" decoding="async">
+    </button>
+  </figure>
 </header>
 
 <section class="wrap section">
@@ -54,7 +69,7 @@
 
 <section id="yours" class="wrap section" data-nav-section="yours">
   <h2 class="h2 h2--tight">Making it yours</h2>
-  <p class="section__lede">Two buttons sit in the bottom-right corner of the board. Everything you can change lives behind one of them. Rather configure things from your computer? Visit <a href="/setup">roomboard.app/setup</a> to pick and customize your widgets, then enter the pairing code shown on the board when you&rsquo;re done.</p>
+  <p class="section__lede">Two buttons sit in the bottom-right corner of the board. Everything you can change lives behind one of them. Rather configure things from your computer? Visit <a href="/setup">roomboard.app/setup</a>, pick your widgets, and it gives you a code. On the board, tap the gear, choose Setup code, type it in, and Save. Codes last an hour.</p>
   <div class="duo">
     <article class="card card--row">
       <span class="fab" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 5.5l4 4L8 20l-4.6 1 1-4.6L14.5 5.5zM12.5 7.5l4 4"/></svg></span>
@@ -89,7 +104,9 @@
     <div class="row"><h3 class="row__name">TfL Status</h3><p class="row__desc">London Underground line status.</p></div>
   </div>
   <figure class="shot">
-    <img src="assets/info/commute.webp" data-zoom data-caption="Commute widgets on the board" alt="A board showing Subway Status, Metro-North, NYC Ferry, Amtrak, PATH, LIRR, Citi Bike, Express Bus, and TfL Status widgets." width="1920" height="1080" loading="lazy">
+    <button class="shot__btn" type="button">
+      <img src="assets/info/commute.webp" data-zoom data-caption="Commute widgets on the board" alt="A board showing Subway Status, Metro-North, NYC Ferry, Amtrak, PATH, LIRR, Citi Bike, Express Bus, and TfL Status widgets." width="1920" height="1080" loading="lazy">
+    </button>
   </figure>
 </section>
 
@@ -126,7 +143,9 @@
     <div class="row"><h3 class="row__name">Tennis</h3><p class="row__desc">Scores from the current tournament.</p></div>
   </div>
   <figure class="shot">
-    <img src="assets/info/markets.webp" data-zoom data-caption="Markets &amp; Sports on the board" alt="A board showing Markets, Markets News, Golf, My Teams, Formula 1, and Tennis widgets side by side." width="1920" height="1080" loading="lazy">
+    <button class="shot__btn" type="button">
+      <img src="assets/info/markets.webp" data-zoom data-caption="Markets &amp; Sports on the board" alt="A board showing Markets, Markets News, Golf, My Teams, Formula 1, and Tennis widgets side by side." width="1920" height="1080" loading="lazy">
+    </button>
   </figure>
 </section>
 
@@ -152,7 +171,9 @@
     <div class="row"><h3 class="row__name">World Clock</h3><p class="row__desc">The time in the cities you care about.<span class="row__note">Pick your cities.</span></p></div>
   </div>
   <figure class="shot">
-    <img src="assets/info/ambient.webp" data-zoom data-caption="Ambient widgets on the board" alt="A board showing Art, World Clock, Landscapes, and NASA Daily Photo widgets." width="1920" height="1080" loading="lazy">
+    <button class="shot__btn" type="button">
+      <img src="assets/info/ambient.webp" data-zoom data-caption="Ambient widgets on the board" alt="A board showing Art, World Clock, Landscapes, and NASA Daily Photo widgets." width="1920" height="1080" loading="lazy">
+    </button>
   </figure>
 </section>
 
@@ -167,7 +188,9 @@
     <div class="row"><h3 class="row__name">Chart of the Day</h3><p class="row__desc">Statista&rsquo;s daily infographic. Tap for full screen.<span class="row__note">Toggle categories, or turn off political charts.</span></p></div>
   </div>
   <figure class="shot">
-    <img src="assets/info/extras.webp" data-zoom data-caption="Daily Extras on the board" alt="A board showing This Day in History, Quote of the Day, Chart of the Day, Cloud Services, and Word of the Day widgets." width="1920" height="1080" loading="lazy">
+    <button class="shot__btn" type="button">
+      <img src="assets/info/extras.webp" data-zoom data-caption="Daily Extras on the board" alt="A board showing This Day in History, Quote of the Day, Chart of the Day, Cloud Services, and Word of the Day widgets." width="1920" height="1080" loading="lazy">
+    </button>
   </figure>
 </section>
 
@@ -213,11 +236,15 @@
 
   <div class="shots">
     <figure class="shot shot--half">
-      <img src="assets/info/screensaver-worldclocks.webp" data-zoom data-caption="World clocks" alt="World clocks screensaver: analog dials for several cities over a photographic backdrop, with a slim info strip along the bottom." width="1920" height="1080" loading="lazy">
+      <button class="shot__btn" type="button">
+        <img src="assets/info/screensaver-worldclocks.webp" data-zoom data-caption="World clocks" alt="World clocks screensaver: analog dials for several cities over a photographic backdrop, with a slim info strip along the bottom." width="1920" height="1080" loading="lazy">
+      </button>
       <figcaption class="shot__cap">World clocks</figcaption>
     </figure>
     <figure class="shot shot--half">
-      <img src="assets/info/screensaver-clockrow.webp" data-zoom data-caption="Clock + world times" alt="Clock plus world times screensaver: a large clock with the date beneath it, then a row of world times, over a photographic backdrop." width="1920" height="1080" loading="lazy">
+      <button class="shot__btn" type="button">
+        <img src="assets/info/screensaver-clockrow.webp" data-zoom data-caption="Clock + world times" alt="Clock plus world times screensaver: a large clock with the date beneath it, then a row of world times, over a photographic backdrop." width="1920" height="1080" loading="lazy">
+      </button>
       <figcaption class="shot__cap">Clock + world times</figcaption>
     </figure>
   </div>
@@ -232,8 +259,12 @@
   <h2 class="h2 h2--tight">What&rsquo;s new</h2>
   <p class="section__sub">Recent updates to the board, newest first. Everything arrives on its own; there is nothing to install.</p>
   <!-- Groups are rendered by info.js from data/changelog.json, so a release
-       note is one JSON edit rather than surgery on this page. -->
-  <div class="log" id="log"></div>
+       note is one JSON edit rather than surgery on this page. The fallback line
+       lives here (not in the script) so the copy sits with the rest of the
+       page's copy: info.js reads data-fallback, and <noscript> covers the
+       no-script case without a flash of it on a normal load. -->
+  <div class="log" id="log" data-fallback="Update notes couldn&rsquo;t load just now. They&rsquo;ll be back on the next visit."></div>
+  <noscript><p class="log__empty">Update notes couldn&rsquo;t load just now. They&rsquo;ll be back on the next visit.</p></noscript>
 </section>
 
 <footer class="wrap footer">

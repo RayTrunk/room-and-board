@@ -11,12 +11,26 @@ const links = new Map(
   [...document.querySelectorAll('.nav__link')].map((a) => [a.getAttribute('href')?.slice(1), a]),
 );
 
+const nav = document.querySelector('.nav');
+const navInner = document.querySelector('.nav__inner');
+
+// The pill row scrolls horizontally on narrow screens, where a hard edge just
+// looks like the nav ends. Fade whichever side still has nav behind it.
+function syncFade() {
+  if (!nav || !navInner) return;
+  const max = navInner.scrollWidth - navInner.clientWidth;
+  const x = navInner.scrollLeft;
+  nav.classList.toggle('nav--fade-left', max > 1 && x > 1);
+  nav.classList.toggle('nav--fade-right', max > 1 && x < max - 1);
+}
+
 let raf = 0;
 let current = '';
 function syncNav() {
   if (raf) return;
   raf = requestAnimationFrame(() => {
     raf = 0;
+    syncFade();
     let active = '';
     for (const s of sections) {
       if (s.getBoundingClientRect().top <= NAV_OFFSET) active = s.dataset.navSection;
@@ -25,6 +39,9 @@ function syncNav() {
     links.get(current)?.classList.remove('is-active');
     links.get(active)?.classList.add('is-active');
     current = active;
+    // Keep the current section's pill in view: on a phone the active pill is
+    // usually one the reader has already scrolled past horizontally.
+    links.get(active)?.scrollIntoView({ inline: 'nearest', block: 'nearest' });
   });
 }
 if (sections.length) {
@@ -32,6 +49,9 @@ if (sections.length) {
   window.addEventListener('resize', syncNav, { passive: true });
   syncNav();
 }
+navInner?.addEventListener('scroll', syncFade, { passive: true });
+window.addEventListener('resize', syncFade, { passive: true });
+syncFade();
 
 // ---------- lightbox ----------
 // Built on demand so the page ships no empty <img> and nothing renders until a
@@ -72,19 +92,31 @@ function openBox(src, caption, alt) {
   }
   const hint = document.createElement('span');
   hint.className = 'lightbox__hint';
-  hint.textContent = 'Click anywhere to close';
+  hint.textContent = 'Tap anywhere to close'; // the product's own idiom: the board is a touch panel
   box.appendChild(hint);
 
   box.addEventListener('click', closeBox);
+  // Minimal trap: the overlay owns nothing focusable, so Tab would otherwise
+  // walk the page behind it. Hold focus here until Escape or a tap closes it.
+  box.addEventListener('keydown', (e) => {
+    if (e.key !== 'Tab') return;
+    e.preventDefault();
+    box.focus();
+  });
   document.body.appendChild(box);
   document.body.style.overflow = 'hidden'; // don't scroll the page behind the overlay
   box.focus();
 }
 
 document.addEventListener('click', (e) => {
-  const img = e.target.closest?.('img[data-zoom]');
+  // The opener is a real <button>, so Enter and Space arrive here as clicks
+  // too; e.target is then the button rather than the image inside it.
+  const btn = e.target.closest?.('.shot__btn');
+  const img = btn ? btn.querySelector('img[data-zoom]') : e.target.closest?.('img[data-zoom]');
   if (!img) return;
-  openBox(img.currentSrc || img.src, img.dataset.caption ?? '', img.alt);
+  // .src is the one full-board asset at every width; the overlay just gives it
+  // the whole screen instead of a column beside the copy.
+  openBox(img.src, img.dataset.caption ?? '', img.alt);
 });
 
 // A screenshot that fails to load hides its whole figure rather than shipping a
@@ -136,12 +168,25 @@ function renderLog(root, groups) {
   syncNav(); // the page just got taller: re-evaluate which section is current
 }
 
+// When the notes cannot be fetched (or come back unusable) the section used to
+// stand there empty under its own heading, which reads as a broken page. Say so
+// once, quietly, in the page's own words: the copy comes from data-fallback so
+// it lives in the HTML with the rest of the copy.
+function showLogFallback(root) {
+  if (root.children.length) return;
+  const p = document.createElement('p');
+  p.className = 'log__empty';
+  p.textContent = root.dataset.fallback || '';
+  if (p.textContent) root.appendChild(p);
+}
+
 const logRoot = document.getElementById('log');
 if (logRoot) {
-  // Failure is silent on purpose: a visitor gets the rest of the guide, never a
-  // fetch error. The section keeps its heading and reads as simply empty.
   fetch('data/changelog.json')
     .then((r) => (r.ok ? r.json() : null))
-    .then((groups) => { if (Array.isArray(groups)) renderLog(logRoot, groups); })
-    .catch(() => {});
+    .then((groups) => {
+      if (Array.isArray(groups) && groups.length) renderLog(logRoot, groups);
+      showLogFallback(logRoot); // no-op once a single group rendered
+    })
+    .catch(() => showLogFallback(logRoot));
 }

@@ -2,75 +2,150 @@
   {
     "date": "July 27",
     "items": [
-      { "lead": "Weather", "text": "Every hour now shows its chance of rain, marked with a small droplet. Tall weather cards draw a bigger temperature curve, and calm nights read calm." },
-      { "lead": "Reliability", "text": "If an update ever goes wrong, the display explains what happened, keeps retrying, and recovers on its own instead of going dark." }
+      {
+        "lead": "Weather",
+        "text": "Every hour now shows its chance of rain, marked with a small droplet. Tall weather cards draw a bigger temperature curve, and calm nights read calm."
+      },
+      {
+        "lead": "Reliability",
+        "text": "If an update ever goes wrong, the display explains what happened, keeps retrying, and recovers on its own instead of going dark."
+      },
+      {
+        "lead": "This guide",
+        "text": "A better front door: the board itself now opens the page, tap it for a full-screen look, and the setup steps read the way they actually work."
+      }
     ]
   },
   {
     "date": "July 25",
     "items": [
-      { "lead": "Substack and Bluesky", "text": "Tap any post to read it full screen, with a QR code to keep reading on your phone. Cards also fill their space with more posts." },
-      { "lead": "NJ Transit", "text": "Departures now stay accurate all day." },
-      { "lead": "Smaller screens", "text": "The dashboard automatically fits companion panels like the Cisco Room Navigator. No more pinch to zoom." }
+      {
+        "lead": "Substack and Bluesky",
+        "text": "Tap any post to read it full screen, with a QR code to keep reading on your phone. Cards also fill their space with more posts."
+      },
+      {
+        "lead": "NJ Transit",
+        "text": "Departures now stay accurate all day."
+      },
+      {
+        "lead": "Smaller screens",
+        "text": "The dashboard automatically fits companion panels like the Cisco Room Navigator. No more pinch to zoom."
+      }
     ]
   },
   {
     "date": "July 24",
     "items": [
-      { "lead": "Headlines and Markets News", "text": "Tap a headline for its summary and a QR code to the full article. The board itself never navigates away." },
-      { "lead": "This guide", "text": "roomboard.app/info went live." }
+      {
+        "lead": "Headlines and Markets News",
+        "text": "Tap a headline for its summary and a QR code to the full article. The board itself never navigates away."
+      },
+      {
+        "lead": "This guide",
+        "text": "roomboard.app/info went live."
+      }
     ]
   },
   {
     "date": "July 22",
     "items": [
-      { "lead": "Markets and Weather", "text": "Sparklines and the temperature trend draw as smooth curves, tinted by the day’s direction." },
-      { "lead": "Word of the Day", "text": "A sharper, recurated vocabulary." }
+      {
+        "lead": "Markets and Weather",
+        "text": "Sparklines and the temperature trend draw as smooth curves, tinted by the day’s direction."
+      },
+      {
+        "lead": "Word of the Day",
+        "text": "A sharper, recurated vocabulary."
+      }
     ]
   },
   {
     "date": "July 20 and 21",
     "items": [
-      { "lead": "Landscapes", "text": "A curated scenery collection, available as a screensaver or a dashboard card." },
-      { "lead": "Clock screensavers", "text": "An optional daily photo backdrop behind the clock faces. Swipe to see the next one." },
-      { "lead": "World Cup", "text": "The tournament card signed off with Congratulations, Spain!" }
+      {
+        "lead": "Landscapes",
+        "text": "A curated scenery collection, available as a screensaver or a dashboard card."
+      },
+      {
+        "lead": "Clock screensavers",
+        "text": "An optional daily photo backdrop behind the clock faces. Swipe to see the next one."
+      },
+      {
+        "lead": "World Cup",
+        "text": "The tournament card signed off with Congratulations, Spain!"
+      }
     ]
   },
   {
     "date": "July 19",
     "items": [
-      { "lead": "Screensavers", "text": "A dedicated settings page and three full-screen clock faces." },
-      { "lead": "New widgets", "text": "Golf (PGA) and Tennis leaderboards." },
-      { "lead": "Shortcuts", "text": "Tap any unconfigured card to jump straight to its settings." },
-      { "lead": "My Teams", "text": "Shows your next game after a final instead of going quiet." }
+      {
+        "lead": "Screensavers",
+        "text": "A dedicated settings page and three full-screen clock faces."
+      },
+      {
+        "lead": "New widgets",
+        "text": "Golf (PGA) and Tennis leaderboards."
+      },
+      {
+        "lead": "Shortcuts",
+        "text": "Tap any unconfigured card to jump straight to its settings."
+      },
+      {
+        "lead": "My Teams",
+        "text": "Shows your next game after a final instead of going quiet."
+      }
     ]
   },
   {
     "date": "July 18",
     "items": [
-      { "lead": "Photos", "text": "Split into iCloud and Google Drive widgets, each with a guided phone setup." },
-      { "lead": "LIRR", "text": "Grand Central support, and departures stay live even when the MTA’s data feed stalls." },
-      { "lead": "Denser cards", "text": "Markets, Subway and others fit more at every size." }
+      {
+        "lead": "Photos",
+        "text": "Split into iCloud and Google Drive widgets, each with a guided phone setup."
+      },
+      {
+        "lead": "LIRR",
+        "text": "Grand Central support, and departures stay live even when the MTA’s data feed stalls."
+      },
+      {
+        "lead": "Denser cards",
+        "text": "Markets, Subway and others fit more at every size."
+      }
     ]
   },
   {
     "date": "July 16 and 17",
     "items": [
-      { "lead": "A new look", "text": "The Momentum theme became the board’s look. Pure black, calmer type, quieter color." },
-      { "lead": "Clocks", "text": "Choose 12-hour or 24-hour time everywhere." },
-      { "lead": "New widgets", "text": "NJ Transit, PATH, World Clock and Chart of the Day." }
+      {
+        "lead": "A new look",
+        "text": "The Momentum theme became the board’s look. Pure black, calmer type, quieter color."
+      },
+      {
+        "lead": "Clocks",
+        "text": "Choose 12-hour or 24-hour time everywhere."
+      },
+      {
+        "lead": "New widgets",
+        "text": "NJ Transit, PATH, World Clock and Chart of the Day."
+      }
     ]
   },
   {
     "date": "July 14",
     "items": [
-      { "lead": "New widgets", "text": "Amtrak departures from Moynihan Train Hall, and Formula 1." }
+      {
+        "lead": "New widgets",
+        "text": "Amtrak departures from Moynihan Train Hall, and Formula 1."
+      }
     ]
   },
   {
     "date": "Early July",
     "items": [
-      { "text": "The first two weeks built the board itself: more than 25 widgets, phone setup at roomboard.app/setup, screensavers, and pairing codes." }
+      {
+        "text": "The first two weeks built the board itself: more than 25 widgets, phone setup at roomboard.app/setup, screensavers, and pairing codes."
+      }
     ]
   }
 ]
