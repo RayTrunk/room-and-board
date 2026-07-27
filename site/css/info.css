@@ -151,6 +151,18 @@ img { max-width: 100%; }
 .notes { display: flex; flex-direction: column; gap: 10px; margin-top: var(--gap); background: var(--bg-card-2); border-radius: 12px; padding: 16px 18px; }
 .notes__p { font-size: 15px; line-height: 1.45; color: var(--ink-dim); margin: 0; }
 
+/* ---------- what's new (built by info.js) ----------
+   Deliberately the same geometry as the widget rows above: hairline per group,
+   a quiet label column, prose on the right. A changelog is a list, not a set of
+   cards, and reusing the row rhythm keeps it from becoming its own little
+   design. */
+.log { display: flex; flex-direction: column; }
+.log__group { display: flex; flex-wrap: wrap; gap: 4px 20px; padding: 15px 2px; border-top: 1px solid var(--bg-card-2); }
+.log__date { font-size: 16px; font-weight: 600; color: var(--ink-dim); margin: 0; flex: 0 0 150px; }
+.log__items { display: flex; flex-direction: column; gap: 10px; flex: 1 1 260px; min-width: 0; }
+.log__item { font-size: 16px; line-height: 1.5; color: var(--ink-mid); margin: 0; text-wrap: pretty; }
+.log__lead { font-weight: 600; color: var(--ink); margin-right: 0.4em; }
+
 /* ---------- footer ---------- */
 .footer { margin-top: 96px; padding-top: 26px; padding-bottom: 72px; }
 .footer__inner { border-top: 1px solid var(--bg-card-2); padding-top: 24px; display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
@@ -179,6 +191,8 @@ img { max-width: 100%; }
   .list { grid-template-columns: 1fr; column-gap: 0; }
   .row__name { flex: 1 1 100%; }
   .row__desc { flex: 1 1 100%; }
+  .log__date { flex: 1 1 100%; }
+  .log__items { flex: 1 1 100%; }
   .footer { margin-top: 64px; }
 }
 @media (max-width: 560px) {

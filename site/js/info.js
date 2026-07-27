@@ -96,3 +96,52 @@ for (const img of document.querySelectorAll('img[data-zoom]')) {
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') closeBox();
 });
+
+// ---------- what's new ----------
+// The changelog lives in data/changelog.json so adding a release note is a data
+// edit, not markup surgery. Rendered rather than shipped as HTML for the same
+// reason. Every value goes in through textContent: the copy is trusted, but a
+// public page should never grow an innerHTML path.
+function renderLog(root, groups) {
+  const frag = document.createDocumentFragment();
+  for (const g of groups) {
+    if (!g || !g.date || !Array.isArray(g.items)) continue;
+    const items = document.createElement('div');
+    items.className = 'log__items';
+    for (const item of g.items) {
+      if (!item || !item.text) continue;
+      const p = document.createElement('p');
+      p.className = 'log__item';
+      if (item.lead) {
+        const lead = document.createElement('strong');
+        lead.className = 'log__lead';
+        lead.textContent = item.lead;
+        p.appendChild(lead);
+      }
+      p.appendChild(document.createTextNode(item.text));
+      items.appendChild(p);
+    }
+    if (!items.children.length) continue; // a group with no usable items is skipped
+    const date = document.createElement('h3');
+    date.className = 'log__date';
+    date.textContent = g.date;
+    const group = document.createElement('div');
+    group.className = 'log__group';
+    group.appendChild(date);
+    group.appendChild(items);
+    frag.appendChild(group);
+  }
+  if (!frag.childNodes.length) return;
+  root.appendChild(frag);
+  syncNav(); // the page just got taller: re-evaluate which section is current
+}
+
+const logRoot = document.getElementById('log');
+if (logRoot) {
+  // Failure is silent on purpose: a visitor gets the rest of the guide, never a
+  // fetch error. The section keeps its heading and reads as simply empty.
+  fetch('data/changelog.json')
+    .then((r) => (r.ok ? r.json() : null))
+    .then((groups) => { if (Array.isArray(groups)) renderLog(logRoot, groups); })
+    .catch(() => {});
+}
