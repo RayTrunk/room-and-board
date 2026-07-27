@@ -461,3 +461,59 @@ describe('nerd-mode picker gating (every add surface routes through isAddable)',
     expect(widgetChecksHtml(SETUP_LABELS, new Set(), { nerdMode: false }).includes('data-w="weather"')).toBe(true);
   });
 });
+
+import { openSettings, closeSettings } from '../site/js/settings/settings.js';
+import { normalizeConfig } from '../site/js/config.js';
+import { CHART_TOPICS } from '../site/js/widgets/chart-topics.js';
+
+describe('Chart of the Day pane (all topics on by default)', () => {
+  // The pane is rendered for real (openSettings → renderChart) so the default
+  // and the "Select all" mapping are verified against the DOM users touch,
+  // not a re-implementation of the toggle logic.
+  const settle = () => new Promise((r) => setTimeout(r, 30));
+  const pills = () => [...document.querySelectorAll('.settings__pane [data-topic]')];
+  const lit = () => pills().filter((p) => p.classList.contains('is-on')).length;
+  const allBtn = () => document.querySelector('.settings__pane [data-topic-all]');
+  const open = async (cfg) => {
+    document.body.innerHTML = '<div id="settings-root"></div>';
+    await openSettings(cfg, { focus: 'chart' });
+    await settle();
+  };
+
+  it('lights every topic pill and the Select all control on a fresh config', async () => {
+    await open(normalizeConfig({}));
+    expect(pills().length).toBe(CHART_TOPICS.length);
+    expect(lit()).toBe(CHART_TOPICS.length);
+    expect(allBtn().classList.contains('is-on')).toBe(true);
+    expect(allBtn().getAttribute('aria-checked')).toBe('true');
+    closeSettings();
+  });
+
+  it('Select all clears to the global listing from all-on, and restores all-on from empty', async () => {
+    await open(normalizeConfig({}));
+    allBtn().click();
+    await settle();
+    expect(lit()).toBe(0); // every topic off = newest chart across everything
+    expect(allBtn().classList.contains('is-on')).toBe(false);
+    allBtn().click();
+    await settle();
+    expect(lit()).toBe(CHART_TOPICS.length);
+    closeSettings();
+  });
+
+  it('turning one topic off leaves a partial selection with Select all unlit', async () => {
+    await open(normalizeConfig({}));
+    pills()[0].click();
+    await settle();
+    expect(lit()).toBe(CHART_TOPICS.length - 1);
+    expect(allBtn().classList.contains('is-on')).toBe(false);
+    closeSettings();
+  });
+
+  it('renders a saved partial selection as exactly those pills', async () => {
+    await open(normalizeConfig({ chart: { topics: ['finance', 'sports'] } }));
+    expect(lit()).toBe(2);
+    expect(pills().filter((p) => p.classList.contains('is-on')).map((p) => p.dataset.topic)).toEqual(['finance', 'sports']);
+    closeSettings();
+  });
+});

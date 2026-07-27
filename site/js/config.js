@@ -9,7 +9,7 @@
 
 import { DEFAULT_LAYOUT, normalizeLayout, migrateWidgetsToLayout, contentMaxH } from './layout.js';
 import { TFL_TUBE_IDS, TFL_LINE_IDS } from './tfl-lines.js';
-import { CHART_TOPIC_SLUGS } from './widgets/chart-topics.js';
+import { CHART_TOPICS, CHART_TOPIC_SLUGS } from './widgets/chart-topics.js';
 import { DEFAULT_SCHEDULE } from './modes.js';
 
 export const ART_CATS = [
@@ -75,8 +75,10 @@ export const DEFAULT_CONFIG = Object.freeze({
   services: Object.freeze({ list: Object.freeze(['webex', 'slack', 'm365']) }), // first-enable default; SERVICE_IDS is the full menu
   // Chart of the Day: hide-politics on by default (client-side keyword filter);
   // topics = curated CHART_TOPICS slugs the card cycles through on refresh.
-  // [] = any/global listing (the newest chart across everything).
-  chart: Object.freeze({ excludePolitics: true, topics: Object.freeze([]) }),
+  // Every topic is on by default (the widest, most varied rotation); turning
+  // them all OFF leaves [] = any/global listing (the newest chart across
+  // everything), which stays a legal, reachable state.
+  chart: Object.freeze({ excludePolitics: true, topics: Object.freeze(CHART_TOPICS.map(([, slug]) => slug)) }),
   // Live Video: user-supplied HLS stream (https .m3u8). Nothing bundled --
   // rights sit with the user. label is an optional card-corner name.
   iptv: Object.freeze({ url: '', label: '' }),
@@ -338,14 +340,19 @@ export function normalizeConfig(raw) {
     chart: {
       // Client-side hide-politics filter (on unless explicitly disabled).
       excludePolitics: raw.chart?.excludePolitics !== false,
-      // Curated slugs the card cycles through; keep only valid ones, deduped,
-      // capped at the full vocabulary. [] = any/global listing. Old single-topic
-      // configs (raw.chart.topic) migrate to a one-element array when no topics
+      // Curated slugs the card cycles through. An EXPLICIT array is honored
+      // verbatim (valid slugs only, deduped, capped at the full vocabulary) —
+      // including [], which the user reaches by turning every pill off and
+      // which means the any/global listing. Absent (or malformed) topics fall
+      // back to the default: every topic on. Old single-topic configs
+      // (raw.chart.topic) still migrate to a one-element array when no topics
       // array is present.
       topics: (() => {
-        const src = Array.isArray(raw.chart?.topics) ? raw.chart.topics
-          : (raw.chart?.topics == null && CHART_TOPIC_SLUGS.has(raw.chart?.topic) ? [raw.chart.topic] : []);
-        return [...new Set(src.filter((s) => CHART_TOPIC_SLUGS.has(s)))].slice(0, CHART_TOPIC_SLUGS.size);
+        if (Array.isArray(raw.chart?.topics)) {
+          return [...new Set(raw.chart.topics.filter((s) => CHART_TOPIC_SLUGS.has(s)))].slice(0, CHART_TOPIC_SLUGS.size);
+        }
+        if (raw.chart?.topics == null && CHART_TOPIC_SLUGS.has(raw.chart?.topic)) return [raw.chart.topic];
+        return [...DEFAULT_CONFIG.chart.topics];
       })(),
     },
     services: {
@@ -462,10 +469,27 @@ export async function encodeConfig(cfg) {
   // customized lists pay for their bytes in the URL fragment).
   const { widgets, ...wire } = cfg;
   const isDefault = (list, defs) => JSON.stringify(list) === JSON.stringify(defs);
+  // Order-insensitive list compare: the chart topic pills can be toggled back
+  // to the full set in any order, and that is still "the default".
+  const sameSet = (list, defs) => {
+    if (!Array.isArray(list)) return false;
+    const a = new Set(list);
+    const b = new Set(defs);
+    return a.size === b.size && [...a].every((x) => b.has(x));
+  };
   if (wire.substack && isDefault(wire.substack.pubs, DEFAULT_CONFIG.substack.pubs)) delete wire.substack;
   if (wire.bsky && isDefault(wire.bsky.handles, DEFAULT_CONFIG.bsky.handles)) delete wire.bsky;
   if (wire.marketsnews && isDefault(wire.marketsnews.sources, DEFAULT_CONFIG.marketsnews.sources)) delete wire.marketsnews;
-  if (wire.chart && isDefault(wire.chart, DEFAULT_CONFIG.chart)) delete wire.chart; // all-default → re-derives on decode
+  if (wire.chart) {
+    // Per-key strip: an all-topics selection (in any order) and the default
+    // politics filter re-derive on decode; an explicit [] (every topic off →
+    // global listing) or a narrowed selection pays for its bytes.
+    const chart = { ...wire.chart };
+    if (sameSet(chart.topics, DEFAULT_CONFIG.chart.topics)) delete chart.topics;
+    if (chart.excludePolitics === DEFAULT_CONFIG.chart.excludePolitics) delete chart.excludePolitics;
+    if (Object.keys(chart).length) wire.chart = chart;
+    else delete wire.chart;
+  }
   if (wire.services && isDefault(wire.services.list, DEFAULT_CONFIG.services.list)) delete wire.services;
   if (wire.citibike && isDefault(wire.citibike.stations, DEFAULT_CONFIG.citibike.stations)) delete wire.citibike;
   if (wire.tfl && isDefault(wire.tfl.lines, DEFAULT_CONFIG.tfl.lines)) delete wire.tfl;

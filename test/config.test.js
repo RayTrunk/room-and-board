@@ -15,6 +15,7 @@ import {
   WIDGET_GROUPS,
   encodeVideoCode,
 } from '../site/js/config.js';
+import { CHART_TOPICS } from '../site/js/widgets/chart-topics.js';
 
 describe('normalizeConfig', () => {
   it('fills v3 defaults for an empty object', () => {
@@ -241,34 +242,70 @@ describe('path/ferry/wotd config (v3 additive)', () => {
 });
 
 describe('chart config (v3 additive)', () => {
-  it('defaults to politics-hidden, no topics (any/global)', () => {
+  const ALL_SLUGS = CHART_TOPICS.map(([, slug]) => slug);
+
+  it('defaults to politics-hidden with every topic on', () => {
     const cfg = normalizeConfig({});
-    expect(cfg.chart).toEqual({ excludePolitics: true, topics: [] });
+    expect(cfg.chart).toEqual({ excludePolitics: true, topics: ALL_SLUGS });
+    expect(DEFAULT_CONFIG.chart.topics).toEqual(ALL_SLUGS); // registry order, whole vocabulary
   });
   it('honors an explicit politics opt-out', () => {
     const cfg = normalizeConfig({ chart: { excludePolitics: false } });
     expect(cfg.chart.excludePolitics).toBe(false);
+    expect(cfg.chart.topics).toEqual(ALL_SLUGS); // topics absent → still the default
   });
   it('keeps only valid slugs, deduped, and drops unknown/non-string ones', () => {
     expect(normalizeConfig({ chart: { topics: ['technology', 'sports'] } }).chart.topics).toEqual(['technology', 'sports']);
     expect(normalizeConfig({ chart: { topics: ['consumer goods'] } }).chart.topics).toEqual(['consumer goods']);
     expect(normalizeConfig({ chart: { topics: ['technology', 'technology'] } }).chart.topics).toEqual(['technology']);
     expect(normalizeConfig({ chart: { topics: ['technology', 'not-a-real-topic', 42] } }).chart.topics).toEqual(['technology']);
-    expect(normalizeConfig({ chart: { topics: 'technology' } }).chart.topics).toEqual([]); // not an array → empty
+    // an explicit array of nothing but junk normalizes to [] (the global
+    // listing), never to a bogus slug the worker would reject
+    expect(normalizeConfig({ chart: { topics: ['not-a-real-topic', 7, null] } }).chart.topics).toEqual([]);
+  });
+  it('preserves an explicit empty topics list (every topic turned off → global listing)', () => {
+    expect(normalizeConfig({ chart: { topics: [] } }).chart.topics).toEqual([]);
+  });
+  it('falls back to every topic when topics is absent, null, or malformed', () => {
+    expect(normalizeConfig({ chart: {} }).chart.topics).toEqual(ALL_SLUGS);
+    expect(normalizeConfig({ chart: { topics: null } }).chart.topics).toEqual(ALL_SLUGS);
+    expect(normalizeConfig({ chart: { topics: 'technology' } }).chart.topics).toEqual(ALL_SLUGS); // not an array → default
   });
   it('migrates an old single-topic config to a one-element topics array', () => {
     expect(normalizeConfig({ chart: { topic: 'sports' } }).chart.topics).toEqual(['sports']);
-    // an invalid legacy slug migrates to empty (any topic), not a bogus entry
-    expect(normalizeConfig({ chart: { topic: 'not-a-real-topic' } }).chart.topics).toEqual([]);
+    // an invalid legacy slug is no migration at all → the all-topics default
+    expect(normalizeConfig({ chart: { topic: 'not-a-real-topic' } }).chart.topics).toEqual(ALL_SLUGS);
     // a present topics array wins over the legacy topic field
     expect(normalizeConfig({ chart: { topic: 'sports', topics: ['technology'] } }).chart.topics).toEqual(['technology']);
   });
   it('strips a default chart from the wire but keeps a customized one', async () => {
     const plainDec = await decodeConfig(await encodeConfig(normalizeConfig({})));
-    expect(plainDec.chart).toEqual({ excludePolitics: true, topics: [] }); // re-derived on decode
+    expect(plainDec.chart).toEqual({ excludePolitics: true, topics: ALL_SLUGS }); // re-derived on decode
     const custom = normalizeConfig({ chart: { excludePolitics: false, topics: ['sports', 'technology'] } });
     const dec = await decodeConfig(await encodeConfig(custom));
     expect(dec.chart).toEqual({ excludePolitics: false, topics: ['sports', 'technology'] });
+  });
+  it('strips an all-topics selection whatever order it was toggled in', async () => {
+    const shuffled = normalizeConfig({ chart: { topics: [...ALL_SLUGS].reverse() } });
+    const enc = await encodeConfig(shuffled);
+    expect(enc.length).toBe((await encodeConfig(normalizeConfig({}))).length); // topics never reached the wire
+    expect((await decodeConfig(enc)).chart.topics).toEqual(ALL_SLUGS); // re-derived in registry order
+  });
+  it('keeps an explicit empty topics list on the wire (all-off is not the default)', async () => {
+    const allOff = normalizeConfig({ chart: { topics: [] } });
+    const enc = await encodeConfig(allOff);
+    expect(enc.length).toBeGreaterThan((await encodeConfig(normalizeConfig({}))).length);
+    expect((await decodeConfig(enc)).chart).toEqual({ excludePolitics: true, topics: [] });
+  });
+  it('round-trips a partial selection plus the default politics filter', async () => {
+    const partial = normalizeConfig({ chart: { topics: ['finance', 'health', 'science'] } });
+    const dec = await decodeConfig(await encodeConfig(partial));
+    expect(dec.chart).toEqual({ excludePolitics: true, topics: ['finance', 'health', 'science'] });
+  });
+  it('round-trips a politics opt-out with the default (all) topics', async () => {
+    const noFilter = normalizeConfig({ chart: { excludePolitics: false } });
+    const dec = await decodeConfig(await encodeConfig(noFilter));
+    expect(dec.chart).toEqual({ excludePolitics: false, topics: ALL_SLUGS });
   });
 });
 

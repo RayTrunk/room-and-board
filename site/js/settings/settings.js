@@ -1101,7 +1101,7 @@ async function renderChart() {
   const allOn = allSlugs.every((slug) => c.topics.includes(slug));
   pane().innerHTML = `
     <h2 class="pane__title">Chart of the Day</h2>
-    <p class="pane__hint">A daily Statista infographic. Turn on the topics you want and the card cycles through them on each refresh. With none on, it shows the newest chart across every topic.</p>
+    <p class="pane__hint">A daily Statista infographic. Every topic is on to start; the card cycles through whichever are on at each refresh. With none on, it shows the newest chart across every topic.</p>
     <div class="row row--control">
       <button class="toggle ${allOn ? 'is-on' : ''}" data-topic-all role="switch" aria-checked="${allOn}">
         <span class="toggle__knob"></span>
