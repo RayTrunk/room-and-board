@@ -11,13 +11,15 @@ export const meta = { id: 'weather', title: 'Weather', refreshMs: 10 * 60 * 1000
 // centers) and 0..100 down, stretched to the chart box with
 // preserveAspectRatio="none" so it lines up with an n-column flex label row at
 // ANY width. The stroke uses vector-effect="non-scaling-stroke" to stay a
-// constant weight under that stretch. Domain is padded (min 6° window) so a
-// calm night still shows a legible slope without being misleading.
-function trendSvg(temps, gradId) {
+// constant weight under that stretch. Domain is padded (minWindow degrees at
+// minimum) so a calm night still shows a legible slope without being
+// misleading: the caller widens that window on taller cards, where the same
+// slope would otherwise be stretched into a dramatic swing.
+export function trendSvg(temps, gradId, minWindow = 6) {
   const n = temps.length;
   if (n < 2) return '';
   let lo = Math.min(...temps), hi = Math.max(...temps);
-  if (hi - lo < 6) { const mid = (lo + hi) / 2; lo = mid - 3; hi = mid + 3; }
+  if (hi - lo < minWindow) { const mid = (lo + hi) / 2; lo = mid - minWindow / 2; hi = mid + minWindow / 2; }
   else { lo -= 1; hi += 1; }
   const TOP = 14, BOT = 86;
   const px = (i) => i + 0.5;
@@ -113,11 +115,17 @@ export function mapWeather(json, alertsJson) {
   // Hourly strip: the next 8 full hours after the current observation time.
   const startIdx = json.hourly.time.findIndex((t) => t > cur.time);
   const hourly = [];
+  // Precipitation chance is optional: an older cached payload (fetched before
+  // the field was requested) or a partial API response leaves it missing or
+  // short, and a null must never round-trip into the markup as NaN.
+  const pop = json.hourly.precipitation_probability;
   for (let i = Math.max(startIdx, 0); i < json.hourly.time.length && hourly.length < 8; i++) {
+    const pp = Array.isArray(pop) ? pop[i] : null;
     hourly.push({
       h: hourLabel(json.hourly.time[i]),
       temp: Math.round(json.hourly.temperature_2m[i]),
       code: json.hourly.weather_code[i],
+      pp: Number.isFinite(pp) ? Math.round(pp) : null,
     });
   }
   const daily = json.daily.time.slice(0, 5).map((t, i) => ({
@@ -173,6 +181,35 @@ export function render(el, vm, cfg) {
   const hoursRow = hours
     .map((x) => `<span>${escapeHtml(x.h)}</span>`)
     .join('');
+  // Tall cards leave a dead band between the hourly strip and the day chips;
+  // spend it on the hourly chance of precipitation. Height tier only (NOT
+  // `big`): a wide-but-shallow card has no spare height for another row. An
+  // hour with no reading holds its column with an empty span so the row stays
+  // aligned with the temps and the chart, and a row that would be blank
+  // everywhere is dropped entirely.
+  const showPrecip = h >= 5 && hours.some((x) => x.pp != null);
+  const precipRow = showPrecip
+    ? `<div class="wx-trend__row wx-trend__row--precip">${hours
+        .map((x) =>
+          x.pp == null
+            ? '<span></span>'
+            : `<span${x.pp >= 30 ? ' class="wx-pp--wet"' : ''}>${x.pp}%</span>`,
+        )
+        .join('')}</div>`
+    : '';
+  // Flat-day guard, paired with the chart-height ladder in main.css (100 -> 192
+  // -> 304 -> 420px at h 5 -> 8): a fixed 6-degree floor stretched over a 420px
+  // chart turns a 4-degree overnight drift into a 200px plunge. Widening the
+  // window with the tier holds a flat day near the px-per-degree the short
+  // tiers read at (~12 at h=5 up to ~17 at h=8; the banner variants land a bit
+  // calmer, which is fine). A real swing is untouched: once the actual range
+  // exceeds the window, the domain stays actual range +/- 1.
+  const minWindow = h >= 8 ? 18 : h === 7 ? 14 : h === 6 ? 10 : 6;
+  // The NWS banner changes the tall-card height budget twice over: it eats ~46px,
+  // and as a fourth flex item it turns the body's two space-between gaps into
+  // three, so the leftover slack divides differently. Mark the case and let the
+  // measured-fit rules in main.css pick the chart height per tier.
+  const trendClass = h >= 5 && vm.alert ? 'wx-trend wx-trend--banner' : 'wx-trend';
   const dayTiles = days
     .map(
       (d) => `<div class="wx-day">
@@ -195,9 +232,10 @@ export function render(el, vm, cfg) {
       </div>
     </div>
     <div class="wx-rule"></div>
-    <div class="wx-trend">
+    <div class="${trendClass}">
       <div class="wx-trend__row">${tempsRow}</div>
-      ${trendSvg(hours.map((x) => x.temp), 'wx-trend-grad')}
+      ${precipRow}
+      ${trendSvg(hours.map((x) => x.temp), 'wx-trend-grad', minWindow)}
       <div class="wx-trend__row wx-trend__row--hours">${hoursRow}</div>
     </div>
     <div class="wx-days">${dayTiles}</div>`;
@@ -216,7 +254,7 @@ export async function fetchData(cfg, net) {
   const url =
     `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
     '&current=temperature_2m,apparent_temperature,weather_code' +
-    '&hourly=temperature_2m,weather_code' +
+    '&hourly=temperature_2m,weather_code,precipitation_probability' +
     '&daily=weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset' +
     '&forecast_days=6&timezone=auto&temperature_unit=fahrenheit';
   const forecast = await net.fetchJSON(url);

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { readFile } from 'node:fs/promises';
-import { mapWeather, wmoInfo, inUS, fetchData } from '../site/js/widgets/weather.js';
+import { mapWeather, wmoInfo, inUS, fetchData, trendSvg } from '../site/js/widgets/weather.js';
 import { mapAqi, moonPhase } from '../site/js/widgets/aqi.js';
 
 const fixture = async (name) =>
@@ -33,6 +33,25 @@ describe('mapWeather', () => {
     expect(typeof vm.alert.headline).toBe('string');
   });
 
+  it('carries the hourly chance of precipitation', async () => {
+    const vm = mapWeather(await fixture('open-meteo-forecast.json'), null);
+    expect(vm.hourly.map((x) => x.pp)).toEqual([0, 0, 5, 10, 25, 45, 60, 30]);
+  });
+
+  it('nulls the chance of precipitation when the payload lacks it', async () => {
+    const forecast = await fixture('open-meteo-forecast.json');
+    delete forecast.hourly.precipitation_probability;
+    const vm = mapWeather(forecast, null);
+    expect(vm.hourly).toHaveLength(8);
+    expect(vm.hourly.every((x) => x.pp === null)).toBe(true);
+    // A payload that carries the key but runs short (partial response) also
+    // nulls out rather than leaking undefined/NaN into the markup.
+    const short = await fixture('open-meteo-forecast.json');
+    short.hourly.precipitation_probability = [0, 0, 0, 0, 0];
+    expect(mapWeather(short, null).hourly.map((x) => x.pp))
+      .toEqual([0, 0, null, null, null, null, null, null]);
+  });
+
   it('tolerates malformed alerts payloads', async () => {
     const forecast = await fixture('open-meteo-forecast.json');
     expect(mapWeather(forecast, {}).alert).toBeNull();
@@ -49,6 +68,43 @@ describe('wmoInfo', () => {
     expect(wmoInfo(75).icon).toBe('snow');
     expect(wmoInfo(95).icon).toBe('thunder');
     expect(wmoInfo(9999)).toEqual({ label: '—', icon: 'clear' });
+  });
+});
+
+describe('trendSvg domain window', () => {
+  // The line path's y span, in viewBox units. The drawing band is TOP..BOT =
+  // 14..86, so 72 units is a curve that fills the chart top to bottom.
+  const SPAN = 72;
+  const yExtent = (svg) => {
+    const d = svg.match(/class="wx-trend__line" d="([^"]+)"/)[1];
+    const ys = d.replace(/[ML]/g, ' ').trim().split(/\s+/).map(Number)
+      .filter((_, i) => i % 2 === 1);
+    return Math.max(...ys) - Math.min(...ys);
+  };
+  // The user's own calm night: 4 degrees of drift across the strip.
+  const FLAT = [69, 68, 68, 67, 66, 66, 65, 67];
+
+  it('keeps a flat night calm as the chart grows (window 6/10/14/18 by tier)', () => {
+    // Default (h <= 5, 100px chart): unchanged, 4 degrees over a 6-degree
+    // window is most of the band.
+    expect(yExtent(trendSvg(FLAT, 'g'))).toBeCloseTo(44.25, 1);
+    expect(yExtent(trendSvg(FLAT, 'g', 6))).toBeCloseTo(44.25, 1);
+    // Taller tiers widen the window in step with the CSS chart-height ladder,
+    // so the same drift stops reading as a plunge.
+    expect(yExtent(trendSvg(FLAT, 'g', 10))).toBeCloseTo(26.55, 1); // h=6
+    expect(yExtent(trendSvg(FLAT, 'g', 14))).toBeCloseTo(18.97, 1); // h=7
+    expect(yExtent(trendSvg(FLAT, 'g', 18))).toBeCloseTo(14.75, 1); // h=8
+    // At the tallest tier the calm night uses a fifth of the band, not two thirds.
+    expect(yExtent(trendSvg(FLAT, 'g', 18)) / SPAN).toBeLessThan(0.25);
+    expect(yExtent(trendSvg(FLAT, 'g', 6)) / SPAN).toBeGreaterThan(0.55);
+  });
+
+  it('leaves a real swing byte-identical at every tier', () => {
+    // 20 degrees exceeds even the widest window, so the domain is the actual
+    // range +/- 1 and the path must not move at all.
+    const swing = [58, 62, 67, 72, 76, 78, 71, 63];
+    const base = trendSvg(swing, 'g');
+    for (const mw of [6, 10, 14, 18]) expect(trendSvg(swing, 'g', mw)).toBe(base);
   });
 });
 
@@ -118,5 +174,11 @@ describe('inUS + alerts gating', () => {
     await fetchData({ loc: { lat: 51.5, lon: -0.12, units: 'C' } }, net);
     expect(urls).toHaveLength(1);
     expect(urls[0]).not.toContain('api.weather.gov');
+  });
+  it('fetchData asks Open-Meteo for the hourly chance of precipitation', async () => {
+    const urls = [];
+    const net = { fetchJSON: async (u) => { urls.push(u); return { current: { time: '2026-07-12T10:00', temperature_2m: 70, apparent_temperature: 70, weather_code: 0 }, hourly: { time: [], temperature_2m: [], weather_code: [] }, daily: { time: [], temperature_2m_max: [], temperature_2m_min: [], weather_code: [], sunrise: ['x'], sunset: ['x'] } }; } };
+    await fetchData({ loc: { lat: 51.5, lon: -0.12, units: 'C' } }, net);
+    expect(urls[0]).toContain('hourly=temperature_2m,weather_code,precipitation_probability');
   });
 });

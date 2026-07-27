@@ -301,6 +301,75 @@ describe('widget renderers', () => {
     expect(host.querySelector('.alert')).toBeNull();
   });
 
+  it('weather adds the hourly precip row only on tall cards, and only with data', () => {
+    const card = document.createElement('article');
+    card.className = 'card card--weather';
+    card.dataset.w = '4';
+    card.dataset.h = '5';
+    card.innerHTML = '<h2 class="card__title">Weather</h2><div class="card__body"></div>';
+    document.body.appendChild(card);
+    const body = card.querySelector('.card__body');
+
+    weather.render(body, DEMO_VMS.weather, CFG);
+    const row = card.querySelector('.wx-trend__row--precip');
+    expect(row).not.toBeNull();
+    // One cell per shown hour, column-aligned with the temps row above it.
+    expect([...row.children].map((s) => s.textContent))
+      .toEqual(['0%', '0%', '5%', '20%', '45%', '70%', '55%', '30%']);
+    // 30% and up carries the sky-blue accent; below that stays quiet.
+    expect([...row.querySelectorAll('.wx-pp--wet')].map((s) => s.textContent))
+      .toEqual(['45%', '70%', '55%', '30%']);
+    // Directly under the hourly temperatures, above the chart.
+    const rows = [...card.querySelectorAll('.wx-trend > *')].map((n) => n.getAttribute('class'));
+    expect(rows).toEqual(['wx-trend__row', 'wx-trend__row wx-trend__row--precip', 'wx-trend__chart', 'wx-trend__row wx-trend__row--hours']);
+
+    // The NWS banner shifts the tall-card height budget, so the trend block is
+    // flagged for the measured-fit chart heights that account for it.
+    expect(card.querySelector('.wx-trend').classList.contains('wx-trend--banner')).toBe(true);
+    weather.render(body, { ...DEMO_VMS.weather, alert: null }, CFG);
+    expect(card.querySelector('.wx-trend__row--precip')).not.toBeNull();
+    expect(card.querySelector('.wx-trend').classList.contains('wx-trend--banner')).toBe(false);
+
+    // Shorter cards keep their existing layout.
+    card.dataset.h = '4';
+    weather.render(body, DEMO_VMS.weather, CFG);
+    expect(card.querySelector('.wx-trend__row--precip')).toBeNull();
+    expect(card.querySelector('.wx-trend').classList.contains('wx-trend--banner')).toBe(false);
+
+    // No readings (older cached payload) → no row of blanks.
+    card.dataset.h = '5';
+    weather.render(body, { ...DEMO_VMS.weather, hourly: DEMO_VMS.weather.hourly.map((x) => ({ ...x, pp: null })) }, CFG);
+    expect(card.querySelector('.wx-trend__row--precip')).toBeNull();
+    card.remove();
+  });
+
+  it('weather widens the trend domain with the card height, not the width', () => {
+    const card = document.createElement('article');
+    card.className = 'card card--weather';
+    card.innerHTML = '<h2 class="card__title">Weather</h2><div class="card__body"></div>';
+    document.body.appendChild(card);
+    const body = card.querySelector('.card__body');
+    // A 4-degree overnight drift: the case that looked like a plunge once the
+    // chart grew to 420px at h=8.
+    const flat = [69, 68, 68, 67, 66, 66, 65, 67];
+    const vm = { ...DEMO_VMS.weather, alert: null, hourly: DEMO_VMS.weather.hourly.map((x, i) => ({ ...x, temp: flat[i] })) };
+    const extentAt = (w, h) => {
+      card.dataset.w = String(w);
+      card.dataset.h = String(h);
+      weather.render(body, vm, CFG);
+      const d = card.querySelector('.wx-trend__line').getAttribute('d');
+      const ys = d.replace(/[ML]/g, ' ').trim().split(/\s+/).map(Number).filter((_, i) => i % 2 === 1);
+      return Math.max(...ys) - Math.min(...ys);
+    };
+    expect(extentAt(3, 5)).toBeCloseTo(44.25, 1); // 6-degree window (unchanged)
+    expect(extentAt(3, 6)).toBeCloseTo(26.55, 1); // 10
+    expect(extentAt(3, 7)).toBeCloseTo(18.97, 1); // 14
+    expect(extentAt(3, 8)).toBeCloseTo(14.75, 1); // 18
+    // Width must not move the window: a 12-wide, 5-tall card keeps the default.
+    expect(extentAt(12, 5)).toBeCloseTo(extentAt(3, 5), 1);
+    card.remove();
+  });
+
   it('train widgets show the scheduled departure time next to the line', () => {
     for (const [mod, vm] of [[lirr, DEMO_VMS.lirr], [mnr, DEMO_VMS.mnr], [njt, DEMO_VMS.njt]]) {
       const host = el();

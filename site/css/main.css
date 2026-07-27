@@ -202,6 +202,12 @@ html, body {
    Growing the block also drains the space-between slack that pooled
    between the hours and the chips. */
 .wx-trend__row--hours { margin-top: 6px; margin-bottom: 8px; }
+/* Hourly chance of precipitation, only under the temps on tall cards (the
+   renderer builds the row at h >= 5, where the dead band is; no container
+   queries on gen1 boards). Text only, quiet by default, and sky-blue (the
+   snow/sleet accent) once a column is worth planning around. */
+.wx-trend__row--precip > span { font-size: 15px; font-weight: 400; color: var(--ink-dim); } /* AA: ink-faint fails below 18px */
+.wx-trend__row--precip > span.wx-pp--wet { color: #7fc8e6; }
 .wx-trend__chart { width: 100%; height: 60px; display: block; }
 .wx-trend__line { fill: none; stroke: var(--wx-accent); stroke-width: 3px; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
 .wx-trend__g0 { stop-color: var(--wx-accent); stop-opacity: 0.30; }
@@ -257,6 +263,26 @@ html, body {
    even before the fold — keeping it would shrink the hero post-fold.) */
 .card--weather.t-m:not(.t-narrow) .wx-day { padding: 7px 4px; }
 .card--weather.t-l .wx-trend__chart { height: 100px; }
+/* Precip row + NWS banner at h == 5: measured, that is the ONLY tier where the
+   extra row does not fit (the wide hero keeps a taller reserve, and h >= 6 has
+   slack to spare), so there the row buys its 22px (18px + the trend gap) back
+   from the chart. The renderer marks the banner case with .wx-trend--banner. */
+.card--weather.t-narrow[data-h="5"] .wx-trend--banner .wx-trend__chart { height: 76px; }
+/* Past h == 5 the chart grows with the card instead of leaving the slack to
+   pool above the day chips (a 100px chart left ~200px of dead band at h == 8).
+   One flat height per height tier, graded by measurement, because gen1 boards
+   have no container queries: the card's own data-h is the only height signal
+   CSS gets. Two ladders, because the NWS banner turns the body's two
+   space-between gaps into three, so the same slack divides differently:
+   .wx-trend--banner (renderer-set) is the banner case. Measured remaining band
+   above the chips (headless 1920x1080, w 3..12, longest condition label, with
+   and without precip data): 31-56px clean, 35-51px banner, zero overflow. */
+.card--weather.t-l[data-h="6"] .wx-trend__chart { height: 192px; }
+.card--weather.t-l[data-h="7"] .wx-trend__chart { height: 304px; }
+.card--weather.t-l[data-h="8"] .wx-trend__chart { height: 420px; }
+.card--weather.t-l[data-h="6"] .wx-trend--banner .wx-trend__chart { height: 112px; }
+.card--weather.t-l[data-h="7"] .wx-trend--banner .wx-trend__chart { height: 224px; }
+.card--weather.t-l[data-h="8"] .wx-trend--banner .wx-trend__chart { height: 336px; }
 
 /* ---------- transit ---------- */
 .stop-group { display: flex; flex-direction: column; gap: 8px; }

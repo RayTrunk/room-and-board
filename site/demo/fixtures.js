@@ -12,14 +12,14 @@ export const DEMO_VMS = {
   weather: {
     now: { temp: 84, feels: 92, code: 1, label: 'Mostly clear', icon: 'clear' },
     hourly: [
-      { h: '9 AM', temp: 84, code: 1 },
-      { h: '10 AM', temp: 86, code: 1 },
-      { h: '11 AM', temp: 89, code: 2 },
-      { h: '12 PM', temp: 92, code: 2 },
-      { h: '1 PM', temp: 94, code: 3 },
-      { h: '2 PM', temp: 95, code: 95 },
-      { h: '3 PM', temp: 93, code: 95 },
-      { h: '4 PM', temp: 90, code: 80 },
+      { h: '9 AM', temp: 84, code: 1, pp: 0 },
+      { h: '10 AM', temp: 86, code: 1, pp: 0 },
+      { h: '11 AM', temp: 89, code: 2, pp: 5 },
+      { h: '12 PM', temp: 92, code: 2, pp: 20 },
+      { h: '1 PM', temp: 94, code: 3, pp: 45 },
+      { h: '2 PM', temp: 95, code: 95, pp: 70 },
+      { h: '3 PM', temp: 93, code: 95, pp: 55 },
+      { h: '4 PM', temp: 90, code: 80, pp: 30 },
     ],
     daily: [
       { day: 'Today', hi: 95, lo: 78, code: 95 },
