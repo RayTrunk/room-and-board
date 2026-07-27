@@ -11,10 +11,6 @@
         "text": "If an update ever goes wrong, the display explains what happened, keeps retrying, and recovers on its own instead of going dark."
       },
       {
-        "lead": "Chart of the Day",
-        "text": "All topics are now on by default, so the card cycles through the full set. Turn topics off in Settings if you want fewer."
-      },
-      {
         "lead": "This guide",
         "text": "The guide now opens with a photo of a real board in action. Tap the photo for a full-screen look. The setup steps also now match how setup actually works."
       }
