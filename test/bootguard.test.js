@@ -101,16 +101,73 @@ describe('bootguard', () => {
     expect(notice()).toBeNull();
   });
 
-  it('gives up after the retry budget rather than reload-storming, and says so', () => {
+  it('slows down after the retry budget rather than reload-storming, and says so', () => {
     // Simulate the 4th consecutive failed boot (3 already recorded).
-    const { reloads, store } = loadGuard();
+    const { guard, reloads, store } = loadGuard();
     store.set('sgn.bootfail', JSON.stringify({ n: 3 }));
 
     vi.advanceTimersByTime(10_000);
     expect(notice().textContent).toContain('Display needs attention');
+    expect(guard.phase).toBe('slow');
 
-    vi.advanceTimersByTime(600_000); // plenty of time for any scheduled reload
-    expect(reloads.n).toBe(0); // stopped
+    // Anti-storm: nothing in the next ten minutes, i.e. 6 reloads/hour at most.
+    vi.advanceTimersByTime(599_999);
+    expect(reloads.n).toBe(0);
+  });
+
+  it('keeps retrying every 10 minutes forever once the fast budget is spent', () => {
+    // The fast retries (~45s total) are shorter than a Pages propagation window
+    // (2-3 min), so stopping there stranded a board until someone rebooted it.
+    const { reloads, store } = loadGuard();
+    store.set('sgn.bootfail', JSON.stringify({ n: 3 }));
+
+    vi.advanceTimersByTime(10_000);
+    expect(notice()).not.toBeNull();
+    expect(reloads.n).toBe(0);
+
+    vi.advanceTimersByTime(600_000); // SLOW_RETRY_MS
+    expect(reloads.n).toBe(1);
+    // Eternal, not one-shot: the notice stays up and the next attempt follows.
+    expect(notice()).not.toBeNull();
+    vi.advanceTimersByTime(600_000);
+    expect(reloads.n).toBe(2);
+    vi.advanceTimersByTime(1_800_000); // three more windows
+    expect(reloads.n).toBe(5);
+  });
+
+  it('tells the viewer it keeps retrying, instead of reading as stranded', () => {
+    const { store } = loadGuard();
+    store.set('sgn.bootfail', JSON.stringify({ n: 3 }));
+
+    vi.advanceTimersByTime(10_000);
+    const copy = notice().textContent;
+    expect(copy).toContain('Display needs attention'); // headline unchanged
+    expect(copy).toMatch(/keeps retrying/i);
+    expect(copy).toMatch(/every few minutes/i);
+  });
+
+  it('starts the budget over when the recorded failure is older than 30 minutes', () => {
+    // A burst from a deploy window days ago must not push today's first
+    // transient straight onto the slow path.
+    const { guard, reloads, store } = loadGuard();
+    store.set('sgn.bootfail', JSON.stringify({ n: 3, at: Date.now() - 31 * 60_000 }));
+
+    vi.advanceTimersByTime(10_000);
+    expect(guard.phase).toBe('fast');
+    expect(JSON.parse(store.get('sgn.bootfail')).n).toBe(1); // counter restarted
+    vi.advanceTimersByTime(3000);                            // first fast backoff
+    expect(reloads.n).toBe(1);
+  });
+
+  it('still escalates when the recorded failure is recent', () => {
+    const { guard, reloads, store } = loadGuard();
+    store.set('sgn.bootfail', JSON.stringify({ n: 3, at: Date.now() - 60_000 }));
+
+    vi.advanceTimersByTime(10_000);
+    expect(guard.phase).toBe('slow');
+    expect(JSON.parse(store.get('sgn.bootfail')).n).toBe(4);
+    vi.advanceTimersByTime(599_999);
+    expect(reloads.n).toBe(0); // no fast retry, and no storm
   });
 
   it('escalates the backoff across consecutive failures', () => {
@@ -154,6 +211,19 @@ describe('bootguard', () => {
     } finally {
       ro('complete');
     }
+  });
+
+  it('drops a pending retry when the page comes alive late', () => {
+    // The eternal phase must not reload a board that recovered on its own.
+    const { reloads, store } = loadGuard();
+    store.set('sgn.bootfail', JSON.stringify({ n: 3, at: Date.now() }));
+    vi.advanceTimersByTime(10_000);
+    expect(notice()).not.toBeNull();
+
+    window.__signageLoaded = true; // a very slow boot finally finished
+    vi.advanceTimersByTime(1_800_000); // three slow windows
+    expect(reloads.n).toBe(0);
+    expect(store.get('sgn.bootfail')).toBeUndefined(); // counter cleared too
   });
 
   it('records the failure so a later session can see it happened', () => {

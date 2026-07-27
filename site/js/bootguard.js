@@ -19,10 +19,15 @@
  * has its own boot().catch reload — so the flag is the honest signal for
  * "the page's code is alive".
  *
- * Recovery is bounded: a reload fixes the mid-propagation case, but an
- * unconditional reload loop would hammer a board (and the worker) forever on a
- * genuinely broken deploy. So it retries a few times with growing backoff and
- * then stops, leaving a visible message instead of a black screen.
+ * Recovery slows down but never stops. A reload fixes the mid-propagation case,
+ * and an unconditional reload loop would hammer a board (and the worker) on a
+ * genuinely broken deploy, so it retries fast a few times with growing backoff
+ * (~45s of budget) and then keeps retrying every 10 minutes, forever, with the
+ * notice showing in between. Stopping was worse: Pages propagates per-asset
+ * over 2 to 3 minutes, i.e. longer than the fast budget, so a board that gave
+ * up mid-window stayed stranded until somebody walked over and power-cycled it,
+ * which is the exact outcome this guard exists to prevent. 6 reloads an hour is
+ * not a storm.
  */
 (function () {
   'use strict';
@@ -34,11 +39,15 @@
   var KEY = 'sgn.bootfail';
   var MAX_TRIES = 3;
   var BACKOFF_MS = [3000, 10000, 30000];
+  var SLOW_RETRY_MS = 600000;       // 10 min between eternal retries (6/hour cap)
+  var STALE_MS = 1800000;           // 30 min: an older failure is not this boot's
 
   var lastError = '';
   var timer = null;
   var armed = true;
   var deferrals = 0;
+  var pending = false;              // one reload in flight at a time, never a queue
+  var reloadTimer = null;
 
   function loaded() {
     return window.__signageLoaded === true;
@@ -83,6 +92,9 @@
     armed = false;
     if (timer) clearTimeout(timer);
     timer = null;
+    if (reloadTimer) clearTimeout(reloadTimer);
+    reloadTimer = null;
+    pending = false;
     window.removeEventListener('error', onError, true);
     window.removeEventListener('unhandledrejection', onError);
   }
@@ -107,7 +119,7 @@
     }
     var headline = fatal ? 'Display needs attention' : 'Reloading the display…';
     var detail = fatal
-      ? 'The dashboard could not start after several attempts.'
+      ? 'The dashboard could not start after several attempts. It keeps retrying every few minutes on its own.'
       : 'A file did not load correctly. Trying again.';
     var h = document.createElement('div');
     h.setAttribute('style', 'font-size:40px;font-weight:600');
@@ -122,6 +134,30 @@
     el.appendChild(h);
     el.appendChild(p);
     el.appendChild(s);
+  }
+
+  // One reload in flight at a time, so repeated error events can never queue a
+  // burst of them. In the slow phase the timer re-arms itself after firing:
+  // normally the reload navigates and this whole chain dies with the page, but
+  // if a panel ever refuses to navigate the board must still get another try.
+  function scheduleReload(wait, slow) {
+    if (pending) return;
+    pending = true;
+    var fire = function () {
+      reloadTimer = null;
+      // The page can still come alive while a retry is waiting (a very slow
+      // boot, or a propagation window that closed). Never reload a board that
+      // is already showing the dashboard, and never leave the chain running.
+      if (loaded()) {
+        clearState();
+        disarm();
+        return;
+      }
+      guard.reload();
+      if (slow) reloadTimer = setTimeout(fire, SLOW_RETRY_MS);
+      else pending = false;
+    };
+    reloadTimer = setTimeout(fire, wait);
   }
 
   function check() {
@@ -146,16 +182,25 @@
       return;
     }
     var prev = readState();
+    // A spent budget from an old failure burst (last night's deploy window) must
+    // not send today's first transient straight to the slow phase, so anything
+    // older than STALE_MS starts over. A state with no timestamp keeps its count:
+    // unknown age is not proof of age.
+    if (prev && prev.at && (Date.now() - prev.at) > STALE_MS) prev = null;
     var tries = ((prev && prev.n) || 0) + 1;
     writeState({ n: tries, at: Date.now(), err: lastError });
     var fatal = tries > MAX_TRIES;
     show(tries, fatal);
-    if (fatal) {
-      disarm();
-      return; // stop: a human needs to look, and a reload storm helps nobody
-    }
-    var wait = BACKOFF_MS[tries - 1] || BACKOFF_MS[BACKOFF_MS.length - 1];
-    setTimeout(function () { guard.reload(); }, wait);
+    // Past the fast budget the guard slows to SLOW_RETRY_MS but never stops: the
+    // propagation window that strands a board outlasts the fast retries, and no
+    // one is standing next to an unattended display to reboot it. The notice
+    // stays up in between, so a human still sees the state.
+    var wait = fatal
+      ? SLOW_RETRY_MS
+      : (BACKOFF_MS[tries - 1] || BACKOFF_MS[BACKOFF_MS.length - 1]);
+    guard.phase = fatal ? 'slow' : 'fast';
+    guard.wait = wait;
+    scheduleReload(wait, fatal);
   }
 
   window.addEventListener('error', onError, true);
@@ -177,6 +222,8 @@
     disarm: disarm,
     reload: function () { window.location.reload(); },
     state: readState,
+    phase: 'fast',   // 'fast' while the backoff budget lasts, then 'slow' forever
+    wait: 0,         // ms the last verdict scheduled before the next reload
   };
   window.__signageBootGuard = guard;
 })();
