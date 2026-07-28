@@ -258,10 +258,23 @@ describe('qwertyKeypad shiftable variant (replaced keyboard.js)', () => {
 });
 
 import { widgetChecksHtml, WIDGET_LABELS as SETUP_LABELS } from '../site/js/settings/setup.js';
+import { writeProbe, spotKey } from '../site/js/surf-gate.js';
+import { installLocalStorage } from './stubs/localstorage.js';
+
+// A coastal board, with the ocean verdict already cached. Surf is place-gated
+// (see isOceanHidden), so "every live widget is offered" is only true on a
+// board where the probe has actually answered — which is the state these
+// full-inventory picker assertions mean to describe.
+const COAST = { lat: 40.9384, lon: -72.3037, label: 'Bridgehampton', units: 'F' };
+const onTheCoast = (extra = {}) => {
+  installLocalStorage();
+  writeProbe({ key: spotKey(COAST), t: Date.now(), ocean: true, km: 7.12, bearing: 171.8 });
+  return { loc: COAST, ...extra };
+};
 
 describe('widgetChecksHtml (setup picker)', () => {
   it('renders six grouped sections, one checkbox per widget, reflecting the placed set', () => {
-    const html = widgetChecksHtml(SETUP_LABELS, new Set(['subway', 'photos']), { nerdMode: true });
+    const html = widgetChecksHtml(SETUP_LABELS, new Set(['subway', 'photos']), onTheCoast({ nerdMode: true }));
     for (const label of ['Commute', 'Weather & Air', 'Markets & Sports', 'News & Social', 'Ambient', 'Daily Extras']) {
       expect(html).toContain(`<h3 class="wpick__title">${label}</h3>`);
     }
@@ -280,7 +293,7 @@ import { widgetGroupsHtml } from '../site/js/settings/settings.js';
 
 describe('widgetGroupsHtml', () => {
   it('renders all six group headers and one toggle per widget with correct on-state', () => {
-    const html = widgetGroupsHtml([{ id: 'weather', x: 0, y: 0, w: 4, h: 4 }], { nerdMode: true });
+    const html = widgetGroupsHtml([{ id: 'weather', x: 0, y: 0, w: 4, h: 4 }], onTheCoast({ nerdMode: true }));
     // six group headers
     for (const label of ['Commute', 'Weather & Air', 'Markets & Sports', 'News & Social', 'Ambient', 'Daily Extras']) {
       expect(html).toContain(`<h3 class="wgroup__title">${label}</h3>`);

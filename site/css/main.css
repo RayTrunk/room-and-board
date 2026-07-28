@@ -290,6 +290,74 @@ html, body {
 .card--weather.t-l[data-h="7"] .wx-trend--banner .wx-trend__chart { height: 224px; }
 .card--weather.t-l[data-h="8"] .wx-trend--banner .wx-trend__chart { height: 336px; }
 
+/* ---------- surf ----------
+   Written in the weather card's idiom on purpose: the hero shares .wx-now's
+   geometry, the chart reuses the .wx-trend gradient-area + non-scaling-stroke
+   pattern, and no new token is introduced. Note that a 4-wide card is ALSO
+   .t-narrow (main.js: rect.w <= 4), so the hero does not grow at 4 wide — the
+   extra 155px buys content (the groundswell height, the provenance stamp),
+   not size. */
+.card--surf { --sf-accent: var(--accent); }
+.card--surf .card__body { gap: 0; }
+
+.sf-now { display: flex; align-items: center; gap: 14px; padding-right: 4px; }
+.sf-now__val {
+  font-size: 72px; font-weight: 700; line-height: 0.9;
+  letter-spacing: -0.03em; font-variant-numeric: tabular-nums;
+}
+.sf-now__unit { font-size: 26px; font-weight: 600; color: var(--ink-dim); align-self: flex-end; margin-bottom: 6px; margin-left: -4px; }
+.sf-now__meta { display: flex; flex-direction: column; gap: 3px; margin-left: auto; text-align: right; min-width: 0; }
+.sf-now__label { font-size: 22px; font-weight: 600; color: var(--ink-mid); white-space: nowrap; }
+/* AA: 18px is the --ink-faint floor (see the news typography note). */
+.sf-now__sub { font-size: 18px; color: var(--ink-faint); white-space: nowrap; display: flex; align-items: center; justify-content: flex-end; gap: 6px; }
+
+/* Direction glyph. The base path points NORTH; the renderer rotates it to the
+   direction the water TRAVELS (bearing + 180) while the letters beside it keep
+   the conventional FROM reading. Stroke-based to match icons.js. */
+.sf-dir { width: 22px; height: 22px; flex: none; color: var(--ink-dim); }
+.sf-dir path { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+/* Hourly wave-height chart (the .wx-trend idiom, made elastic).
+   The weather card spends its spare height on a row of day chips; surf has no
+   third block, so the chart itself takes the slack. Elastic rather than a
+   per-height ladder: the two label rows are fixed, the hero and the foot are
+   fixed, and what is left is by definition the chart — which is the part of
+   this card that actually rewards the space. */
+.sf-trend { display: flex; flex-direction: column; gap: 4px; margin-top: 12px; flex: 1 1 auto; min-height: 0; }
+.sf-trend__row { display: flex; }
+.sf-trend__row > span {
+  flex: 1; min-width: 0; text-align: center; font-size: 18px; font-weight: 600;
+  color: var(--ink); font-variant-numeric: tabular-nums;
+}
+.sf-trend__row--hours { margin-top: 6px; }
+.sf-trend__row--hours > span { font-size: 14px; font-weight: 400; color: var(--ink-dim); } /* AA: ink-faint fails below 18px */
+/* 42px is the measured legibility floor for a 6-column build; below that the
+   curve stops reading as a shape and becomes a smudge. */
+.sf-trend__chart { width: 100%; display: block; flex: 1 1 auto; min-height: 42px; }
+.sf-trend__line { fill: none; stroke: var(--sf-accent); stroke-width: 3px; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.sf-trend__g0 { stop-color: var(--sf-accent); stop-opacity: 0.30; }
+.sf-trend__g1 { stop-color: var(--sf-accent); stop-opacity: 0; }
+
+/* Footer meta strip: the two supporting readings, then the honesty stamp. */
+.sf-foot { display: flex; align-items: baseline; gap: 18px; margin-top: auto; padding-top: 12px; }
+.sf-foot__item { display: flex; align-items: baseline; gap: 7px; white-space: nowrap; }
+.sf-foot__k { font-size: 17px; color: var(--ink-dim); }
+.sf-foot__v { font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.sf-foot__q { font-size: 17px; color: var(--ink-dim); }
+.sf-foot__stamp { margin-left: auto; font-size: 17px; color: var(--ink-dim); white-space: nowrap; }
+
+/* Size variants. h=3 is the floor: hero 65 + two label rows + foot 51 leaves
+   the chart its 42px minimum in the 237px body, and every taller card simply
+   hands the extra rows to the chart. */
+.card--surf.t-l .sf-now__val { font-size: 92px; }
+/* Wide cards (w >= 5) are not .t-narrow, so the hero can grow like weather's.
+   The 20px it costs comes out of the chart at h=3, exactly as the weather
+   card's does when it widens (measured: without the elastic chart absorbing
+   it, the body overflowed by 11px at every width from 5 to 12). */
+.card--surf:not(.t-narrow) .sf-now__val { font-size: 92px; }
+.card--surf:not(.t-narrow) .sf-now__label { font-size: 26px; }
+.card--surf:not(.t-narrow) .sf-now__sub { font-size: 20px; }
+
 /* ---------- transit ---------- */
 .stop-group { display: flex; flex-direction: column; gap: 8px; }
 .stop-group__head { display: flex; justify-content: space-between; align-items: baseline; }
@@ -1214,6 +1282,117 @@ body.mode-ambient .gear--edit { display: none; }
 .wxf__stat:last-child { padding-right: 0; }
 .wxf__stat b { font-size: 34px; font-weight: 300; color: var(--ink); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .wxf__stat span { font-size: 20px; color: var(--ink-dim); letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap; }
+
+/* Surf, full screen. Sits on the .expand grammar above (opaque scrim, 56/72
+   padding, head + body + hint) and adds nothing to the shell. */
+.sff { --sf-accent: var(--accent); height: 100%; display: flex; flex-direction: column; }
+.sff__rule { height: 1px; background: rgba(255, 255, 255, 0.10); flex: none; }
+
+/* The left pane is fixed-width like the meteo board's, so the chart's column
+   pitch does not move when the hero reads 3.3 one hour and 12.5 the next. */
+.sff__split { flex: 1; min-height: 0; display: grid; grid-template-columns: 520px 1fr; gap: 52px; }
+
+/* Three zones distributed by space-between, so the slack the hero leaves reads
+   as two deliberate breaks rather than one hole above the foot. */
+.sff__nowpane { display: flex; flex-direction: column; justify-content: space-between; gap: 26px; min-width: 0; padding-top: 4px; }
+.sff__block { display: flex; flex-direction: column; gap: 14px; }
+.sff__hero { display: flex; align-items: flex-end; gap: 6px; }
+.sff__val { font-size: 168px; font-weight: 200; line-height: 0.84; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.sff__unit { font-size: 48px; font-weight: 300; color: var(--ink-dim); line-height: 1; margin-bottom: 14px; }
+.sff__sub { display: flex; align-items: center; gap: 14px; font-size: 30px; color: var(--ink-mid); }
+.sff__sub .sf-dir { width: 30px; height: 30px; color: var(--ink-dim); }
+.sff__sep { color: var(--ink-faint); }
+/* The honesty stamp: how far the model had to go to find water. */
+.sff__src { font-size: 22px; color: var(--ink-faint); }
+
+/* Section label — quiet, and at 22px --ink-faint clears AA. */
+.sff__lbl { font-size: 22px; color: var(--ink-faint); letter-spacing: 0.06em; text-transform: uppercase; }
+
+/* Component table: name | height | period | direction, two rows on one grid so
+   the numbers stack on a shared axis. This is the block the card can never
+   carry, and it is what explains the chart — how much of the total is real
+   groundswell and how much is local chop that will die with the wind. */
+.sff__cmps { display: grid; grid-template-columns: 1fr max-content max-content max-content; gap: 18px 28px; align-items: baseline; }
+.sff__cmps > span { font-size: 26px; color: var(--ink-dim); white-space: nowrap; }
+.sff__cmps > b { font-size: 36px; font-weight: 300; color: var(--ink); font-variant-numeric: tabular-nums; white-space: nowrap; justify-self: end; }
+.sff__cmpdir { display: inline-flex; align-items: center; gap: 9px; }
+.sff__cmpdir .sf-dir { width: 23px; height: 23px; color: var(--ink-faint); }
+
+/* Today / tomorrow peaks — the fixed facts, the same shape as the meteo
+   board's today rail (label left, number right). */
+.sff__kv { display: flex; align-items: baseline; justify-content: space-between; gap: 24px; }
+.sff__kv span { font-size: 27px; color: var(--ink-dim); }
+.sff__kv b { font-size: 36px; font-weight: 300; color: var(--ink); font-variant-numeric: tabular-nums; }
+.sff__kv b small { font-size: 25px; font-weight: 400; color: var(--ink-dim); margin-left: 14px; }
+.sff__block .sff__rule { margin: 2px 0; }
+
+/* Right: the 48-hour chart, then the week. */
+.sff__colright { display: flex; flex-direction: column; min-height: 0; gap: 26px; }
+.sff__chart { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+.sff__charthead { flex: none; display: flex; align-items: baseline; justify-content: space-between; gap: 24px; margin-bottom: 14px; }
+.sff__legend { display: flex; align-items: center; gap: 26px; }
+.sff__leg { display: inline-flex; align-items: center; gap: 10px; font-size: 21px; color: var(--ink-dim); white-space: nowrap; }
+.sff__legswatch { width: 30px; height: 4px; border-radius: 2px; background: var(--sf-accent); flex: none; }
+.sff__legswatch--swell { height: 3px; background: rgba(255, 255, 255, 0.42); }
+
+/* Every hour holds a column so the printed readings, the curve and the night
+   wash stay in register; only the anchor columns print. */
+.sff__row { display: flex; flex: none; }
+.sff__row > span { flex: 1; min-width: 0; text-align: center; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.sff__row--h > span { font-size: 30px; font-weight: 300; color: var(--ink); }
+.sff__row--h > span.is-peak { color: var(--sf-accent); font-weight: 500; }
+.sff__row--hours { margin-top: 12px; }
+.sff__row--hours > span { font-size: 22px; color: var(--ink-dim); line-height: 1.25; }
+.sff__day2 { display: block; font-size: 19px; color: var(--ink-faint); }
+
+.sff__canvaswrap { position: relative; flex: 1 1 auto; min-height: 0; display: flex; }
+.sf-canvas { width: 100%; flex: 1 1 auto; min-height: 0; display: block; }
+.sf-canvas__night { fill: rgba(255, 255, 255, 0.038); }
+.sf-canvas__line { fill: none; stroke: var(--sf-accent); stroke-width: 4px; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.sf-canvas__swell { fill: none; stroke: rgba(255, 255, 255, 0.42); stroke-width: 2.5px; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.sf-canvas__g0 { stop-color: var(--sf-accent); stop-opacity: 0.28; }
+.sf-canvas__g1 { stop-color: var(--sf-accent); stop-opacity: 0; }
+.sf-canvas__now { stroke: rgba(255, 255, 255, 0.34); stroke-width: 2px; vector-effect: non-scaling-stroke; }
+/* Two positioned HTML labels rather than SVG text: the canvas is stretched with
+   preserveAspectRatio="none", which would smear any glyph inside it. "Now" is
+   an interior mark (the chart carries six hours of past), so it needs a word
+   and not just a rule; it rides the top of its own hairline, where the curve
+   never reaches on a building swell. "Night" is said once, in the first shaded
+   band — two unlabelled slabs read as highlighted regions rather than as dark. */
+.sff__nowtag {
+  position: absolute; top: 0; transform: translateX(-50%);
+  font-size: 19px; font-weight: 700; letter-spacing: 0.1em; color: var(--ink-mid);
+  background: rgb(13, 17, 23); padding: 0 9px;
+}
+.sff__nightlbl {
+  position: absolute; bottom: 6px; transform: translateX(-50%);
+  font-size: 19px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-faint);
+}
+
+/* The week strip: the card's own tile well, scaled up, carrying the day's peak
+   height and the period that goes with it. */
+.sff__days { display: flex; gap: 14px; flex: none; }
+.sff__day {
+  flex: 1; min-width: 0; background: rgba(255, 255, 255, 0.07); border-radius: 16px;
+  padding: 15px 6px; display: flex; flex-direction: column; align-items: center; gap: 6px;
+}
+.sff__day--today { background: rgba(255, 255, 255, 0.12); }
+.sff__dayname { font-size: 24px; color: var(--ink-dim); }
+.sff__dayhi { font-size: 42px; font-weight: 300; font-variant-numeric: tabular-nums; }
+.sff__dayper { font-size: 22px; color: var(--ink-dim); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.sff__daydir { font-size: 20px; color: var(--ink-faint); letter-spacing: 0.04em; }
+
+/* Live readings, quiet — the shipped .wxf__stats shape. */
+.sff__stats {
+  flex: none; display: flex;
+  border-top: 1px solid rgba(255, 255, 255, 0.10); padding-top: 22px; margin-top: 26px;
+}
+.sff__stat { flex: 1; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 5px; padding: 0 28px; }
+.sff__stat + .sff__stat { border-left: 1px solid rgba(255, 255, 255, 0.10); }
+.sff__stat:first-child { padding-left: 0; }
+.sff__stat:last-child { padding-right: 0; }
+.sff__stat b { font-size: 34px; font-weight: 300; color: var(--ink); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.sff__stat span { font-size: 20px; color: var(--ink-dim); letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap; }
 
 /* The expandable card is the tap target. For a capped list the +N badge is its
    signifier; weather has nothing to count, so the press tint is the whole

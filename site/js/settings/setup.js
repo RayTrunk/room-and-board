@@ -6,6 +6,8 @@ import { firstFitAny } from '../layout.js';
 import { WORKER_URL } from '../env.js';
 import { toggleIn, searchStations, canAddTicker } from './pickers.js';
 import { locationSearch } from '../geo.js';
+import { fetchJSON } from '../net.js';
+import { ensureOceanProbe } from '../surf-gate.js';
 import { escapeHtml, parseAlbumToken, parseDriveFolder } from '../util.js';
 import { OFFICES, zoneLabel, zonesByRegion } from '../widgets/worldclock.js';
 import { symbolKnown, normalizeSymbol } from '../widgets/markets.js';
@@ -38,6 +40,7 @@ export const WIDGET_LABELS = {
   tfl: 'TfL Status',
   history: 'This Day in History',
   aqi: 'Air & Sky',
+  surf: 'Surf',
   quote: 'Quote of the Day',
   wotd: 'Word of the Day',
   worldclock: 'World Clock',
@@ -67,7 +70,9 @@ export const SETUP_SECTIONS = [
   { id: 'bus-field', group: 'Commute', triggers: ['bus'] },
   { id: 'citibike-field', group: 'Commute', triggers: ['citibike'] },
   { id: 'tfl-field', group: 'Commute', triggers: ['tfl'] },
-  { id: 'weather-field', group: 'Weather & Air', triggers: ['weather', 'aqi'] },
+  // Surf shares the location field: it reads the very same cfg.loc (see
+  // effectiveSurfSpot), so a board carrying ONLY Surf must still be asked where it is.
+  { id: 'weather-field', group: 'Weather & Air', triggers: ['weather', 'aqi', 'surf'] },
   { id: 'markets-field', group: 'Markets & Sports', triggers: ['markets'] },
   { id: 'marketsnews-field', group: 'Markets & Sports', triggers: ['marketsnews'] },
   { id: 'sports-field', group: 'Markets & Sports', triggers: ['sports'] },
@@ -214,9 +219,25 @@ function dismissNotice() {
   clearTimeout(noticeTimer);
 }
 
+// Repaints the checkbox list from cfg. Assigned by renderWidgets; the change
+// handler lives on the #widgets CONTAINER, so redrawing its children never
+// costs a re-bind and the checked state re-derives from cfg.layout.
+let repaintWidgets = null;
+
+// Ocean gate for the Surf card. The wizard always knows a location by the time
+// the picker is drawn — the defaults, or the board's own config from a scanned
+// QR — so the verdict is simply asked for on load, and again whenever the
+// location changes. Until one lands Surf is absent, which is the honest state:
+// on a phone we cannot know whether this board is anywhere near the water.
+function probeSurf() {
+  ensureOceanProbe(cfg.loc, { fetchJSON }, () => repaintWidgets?.());
+}
+
 function renderWidgets() {
   const placed = () => new Set(cfg.layout.map((r) => r.id));
-  $('#widgets').innerHTML = widgetChecksHtml(WIDGET_LABELS, placed(), cfg);
+  repaintWidgets = () => { $('#widgets').innerHTML = widgetChecksHtml(WIDGET_LABELS, placed(), cfg); };
+  repaintWidgets();
+  probeSurf();
   $('#widgets').addEventListener('change', (e) => {
     const id = e.target.dataset.w;
     if (!id) return;
@@ -336,6 +357,11 @@ function renderLocation() {
         $('#loc-search').value = '';
         $('#loc-current').textContent = `Current: ${cfg.loc.label}`;
         paintUnits();
+        // A new spot invalidates the old verdict (probeVerdict is keyed by
+        // location), so the picker drops Surf immediately and re-earns it only
+        // if this coast answers.
+        repaintWidgets?.();
+        probeSurf();
       }));
   });
   paintUnits();

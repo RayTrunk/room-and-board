@@ -158,6 +158,11 @@ export function capacityLabel(id, w, h, cfg = {}) {
       return ofTotal(Math.min(n, cfg.citibike?.stations?.length ?? n), cfg.citibike?.stations?.length, 'stations');
     case 'tfl':
       return ofTotal(Math.min(n, cfg.tfl?.lines?.length ?? n), cfg.tfl?.lines?.length, 'lines');
+    case 'surf':
+      // Must match surf.js render exactly: wide = w>=4 -> 8 columns at 3-hour
+      // steps, else 6 at 4-hour steps. Both windows cover the same 24 hours,
+      // so what a resize buys here is resolution, not reach.
+      return `${w >= 4 ? 8 : 6} hourly wave heights`;
     case 'weather': {
       // Must match weather.js render exactly: big = w>=5||h>=5 → 8 hourly/5 days,
       // else 6 hourly/4 days. (Was hardcoded "2-day" with a mismatched threshold.)

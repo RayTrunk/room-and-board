@@ -17,6 +17,7 @@ import { initTextViewer } from './textviewer.js';
 import { initExpand } from './expand.js';
 import { startClockFace, CLOCK_SOURCES } from './clockfaces.js';
 import { icon } from './icons.js';
+import { ensureOceanProbe } from './surf-gate.js';
 
 import * as clock from './widgets/clock.js';
 import * as weather from './widgets/weather.js';
@@ -31,6 +32,7 @@ import * as ferry from './widgets/ferry.js';
 import * as art from './widgets/art.js';
 import * as history from './widgets/history.js';
 import * as aqi from './widgets/aqi.js';
+import * as surf from './widgets/surf.js';
 import * as quote from './widgets/quote.js';
 import * as wotd from './widgets/wotd.js';
 import * as markets from './widgets/markets.js';
@@ -56,7 +58,7 @@ import * as tfl from './widgets/tfl.js';
 import { resolvePhotosManifest } from './photos-manifest.js';
 import { fetchCuratedManifest, fetchBackdropList, backdropDayIndex, localDayNumber } from './curated.js';
 
-const MODULES = [weather, subway, lirr, mnr, njt, amtrak, pathw, ferry, bus, art, history, aqi, quote, wotd, markets, marketsnews, worldclock, sports, worldcup, news, substack, bsky, photos, gdrivephotos, landscapes, services, apod, chart, citibike, tfl, f1, golf, tennis, iptv];
+const MODULES = [weather, subway, lirr, mnr, njt, amtrak, pathw, ferry, bus, art, history, aqi, surf, quote, wotd, markets, marketsnews, worldclock, sports, worldcup, news, substack, bsky, photos, gdrivephotos, landscapes, services, apod, chart, citibike, tfl, f1, golf, tennis, iptv];
 for (const m of MODULES) registerWidget(m);
 
 const net = { fetchJSON, fetchBuffer, fetchText };
@@ -418,6 +420,12 @@ function startRuntime() {
   if (!DEMO) {
     startSelfHealing();
     cancels.push(startBeacon(() => cfg));
+    // Ocean gate: keep the Surf card's add-picker verdict current for THIS
+    // board's location, so the edit tray and the Settings widget list (both
+    // opened later, from here) can answer synchronously the moment they render.
+    // A board that already has the card placed re-earns the verdict out of the
+    // widget's own refresh and needs no separate probe.
+    if (!cfg.widgets.includes('surf')) ensureOceanProbe(cfg.loc, net);
   }
 }
 

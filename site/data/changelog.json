@@ -3,6 +3,10 @@
     "date": "July 28",
     "items": [
       {
+        "lead": "Surf",
+        "text": "New Surf card: water temperature, wave height and period, and whether the wind is helping, for the water near your board's location. Tap it for the 48 hour picture. It only shows up in the widget list when your board is near a coast."
+      },
+      {
         "lead": "Reliability",
         "text": "Updates now apply without the screen flashing white for a moment."
       },

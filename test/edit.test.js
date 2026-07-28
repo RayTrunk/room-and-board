@@ -4,6 +4,12 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { openEditMode } from '../site/js/edit.js';
 import { WIDGET_IDS, isRetired } from '../site/js/config.js';
+import { writeProbe, spotKey } from '../site/js/surf-gate.js';
+import { installLocalStorage } from './stubs/localstorage.js';
+
+// Surf is place-gated (isOceanHidden), so the tray only carries the FULL widget
+// inventory on a board whose ocean probe has answered.
+const COAST = { lat: 40.9384, lon: -72.3037, label: 'Bridgehampton', units: 'F' };
 
 const CFG = {
   layout: [
@@ -36,7 +42,9 @@ describe('openEditMode', () => {
   });
 
   it('labels every widget in the tray and on blocks (no raw ids, no undefined)', () => {
-    openEditMode({ layout: [{ id: 'weather', x: 0, y: 0, w: 6, h: 4 }], nerdMode: true }, { root, cellSize: { w: 100, h: 100 } });
+    installLocalStorage();
+    writeProbe({ key: spotKey(COAST), t: Date.now(), ocean: true, km: 7.12, bearing: 171.8 });
+    openEditMode({ layout: [{ id: 'weather', x: 0, y: 0, w: 6, h: 4 }], nerdMode: true, loc: COAST }, { root, cellSize: { w: 100, h: 100 } });
     const chips = [...root.querySelectorAll('.edit-tray [data-add]')];
     expect(chips.map((b) => b.dataset.add).sort()).toEqual(
       WIDGET_IDS.filter((id) => id !== 'weather' && !isRetired(id)).sort(), // retired ids leave the tray

@@ -38,6 +38,11 @@ export const MIN_SIZE = {
   citibike: [3, 2],
   tfl: [3, 2],
   aqi: [2, 2],
+  // Surf stacks a hero + an hourly chart + a two-reading foot, the same three
+  // zones as weather but one row shallower: the chart carries 6 columns rather
+  // than weather's 8 and there are no day chips under it. 3x3 is the measured
+  // floor — the 58px chart there is the smallest that still reads as a build.
+  surf: [3, 3],
   worldclock: [2, 3], // shortest card that fits a useful clock list (rows slice to fit)
   sports: [3, 2],
   worldcup: [3, 3], // two section labels (LIVE/UPCOMING) don't fit the 2-tall body budget

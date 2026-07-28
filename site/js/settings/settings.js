@@ -32,6 +32,7 @@ export const WIDGET_LABELS = {
   landscapes: 'Landscapes',
   history: 'This Day in History',
   aqi: 'Air & Sky',
+  surf: 'Surf',
   quote: 'Quote of the Day',
   wotd: 'Word of the Day',
   worldclock: 'World Clock',

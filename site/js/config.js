@@ -11,6 +11,7 @@ import { DEFAULT_LAYOUT, normalizeLayout, migrateWidgetsToLayout, contentMaxH } 
 import { TFL_TUBE_IDS, TFL_LINE_IDS } from './tfl-lines.js';
 import { CHART_TOPICS, CHART_TOPIC_SLUGS } from './widgets/chart-topics.js';
 import { DEFAULT_SCHEDULE } from './modes.js';
+import { OCEAN_WIDGETS, hasOcean } from './surf-gate.js';
 
 export const ART_CATS = [
   ['european', 'European'],
@@ -19,7 +20,7 @@ export const ART_CATS = [
 ];
 
 export const WIDGET_IDS = [
-  'weather', 'subway', 'lirr', 'mnr', 'njt', 'amtrak', 'path', 'ferry', 'bus', 'citibike', 'tfl', 'art', 'photos', 'gdrivephotos', 'landscapes', 'apod', 'history', 'aqi', 'quote', 'wotd', 'markets', 'marketsnews', 'worldclock', 'sports', 'worldcup', 'news', 'substack', 'bsky', 'services', 'chart', 'f1', 'golf', 'tennis', 'iptv',
+  'weather', 'subway', 'lirr', 'mnr', 'njt', 'amtrak', 'path', 'ferry', 'bus', 'citibike', 'tfl', 'art', 'photos', 'gdrivephotos', 'landscapes', 'apod', 'history', 'aqi', 'surf', 'quote', 'wotd', 'markets', 'marketsnews', 'worldclock', 'sports', 'worldcup', 'news', 'substack', 'bsky', 'services', 'chart', 'f1', 'golf', 'tennis', 'iptv',
 ];
 
 // Display grouping for the widget pickers (board Settings and phone /setup).
@@ -28,7 +29,7 @@ export const WIDGET_IDS = [
 // (asserted in test/settings-logic.test.js).
 export const WIDGET_GROUPS = [
   { label: 'Commute', ids: ['subway', 'lirr', 'mnr', 'njt', 'amtrak', 'path', 'ferry', 'bus', 'citibike', 'tfl'] },
-  { label: 'Weather & Air', ids: ['weather', 'aqi'] },
+  { label: 'Weather & Air', ids: ['weather', 'aqi', 'surf'] },
   { label: 'Markets & Sports', ids: ['markets', 'marketsnews', 'sports', 'worldcup', 'f1', 'golf', 'tennis'] },
   { label: 'News & Social', ids: ['news', 'substack', 'bsky'] },
   { label: 'Ambient', ids: ['art', 'landscapes', 'photos', 'gdrivephotos', 'apod', 'iptv', 'worldclock'] },
@@ -578,15 +579,24 @@ export const isLaunched = (id, host) => !BETA_ONLY.includes(id) || isBetaHost(ho
 export const ADVANCED_WIDGETS = Object.freeze(['iptv']);
 export const isAdvancedHidden = (id, cfg) => ADVANCED_WIDGETS.includes(id) && !cfg?.nerdMode;
 
+// Place-gated cards: the first gate that depends on WHERE the board is rather
+// than on what its owner turned on. Surf is only offered once a cached probe
+// has confirmed the effective spot resolves to open water — see surf-gate.js
+// for the probe, its cache and why the verdict has to be readable
+// synchronously. Pessimistic by design: no verdict yet means no card, not a
+// card that will apologise later.
+export const isOceanHidden = (id, cfg) => OCEAN_WIDGETS.includes(id) && !hasOcean(cfg?.loc);
+
 // Single source of truth for "may this widget be OFFERED to add right now":
-// not sunset (RETIRED_AFTER), launched on this host (BETA_ONLY), and not gated
-// behind nerd mode (ADVANCED_WIDGETS). EVERY add surface — the edit-mode tray,
-// the Settings widget toggles, and the /setup checkboxes — routes through this
-// one predicate, so adding a new gate or a new advanced card can't leak through
-// a picker someone forgot to update. (A PLACED card is always shown for removal
-// regardless; callers OR this with `placed.has(id)`.)
+// not sunset (RETIRED_AFTER), launched on this host (BETA_ONLY), not gated
+// behind nerd mode (ADVANCED_WIDGETS), and — for the place-gated cards —
+// actually available where this board is (OCEAN_WIDGETS). EVERY add surface —
+// the edit-mode tray, the Settings widget toggles, and the /setup checkboxes —
+// routes through this one predicate, so adding a new gate or a new advanced
+// card can't leak through a picker someone forgot to update. (A PLACED card is
+// always shown for removal regardless; callers OR this with `placed.has(id)`.)
 export const isAddable = (id, cfg, host) =>
-  !isRetired(id) && isLaunched(id, host) && !isAdvancedHidden(id, cfg);
+  !isRetired(id) && isLaunched(id, host) && !isAdvancedHidden(id, cfg) && !isOceanHidden(id, cfg);
 
 const PHOTOS_CODE_MARK = '~P~';
 // Live Video rides the same phone-to-board bridge: '~V~' carries just the

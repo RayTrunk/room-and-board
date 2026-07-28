@@ -96,6 +96,13 @@ remove like any other.
   elsewhere → °C); the °F/°C toggle overrides.
 - **Air & Sky** — labeled AQI and UV-index dials (color-coded by band), plus
   sunrise, sunset, and the moon phase. *Configure:* none — uses your weather location.
+- **Surf** — wave height and period, the swell bearing, water temperature and
+  whether the wind is onshore, offshore or cross-shore, over an hourly build
+  chart. Tap for the 48-hour picture: the groundswell split out from the local
+  wind chop, the week's peaks, and the water paired with the air. Modeled
+  (Open-Meteo Marine), not buoy-observed, and the card says how far offshore
+  the model cell sits. *Configure:* none — uses your weather location. The card
+  is only OFFERED where a probe confirms open water nearby (see below).
 
 ### NYC-area transit
 
@@ -397,11 +404,36 @@ To gate a new card this way, add its id to `ADVANCED_WIDGETS` in
 `site/js/config.js` — nothing else. Every add surface (edit-mode tray, the
 Settings widget toggles, the `/setup` checkboxes, and the settings nav) routes
 its "may I offer this?" decision through the single `isAddable(id, cfg)`
-predicate, which composes the three gates: `RETIRED_AFTER` (sunset an event
-card), `BETA_ONLY` (staging-host only), and `ADVANCED_WIDGETS` (nerd mode). One
-predicate, so a new surface or a new gated card can't leak through a path
-someone forgot. `test/settings-logic.test.js` asserts the policy holds across
-all surfaces.
+predicate, which composes four gates: `RETIRED_AFTER` (sunset an event card),
+`BETA_ONLY` (staging-host only), `ADVANCED_WIDGETS` (nerd mode), and
+`OCEAN_WIDGETS` (see below). One predicate, so a new surface or a new gated
+card can't leak through a path someone forgot.
+`test/settings-logic.test.js` asserts the policy holds across all surfaces.
+
+### Place gating (Surf)
+
+Surf is the first card whose availability depends on WHERE the board is rather
+than on what its owner turned on: offering it in Denver would be a promise the
+model cannot keep. `site/js/surf-gate.js` caches a one-variable marine probe of
+the board's location, stamped with that location and good for 24 hours, and
+`isAddable` reads it synchronously. The probe passes only when the model
+returns a real wave height AND the cell it answered for is within 30 km of the
+pin — an inland pin gets HTTP 200 with every value null, and a far snap means
+the answer describes someone else's coast.
+
+Two surfaces kick a background probe when the cache has nothing to say (the
+board at boot, the `/setup` wizard on load and whenever the location changes)
+and repaint when a verdict lands; until then the card simply is not offered. A
+board that already has Surf placed re-earns the verdict out of the widget's own
+refresh and never pays for a separate probe. A PLACED card is never removed by
+the gate — if its spot loses the ocean it keeps its slot and renders the empty
+state.
+
+The same pin-to-cell vector is what gives the card its shore-facing normal for
+free: a marine model only has cells over water, so the direction it had to move
+the pin to find one IS the direction of the sea. That normal against the wind
+bearing is what makes "onshore / offshore / cross-shore" possible with no
+coastline dataset at all.
 
 ### User flow
 
@@ -433,6 +465,7 @@ welcome screen; re-enter a setup code to restore.
 | Source | Access | Notes |
 |---|---|---|
 | Open-Meteo (weather, AQI) | direct, keyless | free tier is "non-commercial" — buy their inexpensive key if strictness matters |
+| Open-Meteo Marine (surf) | direct, keyless | same free tier; ~1.9 weighted calls per 30-min refresh (marine payload + a minimal forecast call for the wind, which the marine endpoint does not serve) |
 | api.weather.gov (alerts) | direct, keyless | enhancement-only |
 | MTA LIRR + MNR GTFS-RT | direct, keyless | GET only (HEAD returns 403); 60 s jittered polling |
 | MTA alert feeds (camsys) | Worker digest | raw subway feed ~800 KB → ~2 KB digest shared fleet-wide |

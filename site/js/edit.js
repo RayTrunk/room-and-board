@@ -42,6 +42,7 @@ const TITLES = {
   gdrivephotos: 'GDrive Photos',
   history: 'History',
   aqi: 'Air & Sky',
+  surf: 'Surf',
   quote: 'Quote',
   wotd: 'Word',
   worldclock: 'World Clock',

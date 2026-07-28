@@ -161,7 +161,7 @@ button:focus-visible {
    it. Stretched to its sibling it was three-quarters air, which read as a card
    waiting for content that never arrives. `start` lets each card end where its
    copy ends. */
-.duo--weather { grid-template-columns: 1.4fr 1fr; align-items: start; }
+.duo--weather { grid-template-columns: 1.5fr 1fr 1fr; align-items: start; }
 
 /* the two round board buttons, rendered calm like they are on the device */
 .fab {
