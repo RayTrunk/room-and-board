@@ -3,6 +3,10 @@
     "date": "July 27",
     "items": [
       {
+        "lead": "Markets",
+        "text": "Tap the Markets card to see every ticker you follow, full screen. It closes by itself after a minute."
+      },
+      {
         "lead": "Trains",
         "text": "LIRR, Metro-North, and NJ Transit departures now show each train’s line as a colored badge in its official line colors, so the line is easy to tell apart from the destination."
       },

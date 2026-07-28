@@ -14,6 +14,7 @@ import { createSlideshow, swipeAction } from './imageshow.js';
 import { startBeacon } from './fleet.js';
 import { DEMO_VMS, DEMO_NOW_MS } from '../demo/fixtures.js';
 import { initTextViewer } from './textviewer.js';
+import { initExpand } from './expand.js';
 import { startClockFace, CLOCK_SOURCES } from './clockfaces.js';
 import { icon } from './icons.js';
 
@@ -424,6 +425,9 @@ async function boot() {
   $('#gear').innerHTML = icon('settings', 'icon--btn');
   $('#edit').innerHTML = icon('pencil', 'icon--btn');
   initTextViewer($('#grid'));
+  // Whole-card tap opens a card's hidden items full screen (markets today).
+  // Delegated on the grid, so it survives every widget re-render.
+  initExpand($('#grid'));
   const fragment = parseFragment(location.hash);
   // Diagnostics surface — but the bridge passphrase (auth.p) must NOT sit on a
   // global where injected script could read it. Expose only non-secret fields;

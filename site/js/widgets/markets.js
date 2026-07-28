@@ -5,6 +5,7 @@
 import { WORKER_URL } from '../env.js';
 import { escapeHtml, fmtClock, setCardNote, setMoreBadge, chaikin } from '../util.js';
 import { itemCapacity, cardSize } from '../capacity.js';
+import { setExpandSource } from '../expand.js';
 
 export const meta = { id: 'markets', title: 'Markets', refreshMs: 5 * 60 * 1000 };
 
@@ -90,7 +91,7 @@ export function splitAtX(pts, xc) {
 // so an intraday move that dips through the baseline shows BOTH colours. Wide
 // cards (twoDay) draw the prior session in WHITE ahead of a dashed day-boundary
 // rule; compact cards draw today alone, coloured the same way.
-function sparkSvg(ix) {
+function sparkSvg(ix, cls = 'spark') {
   const two =
     ix.twoDay &&
     Array.isArray(ix.spark2) &&
@@ -99,7 +100,7 @@ function sparkSvg(ix) {
     ix.split < ix.spark2.length;
   const series = two ? ix.spark2 : ix.spark;
   const pts = sparkPts(series, 90, 28);
-  if (pts.length < 2) return '<svg class="spark" viewBox="0 0 90 28" preserveAspectRatio="none"></svg>';
+  if (pts.length < 2) return `<svg class="${cls}" viewBox="0 0 90 28" preserveAspectRatio="none"></svg>`;
   // Colour baseline = the prior close. Two-day: yesterday's last bar (the split
   // point); compact: price − change. The current segment starts there, so the
   // overnight move reads as part of today.
@@ -122,10 +123,98 @@ function sparkSvg(ix) {
   const today =
     (up ? `<path class="spark__up" d="${up}" fill="none" stroke-width="1.5" vector-effect="non-scaling-stroke"/>` : '') +
     (down ? `<path class="spark__down" d="${down}" fill="none" stroke-width="1.5" vector-effect="non-scaling-stroke"/>` : '');
-  return `<svg class="spark" viewBox="0 0 90 28" preserveAspectRatio="none">${extras}${today}</svg>`;
+  return `<svg class="${cls}" viewBox="0 0 90 28" preserveAspectRatio="none">${extras}${today}</svg>`;
 }
 
 const fmt = new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+// ---------- tap-to-expand: the full ticker wall ----------
+
+// Indices (^-prefixed symbols) lead the wall on their own shelf; everything
+// else falls to the grid below. Both keep their relative config order, so a
+// user who interleaves ^GSPC among their stocks still gets a clean two-band
+// wall in the order they wrote.
+export const isIndexSymbol = (symbol) => String(symbol ?? '').startsWith('^');
+
+// Overlay geometry, browser-measured on the fixed 1920x1080 board (the same
+// fixed-pixel reasoning capacity.js uses for card rows — the canvas never
+// changes size): the wall's content box, a shelf row, the shelf's hairline
+// block, and the floor a grid tile needs to hold its four lines.
+const WALL_H = 854;
+const SHELF_ROW = 225;
+const RULE_BLOCK = 53;
+const TILE_MIN = 190;
+const TILE_GAP = 20;
+
+// Columns for n tiles in the stock grid on the 1920-wide overlay. Config caps
+// the list at 10, so the grid is one or two rows of generous tiles. A tall
+// shelf eats the canvas, so the grid then trades columns for rows rather than
+// squeezing tiles below the height their four lines need.
+export function tileCols(n, shelfRows = 0) {
+  let cols = n <= 3 ? Math.max(n, 1) : n <= 4 ? 2 : n <= 6 ? 3 : n <= 8 ? 4 : 5;
+  const avail = WALL_H - (shelfRows ? shelfRows * SHELF_ROW + (shelfRows - 1) * TILE_GAP + RULE_BLOCK : 0);
+  const maxRows = Math.max(1, Math.floor((avail + TILE_GAP) / (TILE_MIN + TILE_GAP)));
+  while (Math.ceil(n / cols) > maxRows && cols < 5) cols++;
+  return cols;
+}
+
+// Shelf columns. Index tiles carry the big lead type (a 46px six-figure price
+// beside its change), which needs ~400px of tile: measured, 5 across (340px)
+// overflows the price row. Four is the hard ceiling, so a long index list wraps
+// to a second shelf row instead of squeezing.
+export function shelfCols(n) {
+  return n <= 4 ? Math.max(n, 1) : Math.min(4, tileCols(n));
+}
+
+// One tile per configured symbol. An index leads with its friendly name (a
+// symbol nobody reads aloud) and carries ^SYM underneath; a stock leads with
+// its symbol and carries the company name. Sparklines take the compact
+// single-session form: a tile is small, and the two-day shape needs the card's
+// full width to read.
+function tile(ix) {
+  const up = ix.change >= 0;
+  const index = isIndexSymbol(ix.symbol);
+  const lead = index ? ix.name : ix.symbol;
+  const sub = index ? ix.symbol : ix.name;
+  const dir = up ? 'up' : 'down';
+  return `<div class="tile${index ? ' tile--index' : ''}">
+    <div class="tile__head">
+      <span class="tile__sym">${escapeHtml(lead)}</span>
+      <span class="tile__pct delta--${dir}">${up ? '▲' : '▼'} ${Math.abs(ix.changePct).toFixed(2)}%</span>
+    </div>
+    <div class="tile__row">
+      <span class="tile__price">${fmt.format(ix.price)}</span>
+      <span class="tile__chg delta--${dir}">${up ? '+' : '−'}${fmt.format(Math.abs(ix.change))}</span>
+    </div>
+    ${sparkSvg({ ...ix, twoDay: false }, 'spark tile__spark')}
+    <span class="tile__name">${escapeHtml(sub)}</span>
+  </div>`;
+}
+
+// The overlay body: every ticker the card fetched. Each band renders only if it
+// has tiles — the indices are removable entries like any other symbol, so a
+// config without them yields a plain stock grid on the full canvas (no shelf,
+// no reserved space, no hairline), and an indices-only config yields the shelf
+// alone with no empty grid below it.
+export function tileWall(indices) {
+  const shelf = indices.filter((ix) => isIndexSymbol(ix.symbol));
+  const rest = indices.filter((ix) => !isIndexSymbol(ix.symbol));
+  const bands = [];
+  const sCols = shelfCols(shelf.length);
+  const shelfRows = shelf.length ? Math.ceil(shelf.length / sCols) : 0;
+  if (shelf.length) {
+    bands.push(`<div class="wall__shelf" style="--cols:${sCols}">${shelf.map(tile).join('')}</div>`);
+  }
+  if (shelf.length && rest.length) bands.push('<div class="wall__rule"></div>');
+  if (rest.length) {
+    bands.push(
+      `<div class="wall__grid" style="--cols:${tileCols(rest.length, shelfRows)}">${rest.map(tile).join('')}</div>`,
+    );
+  }
+  // A lone shelf centers instead of stranding itself at the top edge.
+  const solo = shelf.length && !rest.length ? ' wall--shelf-only' : '';
+  return `<div class="wall${solo}">${bands.join('')}</div>`;
+}
 
 export function render(el, vm, cfg) {
   // Freshness note in the card header (worker fetch time, not render time) —
@@ -158,6 +247,17 @@ export function render(el, vm, cfg) {
         .join('') + '</div>'
     : '<div class="empty">Market data unavailable</div>';
   setMoreBadge(el, shown.length ? hidden : 0);
+  // Rows here are not tappable, so the whole card is the target and the +N badge
+  // is a passive signifier — the two must agree exactly: no badge, no expansion.
+  // The closure captures THIS render's vm, so the overlay always shows what the
+  // card was showing when it was tapped.
+  const note = vm.updatedAt ? `as of ${fmtClock(vm.updatedAt, cfg?.clock24)}` : '';
+  setExpandSource(
+    el,
+    shown.length && hidden > 0
+      ? () => ({ title: meta.title, note, bodyHtml: tileWall(vm.indices) })
+      : null,
+  );
 }
 
 export function mapMarkets(payload) {

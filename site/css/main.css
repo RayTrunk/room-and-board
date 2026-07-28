@@ -948,6 +948,85 @@ body.mode-ambient .gear--edit { display: none; }
 .headline--more { cursor: pointer; border-radius: 8px; }
 .headline--more:active { background: var(--bg-card-2); }
 
+/* ---------- tap-to-expand overlay (the +N badge's contents, full screen) ----------
+   Z-order 44 extends the existing scale: above the settings pane (40) and above
+   the gear/pencil FABs (no z of their own, so any positive value clears them —
+   settings can't be entered mid-read), and BELOW the art viewer (45) and the
+   story view (46), which a tapped row inside a future list expansion stacks on
+   top of. Flush at bottom:0 per the RoomOS bar rule — a tap-opened full-screen
+   overlay is not lifted; only idle contexts are. */
+.expand {
+  position: fixed; inset: 0; z-index: 44;
+  /* The story view's scrim colour, taken OPAQUE: the tiles below are themselves
+     translucent (--bg-card-2), so at the story view's 0.96 the numbers on the
+     card you just tapped ghost through the numbers in the overlay — unreadable
+     on a data surface, and not what the approved mockup shows (it composited
+     over black). A text panel can afford the see-through; a full canvas can't. */
+  background: rgb(13, 17, 23);
+  display: flex; flex-direction: column;
+  padding: 56px 72px 0;
+  cursor: pointer;
+}
+.expand__head { flex: none; display: flex; align-items: baseline; gap: 20px; }
+.expand__title { font-size: 28px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-dim); }
+.expand__note { font-size: 24px; color: var(--ink-faint); }
+.expand__stamp { font-size: 24px; color: var(--warn); } /* the source card's stale stamp, carried through */
+.expand.is-stale .expand__body { opacity: 0.75; } /* same dimming as a stale card */
+/* The body reserves the hint band; the hint itself clears the RoomOS bar (the
+   overlay reaches bottom:0, but its text must not sit under the bar). */
+.expand__body { flex: 1; min-height: 0; margin-top: 36px; padding-bottom: 100px; }
+.expand__hint { position: absolute; left: 0; right: 0; bottom: 52px; text-align: center; font-size: 22px; color: var(--ink-faint); }
+
+/* Markets: a ticker wall. Indices lead on their own shelf; the watchlist fills
+   the grid below. Each band renders only when it has tiles, so removing the
+   indices leaves a plain full-canvas stock grid with no empty region. */
+.wall { height: 100%; display: flex; flex-direction: column; }
+.wall--shelf-only { justify-content: center; }
+.wall__shelf { flex: none; display: grid; grid-template-columns: repeat(var(--cols, 3), minmax(0, 1fr)); gap: 20px; }
+.wall__rule { flex: none; height: 1px; background: rgba(255, 255, 255, 0.14); margin: 26px 0; }
+.wall__grid {
+  flex: 1; min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(var(--cols, 5), minmax(0, 1fr));
+  grid-auto-rows: minmax(0, 1fr);
+  gap: 20px;
+}
+/* Grid tiles fill their row (height:100% against the 1fr track) so rows sit a
+   clean 20px apart, and cap out at 280px — a one-row wall then reads as a band
+   of well-proportioned tiles, centered, instead of one stretched to 500px. */
+.wall__grid .tile { height: 100%; }
+.tile {
+  background: var(--bg-card-2);
+  border-radius: 12px;
+  padding: 14px 18px 16px;
+  display: flex; flex-direction: column; justify-content: center; gap: 6px;
+  min-width: 0; max-height: 280px; align-self: center;
+}
+.tile__head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; min-width: 0; }
+.tile__sym { font-size: 34px; font-weight: 700; letter-spacing: 0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tile__pct { font-size: 24px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tile__row { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.tile__price { font-size: 30px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.tile__chg { font-size: 21px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tile__spark { width: 100%; height: 36px; } /* overrides the card sparkline's fixed 160x28 */
+/* The chart takes the slack in a tall tile rather than leaving dead air under
+   the numbers: more room means more curve, which is the point of the wall. */
+.wall__grid .tile__spark { flex: 1 1 36px; min-height: 36px; max-height: 90px; }
+.tile__name { font-size: 19px; color: var(--ink-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } /* AA: dim, not faint */
+/* Shelf tiles: bigger, and led by the friendly name (an index symbol is config
+   vocabulary, not reading vocabulary — it goes to the quiet sub-line). */
+.wall__shelf .tile { padding: 18px 24px 20px; gap: 8px; max-height: none; }
+.tile--index .tile__sym { font-size: 30px; font-weight: 600; color: var(--ink-dim); }
+.wall__shelf .tile__pct { font-size: 28px; }
+.wall__shelf .tile__price { font-size: 46px; }
+.wall__shelf .tile__chg { font-size: 26px; }
+.wall__shelf .tile__spark { height: 42px; }
+
+/* The expandable card is the tap target; the +N badge is its signifier. Calm at
+   rest, a brief press tint on touch — the same affordance the headlines use. */
+.card.is-expandable { cursor: pointer; }
+.card.is-expandable:active { background: var(--bg-card-2); }
+
 /* ---------- per-size compact variants (gen1 Chromium lacks container queries;
    cards carry data-w/data-h and the tier classes t-s/t-m/t-l/t-narrow that
    main.js derives from the layout: t-s when h≤2, t-narrow when w≤4) ---------- */
