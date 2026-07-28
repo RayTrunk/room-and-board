@@ -1234,7 +1234,7 @@ describe('amtrak render', () => {
     amtrak.render(el, { ...vm, destName: 'Philadelphia' }, { amtrak: { dest: 'PHL', alerts: true } });
     expect(el.textContent).toContain('Northeast Regional'); // 171 serves PHL downstream
     expect(el.textContent).not.toContain('Acela'); // 2151 does not stop at PHL
-    expect(el.textContent).toContain('arr'); // shows arrival time at the chosen stop
+    expect(el.textContent).toContain('Arrives'); // shows arrival time at the chosen stop
   });
 
   it('hides alert rows when the alerts toggle is off', () => {

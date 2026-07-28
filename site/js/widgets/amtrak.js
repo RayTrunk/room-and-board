@@ -35,7 +35,7 @@ export function render(el, vm, cfg) {
       })
       .filter(Boolean);
   }
-  // "as of" is a clock reading (honors cfg.clock24); the arr/departure times
+  // "as of" is a clock reading (honors cfg.clock24); the arrival/departure times
   // in the rows below stay on fmtTime (schedule times, always 12h).
   setCardNote(el, dest && vm.destName ? `to ${vm.destName}` : (vm.updatedAt ? `as of ${fmtClock(vm.updatedAt, cfg?.clock24)}` : null));
 
@@ -48,7 +48,7 @@ export function render(el, vm, cfg) {
 
   const row = (d) => {
     const min = Math.max(0, Math.round((d.t - nowSec) / 60));
-    const primary = dest ? `arr ${fmtTime(d.arr)}` : escapeHtml(d.dest);
+    const primary = dest ? `Arrives ${fmtTime(d.arr)}` : escapeHtml(d.dest);
     const line = `${escapeHtml(d.route)} ${escapeHtml(d.num)} · ${fmtTime(d.t)}${d.platform ? ` · Trk ${escapeHtml(d.platform)}` : ''}`;
     return `<div class="train">
       <div class="train__min"><span>${min}</span><small>min</small></div>
