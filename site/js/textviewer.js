@@ -13,6 +13,14 @@ import { escapeHtml } from './util.js';
 const EXPANDABLE =
   '.linestatus__text, .talert__text, .headline__title, .quote__text, .history__text, .wc-row__city';
 
+// Status/alert copy is the one kind of text a card may ALSO expand as a whole:
+// a subway card's tap opens the full status board, which shows this line's
+// alert in full anyway. On such a card the single-line reader is a redundant
+// intermediate, so these classes step aside and let the card's own expansion
+// take the tap. Story/quote/history/city text never defers — the news wave
+// needs a row tap to stay a story tap even inside an expandable card.
+const DEFER_TO_EXPAND = '.linestatus__text, .talert__text';
+
 const defaultTruncated = (el) =>
   el.scrollHeight - el.clientHeight > 1 || el.scrollWidth - el.clientWidth > 1;
 
@@ -117,7 +125,16 @@ export function initTextViewer(host, { truncated = defaultTruncated } = {}) {
     }
     // Everything else: expand only when the text is actually overflowing.
     const el = e.target.closest?.(EXPANDABLE);
-    if (!el || !truncated(el)) return;
+    if (!el) return;
+    // One tap, one destination. Both this listener and the expand engine's are
+    // delegated on the grid, so a tap on a truncated status row used to fire
+    // BOTH: the reader (z-index 46) opened on top of the card's status board
+    // (44), and the tap that dismissed the reader looked like it opened the
+    // board. Deferring here leaves exactly one handler in play. Cards with no
+    // expansion are untouched: the rail alert banners on LIRR/MNR/NJT, and a
+    // subway card small enough to hide nothing, still open the reader.
+    if (el.matches?.(DEFER_TO_EXPAND) && el.closest('.card.is-expandable')) return;
+    if (!truncated(el)) return;
     // First text node only: card titles may carry extra spans (e.g. "as of").
     const title = el.closest('.card')?.querySelector('.card__title')?.childNodes[0]?.textContent?.trim() ?? '';
     openTextViewer(title, el.textContent.trim());
