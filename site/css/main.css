@@ -326,6 +326,21 @@ html, body {
 .train__info { display: flex; flex-direction: column; min-width: 0; flex: 1; }
 .train__dest { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .train__line { font-size: 20px; color: var(--ink-dim); }
+/* LIRR / Metro-North line name as a filled signage chip in the MTA's official
+   line color (background and ink both come from lines.js, per line). 17px text
+   on an 18px line box + 2px padding = a 22px chip, which fits inside the meta
+   line's natural 24px box: audited rows measure 51px with and without the chip
+   at every supported size, so no card loses a row to it. vertical-align stays
+   at baseline on purpose — that lands the chip's own text baseline on the
+   "· 8:46 PM" baseline exactly (measured 0.00px off) and keeps doing so on the
+   board's taller CiscoSansTT metrics, which a px nudge would not. Deliberately
+   no height pin on .train__line: at 3 columns the meta line wraps, and pinning
+   the box there clips the departure time. */
+.train__linechip {
+  display: inline-block; padding: 2px 9px; border-radius: 6px;
+  font-size: 17px; font-weight: 600; line-height: 18px;
+  vertical-align: baseline; margin-right: 3px;
+}
 .train__track { background: var(--bg-card-2); border-radius: 8px; padding: 6px 10px; font-size: 20px; color: var(--accent); white-space: nowrap; }
 /* Amtrak status pill (right column): on-time neutral, delays warn, cancelled bad. */
 .train__status { align-self: center; font-size: 18px; color: var(--ink-dim); white-space: nowrap; }
@@ -1019,6 +1034,7 @@ body.mode-ambient .gear--edit { display: none; }
 .card--art.t-s.t-narrow .artwork__artist { display: none; }
 /* Transit rows tighten when narrow */
 .card.t-narrow .train__track { padding: 4px 8px; font-size: 17px; }
+.card.t-narrow .train__linechip { padding: 1px 7px; font-size: 15px; }
 
 
 /* ---------- transit service alerts ---------- */

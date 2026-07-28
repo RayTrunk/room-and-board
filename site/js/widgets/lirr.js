@@ -7,6 +7,7 @@
 
 import { decodeGtfsRt } from '../gtfs.js';
 import { escapeHtml, fmtTime, setCardNote, setupPrompt } from '../util.js';
+import { lineChipPrefix } from '../lines.js';
 import { WORKER_URL } from '../env.js';
 import { renderAlertRows } from '../transit-alerts.js';
 import { itemCapacity, cardSize } from '../capacity.js';
@@ -47,7 +48,7 @@ export function render(el, vm, cfg) {
             <div class="train__min"><span>${d.min}</span><small>min</small></div>
             <div class="train__info">
               <span class="train__dest">${escapeHtml(d.dest)}</span>
-              <span class="train__line">${tagged && d.origin ? `${escapeHtml(ORIGINS[d.origin]?.label ?? '')} · ` : ''}${escapeHtml(d.branch)} · ${fmtTime(d.t)}</span>
+              <span class="train__line">${tagged && d.origin ? `${escapeHtml(ORIGINS[d.origin]?.label ?? '')} · ` : ''}${lineChipPrefix(d.branch)}${fmtTime(d.t)}</span>
             </div>
             ${d.track ? `<span class="train__track">Track ${escapeHtml(d.track)}</span>` : ''}
           </div>`,

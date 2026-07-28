@@ -3,6 +3,10 @@
     "date": "July 27",
     "items": [
       {
+        "lead": "Trains",
+        "text": "LIRR and Metro-North departures now show each train’s line as a colored badge in the MTA’s official line colors, so the line is easy to tell apart from the destination."
+      },
+      {
         "lead": "Weather",
         "text": "Every hour now shows its chance of rain, marked with a small droplet. Tall weather cards draw a bigger temperature curve, and calm nights read calm."
       },

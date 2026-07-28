@@ -426,9 +426,46 @@ describe('widget renderers', () => {
     const both = el();
     lirr.render(both, vm, { ...CFG, lirr: { dest: '102', origin: 'both' } });
     expect(both.querySelector('.train__line').textContent).toContain('GCT · ');
+    // The terminal tag stays ahead of the line chip: "GCT · Hempstead · 8:46 PM".
+    expect(both.querySelector('.train__line').textContent).toMatch(/^GCT · Hempstead · \d{1,2}:\d{2}/);
     const single = el();
     lirr.render(single, vm, { ...CFG, lirr: { dest: '102', origin: 'gct' } });
     expect(single.querySelector('.train__line').textContent).not.toContain('GCT · ');
+  });
+
+  it('lirr/mnr render the line name as a chip in its official MTA color', () => {
+    for (const [mod, vm, name, bg] of [
+      [lirr, DEMO_VMS.lirr, 'Port Washington', '#C60C30'],
+      [mnr, DEMO_VMS.mnr, 'Harlem', '#0039A6'],
+    ]) {
+      const host = el();
+      mod.render(host, vm, CFG);
+      const chip = host.querySelector('.train__line .train__linechip');
+      expect(chip.textContent).toBe(name);
+      expect(chip.getAttribute('style')).toContain(bg);
+      // Chip first, then the time — the row reads "Harlem · 8:55 PM".
+      expect(host.querySelector('.train__line').textContent).toMatch(
+        new RegExp(`^${name} · \\d{1,2}:\\d{2}\\s?[AP]M$`),
+      );
+    }
+  });
+
+  it('lirr/mnr drop the chip and its separator when a branch has no name', () => {
+    for (const [mod, key] of [[lirr, 'lirr'], [mnr, 'mnr']]) {
+      const host = el();
+      const vm = { departures: [{ t: 1783000000, min: 5, dest: 'Mineola', branch: '', track: null }] };
+      mod.render(host, vm, { ...CFG, [key]: { dest: '102', origin: 'penn' } });
+      expect(host.querySelector('.train__linechip')).toBeNull();
+      // No stray leading "· " — an unnamed branch leaves just the time.
+      expect(host.querySelector('.train__line').textContent).toMatch(/^\d{1,2}:\d{2}\s?[AP]M$/);
+    }
+  });
+
+  it('an unmapped line keeps its plain name (no chip) so new branches still read', () => {
+    const host = el();
+    mnr.render(host, { departures: [{ t: 1783000000, min: 5, dest: 'New London', branch: 'Shore Line East', track: null }] }, CFG);
+    expect(host.querySelector('.train__linechip')).toBeNull();
+    expect(host.querySelector('.train__line').textContent).toMatch(/^Shore Line East · \d{1,2}:\d{2}/);
   });
 
   it('lirr/mnr title-note the destination filter, and clear it when unset', () => {

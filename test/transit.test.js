@@ -2,8 +2,9 @@ import { describe, it, expect, beforeAll } from 'vitest';
 import { readFile } from 'node:fs/promises';
 import { decodeGtfsRt } from '../site/js/gtfs.js';
 import { mapSubwayStatus, SUBWAY_LINES } from '../site/js/widgets/subway.js';
-import { mapLirr, trainNumFromTripId, ROUTE_NAMES, PENN_STOP_ID } from '../site/js/widgets/lirr.js';
+import { mapLirr, trainNumFromTripId, ROUTE_NAMES, TT_BRANCH_NAMES, PENN_STOP_ID } from '../site/js/widgets/lirr.js';
 import { mapMnr, GCT_STOP_ID, ROUTE_NAMES as MNR_ROUTES } from '../site/js/widgets/mnr.js';
+import { LINE_COLORS, lineChip, lineChipPrefix } from '../site/js/lines.js';
 import { mapPath, PATH_STATIONS } from '../site/js/widgets/path.js';
 import { mapFerry } from '../site/js/widgets/ferry.js';
 
@@ -338,5 +339,92 @@ describe('rail boards force a stops-at pick', () => {
     expect(await lirrFetch({ lirr: { dest: '', origin: 'penn' } }, noNet)).toEqual({ departures: [], needsStation: true });
     expect(await mnrFetch({ mnr: { dest: '' } }, noNet)).toEqual({ departures: [], needsStation: true });
     expect(await amtrakFetch({ amtrak: { dest: '' } }, noNet)).toEqual({ departures: [], needsStation: true });
+  });
+});
+
+describe('MTA line chips (lines.js)', () => {
+  // WCAG 2.x relative luminance + contrast, implemented here on purpose: the
+  // ink column in lines.js is a hand-picked table, so it deserves a check that
+  // doesn't share code with it.
+  const lin = (c) => { const s = c / 255; return s <= 0.04045 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4; };
+  const lum = (hex) => {
+    const h = hex.length === 4 ? [...hex.slice(1)].map((c) => c + c).join('') : hex.slice(1);
+    const n = parseInt(h, 16);
+    return 0.2126 * lin((n >> 16) & 255) + 0.7152 * lin((n >> 8) & 255) + 0.0722 * lin(n & 255);
+  };
+  const contrast = (a, b) => {
+    const [x, y] = [lum(a), lum(b)];
+    return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
+  };
+  // Chip text is 17px/600 — under WCAG's large-text threshold, so 4.5:1 applies.
+  // The New Haven red is the one deliberate exception: white on #EE0034
+  // measures 4.48, and it ships anyway because it IS the MTA's own signage
+  // pairing (the approved mockup shows it) and WCAG 2.x under-rates white on
+  // saturated red — black would score 4.69 and read worse. Pinned below so the
+  // shortfall can never grow, and so no other line can join the exception.
+  const AA_EXEMPT = new Set(['New Haven', 'New Canaan', 'Danbury', 'Waterbury']);
+
+  it('has a color for every line name the two widgets can produce', () => {
+    const names = [...Object.values(ROUTE_NAMES), ...Object.values(TT_BRANCH_NAMES), ...Object.values(MNR_ROUTES)];
+    expect(names.length).toBeGreaterThan(20); // guards against an empty spread
+    for (const name of names) expect(LINE_COLORS[name], `no chip color for ${name}`).toBeTruthy();
+  });
+
+  it('uses the official MTA hexes, with the New Haven branches on the trunk red', () => {
+    expect(LINE_COLORS.Babylon.bg).toBe('#00985F');
+    expect(LINE_COLORS['Port Washington'].bg).toBe('#C60C30');
+    expect(LINE_COLORS.Hudson.bg).toBe('#009B3A');
+    expect(LINE_COLORS.Harlem.bg).toBe('#0039A6');
+    expect(LINE_COLORS['New Haven'].bg).toBe('#EE0034');
+    for (const branch of ['New Canaan', 'Danbury', 'Waterbury']) {
+      expect(LINE_COLORS[branch].bg).toBe(LINE_COLORS['New Haven'].bg);
+    }
+  });
+
+  it('picks the chip ink that clears 4.5:1 and beats the alternative', () => {
+    for (const [name, c] of Object.entries(LINE_COLORS)) {
+      if (AA_EXEMPT.has(name)) continue;
+      const chosen = contrast(c.bg, c.ink);
+      expect(chosen, `${name}: ${c.ink} on ${c.bg}`).toBeGreaterThanOrEqual(4.5);
+      expect(chosen, `${name}: ${c.ink} is not the higher-contrast ink`)
+        .toBeGreaterThan(contrast(c.bg, c.ink === '#000' ? '#fff' : '#000'));
+    }
+  });
+
+  it('holds the New Haven red at its documented white-on-red shortfall', () => {
+    for (const name of AA_EXEMPT) {
+      expect(LINE_COLORS[name].ink).toBe('#fff');
+      const r = contrast(LINE_COLORS[name].bg, '#fff');
+      expect(r).toBeGreaterThan(4.4);
+      expect(r).toBeLessThan(4.5);
+    }
+  });
+
+  it('renders a known line as a filled chip in its own colors', () => {
+    const chip = lineChip('Babylon');
+    expect(chip).toContain('class="train__linechip"');
+    expect(chip).toContain('background:#00985F');
+    expect(chip).toContain('color:#000');
+    expect(chip).toContain('>Babylon</b>');
+  });
+
+  it('renders nothing at all for a missing branch name', () => {
+    for (const empty of ['', '   ', null, undefined]) {
+      expect(lineChip(empty)).toBe('');
+      expect(lineChipPrefix(empty)).toBe('');
+    }
+  });
+
+  it('falls back to plain escaped text for a line it does not know', () => {
+    expect(lineChip('Shore Line East')).toBe('Shore Line East');
+    expect(lineChip('Babylon & Co')).toBe('Babylon &#38; Co');
+    const hostile = lineChip('<img src=x onerror="alert(1)">');
+    expect(hostile).not.toContain('<img');
+    expect(hostile).not.toContain('"');
+  });
+
+  it('owns the separator, so a nameless branch never renders a stray " · "', () => {
+    expect(lineChipPrefix('Hudson')).toBe(`${lineChip('Hudson')} · `);
+    expect(lineChipPrefix('Shore Line East')).toBe('Shore Line East · ');
   });
 });
