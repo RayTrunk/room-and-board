@@ -36,6 +36,16 @@ a { color: var(--accent); text-decoration: none; }
 a:hover { color: #8ec7fb; }
 img { max-width: 100%; }
 
+/* One focus vocabulary for the whole page. The screenshot buttons had earned a
+   deliberate 3px accent ring while every other focusable fell back to Chrome's
+   1px default; the ring is the page's, so every focusable gets it. Radius is
+   inherited from whatever the element already has, so pills stay pills. */
+a:focus-visible,
+button:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
 .wrap { max-width: 1240px; margin: 0 auto; padding-left: var(--pad); padding-right: var(--pad); }
 
 /* ---------- sticky nav with scroll-spy ---------- */
@@ -146,7 +156,11 @@ img { max-width: 100%; }
 .card__p { font-size: 16px; line-height: 1.5; color: var(--ink-mid); margin: 0; }
 .card__note { font-size: 15px; color: var(--ink-dim); margin-top: auto; padding-top: 14px; }
 .duo { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: var(--gap); }
-.duo--weather { grid-template-columns: 1.4fr 1fr; }
+/* Air & Sky holds two lines beside a Weather card with a 40px glance figure in
+   it. Stretched to its sibling it was three-quarters air, which read as a card
+   waiting for content that never arrives. `start` lets each card end where its
+   copy ends. */
+.duo--weather { grid-template-columns: 1.4fr 1fr; align-items: start; }
 
 /* the two round board buttons, rendered calm like they are on the device */
 .fab {
@@ -209,11 +223,18 @@ img { max-width: 100%; }
 }
 
 /* ---------- screensaver asides ---------- */
-.aside { font-size: 15.5px; color: var(--ink-dim); margin: 0 0 40px; }
+.aside { font-size: 15.5px; color: var(--ink-dim); margin: 0 0 40px; max-width: var(--measure); }
 .subhead { display: flex; align-items: baseline; gap: 14px; padding-top: 22px; border-top: 1px solid var(--bg-card-2); margin-bottom: 20px; flex-wrap: wrap; }
 .subhead__title { font-size: 20px; font-weight: 600; margin: 0; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-dim); }
 .subhead__note { font-size: 15px; color: var(--ink-dim); }
-.notes { display: flex; flex-direction: column; gap: 10px; margin-top: var(--gap); background: var(--bg-card-2); border-radius: 12px; padding: 16px 18px; }
+/* Two short notes stacked left in a full-width tinted well left the right half
+   of the well empty. Capping the prose is right; stacking it was not. They sit
+   side by side and each column lands inside the measure on its own. */
+.notes {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 34ch), 1fr));
+  gap: 10px 28px; margin-top: var(--gap);
+  background: var(--bg-card-2); border-radius: 12px; padding: 16px 18px;
+}
 .notes__p { font-size: 15px; line-height: 1.45; color: var(--ink-dim); margin: 0; max-width: var(--measure); }
 
 /* ---------- what's new (built by info.js) ----------
@@ -224,10 +245,40 @@ img { max-width: 100%; }
 .log { display: flex; flex-direction: column; }
 .log__group { display: flex; flex-wrap: wrap; gap: 4px 20px; padding: 15px 2px; border-top: 1px solid var(--bg-card-2); }
 .log__date { font-size: 16px; font-weight: 600; color: var(--ink-dim); margin: 0; flex: 0 0 150px; }
-.log__items { display: flex; flex-direction: column; gap: 10px; flex: 1 1 260px; min-width: 0; }
-.log__items { max-width: var(--measure); }
-.log__item { font-size: 16px; line-height: 1.5; color: var(--ink-mid); margin: 0; text-wrap: pretty; }
+/* The items flow into as many measure-sized columns as the row can hold rather
+   than running a single 68ch strip down the left of a 1,184px row: the prose
+   stays inside its measure (each column is ~45-60ch) and the layout stops
+   looking half-abandoned. One column is what a narrow row gets. */
+.log__items {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 44ch), 1fr));
+  align-content: start; gap: 10px 28px; flex: 1 1 260px; min-width: 0;
+}
+.log__item { font-size: 16px; line-height: 1.5; color: var(--ink-mid); margin: 0; text-wrap: pretty; max-width: var(--measure); }
 .log__lead { font-weight: 600; color: var(--ink); margin-right: 0.4em; }
+/* The disclosure for older groups. Calm at rest — it reads as one more quiet
+   row in the list, not a button competing with the copy — and only ignites on
+   press. 20px line + 12px top and bottom = a 44px target. */
+.log__toggle {
+  font: inherit; font-size: 15px; line-height: 20px; text-align: left;
+  padding: 12px 2px; margin: 0; width: 100%;
+  background: none; border: 0; border-top: 1px solid var(--bg-card-2);
+  color: var(--ink-dim); cursor: pointer;
+  transition: color 150ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.log__toggle:hover { color: var(--ink); }
+.log__toggle:active { color: var(--accent); }
+/* A control has to look like one before it is touched, so the caret carries the
+   affordance the calm colour deliberately does not. It points down while there
+   is more below, and up once there is not. */
+.log__toggle::after {
+  content: ""; display: inline-block; width: 0.5em; height: 0.5em;
+  margin-left: 0.6em; vertical-align: 0.18em;
+  border-right: 2px solid currentColor; border-bottom: 2px solid currentColor;
+  transform: translateY(-0.15em) rotate(45deg);
+  transition: transform 200ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.log__toggle[aria-expanded="true"]::after { transform: translateY(0.1em) rotate(-135deg); }
+.log__more { display: flex; flex-direction: column; }
 /* Shown when the notes cannot be fetched, and by <noscript> when there is no
    script at all. Quiet on purpose: it is an absence, not an error. */
 .log__empty { font-size: 16px; line-height: 1.5; color: var(--ink-dim); margin: 0; padding: 15px 2px; border-top: 1px solid var(--bg-card-2); max-width: var(--measure); }
@@ -275,6 +326,39 @@ img { max-width: 100%; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .nav__link { transition: none; }
+  .nav__link, .log__toggle, .log__toggle::after { transition: none; }
   html { scroll-behavior: auto; }
+}
+
+/* ---------- print ----------
+   A document that calls itself a guide has to survive being printed. Same page,
+   ink on paper: the screen chrome (sticky nav, overlay, the disclosure the
+   reader cannot press) goes away, the palette flips, and nothing that reads as
+   one unit is allowed to break across a sheet. */
+@media print {
+  :root {
+    --bg: #fff; --bg-card: #fff; --bg-card-2: #d8d8d8;
+    --ink: #000; --ink-mid: #1a1a1a; --ink-dim: #3a3a3a; --ink-faint: #555;
+    --accent: #00429d;
+  }
+  body { background: #fff; color: #000; }
+  .nav, .lightbox, .log__toggle { display: none !important; }
+  /* Paper has no "show more": print the history the toggle was hiding. */
+  .log__more[hidden] { display: flex !important; }
+  .wrap { max-width: none; padding-left: 0; padding-right: 0; }
+  a { color: #000; text-decoration: underline; }
+  /* The lockup is white-on-transparent and would print as nothing at all.
+     Inverting alone turns the brand blue orange, so the hue-rotate puts the hue
+     back where it started and only the lightness flips. */
+  .hero__lockup { filter: invert(1) hue-rotate(180deg); }
+  .hero { padding-top: 0; display: block; }
+  .hero__shot { margin-top: 24px; }
+  .section { padding-top: 28px; }
+  .card, .tile, .notes, .fab { border: 1px solid #c8c8c8; }
+  .card, .tile, .notes { background: #fff; }
+  .shot, .hero__shot, .card, .tile, .notes, .row, .log__group, .subhead { break-inside: avoid; }
+  .h2, .subhead__title, .head { break-after: avoid; }
+  .footer { margin-top: 36px; padding-bottom: 0; }
+  .footer__stamp { color: var(--ink-dim); opacity: 1; }
+  .glance__cond { color: #7a5c00; }
 }

@@ -26,6 +26,7 @@ function syncFade() {
 
 let raf = 0;
 let current = '';
+let wasTop = null;
 function syncNav() {
   if (raf) return;
   raf = requestAnimationFrame(() => {
@@ -35,13 +36,25 @@ function syncNav() {
     for (const s of sections) {
       if (s.getBoundingClientRect().top <= NAV_OFFSET) active = s.dataset.navSection;
     }
+    // Above the first section (i.e. in the hero) nothing has crossed the offset
+    // yet. Leaving `active` empty used to light nothing AND skip the
+    // scrollIntoView below, so a reader who scrolled down and came back found a
+    // dark rail still parked wherever they left it. Treat the top as the first
+    // destination instead, and send the rail home so the brand is back too.
+    const atTop = !active;
+    if (atTop) active = sections[0]?.dataset.navSection ?? '';
+    if (atTop !== wasTop) {
+      wasTop = atTop;
+      if (atTop && navInner) { navInner.scrollLeft = 0; syncFade(); }
+    }
     if (active === current) return;
     links.get(current)?.classList.remove('is-active');
     links.get(active)?.classList.add('is-active');
     current = active;
-    // Keep the current section's pill in view: on a phone the active pill is
-    // usually one the reader has already scrolled past horizontally.
-    links.get(active)?.scrollIntoView({ inline: 'nearest', block: 'nearest' });
+    // Keep the current section's pill in view, going up as well as down: on a
+    // phone the active pill is usually one the reader has already scrolled past
+    // horizontally, in whichever direction they were travelling.
+    if (!atTop) links.get(active)?.scrollIntoView({ inline: 'nearest', block: 'nearest' });
   });
 }
 if (sections.length) {
@@ -134,8 +147,16 @@ document.addEventListener('keydown', (e) => {
 // edit, not markup surgery. Rendered rather than shipped as HTML for the same
 // reason. Every value goes in through textContent: the copy is trusted, but a
 // public page should never grow an innerHTML path.
+
+// How many dated groups stand open. Three covers roughly the last week, which
+// is what "what's new" actually means to a reader; the rest is history and
+// waits behind one quiet control rather than adding ~1,000px to the end of the
+// page. Nothing is dropped: the older groups are built and sit in the DOM,
+// hidden, so revealing them is instant and never re-fetches.
+const OPEN_GROUPS = 3;
+
 function renderLog(root, groups) {
-  const frag = document.createDocumentFragment();
+  const built = [];
   for (const g of groups) {
     if (!g || !g.date || !Array.isArray(g.items)) continue;
     const items = document.createElement('div');
@@ -161,9 +182,40 @@ function renderLog(root, groups) {
     group.className = 'log__group';
     group.appendChild(date);
     group.appendChild(items);
-    frag.appendChild(group);
+    built.push(group);
   }
-  if (!frag.childNodes.length) return;
+  if (!built.length) return;
+
+  const frag = document.createDocumentFragment();
+  for (const group of built.slice(0, OPEN_GROUPS)) frag.appendChild(group);
+
+  if (built.length > OPEN_GROUPS) {
+    const more = document.createElement('div');
+    more.className = 'log__more';
+    more.id = 'log-earlier';
+    more.hidden = true;
+    for (const group of built.slice(OPEN_GROUPS)) more.appendChild(group);
+
+    // A disclosure, not a link: it stays put and stays reversible, so focus is
+    // never dropped on the floor and a reader who opened history can close it.
+    const toggle = document.createElement('button');
+    toggle.type = 'button';
+    toggle.className = 'log__toggle';
+    toggle.setAttribute('aria-expanded', 'false');
+    toggle.setAttribute('aria-controls', more.id);
+    toggle.textContent = 'Show earlier updates';
+    toggle.addEventListener('click', () => {
+      const opening = more.hidden;
+      more.hidden = !opening;
+      toggle.setAttribute('aria-expanded', String(opening));
+      toggle.textContent = opening ? 'Hide earlier updates' : 'Show earlier updates';
+      syncNav(); // the page just changed height under the spy
+    });
+
+    frag.appendChild(toggle);
+    frag.appendChild(more);
+  }
+
   root.appendChild(frag);
   syncNav(); // the page just got taller: re-evaluate which section is current
 }
