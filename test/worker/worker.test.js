@@ -932,6 +932,115 @@ import googleFx from './fixtures/svc-google.json';
 import webexFx from './fixtures/svc-webex.json';
 import awsFx from './fixtures/svc-aws.json';
 import { decodeBomJson } from '../../worker/src/svcstatus.js';
+import { htmlToText } from '../../worker/src/htmltext.js';
+
+describe('htmlToText (feed markup -> readable text)', () => {
+  it('turns <p> into paragraph breaks and <br> into line breaks', () => {
+    expect(htmlToText('<p>first</p><p>second</p>')).toBe('first\n\nsecond');
+    expect(htmlToText('one<br>two<br/>three')).toBe('one\ntwo\nthree');
+  });
+  it('strips nested and unknown tags, keeping the words', () => {
+    expect(htmlToText('<div><span class="x">A <b>bold</b> <em>word</em></span></div>')).toBe('A bold word');
+    expect(htmlToText('<madeup data-x="1">text</madeup>')).toBe('text');
+    expect(htmlToText('<ul><li>one</li><li>two</li></ul>')).toBe('one\ntwo');
+    expect(htmlToText('<script>alert(1)</script>after')).toBe('after');
+  });
+  it('decodes entities (named, decimal, hex) and leaves unknown refs alone', () => {
+    expect(htmlToText('Tom &amp; Jerry &mdash; &quot;quoted&quot; &#39;apos&#39; &#x27;hex&#x27;'))
+      .toBe('Tom & Jerry — "quoted" \'apos\' \'hex\'');
+    // A named ref needs its semicolon, so a bare ampersand in prose survives.
+    expect(htmlToText('AT&T and R&D')).toBe('AT&T and R&D');
+    // Feeds that entity-ENCODE their markup are only strippable after a decode.
+    expect(htmlToText('&lt;p&gt;encoded markup&lt;/p&gt;')).toBe('encoded markup');
+  });
+  it('collapses whitespace and trims, but leaves plain text alone', () => {
+    expect(htmlToText('All systems operational')).toBe('All systems operational');
+    expect(htmlToText('**Gmail delays**\nmore detail')).toBe('**Gmail delays**\nmore detail');
+    expect(htmlToText('  <p>  padded   text  </p>  ')).toBe('padded text');
+    expect(htmlToText('<p>a</p><p></p><p></p><p>b</p>')).toBe('a\n\nb');
+    expect(htmlToText(null)).toBe('');
+  });
+  it('leaves arithmetic prose intact (a bare < is not a tag)', () => {
+    expect(htmlToText('latency a < b and c > d')).toBe('latency a < b and c > d');
+  });
+});
+
+// The bug from the board: Slack publishes incident notes as HTML, the widget
+// escapes at render, so the tags printed literally in the full-screen reader.
+describe('service status adapters: HTML-bodied feeds render as text', () => {
+  it('slack: the live "receipt of emails" incident round-trips to clean text', () => {
+    const out = mapSlack({
+      status: 'active',
+      active_incidents: [{
+        id: 1533,
+        date_created: '2026-07-27T22:13:00-07:00',
+        title: 'Feature Degradation Affecting the Receipt of Emails in Slack',
+        type: 'incident',
+        notes: [{
+          body: '<p>We&#39;re currently investigating an issue affecting the receipt of emails in Slack. '
+            + 'Some messages sent to a Slack email address may not arrive.</p>'
+            + '<p>We&#39;ll share an update as soon as we know more. Thanks for your patience!</p>',
+        }],
+      }],
+    });
+    expect(out.state).toBe('minor');
+    expect(out.incidents[0].title).toBe('Feature Degradation Affecting the Receipt of Emails in Slack');
+    expect(out.incidents[0].update).toBe(
+      "We're currently investigating an issue affecting the receipt of emails in Slack. "
+      + 'Some messages sent to a Slack email address may not arrive.\n\n'
+      + "We'll share an update as soon as we know more. Thanks for your patience!",
+    );
+    // Nothing tag-shaped or entity-shaped survives into the vm.
+    expect(out.incidents[0].update).not.toMatch(/[<>]|&#|&amp;/);
+    expect(out.note).not.toMatch(/[<>]/);
+  });
+  it('statuspage: HTML title, note and body all arrive as text', () => {
+    const out = mapStatuspage({
+      status: { indicator: 'minor', description: 'Partially Degraded Service &mdash; API' },
+      incidents: [{
+        name: 'Elevated <b>error rates</b> on the API',
+        started_at: '2026-07-27T10:00:00Z',
+        incident_updates: [{ body: '<p>We&#39;re investigating.</p><p>Next update in 30 minutes.</p>' }],
+      }],
+    });
+    expect(out.note).toBe('Partially Degraded Service — API');
+    expect(out.incidents[0].title).toBe('Elevated error rates on the API');
+    expect(out.incidents[0].update).toBe("We're investigating.\n\nNext update in 30 minutes.");
+  });
+  it('microsoft / webex / aws: names, messages and summaries are sanitized too', () => {
+    const ms = mapMicrosoft({ Services: [{ Name: 'Exchange <i>Online</i>', IsUp: false, Message: '<p>Mailbox access is degraded.</p><p>Mitigation in progress.</p>' }] });
+    expect(ms.note).toBe('Exchange Online is down');
+    expect(ms.incidents[0].title).toBe('Exchange Online');
+    expect(ms.incidents[0].update).toBe('Mailbox access is degraded.\n\nMitigation in progress.');
+
+    const wx = mapWebex({ unResolvedIncidents: [{ incidentName: 'Meetings <b>join</b> failures', impact: 'major', createTime: 'x' }] });
+    expect(wx.note).toBe('Meetings join failures');
+    expect(wx.incidents[0].title).toBe('Meetings join failures');
+
+    const nowMs = Date.now();
+    const aws = mapAws([{
+      date: String(Math.floor(nowMs / 1000)), region_name: 'US East (N. Virginia)', service_name: 'Amazon EC2',
+      summary: '<span class="yellowfont">Increased Error Rates</span>',
+      event_log: [{ message: 'We are investigating increased error rates.<br>Updates to follow.' }],
+    }], nowMs);
+    expect(aws.note).toBe('Amazon EC2: Increased Error Rates');
+    expect(aws.incidents[0].title).toBe('Amazon EC2 (US East (N. Virginia)): Increased Error Rates');
+    expect(aws.incidents[0].update).toBe('We are investigating increased error rates.\nUpdates to follow.');
+  });
+  it('google: an HTML-wrapped update still yields a clean first line', () => {
+    const out = mapGoogle([{ begin: '2026-07-27T00:00:00Z', external_desc: '<p>**Gmail delays**</p><p>We are investigating.</p>' }], Date.now());
+    expect(out.note).toBe('Gmail delays');
+    // Google's own markdown emphasis is left as it always was (firstLine drops
+    // it for the one-line note); only the HTML wrapper is removed here.
+    expect(out.incidents[0].update).toBe('**Gmail delays**\n\nWe are investigating.');
+  });
+  it('sanitizes before the 500-char clamp, so the budget buys real words', () => {
+    const body = `<p>${'x'.repeat(400)}</p><p>${'y'.repeat(400)}</p>`;
+    const out = mapStatuspage({ status: { indicator: 'minor' }, incidents: [{ name: 'n', incident_updates: [{ body }] }] });
+    expect(out.incidents[0].update).toHaveLength(500);
+    expect(out.incidents[0].update.startsWith('x'.repeat(400))).toBe(true);
+  });
+});
 
 describe('service status adapters', () => {
   it('statuspage: ok and degraded (live Cloudflare sample)', () => {

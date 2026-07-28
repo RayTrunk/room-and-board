@@ -8,8 +8,17 @@
 // the recorded fixtures in test/worker/fixtures/svc-*.json.
 // See spec docs/superpowers/specs/2026-07-11-service-status-widget-design.md.
 
-const clamp = (s) => String(s ?? '').slice(0, 500);
-const firstLine = (s) => String(s ?? '').replace(/\*/g, '').split('\n')[0].slice(0, 140);
+import { htmlToText } from './htmltext.js';
+
+// Every string that reaches the widget goes through htmlToText first: several
+// of these feeds (Slack notes, Microsoft messages, AWS event logs, some
+// Statuspage bodies) publish incident prose as HTML, and the board escapes at
+// render time — so an unsanitized tag prints literally on the wall.
+// text() for one-liners, clamp() for incident bodies, firstLine() for Google's
+// markdown-ish blob. Sanitize BEFORE truncating, so the budget buys real words.
+const text = (s) => htmlToText(s);
+const clamp = (s) => htmlToText(s).slice(0, 500);
+const firstLine = (s) => htmlToText(s).replace(/\*/g, '').split('\n')[0].slice(0, 140);
 
 export function mapStatuspage(json) {
   const ind = json?.status?.indicator;
@@ -17,9 +26,9 @@ export function mapStatuspage(json) {
     : ind === 'major' || ind === 'critical' ? 'major' : 'unknown';
   return {
     state,
-    note: String(json?.status?.description ?? ''),
+    note: text(json?.status?.description),
     incidents: (json?.incidents ?? []).slice(0, 3).map((i) => ({
-      title: String(i.name ?? ''),
+      title: text(i.name),
       since: String(i.started_at ?? i.created_at ?? ''),
       update: clamp(i.incident_updates?.[0]?.body),
     })),
@@ -31,9 +40,9 @@ export function mapSlack(json) {
   if (!active.length) return { state: json?.status === 'ok' ? 'ok' : 'unknown', note: 'All systems operational', incidents: [] };
   return {
     state: active.some((i) => i.type === 'outage') ? 'major' : 'minor',
-    note: String(active[0].title ?? 'Active incident'),
+    note: text(active[0].title ?? 'Active incident'),
     incidents: active.slice(0, 3).map((i) => ({
-      title: String(i.title ?? ''), since: String(i.date_created ?? ''), update: clamp(i.notes?.[0]?.body),
+      title: text(i.title), since: String(i.date_created ?? ''), update: clamp(i.notes?.[0]?.body),
     })),
   };
 }
@@ -42,11 +51,11 @@ export function mapMicrosoft(json) {
   const svcs = json?.Services ?? [];
   if (!svcs.length) return { state: 'unknown', note: '', incidents: [] };
   const down = svcs.filter((s) => s.IsUp === false);
-  if (!down.length) return { state: 'ok', note: String(json?.Title ?? 'All systems operational'), incidents: [] };
+  if (!down.length) return { state: 'ok', note: text(json?.Title ?? 'All systems operational'), incidents: [] };
   return {
     state: 'major',
-    note: `${down[0].Name} is down`,
-    incidents: down.slice(0, 3).map((s) => ({ title: String(s.Name ?? ''), since: '', update: clamp(s.Message) })),
+    note: `${text(down[0].Name)} is down`,
+    incidents: down.slice(0, 3).map((s) => ({ title: text(s.Name), since: '', update: clamp(s.Message) })),
   };
 }
 
@@ -72,9 +81,9 @@ export function mapWebex(json) {
   if (!open.length) return { state: 'ok', note: 'All systems operational', incidents: [] };
   return {
     state: open.some((i) => /major|critical|outage/i.test(String(i.impact ?? ''))) ? 'major' : 'minor',
-    note: String(open[0].incidentName ?? 'Active incident'),
+    note: text(open[0].incidentName ?? 'Active incident'),
     incidents: open.slice(0, 3).map((i) => ({
-      title: String(i.incidentName ?? ''), since: String(i.createTime ?? ''), update: clamp(i.impact),
+      title: text(i.incidentName), since: String(i.createTime ?? ''), update: clamp(i.impact),
     })),
   };
 }
@@ -87,9 +96,9 @@ export function mapAws(json, nowMs) {
   if (!events.length) return { state: 'ok', note: 'All systems operational', incidents: [] };
   return {
     state: 'minor',
-    note: `${events[0].service_name}: ${events[0].summary}`,
+    note: `${text(events[0].service_name)}: ${text(events[0].summary)}`,
     incidents: events.slice(0, 3).map((e) => ({
-      title: `${e.service_name} (${e.region_name}): ${e.summary}`,
+      title: `${text(e.service_name)} (${text(e.region_name)}): ${text(e.summary)}`,
       since: new Date(Number(e.date) * 1000).toISOString(),
       update: clamp(e.event_log?.[e.event_log.length - 1]?.message),
     })),
