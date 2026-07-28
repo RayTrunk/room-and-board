@@ -1429,8 +1429,8 @@ function renderBsky() {
 /* ---------- weather / display ---------- */
 
 // Shared 12/24-hour toggle. One board-wide setting (cfg.clock24) surfaced in
-// both the Display and World Clock panes; governs the topbar Clock + World
-// Clock widget only (transit departures keep fmtTime's 12h).
+// both the Display and World Clock panes; governs the topbar Clock, the World
+// Clock widget and Weather's hour labels (transit departures keep fmtTime's 12h).
 function clockFormatMarkup() {
   return `
     <p class="pane__label">Time format</p>

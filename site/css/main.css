@@ -1087,8 +1087,128 @@ body.mode-ambient .gear--edit { display: none; }
    (the same reasoning as the markets tile's max-height + align-self). */
 .wall__alerts--split .sbalert { align-self: center; }
 
-/* The expandable card is the tap target; the +N badge is its signifier. Calm at
-   rest, a brief press tint on touch — the same affordance the headlines use. */
+/* Weather: the full meteo board. The other two overlays UNCAP a list; this one
+   has no hidden rows to reveal, so it re-reads the same payload at a richness the
+   card has no room for — current conditions dominant on the left with today's
+   fixed facts under them, a 24-hour graph and the 7-day cards on the right, and
+   one quiet stats band along the bottom for the live readings.
+   The accent rides the CURRENT condition, exactly as the card's does (the body
+   markup carries its own data-cond so the shared .expand shell stays generic). */
+.wxf[data-cond]              { --wx-accent: var(--accent); }
+.wxf[data-cond="clear"]      { --wx-accent: #e3b341; }
+.wxf[data-cond="partly"]     { --wx-accent: #9db2c9; }
+.wxf[data-cond="cloudy"],
+.wxf[data-cond="fog"]        { --wx-accent: #8a97ab; }
+.wxf[data-cond="rain"],
+.wxf[data-cond="drizzle"]    { --wx-accent: var(--accent); }
+.wxf[data-cond="snow"],
+.wxf[data-cond="sleet"]      { --wx-accent: #7fc8e6; }
+.wxf[data-cond="thunder"]    { --wx-accent: var(--warn); }
+
+.wxf { height: 100%; display: flex; flex-direction: column; }
+.wxf__rule { height: 1px; background: rgba(255, 255, 255, 0.10); flex: none; }
+/* The NWS banner is US-only (gated by inUS) and structurally optional: the
+   layout flexes around it and nothing below depends on it. Same markup the card
+   already uses for the same alert. */
+.wxf .alert {
+  flex: none; align-self: flex-start; gap: 14px; border-radius: 14px;
+  padding: 13px 24px; margin-bottom: 24px; font-size: 26px;
+}
+.wxf .alert .icon { width: 30px; height: 30px; flex: none; }
+/* The board's Cisco face ships as a separate FAMILY per weight, so light type has
+   to name the family — a bare font-weight falls back to the regular face and the
+   big reading loses its air (the clock faces pair them the same way). */
+.wxf__temp { font-family: 'CiscoSansTT ExtraLight', 'CiscoSansTT', 'Cisco SansTT', sans-serif; }
+.wxf__kv b,
+.wxf__row--temp > span,
+.wxf__dayhi,
+.wxf__stat b { font-family: 'CiscoSansTT Light', 'CiscoSansTT', 'Cisco SansTT', sans-serif; }
+.wxf__cond { font-family: 'CiscoSansTT Medium', 'CiscoSansTT', 'Cisco SansTT', sans-serif; }
+
+.wxf__split { flex: 1; min-height: 0; display: grid; grid-template-columns: 540px 1fr; gap: 48px; }
+/* Left pane: the reading, then the condition, then today's fixed facts pinned to
+   the foot. Splitting the fixed facts (rail) from the live ones (bottom band) is
+   what stops the rail bottoming out into dead canvas. */
+.wxf__nowpane { display: flex; flex-direction: column; justify-content: space-between; gap: 24px; min-width: 0; padding-top: 8px; }
+.wxf__nowtop { display: flex; align-items: center; gap: 24px; }
+.wxf__glyph { width: 88px; height: 88px; flex: none; }
+.wxf__temp {
+  font-weight: 200; font-size: 150px; line-height: 0.86; letter-spacing: -0.015em;
+  font-variant-numeric: tabular-nums;
+}
+.wxf__herometa { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.wxf__cond { font-size: 38px; font-weight: 500; color: var(--ink-mid); text-wrap: balance; }
+.wxf__feels { font-size: 27px; color: var(--ink-dim); }
+.wxf__todayrail { display: flex; flex-direction: column; gap: 14px; }
+.wxf__todayrail .wxf__rule { margin: 6px 0 10px; }
+.wxf__kv { display: flex; align-items: baseline; justify-content: space-between; gap: 24px; }
+.wxf__kv span { font-size: 26px; color: var(--ink-dim); }
+.wxf__kv b { font-size: 34px; font-weight: 300; color: var(--ink); font-variant-numeric: tabular-nums; }
+
+.wxf__colright { display: flex; flex-direction: column; min-height: 0; gap: 24px; }
+.wxf__chart { flex: 1 1 46%; min-height: 0; display: flex; flex-direction: column; }
+/* Every hour holds a column so the printed readings, the curve and the bars stay
+   in register; only every other column prints (see LABEL_EVERY), which buys the
+   type its breathing room without costing the graph any resolution. */
+.wxf__row { display: flex; flex: none; }
+/* nowrap, and a printed reading may overhang its 50px column by a few px: its
+   neighbours are the unprinted columns, so the overhang lands on empty canvas
+   rather than on another number. Wrapping instead would cost the curve a line's
+   worth of height and break the one-reading-per-column rhythm. */
+.wxf__row > span { flex: 1; min-width: 0; text-align: center; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.wxf__row--temp > span { font-size: 30px; font-weight: 300; color: var(--ink); }
+.wxf__row--pp { margin-top: 4px; }
+.wxf__row--pp > span { font-size: 22px; color: var(--ink-dim); }
+.wxf__row--pp > span.is-wet { color: #7fc8e6; }
+.wxf__row--hours { margin-top: 12px; }
+.wxf__row--hours > span { font-size: 22px; color: var(--ink-dim); }
+/* Two layers the card has no room for, behind the same curve it draws: the night
+   shaded from the vm's own sunrise/sunset, and the hourly chance of rain as a bar
+   band at the foot. Rects and lines only — gen1 Qt WebEngine has no clipPath. */
+.wxf-canvas { width: 100%; flex: 1 1 auto; min-height: 0; display: block; }
+.wxf-canvas__night { fill: rgba(255, 255, 255, 0.045); }
+.wxf-canvas__pp { fill: rgba(127, 200, 230, 0.22); }
+.wxf-canvas__pp.is-wet { fill: rgba(127, 200, 230, 0.5); }
+.wxf-canvas__line {
+  fill: none; stroke: var(--wx-accent); stroke-width: 4px;
+  stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke;
+}
+.wxf-canvas__g0 { stop-color: var(--wx-accent); stop-opacity: 0.30; }
+.wxf-canvas__g1 { stop-color: var(--wx-accent); stop-opacity: 0; }
+.wxf-canvas__sun { stroke: rgba(255, 255, 255, 0.20); stroke-width: 1px; vector-effect: non-scaling-stroke; }
+
+/* The forecast strip is the card's own .wx-day chip, scaled up and carrying the
+   day's rain chance — the one field the card's chip has no room for. */
+.wxf__days { display: flex; gap: 14px; flex: none; }
+.wxf__day {
+  flex: 1; min-width: 0; background: rgba(255, 255, 255, 0.07); border-radius: 16px;
+  padding: 15px 6px; display: flex; flex-direction: column; align-items: center; gap: 7px;
+}
+.wxf__day--today { background: rgba(255, 255, 255, 0.12); }
+.wxf__dayname { font-size: 24px; color: var(--ink-dim); }
+.wxf__dayico { width: 46px; height: 46px; }
+.wxf__dayhi { font-size: 40px; font-weight: 300; font-variant-numeric: tabular-nums; }
+.wxf__daylo { font-size: 24px; color: var(--ink-dim); font-variant-numeric: tabular-nums; }
+.wxf__daypp { font-size: 22px; color: var(--ink-dim); white-space: nowrap; }
+.wxf__daypp.is-wet { color: #7fc8e6; }
+
+/* Live readings, quiet: value first, label under it (at 6 ft the eye lands on the
+   number and the label only has to confirm it). */
+.wxf__stats {
+  flex: none; display: flex;
+  border-top: 1px solid rgba(255, 255, 255, 0.10); padding-top: 22px; margin-top: 24px;
+}
+.wxf__stat { flex: 1; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 5px; padding: 0 32px; }
+.wxf__stat + .wxf__stat { border-left: 1px solid rgba(255, 255, 255, 0.10); }
+.wxf__stat:first-child { padding-left: 0; }
+.wxf__stat:last-child { padding-right: 0; }
+.wxf__stat b { font-size: 34px; font-weight: 300; color: var(--ink); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.wxf__stat span { font-size: 20px; color: var(--ink-dim); letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap; }
+
+/* The expandable card is the tap target. For a capped list the +N badge is its
+   signifier; weather has nothing to count, so the press tint is the whole
+   signifier — calm at rest, a brief tint on touch, the same affordance the
+   headlines use. */
 .card.is-expandable { cursor: pointer; }
 .card.is-expandable:active { background: var(--bg-card-2); }
 

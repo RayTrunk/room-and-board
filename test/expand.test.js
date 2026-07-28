@@ -22,6 +22,8 @@ import {
   wellHeight,
   ALERT_STEPS,
 } from '../site/js/widgets/subway.js';
+import { render as renderWeather } from '../site/js/widgets/weather.js';
+import { DEMO_VMS } from '../site/demo/fixtures.js';
 
 const NAMES = {
   '^DJI': 'Dow Jones',
@@ -640,5 +642,102 @@ describe('subway adaptive columns', () => {
     expect(wellHeight([], roomy)).toBe(120); // no header at all still frames the bullet
     // The same text costs less on a lower rung, which is the point of the ladder.
     expect(wellHeight([LONG, SECOND], ALERT_STEPS[4])).toBeLessThan(wellHeight([LONG, SECOND], roomy));
+  });
+});
+
+// --------------------------------------------------------------- weather ----
+
+// Weather is the OTHER class of expansion: nothing on its card is capped away,
+// so there is no "+N" badge and no hidden-row condition — the tap always has
+// something richer to open, and the press tint is the whole signifier.
+function weatherBoard(vm, cfg = { loc: { label: 'New York 10001', units: 'F' } }, [w, h] = [3, 5]) {
+  document.body.innerHTML = `
+    <div id="grid">
+      <article class="card card--weather t-l t-narrow" data-widget="weather" data-w="${w}" data-h="${h}">
+        <h2 class="card__title">Weather</h2>
+        <span class="card__note"></span>
+        <div class="card__body"></div>
+        <div class="card__stamp" hidden></div>
+      </article>
+    </div>
+    <div id="settings-root"></div>
+    <div id="edit-root"></div>`;
+  const grid = document.querySelector('#grid');
+  initExpand(grid);
+  const card = grid.querySelector('.card');
+  renderWeather(card.querySelector('.card__body'), vm, cfg);
+  return { grid, card };
+}
+
+describe('weather card tap', () => {
+  it('always expands, with no badge to signify it', () => {
+    const { card } = weatherBoard(DEMO_VMS.weather);
+    expect(card.querySelector('.card__more')).toBeNull(); // nothing is hidden to count
+    expect(card.classList.contains('is-expandable')).toBe(true);
+
+    card.click();
+    expect(isExpandOpen()).toBe(true);
+    expect(overlay().querySelector('.expand__title').textContent).toBe('Weather');
+    expect(overlay().querySelector('.expand__note').textContent).toBe('New York 10001');
+    // 24 hourly columns and 7 day cards, from the same payload the card drew 8
+    // hours and 5 days out of.
+    expect(overlay().querySelectorAll('.wxf__row--hours > span').length).toBe(24);
+    expect(overlay().querySelectorAll('.wxf__day').length).toBe(7);
+    expect(overlay().querySelectorAll('.wxf__stat').length).toBe(6);
+    expect(overlay().textContent).toContain('Sunrise');
+    expect(overlay().textContent).toContain('Tap anywhere to close');
+  });
+
+  it('never registers a source for a vm it cannot render', () => {
+    const { card } = weatherBoard(DEMO_VMS.weather);
+    expect(card.classList.contains('is-expandable')).toBe(true);
+    // An error/empty vm throws partway through render (main.js catches and logs
+    // it); the card must not be left expandable on the PREVIOUS render's data.
+    expect(() => renderWeather(card.querySelector('.card__body'), {}, { loc: {} })).toThrow();
+    expect(card.classList.contains('is-expandable')).toBe(false);
+    card.click();
+    expect(isExpandOpen()).toBe(false);
+  });
+
+  it('is inert in edit mode, like every other expandable card', () => {
+    const { card } = weatherBoard(DEMO_VMS.weather);
+    document.querySelector('#edit-root').innerHTML = '<div class="editor"></div>';
+    card.click();
+    expect(isExpandOpen()).toBe(false);
+  });
+
+  it('keeps the snapshot when the card refreshes underneath it', () => {
+    const { card } = weatherBoard(DEMO_VMS.weather);
+    card.click();
+    const before = overlay().innerHTML;
+    expect(overlay().textContent).toContain('84°');
+    renderWeather(card.querySelector('.card__body'),
+      { ...DEMO_VMS.weather, now: { ...DEMO_VMS.weather.now, temp: 91 } },
+      { loc: { label: 'New York 10001', units: 'F' } });
+    expect(overlay().innerHTML).toBe(before);
+  });
+
+  it('carries the card stale stamp through', () => {
+    const { card } = weatherBoard(DEMO_VMS.weather);
+    const stamp = card.querySelector('.card__stamp');
+    stamp.textContent = 'as of 8:12 AM';
+    stamp.hidden = false;
+    card.click();
+    expect(overlay().classList.contains('is-stale')).toBe(true);
+    expect(overlay().querySelector('.expand__stamp').textContent).toBe('as of 8:12 AM');
+  });
+
+  it('extends cfg.clock24 to the CARD hour labels as well as the overlay', () => {
+    const cfg12 = { loc: { label: 'New York 10001', units: 'F' } };
+    const cfg24 = { loc: { label: 'London, England (GB)', units: 'C' }, clock24: true };
+    const { card } = weatherBoard(DEMO_VMS.weather, cfg12);
+    const hours = () => [...card.querySelectorAll('.wx-trend__row--hours > span')].map((s) => s.textContent);
+    expect(hours().slice(0, 3)).toEqual(['9 AM', '10 AM', '11 AM']);
+
+    renderWeather(card.querySelector('.card__body'), DEMO_VMS.weather, cfg24);
+    expect(hours().slice(0, 3)).toEqual(['09:00', '10:00', '11:00']);
+    card.click();
+    expect([...overlay().querySelectorAll('.wxf__row--hours > span')]
+      .map((s) => s.textContent).filter(Boolean).slice(0, 3)).toEqual(['09:00', '11:00', '13:00']);
   });
 });

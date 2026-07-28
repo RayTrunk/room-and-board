@@ -131,7 +131,7 @@ export const DEFAULT_CONFIG = Object.freeze({
   mode: 'dashboard',
   schedule: Object.freeze(DEFAULT_SCHEDULE.map((w) => Object.freeze({ ...w }))),
   beacon: true, // anonymous hourly usage ping (see fleet.js); Diagnostics toggle
-  clock24: false, // 24-hour time for the topbar Clock + World Clock only (departures keep fmtTime's 12h)
+  clock24: false, // 24-hour time for the topbar Clock, World Clock + Weather's hour labels (departures keep fmtTime's 12h)
 });
 
 const MODES = ['scheduled', 'dashboard', 'ambient'];

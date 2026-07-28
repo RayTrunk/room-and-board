@@ -1,5 +1,18 @@
 [
   {
+    "date": "July 28",
+    "items": [
+      {
+        "lead": "Weather",
+        "text": "Tap the Weather card for the full picture: 24 hours of temperature and rain, a 7 day outlook, wind, humidity, UV, and sunrise and sunset times."
+      },
+      {
+        "lead": "This guide",
+        "text": "What’s new now opens with the three newest updates and keeps the rest behind Show earlier updates. The guide also prints properly now."
+      }
+    ]
+  },
+  {
     "date": "July 27",
     "items": [
       {

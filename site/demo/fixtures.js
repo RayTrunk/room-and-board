@@ -9,24 +9,51 @@
 export const DEMO_NOW_MS = 1783000000000;
 
 export const DEMO_VMS = {
+  // Weather carries the FULL mapWeather shape: 24 hours and 7 days, because the
+  // card's tap-for-detail overlay reads the whole window (the card itself still
+  // draws only the first 6-8 hours and 4-5 days). The first 8 hours and first 5
+  // days are frozen — the resting-card audit baselines and the renderer tests
+  // pin their values. Canonical units, as the API is asked for them: °F, mph,
+  // inch, converted at render.
   weather: {
-    now: { temp: 84, feels: 92, code: 1, label: 'Mostly clear', icon: 'clear' },
+    now: {
+      temp: 84, feels: 92, code: 1, label: 'Mostly clear', icon: 'clear',
+      humidity: 61, wind: 12, dir: 205, gust: 21,
+    },
     hourly: [
-      { h: '9 AM', temp: 84, code: 1, pp: 0 },
-      { h: '10 AM', temp: 86, code: 1, pp: 0 },
-      { h: '11 AM', temp: 89, code: 2, pp: 5 },
-      { h: '12 PM', temp: 92, code: 2, pp: 20 },
-      { h: '1 PM', temp: 94, code: 3, pp: 45 },
-      { h: '2 PM', temp: 95, code: 95, pp: 70 },
-      { h: '3 PM', temp: 93, code: 95, pp: 55 },
-      { h: '4 PM', temp: 90, code: 80, pp: 30 },
+      { iso: '2026-07-02T09:00', h: '9 AM', temp: 84, code: 1, pp: 0, precip: 0 },
+      { iso: '2026-07-02T10:00', h: '10 AM', temp: 86, code: 1, pp: 0, precip: 0 },
+      { iso: '2026-07-02T11:00', h: '11 AM', temp: 89, code: 2, pp: 5, precip: 0 },
+      { iso: '2026-07-02T12:00', h: '12 PM', temp: 92, code: 2, pp: 20, precip: 0 },
+      { iso: '2026-07-02T13:00', h: '1 PM', temp: 94, code: 3, pp: 45, precip: 0 },
+      { iso: '2026-07-02T14:00', h: '2 PM', temp: 95, code: 95, pp: 70, precip: 0.12 },
+      { iso: '2026-07-02T15:00', h: '3 PM', temp: 93, code: 95, pp: 55, precip: 0.08 },
+      { iso: '2026-07-02T16:00', h: '4 PM', temp: 90, code: 80, pp: 30, precip: 0.02 },
+      { iso: '2026-07-02T17:00', h: '5 PM', temp: 88, code: 80, pp: 25, precip: 0.01 },
+      { iso: '2026-07-02T18:00', h: '6 PM', temp: 86, code: 3, pp: 15, precip: 0 },
+      { iso: '2026-07-02T19:00', h: '7 PM', temp: 84, code: 3, pp: 10, precip: 0 },
+      { iso: '2026-07-02T20:00', h: '8 PM', temp: 82, code: 2, pp: 5, precip: 0 },
+      { iso: '2026-07-02T21:00', h: '9 PM', temp: 81, code: 1, pp: 0, precip: 0 },
+      { iso: '2026-07-02T22:00', h: '10 PM', temp: 80, code: 1, pp: 0, precip: 0 },
+      { iso: '2026-07-02T23:00', h: '11 PM', temp: 79, code: 0, pp: 0, precip: 0 },
+      { iso: '2026-07-03T00:00', h: '12 AM', temp: 78, code: 0, pp: 0, precip: 0 },
+      { iso: '2026-07-03T01:00', h: '1 AM', temp: 77, code: 0, pp: 0, precip: 0 },
+      { iso: '2026-07-03T02:00', h: '2 AM', temp: 77, code: 0, pp: 0, precip: 0 },
+      { iso: '2026-07-03T03:00', h: '3 AM', temp: 76, code: 0, pp: 0, precip: 0 },
+      { iso: '2026-07-03T04:00', h: '4 AM', temp: 76, code: 0, pp: 0, precip: 0 },
+      { iso: '2026-07-03T05:00', h: '5 AM', temp: 77, code: 1, pp: 5, precip: 0 },
+      { iso: '2026-07-03T06:00', h: '6 AM', temp: 78, code: 1, pp: 5, precip: 0 },
+      { iso: '2026-07-03T07:00', h: '7 AM', temp: 80, code: 2, pp: 10, precip: 0 },
+      { iso: '2026-07-03T08:00', h: '8 AM', temp: 82, code: 2, pp: 10, precip: 0 },
     ],
     daily: [
-      { day: 'Today', hi: 95, lo: 78, code: 95 },
-      { day: 'Fri', hi: 91, lo: 77, code: 2 },
-      { day: 'Sat', hi: 88, lo: 74, code: 0 },
-      { day: 'Sun', hi: 85, lo: 71, code: 61 },
-      { day: 'Mon', hi: 82, lo: 69, code: 3 },
+      { iso: '2026-07-02', day: 'Today', hi: 95, lo: 78, code: 95, ppMax: 70, uvMax: 8.4, precipSum: 0.23, windMax: 22, sunrise: '2026-07-02T05:28', sunset: '2026-07-02T20:30' },
+      { iso: '2026-07-03', day: 'Fri', hi: 91, lo: 77, code: 2, ppMax: 25, uvMax: 9.1, precipSum: 0, windMax: 14, sunrise: '2026-07-03T05:29', sunset: '2026-07-03T20:30' },
+      { iso: '2026-07-04', day: 'Sat', hi: 88, lo: 74, code: 0, ppMax: 5, uvMax: 9.4, precipSum: 0, windMax: 11, sunrise: '2026-07-04T05:29', sunset: '2026-07-04T20:30' },
+      { iso: '2026-07-05', day: 'Sun', hi: 85, lo: 71, code: 61, ppMax: 55, uvMax: 7.2, precipSum: 0.31, windMax: 16, sunrise: '2026-07-05T05:30', sunset: '2026-07-05T20:30' },
+      { iso: '2026-07-06', day: 'Mon', hi: 82, lo: 69, code: 3, ppMax: 20, uvMax: 6.8, precipSum: 0.02, windMax: 12, sunrise: '2026-07-06T05:31', sunset: '2026-07-06T20:29' },
+      { iso: '2026-07-07', day: 'Tue', hi: 84, lo: 70, code: 2, ppMax: 10, uvMax: 8, precipSum: 0, windMax: 10, sunrise: '2026-07-07T05:31', sunset: '2026-07-07T20:29' },
+      { iso: '2026-07-08', day: 'Wed', hi: 87, lo: 72, code: 1, ppMax: 5, uvMax: 8.6, precipSum: 0, windMax: 9, sunrise: '2026-07-08T05:32', sunset: '2026-07-08T20:28' },
     ],
     sunrise: '2026-07-02T05:28',
     sunset: '2026-07-02T20:30',

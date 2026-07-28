@@ -1,7 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import { readFile } from 'node:fs/promises';
-import { mapWeather, wmoInfo, inUS, fetchData, trendSvg } from '../site/js/widgets/weather.js';
+import {
+  mapWeather, wmoInfo, inUS, fetchData, trendSvg,
+  hourLabel, timeLabel, compass, fmtWind, fmtAmount, meteoBoard, meteoCanvas,
+} from '../site/js/widgets/weather.js';
 import { mapAqi, moonPhase } from '../site/js/widgets/aqi.js';
+import { DEMO_VMS } from '../site/demo/fixtures.js';
 
 const fixture = async (name) =>
   JSON.parse(await readFile(new URL(`./fixtures/${name}`, import.meta.url), 'utf8'));
@@ -12,10 +16,14 @@ describe('mapWeather', () => {
     expect(vm.now.temp).toBe(83); // 82.9 rounded
     expect(vm.now.feels).toBe(92);
     expect(vm.now.label).toBe('Clear');
-    expect(vm.hourly).toHaveLength(8);
+    // A full day of hours is kept for the tap-for-detail view; the card slices
+    // the first 6-8 off the front of the same array.
+    expect(vm.hourly).toHaveLength(24);
     // current.time is 02:15 → first hourly slot is 03:00 (next full hour)
     expect(vm.hourly[0].h).toBe('3 AM');
-    expect(vm.daily).toHaveLength(5);
+    // This fixture predates forecast_days=7, so it carries 6 days — and the
+    // mapper no longer slices, it keeps whatever the payload has.
+    expect(vm.daily).toHaveLength(6);
     expect(vm.daily[0].hi).toBe(105);
     expect(vm.daily[0].lo).toBe(80);
     expect(vm.sunrise).toBe('2026-07-02T05:28');
@@ -35,21 +43,56 @@ describe('mapWeather', () => {
 
   it('carries the hourly chance of precipitation', async () => {
     const vm = mapWeather(await fixture('open-meteo-forecast.json'), null);
-    expect(vm.hourly.map((x) => x.pp)).toEqual([0, 0, 5, 10, 25, 45, 60, 30]);
+    expect(vm.hourly.slice(0, 8).map((x) => x.pp)).toEqual([0, 0, 5, 10, 25, 45, 60, 30]);
   });
 
   it('nulls the chance of precipitation when the payload lacks it', async () => {
     const forecast = await fixture('open-meteo-forecast.json');
     delete forecast.hourly.precipitation_probability;
     const vm = mapWeather(forecast, null);
-    expect(vm.hourly).toHaveLength(8);
+    expect(vm.hourly).toHaveLength(24);
     expect(vm.hourly.every((x) => x.pp === null)).toBe(true);
     // A payload that carries the key but runs short (partial response) also
     // nulls out rather than leaking undefined/NaN into the markup.
     const short = await fixture('open-meteo-forecast.json');
     short.hourly.precipitation_probability = [0, 0, 0, 0, 0];
-    expect(mapWeather(short, null).hourly.map((x) => x.pp))
+    expect(mapWeather(short, null).hourly.slice(0, 8).map((x) => x.pp))
       .toEqual([0, 0, null, null, null, null, null, null]);
+  });
+
+  it('keeps the full-view extras from the same single call', async () => {
+    const vm = mapWeather(await fixture('open-meteo-full-nyc.json'), null);
+    // current: the four fields that ride the block the card's temp comes from.
+    expect(vm.now.humidity).toBe(68);
+    expect(vm.now.wind).toBe(14);
+    expect(vm.now.dir).toBe(148);
+    expect(vm.now.gust).toBeCloseTo(18.8, 5);
+    // hourly: an iso stamp (so the hour label can follow cfg.clock24, and the
+    // night wash can find the right day) and the amount actually falling.
+    expect(vm.hourly).toHaveLength(24);
+    expect(vm.hourly[0].iso).toBe('2026-07-28T16:00'); // current.time 15:15 → next full hour
+    expect(vm.hourly[0].h).toBe('4 PM');
+    expect(vm.hourly.every((x) => Number.isFinite(x.precip))).toBe(true);
+    // daily: the full 7-day horizon, each day carrying its own sun times.
+    expect(vm.daily).toHaveLength(7);
+    expect(vm.daily.map((d) => d.day)).toEqual(['Today', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun', 'Mon']);
+    expect(vm.daily[0].ppMax).toBe(59);
+    expect(vm.daily[0].uvMax).toBeCloseTo(4.15, 5);
+    expect(vm.daily[0].precipSum).toBeCloseTo(0.059, 5);
+    expect(vm.daily[0].windMax).toBeCloseTo(16.9, 5);
+    expect(vm.daily[0].sunrise).toBe('2026-07-28T05:49');
+    expect(vm.daily[6].sunset).toBe('2026-08-03T20:09');
+  });
+
+  it('degrades every extra to null on a payload that predates them', async () => {
+    // Exactly the situation on a board that boots the new build against a vm the
+    // OLD build cached: the fields simply are not there, and nothing may become
+    // NaN or undefined.
+    const vm = mapWeather(await fixture('open-meteo-forecast.json'), null);
+    for (const k of ['humidity', 'wind', 'dir', 'gust']) expect(vm.now[k]).toBeNull();
+    for (const k of ['ppMax', 'uvMax', 'precipSum', 'windMax']) expect(vm.daily[0][k]).toBeNull();
+    expect(vm.hourly.every((x) => x.precip === 0)).toBe(true);
+    expect(vm.daily[0].sunrise).toBe('2026-07-02T05:28'); // this one WAS already requested
   });
 
   it('tolerates malformed alerts payloads', async () => {
@@ -170,15 +213,188 @@ describe('inUS + alerts gating', () => {
   });
   it('fetchData skips the NWS alerts call for a non-US point', async () => {
     const urls = [];
-    const net = { fetchJSON: async (u) => { urls.push(u); return { current: { time: '2026-07-12T10:00', temperature_2m: 70, apparent_temperature: 70, weather_code: 0 }, hourly: { time: [], temperature_2m: [], weather_code: [] }, daily: { time: [], temperature_2m_max: [], temperature_2m_min: [], weather_code: [], sunrise: ['x'], sunset: ['x'] } }; } };
+    const net = { fetchJSON: async (u) => { urls.push(u); return EMPTY_FORECAST; } };
     await fetchData({ loc: { lat: 51.5, lon: -0.12, units: 'C' } }, net);
     expect(urls).toHaveLength(1);
     expect(urls[0]).not.toContain('api.weather.gov');
   });
-  it('fetchData asks Open-Meteo for the hourly chance of precipitation', async () => {
+  it('asks for the whole board in ONE call, in canonical units', async () => {
     const urls = [];
-    const net = { fetchJSON: async (u) => { urls.push(u); return { current: { time: '2026-07-12T10:00', temperature_2m: 70, apparent_temperature: 70, weather_code: 0 }, hourly: { time: [], temperature_2m: [], weather_code: [] }, daily: { time: [], temperature_2m_max: [], temperature_2m_min: [], weather_code: [], sunrise: ['x'], sunset: ['x'] } }; } };
+    const net = { fetchJSON: async (u) => { urls.push(u); return EMPTY_FORECAST; } };
     await fetchData({ loc: { lat: 51.5, lon: -0.12, units: 'C' } }, net);
-    expect(urls[0]).toContain('hourly=temperature_2m,weather_code,precipitation_probability');
+    const [url] = urls;
+    expect(url).toContain('&current=temperature_2m,apparent_temperature,weather_code,relative_humidity_2m,wind_speed_10m,wind_direction_10m,wind_gusts_10m');
+    expect(url).toContain('&hourly=temperature_2m,weather_code,precipitation_probability,precipitation');
+    expect(url).toContain('&daily=weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset,precipitation_probability_max,uv_index_max,precipitation_sum,wind_speed_10m_max');
+    expect(url).toContain('&forecast_days=7');
+    // Canonical units, converted per cfg at render — a metric board asks for the
+    // same numbers as an imperial one.
+    expect(url).toContain('&temperature_unit=fahrenheit');
+    expect(url).toContain('&wind_speed_unit=mph');
+    expect(url).toContain('&precipitation_unit=inch');
+    // Open-Meteo weights a request by its variable count (weight = vars / 10):
+    // 7 current + 4 hourly + 9 daily = 20 → 2.0 weighted calls, and 288 a day at
+    // the 10-minute refresh against a free ceiling of 10,000.
+    const vars = ['current', 'hourly', 'daily']
+      .map((k) => url.match(new RegExp(`&${k}=([^&]+)`))[1].split(',').length)
+      .reduce((a, b) => a + b, 0);
+    expect(vars).toBe(20);
+  });
+});
+
+// A structurally valid but data-free forecast: enough for fetchData to map.
+const EMPTY_FORECAST = {
+  current: { time: '2026-07-12T10:00', temperature_2m: 70, apparent_temperature: 70, weather_code: 0 },
+  hourly: { time: [], temperature_2m: [], weather_code: [] },
+  daily: { time: [], temperature_2m_max: [], temperature_2m_min: [], weather_code: [], sunrise: ['x'], sunset: ['x'] },
+};
+
+describe('clock + unit formatting', () => {
+  it('switches hour labels on cfg.clock24, 12-hour by default', () => {
+    expect(hourLabel('2026-07-28T00:00')).toBe('12 AM');
+    expect(hourLabel('2026-07-28T12:00')).toBe('12 PM');
+    expect(hourLabel('2026-07-28T09:00')).toBe('9 AM');
+    expect(hourLabel('2026-07-28T21:00')).toBe('9 PM');
+    expect(hourLabel('2026-07-28T00:00', true)).toBe('00:00');
+    expect(hourLabel('2026-07-28T09:00', true)).toBe('09:00');
+    expect(hourLabel('2026-07-28T21:00', true)).toBe('21:00');
+  });
+
+  it('formats sun times the same way', () => {
+    expect(timeLabel('2026-07-28T05:49')).toBe('5:49 AM');
+    expect(timeLabel('2026-07-28T20:15')).toBe('8:15 PM');
+    expect(timeLabel('2026-07-28T00:07')).toBe('12:07 AM');
+    expect(timeLabel('2026-07-28T12:07')).toBe('12:07 PM');
+    expect(timeLabel('2026-07-28T05:49', true)).toBe('05:49');
+    expect(timeLabel('2026-07-28T20:15', true)).toBe('20:15');
+  });
+
+  it('names the wind direction on 16 points, and wraps at 360', () => {
+    expect(compass(0)).toBe('N');
+    expect(compass(148)).toBe('SSE');
+    expect(compass(205)).toBe('SSW');
+    expect(compass(270)).toBe('W');
+    expect(compass(350)).toBe('N');
+    expect(compass(360)).toBe('N');
+  });
+
+  it('converts wind and rain amounts from the canonical unit per cfg', () => {
+    expect(fmtWind(14, 'F')).toBe('14 mph');
+    expect(fmtWind(14, 'C')).toBe('23 km/h');   // 14 * 1.609344 = 22.5 → 23
+    expect(fmtWind(4, 'C')).toBe('6 km/h');
+    expect(fmtWind(16.9, 'F')).toBe('17 mph');
+    expect(fmtAmount(0.059, 'F')).toBe('0.06 in');
+    expect(fmtAmount(0.059, 'C')).toBe('1.5 mm');  // 0.059 * 25.4 = 1.499
+    expect(fmtAmount(0, 'F')).toBe('0.00 in');
+    expect(fmtAmount(0, 'C')).toBe('0.0 mm');
+  });
+});
+
+describe('meteoBoard (the tap-for-detail view)', () => {
+  const US = { loc: { label: 'New York 10001', units: 'F' } };
+  const UK = { loc: { label: 'London, England (GB)', units: 'C' }, clock24: true };
+  const nyc = async () => mapWeather(await fixture('open-meteo-full-nyc.json'), null);
+  const london = async () => mapWeather(await fixture('open-meteo-full-london.json'), null);
+  const cols = (html, cls) => (html.match(new RegExp(`wxf__row--${cls}">(.*?)</div>`, 's'))?.[1] ?? '')
+    .split('</span>').slice(0, -1).map((s) => s.replace(/^<span[^>]*>/, ''));
+
+  it('shows a full day of hours, labelled every other column', async () => {
+    const html = meteoBoard(await nyc(), US);
+    expect(cols(html, 'hours')).toHaveLength(24);
+    const labels = cols(html, 'hours').filter(Boolean);
+    expect(labels).toEqual(['4 PM', '6 PM', '8 PM', '10 PM', '12 AM', '2 AM',
+      '4 AM', '6 AM', '8 AM', '10 AM', '12 PM', '2 PM']);
+    // Temps and rain chances print on the SAME columns, so each reading stacks.
+    expect(cols(html, 'temp').filter(Boolean)).toHaveLength(12);
+    expect(cols(html, 'pp').filter(Boolean)).toHaveLength(12);
+    // The curve, the night wash and the rain bars keep all 24 hours, though.
+    expect(html).toContain('viewBox="0 0 24 100"');
+  });
+
+  it('carries the whole quiet stats band', async () => {
+    const html = meteoBoard(await nyc(), US);
+    for (const s of ['14 mph SSE</b><span>Wind', '19 mph</b><span>Gusts',
+      '68%</b><span>Humidity', '4</b><span>UV max today',
+      '0.06 in</b><span>Rain today', '17 mph</b><span>Peak wind today']) {
+      expect(html).toContain(`<b>${s}`);
+    }
+  });
+
+  it('finally renders the sunrise and sunset the vm has always held', async () => {
+    const html = meteoBoard(await nyc(), US);
+    expect(html).toContain('<span>Sunrise</span><b>5:49 AM</b>');
+    expect(html).toContain('<span>Sunset</span><b>8:15 PM</b>');
+    // ...and shades the night between them, with a hairline at each boundary.
+    expect((html.match(/wxf-canvas__night/g) ?? [])).toHaveLength(9); // 8 PM..5 AM
+    expect((html.match(/wxf-canvas__sun/g) ?? [])).toHaveLength(2);   // dusk + dawn
+  });
+
+  it('shows today above the fold and the full 7-day horizon below the chart', async () => {
+    const html = meteoBoard(await nyc(), US);
+    expect(html).toContain('<span>High today</span><b>83°</b>');
+    expect(html).toContain('<span>Low tonight</span><b>68°</b>');
+    expect(html).toContain('<span>Chance of rain</span><b>59%</b>');
+    expect(html.match(/<div class="wxf__day[ "]/g)).toHaveLength(7);
+    expect(html).toContain('wxf__day--today'); // day 0 is called out
+  });
+
+  it('carries the current condition accent, as the card does', async () => {
+    const vm = await nyc();
+    expect(meteoBoard(vm, US)).toContain('class="wxf" data-cond="clear"');
+    expect(meteoBoard({ ...vm, now: { ...vm.now, code: 95 } }, US)).toContain('data-cond="thunder"');
+  });
+
+  it('gates the alert banner on there BEING one (the NWS source is US-only)', async () => {
+    const vm = await nyc();
+    expect(meteoBoard(vm, US)).not.toContain('class="alert"');
+    const alerted = { ...vm, alert: { event: 'Flood Watch', headline: 'Flood Watch until 8 AM' } };
+    expect(meteoBoard(alerted, US)).toContain('<div class="alert">');
+    expect(meteoBoard(alerted, US)).toContain('Flood Watch');
+    // A non-US board never gets one, and nothing structural depends on it: the
+    // London view renders the same sections without the banner.
+    const uk = meteoBoard(await london(), UK);
+    expect(uk).not.toContain('class="alert"');
+    expect(uk).toContain('wxf__stats');
+    expect(uk).toContain('wxf__todayrail');
+  });
+
+  it('is locale-proof: °C, 24-hour, km/h and mm on a London board', async () => {
+    const html = meteoBoard(await london(), UK);
+    expect(cols(html, 'hours').filter(Boolean)).toEqual(['13:00', '15:00', '17:00', '19:00',
+      '21:00', '23:00', '01:00', '03:00', '05:00', '07:00', '09:00', '11:00']);
+    expect(html).toContain('<span>Sunrise</span><b>05:29</b>');
+    expect(html).toContain('<span>Sunset</span><b>20:44</b>');
+    expect(html).toContain('<b>6 km/h W</b><span>Wind');
+    expect(html).toContain('<b>24 km/h</b><span>Gusts');
+    expect(html).toContain('<b>0.2 mm</b><span>Rain today');
+    expect(html).toContain('<span>High today</span><b>30°</b>'); // 86.1F -> 30C
+    expect(html).not.toMatch(/\d+ mph|\d+\.\d+ in/);
+  });
+
+  it('prints a dash, never NaN, for a vm cached before the extras existed', async () => {
+    const legacy = mapWeather(await fixture('open-meteo-forecast.json'), null);
+    const html = meteoBoard(legacy, US);
+    expect(html).not.toMatch(/NaN|undefined/);
+    expect(html).toContain('<b>—</b><span>Wind');
+    expect(html).toContain('<b>—</b><span>Humidity');
+    expect(html).toContain('<span>Chance of rain</span><b>—</b>');
+    // The sun times ARE in a legacy vm, so those still read.
+    expect(html).toContain('<span>Sunrise</span><b>5:28 AM</b>');
+    // A vm with no iso stamps falls back to its baked 12-hour labels.
+    const noIso = { ...legacy, hourly: legacy.hourly.map(({ iso, ...rest }) => rest) };
+    expect(cols(meteoBoard(noIso, US), 'hours').filter(Boolean)[0]).toBe('3 AM');
+    expect(meteoBoard(noIso, US)).not.toContain('wxf-canvas__night');
+  });
+
+  it('renders complete from the demo fixture (?demo=1 and the /info captures)', () => {
+    const html = meteoBoard(DEMO_VMS.weather, US);
+    expect(html).not.toMatch(/NaN|undefined|—/);
+    expect(html).toContain('<b>12 mph SSW</b><span>Wind');
+    expect(cols(html, 'hours')).toHaveLength(24);
+  });
+
+  it('meteoCanvas degrades to nothing rather than a broken path', () => {
+    expect(meteoCanvas([], [], 'g')).toBe('');
+    expect(meteoCanvas([{ temp: 70, pp: 0, precip: 0 }], [], 'g')).toBe('');
   });
 });
