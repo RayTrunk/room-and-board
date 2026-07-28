@@ -3,6 +3,10 @@
     "date": "July 28",
     "items": [
       {
+        "lead": "Reliability",
+        "text": "Updates now apply without the screen flashing white for a moment."
+      },
+      {
         "lead": "Cloud services",
         "text": "Services having an outage now rise to the top of the card, so a problem is visible even when your list is longer than the card."
       },

@@ -1,5 +1,8 @@
 <!doctype html>
-<html lang="en">
+<!-- Inline root background: a black canvas from the first byte, so the page never
+     flashes the browser's default white before setup.css lands (see index.html
+     for the full note). -->
+<html lang="en" style="background:#000">
 <head>
 <meta charset="utf-8">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https: data: blob:; connect-src 'self' https: wss:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'">

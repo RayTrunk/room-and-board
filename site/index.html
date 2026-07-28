@@ -1,5 +1,14 @@
 <!doctype html>
-<html lang="en">
+<!-- The inline background is deliberate: the canvas must be black from the FIRST
+     BYTE. A self-update reload (the hourly version poll below) builds a brand new
+     document, and until css/main.css arrives the browser paints its own default
+     white — on a board that reads as the screen blanking to white and coming
+     back. A background on the root element paints before any stylesheet request
+     resolves, so there is nothing to flash. CSP allows inline style ATTRIBUTES
+     (style-src 'unsafe-inline'), which is why this is not a <script>. Deliberately
+     NOT paired with <meta name="color-scheme" content="dark">: that would also
+     restyle every native control (checkboxes, time inputs) on the setup pages. -->
+<html lang="en" style="background:#000">
 <head>
 <meta charset="utf-8">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https: data: blob:; media-src https: blob:; connect-src 'self' https: wss:; frame-src https://monitor.ui.com; object-src 'none'; base-uri 'none'; frame-ancestors 'none'">

@@ -347,6 +347,11 @@ button:focus-visible {
     --ink: #000; --ink-mid: #1a1a1a; --ink-dim: #3a3a3a; --ink-faint: #555;
     --accent: #00429d;
   }
+  /* info.html carries an inline background on <html> so the page never flashes
+     white before this stylesheet lands. The canvas background propagates from the
+     ROOT, so without this the black would print as a frame around every sheet.
+     !important is load-bearing: an author !important outranks an inline attribute. */
+  html { background: #fff !important; }
   body { background: #fff; color: #000; }
   .nav, .lightbox, .log__toggle { display: none !important; }
   /* Paper has no "show more": print the history the toggle was hiding. */
