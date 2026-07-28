@@ -11,7 +11,7 @@ import { WORKER_URL } from '../env.js';
 import { escapeHtml } from '../util.js';
 import { locationSearch } from '../geo.js';
 import { stepTime, fmtHM } from '../modes.js';
-import { toggleIn, applyNameKey, nameAutoCap, searchStations } from './pickers.js';
+import { toggleIn, applyNameKey, nameAutoCap, searchStations, canAddTicker, TICKER_MAX } from './pickers.js';
 import { MIN_SIZE, firstFit } from '../layout.js';
 
 export const WIDGET_LABELS = {
@@ -957,7 +957,7 @@ function renderMarkets() {
     .join('');
   pane().innerHTML = `
     <h2 class="pane__title">Markets</h2>
-    <p class="pane__hint">Add up to 10 tickers (indexes start with ^). Non-US listings use the exchange suffix: London CBG.L, Frankfurt SAP.DE, Tokyo 7203.T. Remove any you don't want; the defaults are just entries like the rest.</p>
+    <p class="pane__hint">Add up to ${TICKER_MAX} tickers (indexes start with ^). Non-US listings use the exchange suffix: London CBG.L, Frankfurt SAP.DE, Tokyo 7203.T. Remove any you don't want; the defaults are just entries like the rest.</p>
     <div class="chips">${chips || '<span class="pane__empty">No tickers; defaults return on save</span>'}</div>
     <output class="code__display" aria-live="polite"></output>
     ${qwertyKeypad('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', ['^', '.', '-'],
@@ -977,7 +977,7 @@ function renderMarkets() {
       const k = btn.dataset.key;
       if (k === '⌫') ticker = ticker.slice(0, -1);
       else if (k === 'Add') {
-        if (!(/^[\^A-Z0-9.\-]{1,10}$/.test(ticker) && symbols.length < 10 && !symbols.includes(ticker))) return;
+        if (!canAddTicker(symbols, ticker)) return;
         status.textContent = 'Checking…';
         if (await symbolKnown(ticker)) {
           state.cfg.markets.symbols = [...symbols, ticker];

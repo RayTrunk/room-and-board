@@ -4,7 +4,7 @@
 import { isAddable, normalizeConfig, encodeConfig, decodeConfig, WIDGET_IDS, WIDGET_GROUPS, ART_CATS, DEFAULT_CONFIG, NJT_LINES } from '../config.js';
 import { firstFitAny } from '../layout.js';
 import { WORKER_URL } from '../env.js';
-import { toggleIn, searchStations } from './pickers.js';
+import { toggleIn, searchStations, canAddTicker } from './pickers.js';
 import { locationSearch } from '../geo.js';
 import { escapeHtml, parseAlbumToken, parseDriveFolder } from '../util.js';
 import { OFFICES, zoneLabel, zonesByRegion } from '../widgets/worldclock.js';
@@ -407,7 +407,7 @@ function renderTickers() {
     // Normalize BEFORE validating: "£CBG" used to fail the regex silently
     // (the £ never even produced a message) — now it becomes CBG.L.
     const t = normalizeSymbol($('#sym-code').value);
-    if (!(/^[\^A-Z0-9.\-]{1,10}$/.test(t) && cfg.markets.symbols.length < 10 && !cfg.markets.symbols.includes(t))) return;
+    if (!canAddTicker(cfg.markets.symbols, t)) return;
     const btn = $('#sym-add');
     btn.disabled = true;
     $('#sym-status').textContent = 'Checking…';

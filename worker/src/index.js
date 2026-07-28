@@ -337,7 +337,11 @@ const handlers = {
         .split(',')
         .map((t) => t.trim().toUpperCase())
         .filter((t) => /^[\^A-Z0-9.\-]{1,10}$/.test(t))
-        .slice(0, 10);
+        // Matches the config cap (site/js/config.js, TICKER_MAX in
+        // settings/pickers.js): a board may follow 20 tickers and the expand
+        // overlay shows all of them, so all 20 must be fetched. Each symbol is
+        // one Yahoo subrequest, well inside the Workers per-request limit.
+        .slice(0, 20);
       // Dedupe for the fetch, but keep request order for display; the cache
       // key is sorted so AAPL,MSFT and MSFT,AAPL coalesce to one entry.
       const symbols = [...new Set(requested.length ? requested : DEFAULT_SYMBOLS)];

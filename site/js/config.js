@@ -322,9 +322,11 @@ export function normalizeConfig(raw) {
     },
     markets: {
       // An empty list falls back to the defaults (a markets card with zero
-      // tickers is never useful — remove the widget instead).
+      // tickers is never useful — remove the widget instead). The 20-symbol cap
+      // is the expand overlay's no-scroll ceiling; it is TICKER_MAX in
+      // settings/pickers.js and the /markets slice in the Worker.
       symbols: (() => {
-        const list = strList(raw.markets?.symbols, 10)
+        const list = strList(raw.markets?.symbols, 20)
           .map((t) => t.toUpperCase())
           .filter((t) => /^[\^A-Z0-9.\-]{1,10}$/.test(t));
         return list.length ? list : [...DEFAULT_CONFIG.markets.symbols];

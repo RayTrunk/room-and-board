@@ -47,6 +47,22 @@ export function toggleIn(list, value) {
   return list.includes(value) ? list.filter((v) => v !== value) : [...list, value];
 }
 
+// How many tickers a board may follow. The Markets card still shows only what
+// fits it, but a tap expands to a wall of ALL of them, and 20 is the count that
+// still fits the 1920x1080 overlay without scrolling (markets.js tileCols and
+// shelfFits carry the browser-measured geometry). config.js normalizes to the
+// same number, and the Worker's /markets route fetches the same number.
+export const TICKER_MAX = 20;
+
+// A single symbol is at most 10 CHARACTERS (^GSPC, 7203.T, ^STOXX50E) — a
+// different limit from how many symbols the list holds.
+const TICKER_RE = /^[\^A-Z0-9.\-]{1,10}$/;
+
+// The Add guard behind both ticker keypads (Settings and first-run Setup):
+// a well-formed symbol, room left in the list, and not already followed.
+export const canAddTicker = (symbols, ticker) =>
+  TICKER_RE.test(ticker) && symbols.length < TICKER_MAX && !symbols.includes(ticker);
+
 export function moveWidget(ids, id, delta) {
   const from = ids.indexOf(id);
   const to = from + delta;

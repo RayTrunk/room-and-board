@@ -659,6 +659,20 @@ describe('/markets', () => {
     expect(res.status).toBe(502);
   });
 
+  it('serves 20 symbols and slices the 21st off', async () => {
+    // Matches the config cap: a board can follow 20 tickers, and the expand
+    // overlay shows all of them, so the route must fetch the whole list.
+    const want = Array.from({ length: 20 }, (_, i) => `TK${String(i).padStart(2, '0')}`);
+    const key = [...want].sort().join(',');
+    await clearCache(`markets:${key}`);
+    stubFetch([{ match: /query1\.finance\.yahoo\.com/, body: yahoo(100, 90), times: 21 }]);
+    const res = await call(`/markets?symbols=${[...want, 'TK20'].join(',')}`);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.indices).toHaveLength(20); // the 21st never reached Yahoo
+    expect(body.partial).toBeUndefined();
+  });
+
   it('a partial batch serves fresh but never overwrites the complete stale backup', async () => {
     const key = 'markets:AAA,BBB';
     await clearCache(key);

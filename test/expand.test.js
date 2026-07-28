@@ -307,4 +307,66 @@ describe('markets ticker wall', () => {
     expect(wall.querySelector('.wall__shelf').getAttribute('style')).toContain('--cols:3'); // 6 indices, 2 rows
     expect(wall.querySelector('.wall__grid').getAttribute('style')).toContain('--cols:4');
   });
+
+  // ---- the 20-ticker cap: browser-measured on the 1920x1080 overlay ----
+
+  const symbols = (n, prefix = 'TK') => Array.from({ length: n }, (_, i) => `${prefix}${String(i).padStart(2, '0')}`);
+  const indexSymbols = (n) => Array.from({ length: n }, (_, i) => `^IX${i}`);
+
+  it('takes a sixth column only under a shelf, and marks it dense', () => {
+    // 16 stocks under a one-row shelf get 576px of canvas: three rows of tiles,
+    // so six across. Six-across tiles are 279px and need the denser type.
+    expect(tileCols(16, 1)).toBe(6);
+    expect(tileCols(20)).toBe(5); // no shelf: 4 rows of 5 keeps the wider tile
+    expect(tileCols(30, 1)).toBe(6); // six is the ceiling; seven ellipses GOOGL
+    const wall = wallOf(tileWall(vmOf([...indexSymbols(4), ...symbols(16)]).indices));
+    expect(wall.querySelector('.wall__grid').classList.contains('wall__grid--dense')).toBe(true);
+    expect(wallOf(tileWall(vmOf(symbols(20)).indices))
+      .querySelector('.wall__grid').classList.contains('wall__grid--dense')).toBe(false);
+  });
+
+  it('gives the shelf up when reserving it would squeeze the watchlist', () => {
+    // 1 index + 19 stocks: the shelf's 278px band leaves room for three grid
+    // rows, and 19 tiles need four. The indices fold back in as ordinary tiles.
+    const wall = wallOf(tileWall(vmOf(['^DJI', ...symbols(19)]).indices));
+    expect(wall.querySelector('.wall__shelf')).toBeNull();
+    expect(wall.querySelector('.wall__rule')).toBeNull();
+    expect(wall.querySelectorAll('.wall__grid .tile').length).toBe(20);
+    expect(wall.querySelector('.wall__grid').getAttribute('style')).toContain('--cols:5');
+    // Config order survives the fold: the index keeps its place in the list.
+    expect(tilesOf(wall.outerHTML, '.wall__grid')[0].sub).toBe('^DJI');
+  });
+
+  it('keeps the shelf whenever the watchlist below it still fits', () => {
+    for (const nIdx of [2, 3, 4]) {
+      const wall = wallOf(tileWall(vmOf([...indexSymbols(nIdx), ...symbols(20 - nIdx)]).indices));
+      expect(wall.querySelectorAll('.wall__shelf .tile').length).toBe(nIdx);
+      expect(wall.querySelectorAll('.wall__grid .tile').length).toBe(20 - nIdx);
+      expect(wall.querySelector('.wall__rule')).not.toBeNull();
+    }
+  });
+
+  it('shows only what the Worker actually sent, with honest badge math', () => {
+    // The site half of the cap raise ships before the Worker's. Until the
+    // Worker promote, a board configured with 20 tickers is answered with the
+    // first 10, so the card and the wall are built from the PAYLOAD, never from
+    // the config: 10 tiles, and a +N badge that counts the 10 it has.
+    const { card } = board(vmOf(symbols(10)), [3, 2]);
+    const badge = Number(card.querySelector('.card__more').textContent.replace(/\D/g, ''));
+    const rows = card.querySelectorAll('.index').length;
+    expect(rows + badge).toBe(10); // never 20: nothing is invented for the missing ten
+    card.querySelector('.card__body').click();
+    expect(document.querySelectorAll('#expand-view .tile').length).toBe(10);
+  });
+
+  it('folds an indices-only wall into a grid past three shelf rows', () => {
+    // 12 indices are three 225px shelf rows (715px) — the last that fits.
+    const twelve = wallOf(tileWall(vmOf(indexSymbols(12)).indices));
+    expect(twelve.querySelectorAll('.wall__shelf .tile').length).toBe(12);
+    expect(twelve.classList.contains('wall--shelf-only')).toBe(true);
+    const twenty = wallOf(tileWall(vmOf(indexSymbols(20)).indices));
+    expect(twenty.querySelector('.wall__shelf')).toBeNull();
+    expect(twenty.querySelectorAll('.wall__grid .tile').length).toBe(20);
+    expect(twenty.classList.contains('wall--shelf-only')).toBe(false);
+  });
 });

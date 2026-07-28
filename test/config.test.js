@@ -35,6 +35,16 @@ describe('normalizeConfig', () => {
     expect(normalizeConfig({ v: 2, bus: { stops: ['550685', 'junk', '12'] } }).bus).toEqual({ legs: [] });
   });
 
+  it('keeps 20 tickers and drops the 21st', () => {
+    // The wall shows every configured ticker at once, and 20 is the count that
+    // still fits the 1920x1080 overlay without scrolling (see expand.test.js).
+    const want = Array.from({ length: 20 }, (_, i) => `TK${String(i).padStart(2, '0')}`);
+    const kept = normalizeConfig({ v: 2, markets: { symbols: [...want, 'TK20'] } }).markets.symbols;
+    expect(kept).toEqual(want);
+    expect(kept).toHaveLength(20);
+    expect(kept).not.toContain('TK20');
+  });
+
   it('migrates a v1 config: widgets->layout, lirr, Midtown loc', () => {
     const cfg = normalizeConfig({
       v: 1,
@@ -168,7 +178,8 @@ describe('encode/decode round trip', () => {
       njt: { lines: ['Northeast Corridor Line', 'North Jersey Coast Line', 'Morris & Essex Line', 'Montclair-Boonton Line', 'Gladstone Branch', 'Raritan Valley Line'] },
       bus: { stops: ['550685', '401234'] },
       sports: { teams: [{ lg: 'mlb', id: 'nym' }, { lg: 'nfl', id: 'nyj' }, { lg: 'nba', id: 'nyk' }, { lg: 'nhl', id: 'nyr' }, { lg: 'mls', id: 'nyc' }, { lg: 'epl', id: 'ars' }] },
-      markets: { symbols: ['^DJI', '^IXIC', '^GSPC', 'AAPL', 'MSFT', 'NVDA', 'TSLA', 'AMZN', 'GOOG', 'META'] },
+      markets: { symbols: ['^DJI', '^IXIC', '^GSPC', 'AAPL', 'MSFT', 'NVDA', 'TSLA', 'AMZN', 'GOOG', 'META',
+        'BRK-B', 'JPM', 'UNH', 'XOM', 'CBG.L', 'SAP.DE', '7203.T', 'GOOGL', 'AVGO', 'LLY'] },
       news: { sources: ['nyt-home', 'nyt-us', 'nyt-business', 'npr', 'bbc', 'nyt-nyregion', 'gothamist'] },
       substack: { pubs: Array.from({ length: 6 }, (_, i) => ({ id: `custompublication${i}`, label: `A Custom Publication Name ${i}` })) },
       bsky: { handles: Array.from({ length: 6 }, (_, i) => ({ id: `somelongname${i}.bsky.social`, label: `Custom Person Number ${i}` })) },
@@ -182,12 +193,12 @@ describe('encode/decode round trip', () => {
     });
     const enc = await encodeConfig(cfg);
     // 2048-char URL minus ~100 chars of bridge auth leaves ~1900 for the
-    // fragment; the fully-maxed config (10 tickers, 10 clock cities, 7 feeds,
+    // fragment; the fully-maxed config (20 tickers, 10 clock cities, 7 feeds,
     // 12 fully-custom follow accounts, all 6 NJT line-name strings) measures
-    // ~1280, so 1350 still guards ~1.4x headroom. Default follow lists are
-    // stripped from the wire and re-derived on decode, so untouched boards stay
-    // far smaller.
-    expect(enc.length).toBeLessThan(1350);
+    // ~1345 — it was ~1280 when the ticker cap was 10 — so 1450 still guards
+    // ~1.3x headroom. Default follow lists are stripped from the wire and
+    // re-derived on decode, so untouched boards stay far smaller.
+    expect(enc.length).toBeLessThan(1450);
 
     const plain = await encodeConfig(normalizeConfig({}));
     expect(plain.length).toBeLessThan(700); // starter lists never ship

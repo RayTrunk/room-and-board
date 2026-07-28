@@ -143,19 +143,48 @@ export const isIndexSymbol = (symbol) => String(symbol ?? '').startsWith('^');
 const WALL_H = 854;
 const SHELF_ROW = 225;
 const RULE_BLOCK = 53;
-const TILE_MIN = 190;
+// A grid tile's four lines with the sparkline at its 36px minimum measure 163px
+// (browser-measured at the 20-ticker cap); 175 is that floor plus enough slack
+// that the chart still shows some curve rather than a flat 36px sliver.
+const TILE_MIN = 175;
 const TILE_GAP = 20;
+// Six columns is the width ceiling. Measured: 6 across gives a 279px tile,
+// which holds a five-character ticker (GOOGL, SAP.DE) only in the denser type
+// below; 7 across gives 237px and ellipses those symbols however the type is
+// trimmed, and a symbol nobody can read whole defeats the wall.
+// At that width the tile switches to .wall__grid--dense in main.css.
+const MAX_COLS = 6;
+
+// Grid rows that clear the tile floor once the shelf has taken its share.
+function maxRows(shelfRows) {
+  const avail = WALL_H - (shelfRows ? shelfRows * SHELF_ROW + (shelfRows - 1) * TILE_GAP + RULE_BLOCK : 0);
+  return Math.max(1, Math.floor((avail + TILE_GAP) / (TILE_MIN + TILE_GAP)));
+}
 
 // Columns for n tiles in the stock grid on the 1920-wide overlay. Config caps
-// the list at 10, so the grid is one or two rows of generous tiles. A tall
-// shelf eats the canvas, so the grid then trades columns for rows rather than
+// the list at 20, so the grid runs to four rows of generous tiles. A tall shelf
+// eats the canvas, so the grid then trades columns for rows rather than
 // squeezing tiles below the height their four lines need.
 export function tileCols(n, shelfRows = 0) {
   let cols = n <= 3 ? Math.max(n, 1) : n <= 4 ? 2 : n <= 6 ? 3 : n <= 8 ? 4 : 5;
-  const avail = WALL_H - (shelfRows ? shelfRows * SHELF_ROW + (shelfRows - 1) * TILE_GAP + RULE_BLOCK : 0);
-  const maxRows = Math.max(1, Math.floor((avail + TILE_GAP) / (TILE_MIN + TILE_GAP)));
-  while (Math.ceil(n / cols) > maxRows && cols < 5) cols++;
+  const rows = maxRows(shelfRows);
+  while (Math.ceil(n / cols) > rows && cols < MAX_COLS) cols++;
   return cols;
+}
+
+// Whether the watchlist grid still clears the tile floor with the shelf in place.
+const gridFits = (n, shelfRows) => Math.ceil(n / tileCols(n, shelfRows)) <= maxRows(shelfRows);
+
+// The shelf earns its place only when the whole wall still fits around it: its
+// own rows must clear the canvas, and the watchlist below must still clear the
+// tile floor. A twenty-long list behind one or two indices cannot afford the
+// shelf's 278px band, so the indices fold back into the grid as ordinary tiles
+// — they ARE ordinary entries, and the shelf is the luxury, not the list.
+export function shelfFits(nShelf, nRest) {
+  if (!nShelf) return false;
+  const rows = Math.ceil(nShelf / shelfCols(nShelf));
+  const block = rows * SHELF_ROW + (rows - 1) * TILE_GAP + (nRest ? RULE_BLOCK : 0);
+  return block <= WALL_H && (!nRest || gridFits(nRest, rows));
 }
 
 // Shelf columns. Index tiles carry the big lead type (a 46px six-figure price
@@ -195,10 +224,13 @@ function tile(ix) {
 // has tiles — the indices are removable entries like any other symbol, so a
 // config without them yields a plain stock grid on the full canvas (no shelf,
 // no reserved space, no hairline), and an indices-only config yields the shelf
-// alone with no empty grid below it.
+// alone with no empty grid below it. When the shelf cannot be afforded at all
+// (see shelfFits), the wall drops it and shows one grid of everything.
 export function tileWall(indices) {
-  const shelf = indices.filter((ix) => isIndexSymbol(ix.symbol));
-  const rest = indices.filter((ix) => !isIndexSymbol(ix.symbol));
+  const leads = indices.filter((ix) => isIndexSymbol(ix.symbol));
+  const banded = shelfFits(leads.length, indices.length - leads.length);
+  const shelf = banded ? leads : [];
+  const rest = banded ? indices.filter((ix) => !isIndexSymbol(ix.symbol)) : indices;
   const bands = [];
   const sCols = shelfCols(shelf.length);
   const shelfRows = shelf.length ? Math.ceil(shelf.length / sCols) : 0;
@@ -207,8 +239,11 @@ export function tileWall(indices) {
   }
   if (shelf.length && rest.length) bands.push('<div class="wall__rule"></div>');
   if (rest.length) {
+    const gCols = tileCols(rest.length, shelfRows);
+    // A six-across grid drops to the denser tile type (see main.css): the extra
+    // column is only legible if the tile buys the width back.
     bands.push(
-      `<div class="wall__grid" style="--cols:${tileCols(rest.length, shelfRows)}">${rest.map(tile).join('')}</div>`,
+      `<div class="wall__grid${gCols >= MAX_COLS ? ' wall__grid--dense' : ''}" style="--cols:${gCols}">${rest.map(tile).join('')}</div>`,
     );
   }
   // A lone shelf centers instead of stranding itself at the top edge.

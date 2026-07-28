@@ -16,6 +16,8 @@ import {
   expressRoutes,
   directionsForRoute,
   stopsForRouteDir,
+  canAddTicker,
+  TICKER_MAX,
 } from '../site/js/settings/pickers.js';
 import { connectBridge } from '../site/js/bridge.js';
 
@@ -33,6 +35,29 @@ describe('subway pickers', () => {
   it('lists stations serving a line in a borough', () => {
     expect(stationsForLine(SUBWAY, 'Manhattan', 'N').map((s) => s.id)).toEqual(['R16']);
     expect(stationsForLine(SUBWAY, 'Queens', 'N').map((s) => s.id)).toEqual(['R01']);
+  });
+});
+
+describe('ticker Add guard', () => {
+  const list = (n) => Array.from({ length: n }, (_, i) => `TK${String(i).padStart(2, '0')}`);
+
+  it('fills to 20 and refuses the 21st', () => {
+    expect(TICKER_MAX).toBe(20);
+    expect(canAddTicker(list(19), 'AAPL')).toBe(true); // the 20th still lands
+    expect(canAddTicker(list(20), 'AAPL')).toBe(false); // the 21st is refused
+  });
+
+  it('refuses a duplicate or a malformed symbol, at any length', () => {
+    expect(canAddTicker(['AAPL'], 'AAPL')).toBe(false);
+    expect(canAddTicker([], 'BAD TICKER')).toBe(false);
+    expect(canAddTicker([], 'aapl')).toBe(false); // callers normalize to upper first
+    expect(canAddTicker([], '')).toBe(false);
+  });
+
+  it('keeps the 10-CHARACTER symbol limit, which is not the list cap', () => {
+    expect(canAddTicker([], '^STOXX50E')).toBe(true); // 9 chars
+    expect(canAddTicker([], 'ABCDEFGHIJ')).toBe(true); // 10 chars
+    expect(canAddTicker([], 'ABCDEFGHIJK')).toBe(false); // 11 chars
   });
 });
 
