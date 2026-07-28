@@ -16,10 +16,14 @@ import {
   render as renderSubway,
   statusBoard,
   alertStep,
-  alertGap,
+  alertColumns,
+  alertColHeights,
   bandRows,
   alertsAvail,
   wellHeight,
+  statusLabel,
+  STATUS_RULES,
+  STATUS_FALLBACK,
   ALERT_STEPS,
 } from '../site/js/widgets/subway.js';
 import { render as renderWeather } from '../site/js/widgets/weather.js';
@@ -554,7 +558,8 @@ describe('subway status board', () => {
   it('renders EVERY header a line carries, stacked — including the one the card drops', () => {
     const wall = wallOf(statusBoard(subwayVm(1, 3, [LONG, SECOND]).lines));
     const paras = [...wall.querySelectorAll('.sbalert__text p')];
-    expect(paras.map((p) => p.textContent)).toEqual([LONG, SECOND]);
+    // The header copy is the paragraph's last node — the lead one leads with a pill.
+    expect(paras.map((p) => p.lastChild.textContent)).toEqual([LONG, SECOND]);
     // Grouped under the one line: two headers, one bullet, one well.
     expect(wall.querySelectorAll('.sbalert').length).toBe(1);
     expect(wall.querySelectorAll('.sbalert .bullet').length).toBe(1);
@@ -567,7 +572,9 @@ describe('subway status board', () => {
     ]));
     expect(wall.querySelector('img')).toBeNull();
     expect(wall.querySelector('b')).toBeNull();
-    expect(wall.querySelector('.sbalert__text p').textContent).toBe('<img src=x onerror=1>');
+    expect(wall.querySelector('.sbalert__text p').lastChild.textContent).toBe('<img src=x onerror=1>');
+    // The pill is derived from that same copy, so it is escaped on the same path.
+    expect(wall.querySelector('.sbstatus').textContent).toBe('Service alert');
   });
 });
 
@@ -615,33 +622,140 @@ describe('subway adaptive columns', () => {
     expect(ALERT_STEPS[ALERT_STEPS.length - 1].css).toContain('--well-fs:20px');
   });
 
-  it('lays two columns out in config order down the first, then the second', () => {
-    // --rows drives the grid template; auto-flow:column then fills row 0..n of
-    // column one before column two, which is what keeps config order readable.
-    expect(alertsEl(subwayVm(6, 6).lines).style.getPropertyValue('--rows')).toBe('3');
-    expect(alertsEl(subwayVm(7, 5).lines).style.getPropertyValue('--rows')).toBe('4');
-    expect(alertsEl(subwayVm(5, 7).lines).style.getPropertyValue('--rows')).toBe('5'); // one column
+  it('deals the wells into two real columns, config order down the first', () => {
+    // Each column is its own wrapper — the split is structural now, not a grid
+    // auto-flow, so the DOM says outright which well sits where.
+    const cols = (lines) => [...alertsEl(lines).querySelectorAll('.wall__col')]
+      .map((c) => [...c.querySelectorAll('.sbalert .bullet')].map((b) => b.textContent).join(','));
+    expect(cols(subwayVm(6, 6).lines)).toEqual(['1,2,3', '4,5,6']);
+    expect(cols(subwayVm(7, 5).lines)).toEqual(['1,2,3,4', '5,6,7']); // 4 + 3, never 6 + 1
+    expect(cols(subwayVm(5, 7).lines)).toEqual([]); // one column wraps nothing
+    expect(alertsEl(subwayVm(5, 7).lines).querySelectorAll('.sbalert').length).toBe(5);
   });
 
-  it('caps the elastic well gap so three alerts read as one group', () => {
-    const step = ALERT_STEPS[0];
-    expect(alertGap(alerting(3), step, 3, 1)).toBe(36); // 261px of slack, capped
-    expect(alertGap(alerting(5), step, 5, 1)).toBe(35); // 69px over four gaps
-    expect(alertGap(alerting(6), step, 6, 0)).toBe(27); // a fuller canvas, tighter
-    expect(alertGap(alerting(1), step, 1, 1)).toBe(18); // one well has no gap
-    // Past the canvas (the scroll backstop) the gap sits on its floor.
-    expect(alertGap(alerting(12, [LONG, SECOND]), ALERT_STEPS[4], 6, 1)).toBe(18);
-    expect(alertsEl(subwayVm(3, 9).lines).style.getPropertyValue('--well-space')).toBe('36px');
+  it('packs every column at one uniform 20px pitch', () => {
+    for (const n of [1, 3, 5, 6, 8, 12]) {
+      expect(alertsEl(subwayVm(n, 24 - n).lines).style.getPropertyValue('--well-space')).toBe('20px');
+    }
+  });
+
+  it('sizes the region by its TALLEST COLUMN, not by the tallest well per row', () => {
+    // Six wells, and only the first is tall. Two columns of three: column one
+    // pays for that well, column two does not — under the old shared row tracks
+    // row 0 charged BOTH columns for it and the short well floated in dead air.
+    const lines = [
+      { line: '1', ok: false, headers: [LONG, SECOND] },
+      ...['2', '3', '4', '5', '6'].map((line) => ({ line, ok: false, headers: [SHORT] })),
+    ];
+    const step = ALERT_STEPS[1];
+    const [tall, short] = alertColHeights(lines, step, 3);
+    expect(tall).toBeGreaterThan(short);
+    expect(short).toBe(2 * 20 + 3 * wellHeight([SHORT], step)); // its own wells, its own gaps
+    expect(tall).toBe(2 * 20 + wellHeight([LONG, SECOND], step) + 2 * wellHeight([SHORT], step));
+    // And the columns hold what the model says they hold.
+    expect(alertColumns(lines, step, 3).map((c) => c.length)).toEqual([3, 3]);
   });
 
   it('measures a well from its bullet, its padding and every line of its text', () => {
     const [roomy] = ALERT_STEPS;
     expect(wellHeight([SHORT], roomy)).toBe(120); // one line: the bullet governs
-    expect(wellHeight([LONG], roomy)).toBe(122); // two lines of 41 + 40 of padding
-    expect(wellHeight([LONG, SECOND], roomy)).toBe(172); // 2 lines + 1 + the paragraph gap
+    expect(wellHeight([LONG], roomy)).toBe(128); // two lines of 41, the pill's share of a third, 40 of padding
+    expect(wellHeight([LONG, SECOND], roomy)).toBe(178); // 2 lines + 1 + the pill + the paragraph gap
     expect(wellHeight([], roomy)).toBe(120); // no header at all still frames the bullet
     // The same text costs less on a lower rung, which is the point of the ladder.
     expect(wellHeight([LONG, SECOND], ALERT_STEPS[4])).toBeLessThan(wellHeight([LONG, SECOND], roomy));
+  });
+
+  it('prices the pill as a fraction of a line, in proportion to its label', () => {
+    // The pill takes characters out of ONE line, so that is what it costs. Pricing
+    // it as a whole line per lead read 812px on Sean's eight-alert morning where
+    // the browser renders 726 — a rung of type given up for nothing.
+    const step = { cols: 2, chars: 60, line: 40, para: 8, pad: 0, bullet: 0, css: '' };
+    const sixty = (lead) => `${lead}${'A'.repeat(60 - lead.length)}`; // one line, whatever the label
+    expect(wellHeight([sixty('')], step)).toBe(51); // SERVICE ALERT (13) + 3 of 60 chars
+    expect(wellHeight([sixty('suspended ')], step)).toBe(48); // SUSPENDED (9) + 3
+    expect(wellHeight([sixty('delays ')], step)).toBe(46); // DELAYS (6) + 3, the cheapest
+    expect(statusLabel(sixty(''))).toBe(STATUS_FALLBACK);
+    // It always costs something, and never a whole line.
+    expect(wellHeight([sixty('delays ')], step)).toBeGreaterThan(step.line);
+    expect(wellHeight([sixty('')], step)).toBeLessThan(2 * step.line);
+    // A second header carries no pill, so it pays for its own characters alone.
+    expect(wellHeight([sixty(''), 'A'.repeat(60)], step)).toBe(99); // 51 + one bare line + the gap
+    expect(wellHeight([sixty(''), 'A'.repeat(61)], step)).toBe(139); // and 61 chars is two lines
+  });
+});
+
+describe('subway status pill', () => {
+  const label = (header) => statusLabel(header);
+
+  it('names a reroute', () => {
+    expect(label('[3] trains are rerouted via the [2] line after 34 St-Penn Station.')).toBe('Reroute');
+    expect(label('Coney Island-bound [D] trains are rerouted via the [N] line after 36 St.')).toBe('Reroute');
+  });
+
+  it('names a local-stops pattern change', () => {
+    expect(label('Downtown [4] trains are making local stops in Manhattan.')).toBe('Local stops');
+    expect(label('[A] trains are running local service between 168 St and Canal St.')).toBe('Local stops');
+  });
+
+  it('names a skipped-stops pattern change', () => {
+    expect(label('Manhattan-bound [J] trains skip Marcy Av and Hewes St.')).toBe('Skipped stops');
+    expect(label('[6] trains are skipping 68 St-Hunter College.')).toBe('Skipped stops');
+    expect(label('Southbound [2] trains stop at 145 St.')).toBe('Skipped stops');
+  });
+
+  it('names a headway, carrying the interval through', () => {
+    expect(label('42 St Shuttle trains are running every 12 minutes.')).toBe('Every 12 min');
+    expect(label('[7] trains are running every 10 minutes while we perform signal work.')).toBe('Every 10 min');
+    expect(label('[G] trains are running every 1 minute.')).toBe('Every 1 min');
+  });
+
+  it('names delays', () => {
+    expect(label('Downtown [2] trains are running with delays in both directions.')).toBe('Delays');
+    expect(label('[L] service is delayed while we conduct track maintenance.')).toBe('Delays');
+  });
+
+  it('names a suspension', () => {
+    expect(label('[M] service is suspended between Myrtle Av and Metropolitan Av.')).toBe('Suspended');
+  });
+
+  it('falls back to a label that is never wrong', () => {
+    expect(label('Elevator service at 42 St-Bryant Pk is out of service.')).toBe('Service alert');
+    expect(label(LONG)).toBe('Service alert'); // "stopping along the [R] line" is none of the patterns
+    expect(label('')).toBe('Service alert');
+    expect(label(undefined)).toBe('Service alert');
+    expect(STATUS_FALLBACK).toBe('Service alert');
+  });
+
+  it('takes the FIRST match when the prose carries two patterns', () => {
+    // A reroute that also changes the stop pattern is a reroute — that is the
+    // bigger fact, and the rule table's order is what decides it.
+    expect(label('[D] trains are rerouted via the [N] line and are making local stops.')).toBe('Reroute');
+    // A headway outranks the delay it is phrased alongside: it says how long.
+    expect(label('[7] trains are running with delays and running every 20 minutes.')).toBe('Every 20 min');
+    // Suspended-plus-delays reads as delays, because delays comes first in the
+    // table — the pair only occurs as "delays on the rest of the line".
+    expect(label('[M] service is suspended in Queens with delays elsewhere.')).toBe('Delays');
+    expect(STATUS_RULES.map((r) => r.label)).toEqual([
+      'Reroute', 'Local stops', 'Skipped stops', 'Every $1 min', 'Delays', 'Suspended',
+    ]);
+  });
+
+  it('renders exactly one pill per well, on the lead alert, escaped', () => {
+    const wall = wallOf(statusBoard(subwayVm(3, 6, [LONG, SECOND]).lines));
+    expect(wall.querySelectorAll('.sbalert').length).toBe(3);
+    expect(wall.querySelectorAll('.sbstatus').length).toBe(3); // one each, not one per header
+    // It leads the first paragraph and the alert copy follows it intact.
+    const lead = wall.querySelector('.sbalert__text p');
+    expect(lead.firstElementChild.className).toBe('sbstatus');
+    expect(lead.textContent).toBe(`Service alert${LONG}`);
+    expect([...wall.querySelectorAll('.sbalert__text p')][1].querySelector('.sbstatus')).toBeNull();
+  });
+
+  it('keeps the wells neutral: the pill is the only amber in the markup', () => {
+    const wall = wallOf(statusBoard(subwayVm(2, 6).lines));
+    expect([...wall.querySelectorAll('.sbstatus')].map((p) => p.textContent)).toEqual(['Delays', 'Delays']);
+    expect(wall.querySelector('.sbalert').getAttribute('style')).toBeNull(); // no inline amber
   });
 });
 

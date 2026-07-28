@@ -1053,39 +1053,49 @@ body.mode-ambient .gear--edit { display: none; }
 .wall__alerts {
   flex: 1; min-height: 0; overflow-y: auto;
   display: flex; flex-direction: column; justify-content: flex-start;
-  row-gap: var(--well-space, 18px); /* elastic, ceiling'd — subway.js measures it */
+  row-gap: var(--well-space, 20px); /* uniform — subway.js stamps the number it packs with */
 }
 /* A problem well. The defaults ARE the design — one full-width well in the
    biggest type on the canvas; subway.js overrides the --well-* scale (and only
    that) on the tighter rungs of its ladder, so the type it measures against and
-   the type that renders can never drift apart. */
+   the type that renders can never drift apart.
+   The surface is the board's standard translucent card, the body copy is ink:
+   eight amber wells at once turned the whole canvas into a warning and the words
+   into decoration, so alerts read as CONTENT and the pill carries the alarm. */
 .sbalert {
   display: flex; align-items: center; min-width: 0; overflow: hidden;
-  background: var(--warn-tint); border-radius: 16px;
+  background: var(--bg-card-2); border-radius: 16px;
   gap: var(--well-gap, 30px); padding: var(--well-pad, 20px) var(--well-px, 30px);
 }
 .sbalert .bullet { width: var(--well-bullet, 80px); height: var(--well-bullet, 80px); font-size: var(--well-bfs, 42px); }
-.sbalert__text { font-size: var(--well-fs, 30px); line-height: 1.34; color: var(--warn); min-width: 0; }
+.sbalert__text { font-size: var(--well-fs, 30px); line-height: 1.34; color: var(--ink); min-width: 0; }
 .sbalert__text p + p { margin-top: var(--well-para, 9px); } /* a line's second alert */
-/* Adaptive columns: past the single-column ceiling the wells flow into two —
-   auto-flow:column so config order runs DOWN the first column and then across,
-   which is how a reader takes a list. */
-.wall__alerts--split {
-  display: grid;
-  grid-auto-flow: column;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  /* Rows take their content's height and stack from the hairline down, spaced by
-     the same elastic gap the single column uses. Deliberately NOT 1fr rows: an
-     even share of the canvas stretches three rows of wells 130px apart, and the
-     wells stop reading as one group. */
-  grid-template-rows: repeat(var(--rows, 3), min-content);
-  align-content: start;
-  column-gap: 24px;
+/* The only amber left in a well: one pill at the head of the lead alert naming
+   what is wrong (subway.js reads the label off the prose). Every dimension is
+   em-relative to the body copy, so it rides all five rungs of the ladder at one
+   proportion — 0.74em, i.e. 20px against rung 2's 27px — and its 1.5em box stays
+   inside the 1.34 line box, which is how the pill costs the well no height. */
+.sbstatus {
+  display: inline-block; margin-right: 0.6em; padding: 0 0.65em;
+  height: 1.5em; line-height: 1.5em; vertical-align: 0.1em;
+  border-radius: 999px;
+  background: var(--warn-tint); color: var(--warn);
+  font-size: 0.74em; font-weight: 600; letter-spacing: 0.06em;
+  text-transform: uppercase; white-space: nowrap;
 }
-/* A row is as tall as its taller well; the shorter one beside it takes only what
-   its own text needs and centers, rather than stretching amber into dead air
-   (the same reasoning as the markets tile's max-height + align-self). */
-.wall__alerts--split .sbalert { align-self: center; }
+/* Adaptive columns: past the single-column ceiling the wells flow into two, and
+   each column is its OWN top-packed stack. It was one grid whose row tracks were
+   shared between the columns — a row stood as tall as its TALLER well, so a short
+   well beside a tall one floated in dead air and the gaps read as ragged.
+   Config order is unchanged, still DOWN column one and then down column two
+   (subway.js deals the wells into the wrappers), but now every well sits exactly
+   one gap below the one above it, in both columns. */
+.wall__alerts--split { flex-direction: row; align-items: flex-start; column-gap: 24px; }
+.wall__col {
+  flex: 1 1 0; min-width: 0;
+  display: flex; flex-direction: column; justify-content: flex-start;
+  row-gap: var(--well-space, 20px);
+}
 
 /* Weather: the full meteo board. The other two overlays UNCAP a list; this one
    has no hidden rows to reveal, so it re-reads the same payload at a richness the

@@ -50,14 +50,12 @@ const BAND_GAP = 16;
 // only over-reserves 76px of canvas, which costs a rung at worst.
 const BAND_PER_ROW = 17;
 const RULE_BLOCK = 53; // .wall__rule: a 1px hairline plus its 26px margins
-// The gap between problem wells is elastic between a floor and a CEILING, the
-// same idiom the subway CARD uses for its row-gap: leftover canvas opens the
-// rhythm up to a point and then stops, so three alerts read as one group under
-// the hairline instead of three strata 175px apart. The approved mockup's
-// five-alert morning measures 33px of gap — the 36px ceiling holds that rhythm
-// and refuses to get airier.
-const ALERT_GAP = 18;
-const ALERT_GAP_MAX = 36;
+// The gap between problem wells, uniform everywhere: every well sits exactly
+// this far below the one above it, in both columns. It replaced an elastic
+// 18-36px gap that existed only to fill the row tracks of the old shared grid —
+// once each column packs its own wells from the hairline down there is nothing
+// left to fill, and one pitch reads as one rhythm across both columns.
+const ALERT_GAP = 20;
 
 // The ladder a problem well walks down as the morning gets worse. The wall
 // spends its slack on SIZE first: one full-width column in the biggest type,
@@ -89,12 +87,61 @@ export const ALERT_STEPS = [
   },
 ];
 
+// ---------- the status pill ----------
+
+// A well leads with ONE amber pill naming what is wrong, read off the lead
+// alert's own prose. The MTA writes its headers to a small set of phrasings, and
+// this is that set in priority order — FIRST MATCH WINS, so a train that is both
+// rerouted and making local stops reads REROUTE, the bigger fact. `label` may
+// reference the pattern's capture groups. Matching nothing is not a failure:
+// SERVICE ALERT is true of every alert the feed can carry, so the pill is never
+// wrong, only sometimes unspecific.
+export const STATUS_RULES = [
+  { re: /\breroute[ds]?\b/i, label: 'Reroute' },
+  { re: /\blocal (?:stops|service)\b/i, label: 'Local stops' },
+  { re: /\b(?:skip(?:s|ped|ping)?|stops? at|stopping at)\b/i, label: 'Skipped stops' },
+  { re: /\brunning every (\d+) minutes?\b/i, label: 'Every $1 min' },
+  { re: /\bdelay(?:s|ed|ing)?\b/i, label: 'Delays' },
+  { re: /\bsuspended\b/i, label: 'Suspended' },
+];
+export const STATUS_FALLBACK = 'Service alert';
+
+export function statusLabel(header) {
+  const text = String(header ?? '');
+  for (const { re, label } of STATUS_RULES) {
+    const m = text.match(re);
+    if (m) return label.replace(/\$(\d)/g, (_, n) => m[Number(n)]);
+  }
+  return STATUS_FALLBACK;
+}
+
+// What the pill costs the well, priced in the same `chars` currency the ladder
+// measures wrapping in. The pill's type is 0.74em of the body's, but it is
+// uppercase with 0.06em of tracking, which puts a pill glyph back at about one
+// body character — so its width is its label plus three characters for the
+// padding and the gap after it. Both halves are em-relative in the CSS, so that
+// price holds at every rung (browser-checked at rung 2: a 20px pill on 27px body
+// copy measures 111px against a 12.0px average character).
+//
+// It is charged as a FRACTION of a line, not as a line, because that is what it
+// costs: the pill takes nine characters out of ONE line of fifty-seven, and only
+// turns into a whole extra line when the lead was already sitting within nine
+// characters of a wrap boundary. Pricing it as a full line per lead read 812px
+// where the browser renders 726 on Sean's eight-alert morning — enough to cost
+// the wall a rung of type it did not need to give up.
+const PILL_CHARS = 3;
+const pillLines = (header, step) => (statusLabel(header).length + PILL_CHARS) / step.chars;
+
 // A well is its frame, or its text when the text is taller — EVERY header the
-// line carries, stacked (the card shows only the first, and clamps it).
+// line carries, stacked (the card shows only the first, and clamps it). Only the
+// lead header pays for the pill: one well, one pill.
 export function wellHeight(headers, step) {
-  const lines = headers.reduce((n, h) => n + Math.max(1, Math.ceil(String(h).length / step.chars)), 0);
+  const lines = headers.reduce(
+    (n, h, i) => n + Math.max(1, Math.ceil(String(h).length / step.chars)) + (i ? 0 : pillLines(h, step)),
+    0,
+  );
   const text = lines * step.line + Math.max(headers.length - 1, 0) * step.para;
-  return step.pad + Math.max(step.bullet, text);
+  return Math.round(step.pad + Math.max(step.bullet, text));
 }
 
 // Band rows for n healthy lines (0 when none — the band does not render, and
@@ -106,16 +153,23 @@ export function alertsAvail(rows) {
   return WALL_H - (rows ? rows * BAND_ROW + (rows - 1) * BAND_GAP + RULE_BLOCK : 0);
 }
 
-// Row heights at a step. Two columns flow config order DOWN the first column
-// and then the second (auto-flow: column), so row i holds wells i, i+rows, …
-// and is as tall as the tallest of them.
-export function alertRowHeights(alerting, step, rows) {
-  const h = alerting.map((l) => wellHeight(l.headers, step));
-  return Array.from({ length: rows }, (_, i) => {
-    let tallest = 0;
-    for (let k = i; k < h.length; k += rows) tallest = Math.max(tallest, h[k]);
-    return tallest;
-  });
+// The wells dealt into columns. Config order runs DOWN the first column and then
+// down the second, so column c holds wells [c·rows, (c+1)·rows) — `rows` is the
+// height of the FIRST column, and the second takes what is left (seven wells
+// split 4 + 3, never 6 + 1).
+export function alertColumns(alerting, step, rows) {
+  return Array.from({ length: step.cols }, (_, c) => alerting.slice(c * rows, (c + 1) * rows))
+    .filter((col) => col.length);
+}
+
+// Each column is its own top-packed stack: its wells at their own heights plus
+// its own uniform gaps. The columns share no row tracks, so a short well beside a
+// tall one costs nothing and the region is as tall as its TALLEST COLUMN — not,
+// as it once was, the sum of the tallest well in each row.
+export function alertColHeights(alerting, step, rows) {
+  return alertColumns(alerting, step, rows).map(
+    (col) => col.reduce((n, l) => n + wellHeight(l.headers, step), 0) + (col.length - 1) * ALERT_GAP,
+  );
 }
 
 // The first step on the ladder that holds every well whole. One column while the
@@ -125,19 +179,9 @@ export function alertStep(alerting, bRows = 0) {
   const avail = alertsAvail(bRows);
   for (const step of ALERT_STEPS) {
     const rows = Math.ceil(alerting.length / step.cols);
-    const heights = alertRowHeights(alerting, step, rows);
-    const total = heights.reduce((a, b) => a + b, 0) + (rows - 1) * ALERT_GAP;
-    if (total <= avail) return step;
+    if (Math.max(...alertColHeights(alerting, step, rows)) <= avail) return step;
   }
   return ALERT_STEPS[ALERT_STEPS.length - 1]; // the tightest step is the floor
-}
-
-// The elastic row-gap: the leftover canvas, shared between the gaps, clamped.
-export function alertGap(alerting, step, rows, bRows = 0) {
-  if (rows < 2) return ALERT_GAP;
-  const heights = alertRowHeights(alerting, step, rows);
-  const slack = alertsAvail(bRows) - heights.reduce((a, b) => a + b, 0) - (rows - 1) * ALERT_GAP;
-  return Math.round(Math.max(ALERT_GAP, Math.min(ALERT_GAP_MAX, ALERT_GAP + slack / (rows - 1))));
 }
 
 // The overlay body: every configured line at once. Healthy lines collapse into
@@ -161,20 +205,22 @@ export function statusBoard(lines) {
   }
   if (good.length && alerting.length) bands.push('<div class="wall__rule"></div>');
   if (alerting.length) {
-    const bRows = bandRows(good.length);
-    const step = alertStep(alerting, bRows);
+    const step = alertStep(alerting, bandRows(good.length));
     const rows = Math.ceil(alerting.length / step.cols);
-    const style = `${step.css}--rows:${rows};--well-space:${alertGap(alerting, step, rows, bRows)}px`;
+    const pill = (h) => `<span class="sbstatus">${escapeHtml(statusLabel(h))}</span>`;
+    const well = (l) => `<div class="sbalert">${bullet(l)}
+        <div class="sbalert__text">${l.headers
+          .map((h, i) => `<p>${i ? '' : pill(h)}${escapeHtml(h)}</p>`)
+          .join('')}</div>
+      </div>`;
+    // One column needs no wrapper; two get one each, so each packs independently.
+    const body = step.cols > 1
+      ? alertColumns(alerting, step, rows)
+        .map((col) => `<div class="wall__col">${col.map(well).join('')}</div>`)
+        .join('')
+      : alerting.map(well).join('');
     bands.push(
-      `<div class="wall__alerts${step.cols > 1 ? ' wall__alerts--split' : ''}" style="${style}">` +
-        alerting
-          .map(
-            (l) => `<div class="sbalert">${bullet(l)}
-        <div class="sbalert__text">${l.headers.map((h) => `<p>${escapeHtml(h)}</p>`).join('')}</div>
-      </div>`,
-          )
-          .join('') +
-        '</div>',
+      `<div class="wall__alerts${step.cols > 1 ? ' wall__alerts--split' : ''}" style="${step.css}--well-space:${ALERT_GAP}px">${body}</div>`,
     );
   }
   // A band with no wells under it centers rather than stranding itself at the
