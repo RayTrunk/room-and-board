@@ -7,6 +7,10 @@
         "text": "Tap the Markets card to see every ticker you follow, full screen. It closes by itself after a minute. And you can now follow up to 20 tickers, up from 10."
       },
       {
+        "lead": "Subway",
+        "text": "Tap the Subway card to see every line at once. The lines running normally collapse into a single row of badges, and every line with a problem shows its full alert, including the details the card has to cut short."
+      },
+      {
         "lead": "Trains",
         "text": "LIRR, Metro-North, and NJ Transit departures now show each train’s line as a colored badge in its official line colors, so the line is easy to tell apart from the destination."
       },

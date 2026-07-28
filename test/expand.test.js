@@ -12,6 +12,16 @@ import {
   EXPAND_IDLE_MS,
 } from '../site/js/expand.js';
 import { render as renderMarkets, tileWall, tileCols, shelfCols } from '../site/js/widgets/markets.js';
+import {
+  render as renderSubway,
+  statusBoard,
+  alertStep,
+  alertGap,
+  bandRows,
+  alertsAvail,
+  wellHeight,
+  ALERT_STEPS,
+} from '../site/js/widgets/subway.js';
 
 const NAMES = {
   '^DJI': 'Dow Jones',
@@ -368,5 +378,267 @@ describe('markets ticker wall', () => {
     expect(twenty.querySelector('.wall__shelf')).toBeNull();
     expect(twenty.querySelectorAll('.wall__grid .tile').length).toBe(20);
     expect(twenty.classList.contains('wall--shelf-only')).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------- subway ----
+
+// Real MTA copy: the digest hands over the header verbatim. SHORT is one line at
+// every rung of the ladder; LONG is the longest alert the feed realistically
+// carries, and takes two lines even full width.
+const SHORT = '[E] trains are running with delays in both directions.';
+const LONG =
+  'Southbound [Q] trains are stopping along the [R] line from Canal St to DeKalb Av while we perform track maintenance at the Manhattan Bridge.';
+const SECOND = '[F] trains are rerouted via the [E] line between 21 St-Queensbridge and 47-50 Sts.';
+
+const LINE_IDS = ['1', '2', '3', '4', '5', '6', '7', 'A', 'C', 'E', 'B', 'D', 'F', 'M', 'G', 'J', 'Z', 'L', 'N', 'Q', 'R', 'W', 'S', 'SI'];
+
+// `alerts` alerting lines first (config order is preserved as written), then
+// `good` healthy ones — the shape mapSubwayStatus produces.
+const subwayVm = (alerts, good, headers = [SHORT]) => ({
+  updatedAt: 1783000500,
+  stale: false,
+  lines: [
+    ...LINE_IDS.slice(0, alerts).map((line) => ({ line, ok: false, headers })),
+    ...LINE_IDS.slice(alerts, alerts + good).map((line) => ({ line, ok: true, headers: [] })),
+  ],
+});
+
+const alerting = (n, headers = [SHORT]) => subwayVm(n, 0, headers).lines;
+
+function subwayBoard(vm, [w, h] = [3, 4]) {
+  document.body.innerHTML = `
+    <div id="grid">
+      <article class="card card--subway" data-widget="subway" data-w="${w}" data-h="${h}">
+        <h2 class="card__title">Subway Status</h2>
+        <div class="card__body"></div>
+        <div class="card__stamp" hidden></div>
+      </article>
+    </div>
+    <div id="settings-root"></div>
+    <div id="edit-root"></div>`;
+  const grid = document.querySelector('#grid');
+  initExpand(grid);
+  const card = grid.querySelector('.card');
+  renderSubway(card.querySelector('.card__body'), vm, { clock24: false });
+  return { grid, card };
+}
+
+const wallOf = (html) => {
+  const host = document.createElement('div');
+  host.innerHTML = html;
+  return host.querySelector('.wall');
+};
+const textOf = (el) => el.textContent.replace(/\s+/g, ' ').trim();
+
+describe('subway card tap', () => {
+  it('opens every configured line when the +N badge is showing', () => {
+    const vm = subwayVm(2, 10); // 12 lines, a 3x4 card holds 6
+    const { card } = subwayBoard(vm);
+    expect(card.querySelector('.card__more')).not.toBeNull(); // badge = the signifier
+    expect(card.classList.contains('is-expandable')).toBe(true);
+    expect(card.querySelectorAll('.linestatus').length).toBeLessThan(vm.lines.length);
+
+    card.click();
+    expect(isExpandOpen()).toBe(true);
+    expect(overlay().querySelector('.expand__title').textContent).toBe('Subway Status');
+    expect(overlay().querySelector('.expand__note').textContent).toBe('2 of 12 lines with alerts · as of 9:55 AM');
+    // Every line is present: 10 in the band, 2 as wells.
+    expect(overlay().querySelectorAll('.wall__bullets .bullet').length).toBe(10);
+    expect(overlay().querySelectorAll('.sbalert').length).toBe(2);
+  });
+
+  it('is inert when nothing is hidden: no badge, no expansion', () => {
+    // A 4x8 card holds 15 rows, so a 5-line config hides nothing.
+    const { card } = subwayBoard(subwayVm(1, 4), [4, 8]);
+    expect(card.querySelector('.card__more')).toBeNull();
+    expect(card.classList.contains('is-expandable')).toBe(false);
+    card.click();
+    expect(isExpandOpen()).toBe(false);
+  });
+
+  it('stays inert for an all-healthy card that fits (the badge and the tap agree)', () => {
+    const { card } = subwayBoard(subwayVm(0, 6), [3, 4]); // cap 6, six lines
+    expect(card.querySelector('.card__more')).toBeNull();
+    expect(card.classList.contains('is-expandable')).toBe(false);
+    card.click();
+    expect(isExpandOpen()).toBe(false);
+  });
+
+  it('drops its title-line note and the alert count when every line is good', () => {
+    const { card } = subwayBoard(subwayVm(0, 12));
+    card.click();
+    expect(overlay().querySelector('.expand__note').textContent).toBe('as of 9:55 AM');
+    expect(overlay().querySelector('.wall__alerts')).toBeNull();
+  });
+
+  it('drops the expansion when a refresh leaves nothing hidden', () => {
+    const { card } = subwayBoard(subwayVm(2, 10));
+    expect(card.classList.contains('is-expandable')).toBe(true);
+    renderSubway(card.querySelector('.card__body'), subwayVm(1, 2), { clock24: false });
+    expect(card.classList.contains('is-expandable')).toBe(false);
+    card.click();
+    expect(isExpandOpen()).toBe(false);
+  });
+
+  it('drops the expansion when the lines are unconfigured (setup prompt)', () => {
+    const { card } = subwayBoard(subwayVm(2, 10));
+    expect(card.classList.contains('is-expandable')).toBe(true);
+    renderSubway(card.querySelector('.card__body'), { lines: [] }, { clock24: false });
+    expect(card.classList.contains('is-expandable')).toBe(false);
+    card.click();
+    expect(isExpandOpen()).toBe(false);
+  });
+
+  it('keeps the snapshot when the source card re-renders underneath it', () => {
+    const { card } = subwayBoard(subwayVm(2, 10, [LONG]));
+    card.click();
+    const before = overlay().innerHTML;
+    expect(overlay().textContent).toContain('DeKalb Av');
+    renderSubway(card.querySelector('.card__body'), subwayVm(3, 9, [SHORT]), { clock24: false });
+    expect(overlay().innerHTML).toBe(before);
+  });
+
+  it('carries the card stale stamp through', () => {
+    const { card } = subwayBoard(subwayVm(2, 10));
+    const stamp = card.querySelector('.card__stamp');
+    stamp.textContent = 'as of 8:12 AM';
+    stamp.hidden = false;
+    card.click();
+    expect(overlay().classList.contains('is-stale')).toBe(true);
+    expect(overlay().querySelector('.expand__stamp').textContent).toBe('as of 8:12 AM');
+  });
+});
+
+describe('subway status board', () => {
+  it('splits the lines into one bullet band and a well per problem line', () => {
+    const wall = wallOf(statusBoard(subwayVm(2, 5).lines));
+    expect([...wall.querySelectorAll('.wall__bullets .bullet')].map((b) => b.textContent))
+      .toEqual(['3', '4', '5', '6', '7']);
+    expect([...wall.querySelectorAll('.sbalert .bullet')].map((b) => b.textContent)).toEqual(['1', '2']);
+    expect(textOf(wall.querySelector('.wall__count'))).toBe('5 of 7 lines');
+    expect(wall.querySelector('.wall__rule')).not.toBeNull();
+  });
+
+  it('keeps config order in both bands, however the lines interleave', () => {
+    const lines = [
+      { line: 'Q', ok: true, headers: [] },
+      { line: 'F', ok: false, headers: [SHORT] },
+      { line: '7', ok: true, headers: [] },
+      { line: 'A', ok: false, headers: [SHORT] },
+      { line: '1', ok: true, headers: [] },
+    ];
+    const wall = wallOf(statusBoard(lines));
+    expect([...wall.querySelectorAll('.wall__bullets .bullet')].map((b) => b.textContent)).toEqual(['Q', '7', '1']);
+    expect([...wall.querySelectorAll('.sbalert .bullet')].map((b) => b.textContent)).toEqual(['F', 'A']);
+  });
+
+  it('suppresses the band entirely when no line is healthy (no empty band, no reserved space)', () => {
+    const wall = wallOf(statusBoard(alerting(4)));
+    expect(wall.querySelector('.wall__good')).toBeNull();
+    expect(wall.querySelector('.wall__rule')).toBeNull();
+    expect(wall.querySelectorAll('.sbalert').length).toBe(4);
+    expect(wall.classList.contains('wall--good-only')).toBe(false);
+  });
+
+  it('renders the band alone, centered, when every line is good', () => {
+    const wall = wallOf(statusBoard(subwayVm(0, 24).lines));
+    expect(wall.querySelectorAll('.wall__bullets .bullet').length).toBe(24);
+    expect(wall.querySelector('.wall__alerts')).toBeNull();
+    expect(wall.querySelector('.wall__rule')).toBeNull();
+    expect(wall.classList.contains('wall--good-only')).toBe(true);
+  });
+
+  it('renders EVERY header a line carries, stacked — including the one the card drops', () => {
+    const wall = wallOf(statusBoard(subwayVm(1, 3, [LONG, SECOND]).lines));
+    const paras = [...wall.querySelectorAll('.sbalert__text p')];
+    expect(paras.map((p) => p.textContent)).toEqual([LONG, SECOND]);
+    // Grouped under the one line: two headers, one bullet, one well.
+    expect(wall.querySelectorAll('.sbalert').length).toBe(1);
+    expect(wall.querySelectorAll('.sbalert .bullet').length).toBe(1);
+  });
+
+  it('escapes line ids and alert copy', () => {
+    const wall = wallOf(statusBoard([
+      { line: '<b>', ok: false, headers: ['<img src=x onerror=1>'] },
+      { line: 'Q"', ok: true, headers: [] },
+    ]));
+    expect(wall.querySelector('img')).toBeNull();
+    expect(wall.querySelector('b')).toBeNull();
+    expect(wall.querySelector('.sbalert__text p').textContent).toBe('<img src=x onerror=1>');
+  });
+});
+
+describe('subway adaptive columns', () => {
+  const stepOf = (n, good = 0, headers = [SHORT]) =>
+    alertStep(subwayVm(n, good, headers).lines.filter((l) => !l.ok), bandRows(good));
+  const alertsEl = (lines) => wallOf(statusBoard(lines)).querySelector('.wall__alerts');
+  const split = (el) => el.classList.contains('wall__alerts--split');
+
+  // Browser-measured on the 1920x1080 overlay: a one-line alert well is 120px
+  // and the gap floor is 18, so 741px of canvas under a one-row band holds five
+  // (672px) and not six (810px).
+  it('holds five wells in one full-width column and flows the sixth into two', () => {
+    expect(stepOf(5, 7).cols).toBe(1);
+    expect(stepOf(6, 6).cols).toBe(2);
+    expect(split(alertsEl(subwayVm(5, 7).lines))).toBe(false);
+    expect(split(alertsEl(subwayVm(6, 6).lines))).toBe(true);
+  });
+
+  it('moves the boundary with the canvas the band leaves behind', () => {
+    // No band at all (every line alerting) buys back its 113px: six fit.
+    expect(stepOf(6, 0).cols).toBe(1);
+    expect(stepOf(7, 0).cols).toBe(2);
+    // A band that wraps to a second row (18+ healthy lines) costs a well: four.
+    expect(bandRows(18)).toBe(2);
+    expect(stepOf(4, 18).cols).toBe(1);
+    expect(stepOf(5, 18).cols).toBe(2);
+  });
+
+  it('measures the canvas the band and its hairline take', () => {
+    expect(alertsAvail(0)).toBe(854); // no band: the whole body
+    expect(alertsAvail(1)).toBe(741); // 60px band + 53px hairline block
+    expect(alertsAvail(2)).toBe(665);
+    expect(bandRows(0)).toBe(0);
+    expect([1, 17, 18, 24].map(bandRows)).toEqual([1, 1, 2, 2]);
+  });
+
+  it('spends its slack on size first: two columns keep the big type before it steps down', () => {
+    expect(ALERT_STEPS[0]).toMatchObject({ cols: 1, css: '' });
+    expect(ALERT_STEPS[1]).toMatchObject({ cols: 2, css: '' }); // same type, two columns
+    expect(stepOf(6, 6).css).toBe(''); // six short alerts: two columns, full size
+    // Twelve lines each carrying two alerts cannot hold it — the type steps down,
+    // and the bottom rung is the card's own 20px alert type.
+    expect(stepOf(12, 12, [LONG, SECOND]).css).toContain('--well-fs:20px');
+    expect(ALERT_STEPS[ALERT_STEPS.length - 1].css).toContain('--well-fs:20px');
+  });
+
+  it('lays two columns out in config order down the first, then the second', () => {
+    // --rows drives the grid template; auto-flow:column then fills row 0..n of
+    // column one before column two, which is what keeps config order readable.
+    expect(alertsEl(subwayVm(6, 6).lines).style.getPropertyValue('--rows')).toBe('3');
+    expect(alertsEl(subwayVm(7, 5).lines).style.getPropertyValue('--rows')).toBe('4');
+    expect(alertsEl(subwayVm(5, 7).lines).style.getPropertyValue('--rows')).toBe('5'); // one column
+  });
+
+  it('caps the elastic well gap so three alerts read as one group', () => {
+    const step = ALERT_STEPS[0];
+    expect(alertGap(alerting(3), step, 3, 1)).toBe(36); // 261px of slack, capped
+    expect(alertGap(alerting(5), step, 5, 1)).toBe(35); // 69px over four gaps
+    expect(alertGap(alerting(6), step, 6, 0)).toBe(27); // a fuller canvas, tighter
+    expect(alertGap(alerting(1), step, 1, 1)).toBe(18); // one well has no gap
+    // Past the canvas (the scroll backstop) the gap sits on its floor.
+    expect(alertGap(alerting(12, [LONG, SECOND]), ALERT_STEPS[4], 6, 1)).toBe(18);
+    expect(alertsEl(subwayVm(3, 9).lines).style.getPropertyValue('--well-space')).toBe('36px');
+  });
+
+  it('measures a well from its bullet, its padding and every line of its text', () => {
+    const [roomy] = ALERT_STEPS;
+    expect(wellHeight([SHORT], roomy)).toBe(120); // one line: the bullet governs
+    expect(wellHeight([LONG], roomy)).toBe(122); // two lines of 41 + 40 of padding
+    expect(wellHeight([LONG, SECOND], roomy)).toBe(172); // 2 lines + 1 + the paragraph gap
+    expect(wellHeight([], roomy)).toBe(120); // no header at all still frames the bullet
+    // The same text costs less on a lower rung, which is the point of the ladder.
+    expect(wellHeight([LONG, SECOND], ALERT_STEPS[4])).toBeLessThan(wellHeight([LONG, SECOND], roomy));
   });
 });

@@ -1031,6 +1031,62 @@ body.mode-ambient .gear--edit { display: none; }
 .wall__shelf .tile__chg { font-size: 26px; }
 .wall__shelf .tile__spark { height: 42px; }
 
+/* Subway: a status board on the same wall skeleton. Every healthy line collapses
+   into ONE compact band of bullets (it scales to a full 25-service config in a
+   single sweep); the canvas below belongs to the lines with a problem, each a
+   full-width well carrying its complete alert text — every header, stacked,
+   including the second alert the card has no room for. Either band renders only
+   when it has lines: no empty band, no reserved space. */
+/* The label and the count sit on the FIRST bullet row (a 60px line box centers
+   them on it), not in the middle of a band that wrapped to two rows — a
+   25-service config wraps, and a label floating between rows reads as detached. */
+.wall__good { flex: none; display: flex; align-items: flex-start; gap: 28px; }
+.wall__goodlabel { font-size: 22px; font-weight: 700; line-height: 60px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--good); flex: none; }
+.wall__bullets { display: flex; align-items: center; flex-wrap: wrap; gap: 16px; min-width: 0; }
+.wall__bullets .bullet { width: 60px; height: 60px; font-size: 32px; }
+.wall__count { margin-left: auto; flex: none; font-size: 22px; line-height: 60px; color: var(--ink-faint); }
+.wall--good-only { justify-content: center; } /* an all-good morning centers its one band */
+/* overflow-y is the never-clip backstop, not the plan: subway.js sizes the wells
+   so they fit, and a transient overlay is the one place the board may scroll
+   (auto-close guarantees no residue). It only ever engages past a dozen-odd
+   two-alert lines at once, which no legible type could fit on 1080 lines. */
+.wall__alerts {
+  flex: 1; min-height: 0; overflow-y: auto;
+  display: flex; flex-direction: column; justify-content: flex-start;
+  row-gap: var(--well-space, 18px); /* elastic, ceiling'd — subway.js measures it */
+}
+/* A problem well. The defaults ARE the design — one full-width well in the
+   biggest type on the canvas; subway.js overrides the --well-* scale (and only
+   that) on the tighter rungs of its ladder, so the type it measures against and
+   the type that renders can never drift apart. */
+.sbalert {
+  display: flex; align-items: center; min-width: 0; overflow: hidden;
+  background: var(--warn-tint); border-radius: 16px;
+  gap: var(--well-gap, 30px); padding: var(--well-pad, 20px) var(--well-px, 30px);
+}
+.sbalert .bullet { width: var(--well-bullet, 80px); height: var(--well-bullet, 80px); font-size: var(--well-bfs, 42px); }
+.sbalert__text { font-size: var(--well-fs, 30px); line-height: 1.34; color: var(--warn); min-width: 0; }
+.sbalert__text p + p { margin-top: var(--well-para, 9px); } /* a line's second alert */
+/* Adaptive columns: past the single-column ceiling the wells flow into two —
+   auto-flow:column so config order runs DOWN the first column and then across,
+   which is how a reader takes a list. */
+.wall__alerts--split {
+  display: grid;
+  grid-auto-flow: column;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  /* Rows take their content's height and stack from the hairline down, spaced by
+     the same elastic gap the single column uses. Deliberately NOT 1fr rows: an
+     even share of the canvas stretches three rows of wells 130px apart, and the
+     wells stop reading as one group. */
+  grid-template-rows: repeat(var(--rows, 3), min-content);
+  align-content: start;
+  column-gap: 24px;
+}
+/* A row is as tall as its taller well; the shorter one beside it takes only what
+   its own text needs and centers, rather than stretching amber into dead air
+   (the same reasoning as the markets tile's max-height + align-self). */
+.wall__alerts--split .sbalert { align-self: center; }
+
 /* The expandable card is the tap target; the +N badge is its signifier. Calm at
    rest, a brief press tint on touch — the same affordance the headlines use. */
 .card.is-expandable { cursor: pointer; }
