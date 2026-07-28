@@ -15,7 +15,6 @@
 <nav class="nav">
   <div class="nav__inner">
     <a class="nav__brand" href="#top"><img src="assets/room-and-board-wordmark-dark.svg" alt="Room &amp; Board" width="152" height="35"></a>
-    <a class="nav__link" href="#modes">Display Modes</a>
     <a class="nav__link" href="#yours">Making it yours</a>
     <a class="nav__link" href="#commute">Commute</a>
     <a class="nav__link" href="#weather">Weather &amp; Air</a>
@@ -54,24 +53,6 @@
   </figure>
 </header>
 
-<section id="modes" class="wrap section" data-nav-section="modes">
-  <h2 class="h2">Display Modes</h2>
-  <div class="tiles">
-    <div class="tile">
-      <h3 class="tile__title">Dashboard</h3>
-      <p class="tile__body">The board always shows your widget grid.</p>
-    </div>
-    <div class="tile">
-      <h3 class="tile__title">Screensaver</h3>
-      <p class="tile__body">The board always shows full-screen ambient scenes (see <a href="#screensavers">Screensavers</a> below).</p>
-    </div>
-    <div class="tile">
-      <h3 class="tile__title">Scheduled</h3>
-      <p class="tile__body">The dashboard shows during the daily windows you set; the screensaver takes over the rest of the time.</p>
-    </div>
-  </div>
-</section>
-
 <section id="yours" class="wrap section" data-nav-section="yours">
   <h2 class="h2 h2--tight">Making it yours</h2>
   <p class="section__lede">Two buttons sit in the bottom-right corner of the board. Everything you can change lives behind one of them. Rather configure things from your computer? Visit <a href="/setup">roomboard.app/setup</a>, pick your widgets, and it gives you a code. On the board, tap the gear, choose Setup code, type it in, and Save. Codes last an hour.</p>
@@ -89,6 +70,30 @@
         <h3 class="card__h">Settings</h3>
         <p class="card__p">Everything else: your display mode and schedule, screensaver sources, which stations, teams, tickers, and news outlets you follow, °F or °C, 12- or 24-hour time, and your display name.</p>
       </div>
+    </article>
+  </div>
+
+  <!-- Display modes are one of the things you set behind the gear, so they sit
+       inside this section rather than standing above it with a nav pill of their
+       own. The id stays on the subhead so older /info#modes links still land.
+       Same card surface as Edit layout and Settings above: one section, one
+       card treatment. -->
+  <div id="modes" class="subhead subhead--gap">
+    <h3 class="subhead__title">Display Modes</h3>
+    <span class="subhead__note">Three ways the board can spend its day.</span>
+  </div>
+  <div class="tiles tiles--cards">
+    <article class="card card--pad">
+      <h4 class="card__h">Dashboard</h4>
+      <p class="card__p">The board always shows your widget grid.</p>
+    </article>
+    <article class="card card--pad">
+      <h4 class="card__h">Screensaver</h4>
+      <p class="card__p">The board always shows full-screen ambient scenes (see <a href="#screensavers">Screensavers</a> below).</p>
+    </article>
+    <article class="card card--pad">
+      <h4 class="card__h">Scheduled</h4>
+      <p class="card__p">The dashboard shows during the daily windows you set; the screensaver takes over the rest of the time.</p>
     </article>
   </div>
 </section>

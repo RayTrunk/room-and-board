@@ -135,11 +135,12 @@ button:focus-visible {
 .section__sub { font-size: 17px; color: var(--ink-dim); margin: 0 0 26px; max-width: var(--measure); }
 .section__lede { font-size: 17px; line-height: 1.5; color: var(--ink-dim); margin: 0 0 26px; max-width: var(--measure); text-wrap: pretty; }
 
-/* ---------- tiles (display modes, screensaver sources) ---------- */
+/* ---------- tile grid (display modes, screensaver sources) ----------
+   A grid only. Both grids hold .card, so the page has exactly one card
+   surface: the tinted 12px .tile that display modes used to get is gone,
+   because two different card treatments inside one section read as two
+   unrelated things. */
 .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: var(--gap); }
-.tile { background: var(--bg-card-2); border-radius: 12px; padding: 16px 18px; }
-.tile__title { font-size: 16px; font-weight: 600; margin: 0 0 6px; }
-.tile__body { font-size: 16px; line-height: 1.45; color: var(--ink-mid); margin: 0; }
 .tiles--cards { margin-bottom: 14px; }
 
 /* ---------- cards ---------- */
@@ -224,7 +225,12 @@ button:focus-visible {
 
 /* ---------- screensaver asides ---------- */
 .aside { font-size: 15.5px; color: var(--ink-dim); margin: 0 0 40px; max-width: var(--measure); }
-.subhead { display: flex; align-items: baseline; gap: 14px; padding-top: 22px; border-top: 1px solid var(--bg-card-2); margin-bottom: 20px; flex-wrap: wrap; }
+/* scroll-margin because a subhead can be a link target in its own right:
+   /info#modes lands on one, and the sticky nav would otherwise cover it. */
+.subhead { display: flex; align-items: baseline; gap: 14px; padding-top: 22px; border-top: 1px solid var(--bg-card-2); margin-bottom: 20px; flex-wrap: wrap; scroll-margin-top: 76px; }
+/* The Screensavers subhead inherits its breathing room from the .aside above
+   it; a subhead that follows a card grid has to bring its own. */
+.subhead--gap { margin-top: 40px; }
 .subhead__title { font-size: 20px; font-weight: 600; margin: 0; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-dim); }
 .subhead__note { font-size: 15px; color: var(--ink-dim); }
 /* Two short notes stacked left in a full-width tinted well left the right half
@@ -354,9 +360,9 @@ button:focus-visible {
   .hero { padding-top: 0; display: block; }
   .hero__shot { margin-top: 24px; }
   .section { padding-top: 28px; }
-  .card, .tile, .notes, .fab { border: 1px solid #c8c8c8; }
-  .card, .tile, .notes { background: #fff; }
-  .shot, .hero__shot, .card, .tile, .notes, .row, .log__group, .subhead { break-inside: avoid; }
+  .card, .notes, .fab { border: 1px solid #c8c8c8; }
+  .card, .notes { background: #fff; }
+  .shot, .hero__shot, .card, .notes, .row, .log__group, .subhead { break-inside: avoid; }
   .h2, .subhead__title, .head { break-after: avoid; }
   .footer { margin-top: 36px; padding-bottom: 0; }
   .footer__stamp { color: var(--ink-dim); opacity: 1; }
