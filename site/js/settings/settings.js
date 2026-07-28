@@ -957,7 +957,7 @@ function renderMarkets() {
     .join('');
   pane().innerHTML = `
     <h2 class="pane__title">Markets</h2>
-    <p class="pane__hint">Add up to ${TICKER_MAX} tickers (indexes start with ^). Non-US listings use the exchange suffix: London CBG.L, Frankfurt SAP.DE, Tokyo 7203.T. Remove any you don't want; the defaults are just entries like the rest.</p>
+    <p class="pane__hint">Add up to ${TICKER_MAX} tickers (indexes start with ^). Non-US listings use the exchange suffix: London CBG.L, Frankfurt SAP.DE, Tokyo 7203.T. Remove any you don't want; the defaults are just entries like the rest. The card shows as many as fit its size. Tap the card to see your full list, full screen.</p>
     <div class="chips">${chips || '<span class="pane__empty">No tickers; defaults return on save</span>'}</div>
     <output class="code__display" aria-live="polite"></output>
     ${qwertyKeypad('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', ['^', '.', '-'],
