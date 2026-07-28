@@ -5,6 +5,7 @@ import { mapSubwayStatus, SUBWAY_LINES } from '../site/js/widgets/subway.js';
 import { mapLirr, trainNumFromTripId, ROUTE_NAMES, TT_BRANCH_NAMES, PENN_STOP_ID } from '../site/js/widgets/lirr.js';
 import { mapMnr, GCT_STOP_ID, ROUTE_NAMES as MNR_ROUTES } from '../site/js/widgets/mnr.js';
 import { LINE_COLORS, lineChip, lineChipPrefix } from '../site/js/lines.js';
+import { NJT_LINES } from '../site/js/config.js';
 import { mapPath, PATH_STATIONS } from '../site/js/widgets/path.js';
 import { mapFerry } from '../site/js/widgets/ferry.js';
 
@@ -342,7 +343,7 @@ describe('rail boards force a stops-at pick', () => {
   });
 });
 
-describe('MTA line chips (lines.js)', () => {
+describe('transit line chips (lines.js)', () => {
   // WCAG 2.x relative luminance + contrast, implemented here on purpose: the
   // ink column in lines.js is a hand-picked table, so it deserves a check that
   // doesn't share code with it.
@@ -364,9 +365,9 @@ describe('MTA line chips (lines.js)', () => {
   // shortfall can never grow, and so no other line can join the exception.
   const AA_EXEMPT = new Set(['New Haven', 'New Canaan', 'Danbury', 'Waterbury']);
 
-  it('has a color for every line name the two widgets can produce', () => {
-    const names = [...Object.values(ROUTE_NAMES), ...Object.values(TT_BRANCH_NAMES), ...Object.values(MNR_ROUTES)];
-    expect(names.length).toBeGreaterThan(20); // guards against an empty spread
+  it('has a color for every line name the three widgets can produce', () => {
+    const names = [...Object.values(ROUTE_NAMES), ...Object.values(TT_BRANCH_NAMES), ...Object.values(MNR_ROUTES), ...NJT_LINES];
+    expect(names.length).toBeGreaterThan(26); // guards against an empty spread
     for (const name of names) expect(LINE_COLORS[name], `no chip color for ${name}`).toBeTruthy();
   });
 
@@ -378,6 +379,37 @@ describe('MTA line chips (lines.js)', () => {
     expect(LINE_COLORS['New Haven'].bg).toBe('#EE0034');
     for (const branch of ['New Canaan', 'Danbury', 'Waterbury']) {
       expect(LINE_COLORS[branch].bg).toBe(LINE_COLORS['New Haven'].bg);
+    }
+  });
+
+  it('uses the official NJ Transit hexes, keyed by the verbatim feed line names', () => {
+    // The keys ARE config.js NJT_LINES, so a rename there without a color here
+    // is caught by the coverage test above; these pin the six hexes themselves.
+    expect(LINE_COLORS['Northeast Corridor Line'].bg).toBe('#EF3E42');
+    expect(LINE_COLORS['North Jersey Coast Line'].bg).toBe('#00A4E4');
+    expect(LINE_COLORS['Morris & Essex Line'].bg).toBe('#00A94F');
+    expect(LINE_COLORS['Montclair-Boonton Line'].bg).toBe('#E66B5B');
+    expect(LINE_COLORS['Gladstone Branch'].bg).toBe('#A2D5AE');
+    expect(LINE_COLORS['Raritan Valley Line'].bg).toBe('#FAA634');
+    // NJT's palette is bright end to end: all six take black ink, none needs an
+    // AA exception, and none may quietly acquire one.
+    for (const name of NJT_LINES) {
+      expect(LINE_COLORS[name].ink, `${name} ink`).toBe('#000');
+      expect(AA_EXEMPT.has(name), `${name} must stay on the 4.5:1 gate`).toBe(false);
+    }
+  });
+
+  it('shows the short line name on the chip while keeping the feed string as the key', () => {
+    // NJT only: the MTA entries carry no label and must render their key.
+    expect(lineChip('Northeast Corridor Line')).toContain('>Northeast Corridor</b>');
+    expect(lineChip('North Jersey Coast Line')).toContain('>North Jersey Coast</b>');
+    expect(lineChip('Morris & Essex Line')).toContain('>Morris &#38; Essex</b>'); // label escapes too
+    expect(lineChip('Montclair-Boonton Line')).toContain('>Montclair-Boonton</b>');
+    expect(lineChip('Gladstone Branch')).toContain('>Gladstone</b>'); // not a suffix strip
+    expect(lineChip('Raritan Valley Line')).toContain('>Raritan Valley</b>');
+    for (const name of NJT_LINES) expect(LINE_COLORS[name].label).not.toBe(name);
+    for (const [name, c] of Object.entries(LINE_COLORS)) {
+      if (!NJT_LINES.includes(name)) expect(c.label, `${name} must not be relabelled`).toBeUndefined();
     }
   });
 

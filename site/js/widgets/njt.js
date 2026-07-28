@@ -7,6 +7,7 @@
 import { WORKER_URL } from '../env.js';
 import { escapeHtml, fmtTime, setCardNote } from '../util.js';
 import { renderAlertRows } from '../transit-alerts.js';
+import { lineChipPrefix } from '../lines.js';
 import { itemCapacity, cardSize, fitTrainRows } from '../capacity.js';
 
 export const meta = { id: 'njt', title: 'NJ Transit', refreshMs: 2 * 60 * 1000 };
@@ -26,7 +27,7 @@ export function render(el, vm, _cfg) {
             <div class="train__min"><span>${t.min}</span><small>min</small></div>
             <div class="train__info">
               <span class="train__dest">${escapeHtml(t.dest)}</span>
-              <span class="train__line">${escapeHtml(t.line)} · ${fmtTime(t.time)}${t.status ? ` · ${escapeHtml(t.status)}` : ''}</span>
+              <span class="train__line">${lineChipPrefix(t.line)}${fmtTime(t.time)}${t.status ? ` · ${escapeHtml(t.status)}` : ''}</span>
             </div>
             ${t.track ? `<span class="train__track">Track ${escapeHtml(t.track)}</span>` : ''}
           </div>`,

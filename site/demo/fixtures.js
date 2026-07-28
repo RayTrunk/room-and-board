@@ -85,18 +85,21 @@ export const DEMO_VMS = {
     stale: false,
     alerts: [{ header: 'Northeast Corridor trains subject to 10-15 minute delays due to Amtrak signal issues.' }],
     trains: [
-      { min: 12, time: 1783000720, dest: 'Trenton', line: 'Northeast Corridor', track: '3', status: 'BOARDING' },
-      { min: 26, time: 1783001560, dest: 'Dover', line: 'Morris & Essex', track: null, status: '' },
-      { min: 41, time: 1783002460, dest: 'Bay Head', line: 'North Jersey Coast', track: '5', status: '' },
-      { min: 49, time: 1783002940, dest: 'Raritan', line: 'Raritan Valley', track: null, status: '' },
-      { min: 56, time: 1783003360, dest: 'Trenton', line: 'Northeast Corridor', track: '7', status: '' },
-      { min: 64, time: 1783003840, dest: 'Hackettstown', line: 'Montclair-Boonton', track: null, status: '' },
-      { min: 71, time: 1783004260, dest: 'Long Branch', line: 'North Jersey Coast', track: '4', status: '' },
-      { min: 79, time: 1783004740, dest: 'Summit', line: 'Morris & Essex', track: null, status: '' },
-      { min: 86, time: 1783005160, dest: 'Rahway', line: 'Northeast Corridor', track: '2', status: '' },
-      { min: 94, time: 1783005640, dest: 'High Bridge', line: 'Raritan Valley', track: null, status: '' },
-      { min: 101, time: 1783006060, dest: 'Gladstone', line: 'Morris & Essex', track: '6', status: '' },
-      { min: 109, time: 1783006540, dest: 'Trenton', line: 'Northeast Corridor', track: null, status: '' },
+      // `line` carries the feed's verbatim LINE string (worker/src/njt.js passes
+      // it through untouched), which is what lines.js keys the color chip on —
+      // the chip itself renders the short name.
+      { min: 12, time: 1783000720, dest: 'Trenton', line: 'Northeast Corridor Line', track: '3', status: 'BOARDING' },
+      { min: 26, time: 1783001560, dest: 'Dover', line: 'Morris & Essex Line', track: null, status: '' },
+      { min: 41, time: 1783002460, dest: 'Bay Head', line: 'North Jersey Coast Line', track: '5', status: '' },
+      { min: 49, time: 1783002940, dest: 'Raritan', line: 'Raritan Valley Line', track: null, status: '' },
+      { min: 56, time: 1783003360, dest: 'Trenton', line: 'Northeast Corridor Line', track: '7', status: '' },
+      { min: 64, time: 1783003840, dest: 'Hackettstown', line: 'Montclair-Boonton Line', track: null, status: '' },
+      { min: 71, time: 1783004260, dest: 'Long Branch', line: 'North Jersey Coast Line', track: '4', status: '' },
+      { min: 79, time: 1783004740, dest: 'Summit', line: 'Morris & Essex Line', track: null, status: '' },
+      { min: 86, time: 1783005160, dest: 'Rahway', line: 'Northeast Corridor Line', track: '2', status: '' },
+      { min: 94, time: 1783005640, dest: 'High Bridge', line: 'Raritan Valley Line', track: null, status: '' },
+      { min: 101, time: 1783006060, dest: 'Gladstone', line: 'Gladstone Branch', track: '6', status: '' },
+      { min: 109, time: 1783006540, dest: 'Trenton', line: 'Northeast Corridor Line', track: null, status: '' },
     ],
   },
   amtrak: {

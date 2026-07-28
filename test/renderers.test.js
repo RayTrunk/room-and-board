@@ -468,6 +468,45 @@ describe('widget renderers', () => {
     expect(host.querySelector('.train__line').textContent).toMatch(/^Shore Line East · \d{1,2}:\d{2}/);
   });
 
+  it('njt chips its lines in NJ Transit colors, under their short names', () => {
+    const host = el();
+    njt.render(host, DEMO_VMS.njt, CFG);
+    const chips = [...host.querySelectorAll('.train__line .train__linechip')];
+    expect(chips.length).toBeGreaterThan(2);
+    const byText = new Map(chips.map((c) => [c.textContent, c.getAttribute('style')]));
+    // The feed says "Northeast Corridor Line"; the chip says the short name.
+    expect(byText.get('Northeast Corridor')).toContain('#EF3E42');
+    expect(byText.get('Morris & Essex')).toContain('#00A94F');
+    expect(byText.get('North Jersey Coast')).toContain('#00A4E4');
+    expect(host.textContent).not.toContain('Corridor Line');
+  });
+
+  it('njt keeps the chip ahead of the time and the status behind it', () => {
+    const base = { min: 12, time: 1783000720, dest: 'Trenton', line: 'Northeast Corridor Line', track: '3' };
+    const withStatus = el();
+    njt.render(withStatus, { trains: [{ ...base, status: 'BOARDING' }], alerts: [] }, CFG);
+    expect(withStatus.querySelector('.train__line').textContent).toMatch(
+      /^Northeast Corridor · \d{1,2}:\d{2}\s?[AP]M · BOARDING$/,
+    );
+    const noStatus = el();
+    njt.render(noStatus, { trains: [{ ...base, status: '' }], alerts: [] }, CFG);
+    expect(noStatus.querySelector('.train__line').textContent).toMatch(
+      /^Northeast Corridor · \d{1,2}:\d{2}\s?[AP]M$/,
+    );
+  });
+
+  it('njt falls back to plain text for a line string it does not know, and drops an empty one', () => {
+    const unknown = el();
+    njt.render(unknown, { trains: [{ min: 4, time: 1783000000, dest: 'Princeton', line: 'Princeton Dinky', track: null, status: '' }], alerts: [] }, CFG);
+    expect(unknown.querySelector('.train__linechip')).toBeNull();
+    expect(unknown.querySelector('.train__line').textContent).toMatch(/^Princeton Dinky · \d{1,2}:\d{2}/);
+    const nameless = el();
+    njt.render(nameless, { trains: [{ min: 4, time: 1783000000, dest: 'Princeton', line: '', track: null, status: 'DELAYED' }], alerts: [] }, CFG);
+    expect(nameless.querySelector('.train__linechip')).toBeNull();
+    // No stray leading "· " when the feed omits the line name.
+    expect(nameless.querySelector('.train__line').textContent).toMatch(/^\d{1,2}:\d{2}\s?[AP]M · DELAYED$/);
+  });
+
   it('lirr/mnr title-note the destination filter, and clear it when unset', () => {
     const card = document.createElement('article');
     card.className = 'card card--lirr';
