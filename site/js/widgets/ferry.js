@@ -7,7 +7,7 @@
 
 import { escapeHtml, fmtTime, setCardNote } from '../util.js';
 import { WORKER_URL } from '../env.js';
-import { itemCapacity, cardSize } from '../capacity.js';
+import { itemCapacity, cardSize, fitTrainRows } from '../capacity.js';
 
 export const meta = { id: 'ferry', title: 'NYC Ferry', refreshMs: 60 * 1000 };
 
@@ -55,6 +55,7 @@ export function render(el, vm, _cfg) {
         })
         .join('')
     : '<div class="empty">No departures</div>') + '</div>';
+  fitTrainRows(el);
 }
 
 let dataCache = null;

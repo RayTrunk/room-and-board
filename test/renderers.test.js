@@ -511,6 +511,35 @@ describe('widget renderers', () => {
     card.remove();
   });
 
+  // The rail/ferry capacities are browser-measured row counts (see
+  // capacity.test.js); this is the wiring check that each board actually fills
+  // them, and that fitTrainRows (a measured backstop) stands down where there
+  // is no layout engine instead of shedding every row.
+  it('rail and ferry boards fill the measured row count at each size', () => {
+    const t0 = 1783000000;
+    const many = (n) => Array.from({ length: n }, (_, i) => ({ min: i + 2, t: t0 + i * 300, dest: `Station ${i}`, branch: 'Harlem', track: null }));
+    const vms = {
+      lirr: { departures: many(12), destName: null },
+      mnr: { departures: many(12) },
+      njt: { trains: many(12).map((d) => ({ ...d, time: d.t, line: 'Northeast Corridor', status: '' })) },
+      amtrak: { departures: many(12).map((d) => ({ ...d, route: 'Northeast Regional', num: '171', status: 'On time', platform: null, stops: [] })) },
+      ferry: { departures: many(12).map((d) => ({ ...d, route: { name: 'East River', color: '00839C' } })), landingName: null },
+    };
+    for (const [id, mod] of [['lirr', lirr], ['mnr', mnr], ['njt', njt], ['amtrak', amtrak], ['ferry', ferry]]) {
+      for (const [w, h, want] of [[6, 3, 4], [6, 4, 5], [6, 6, 9], [6, 8, 12]]) {
+        const card = document.createElement('article');
+        card.className = `card card--${id}`;
+        card.dataset.w = String(w);
+        card.dataset.h = String(h);
+        card.innerHTML = '<h2 class="card__title"></h2><div class="card__body"></div>';
+        document.body.appendChild(card);
+        mod.render(card.querySelector('.card__body'), structuredClone(vms[id]), CFG);
+        expect(card.querySelectorAll('.train').length, `${id} ${w}x${h}`).toBe(want);
+        card.remove();
+      }
+    }
+  });
+
   it('path flattens both directions into a timed list in shallow cards', () => {
     const card = document.createElement('article');
     card.className = 'card card--path';

@@ -15,14 +15,46 @@ describe('itemCapacity', () => {
     expect(itemCapacity('markets', 4, 8)).toBe(11);
     expect(itemCapacity('bus', 3, 3)).toBe(4); // stop headers + arrivals share the row budget
     expect(itemCapacity('bus', 4, 8)).toBe(15);
-    expect(itemCapacity('lirr', 4, 4)).toBe(4);
-    expect(itemCapacity('lirr', 4, 6)).toBe(7);
+    expect(itemCapacity('lirr', 4, 4)).toBe(5);
+    expect(itemCapacity('lirr', 4, 6)).toBe(9);
     expect(itemCapacity('subway', 4, 4)).toBe(6); // optimistic pitch; alert days trim to the badge
     expect(itemCapacity('history', 4, 2)).toBe(2);
     expect(itemCapacity('history', 4, 4)).toBe(5);
     expect(itemCapacity('worldclock', 2, 3)).toBe(5);
     expect(itemCapacity('worldclock', 3, 4)).toBe(7);
     expect(itemCapacity('worldclock', 3, 8)).toBe(17);
+  });
+  // Browser-measured on the 12x8 canvas: the .trains box is 121/234/347/459/
+  // 572/685/798px tall at h=2..8 and a .train row is 51px on a 10px gap, so
+  // floor((box + gap) / 61) is the count. Rail used to share a listCapacity(80,
+  // 56) estimate that left a 3x3 card showing 2 trains where 4 fit.
+  const RAIL_BY_H = { 2: 2, 3: 4, 4: 5, 5: 7, 6: 9, 7: 11, 8: 12 };
+  it('fits rail/ferry rows to the measured row pitch at every size', () => {
+    for (const id of ['lirr', 'mnr', 'njt', 'amtrak', 'ferry']) {
+      for (const [h, n] of Object.entries(RAIL_BY_H)) {
+        // Row geometry is width-independent (the renderers' fitTrainRows
+        // backstop absorbs the meta-line wrap on narrow cards).
+        for (const w of [3, 4, 6, 12]) {
+          expect(itemCapacity(id, w, Number(h)), `${id} ${w}x${h}`).toBe(n);
+        }
+      }
+    }
+  });
+  it('stops rail capacity at the 12 departures the feeds supply', () => {
+    // h=8 measures 13 rows of space; every rail feed slices to 12, so 12 is
+    // the honest ceiling (a 13 here would promise a row data can never fill).
+    expect(itemCapacity('mnr', 12, 8)).toBe(12);
+  });
+  it('leaves the non-rail list widgets exactly where they were', () => {
+    // Regression guard for the rail recalibration: it must not move any other
+    // widget's numbers (these are the audited values from before the change).
+    expect(itemCapacity('subway', 4, 4)).toBe(6);
+    expect(itemCapacity('subway', 3, 3)).toBe(4);
+    expect(itemCapacity('bus', 3, 3)).toBe(4);
+    expect(itemCapacity('path', 3, 3)).toBe(3);
+    expect(itemCapacity('path', 4, 6)).toBe(9);
+    expect(itemCapacity('news', 4, 4)).toBe(4);
+    expect(itemCapacity('markets', 4, 4)).toBe(5);
   });
   it('gives marketsnews the same headline capacity as news (never null)', () => {
     // Regression: a missing MODELS entry returned null, which made
@@ -71,7 +103,7 @@ describe('capacityLabel', () => {
     expect(capacityLabel('worldclock', 3, 8, cfg)).toBe('shows all 8 cities');
   });
   it('describes trains and events plainly', () => {
-    expect(capacityLabel('lirr', 4, 4, cfg)).toBe('next 4 trains');
+    expect(capacityLabel('lirr', 4, 4, cfg)).toBe('next 5 trains');
     expect(capacityLabel('history', 4, 2, cfg)).toBe('2 events');
   });
   it('describes both news widgets as headlines', () => {

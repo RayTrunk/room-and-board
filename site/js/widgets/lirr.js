@@ -10,7 +10,7 @@ import { escapeHtml, fmtTime, setCardNote, setupPrompt } from '../util.js';
 import { lineChipPrefix } from '../lines.js';
 import { WORKER_URL } from '../env.js';
 import { renderAlertRows } from '../transit-alerts.js';
-import { itemCapacity, cardSize } from '../capacity.js';
+import { itemCapacity, cardSize, fitTrainRows } from '../capacity.js';
 
 // Title is just "LIRR" — terminal context lives in settings copy and the
 // short title leaves the corner note room to breathe.
@@ -55,6 +55,7 @@ export function render(el, vm, cfg) {
         )
         .join('')
     : '<div class="empty">No departures</div>') + '</div>';
+  fitTrainRows(el);
 }
 
 const FEED_URL = 'https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/lirr%2Fgtfs-lirr';

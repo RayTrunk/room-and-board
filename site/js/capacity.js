@@ -14,6 +14,21 @@ export const sizeTier = (h) => (h <= 2 ? 's' : h <= 4 ? 'm' : 'l');
 const listCapacity = (rowPx, compactRowPx) => (w, h) =>
   Math.max(1, Math.floor(bodyPx(h) / (sizeTier(h) === 's' ? compactRowPx : rowPx)));
 
+// ---- rail / ferry departure boards ----------------------------------------
+// LIRR, Metro-North, NJ Transit, Amtrak and Ferry all render the same .train
+// row: 51px tall on the .trains 10px gap, i.e. a 61px pitch at every width and
+// tier (browser-measured, line chip and track pill included). The `.trains` box
+// itself measures 121 / 234 / 347 / 459 / 572 / 685 / 798 px at h=2..8 on the
+// 12x8 canvas, so floor((box + gap) / (row + gap)) is the row count below.
+// They all shared listCapacity(80, 56), a pitch ~30% taller than the rows
+// actually are, which left a 3x3 card showing 2 trains in space that holds 4
+// and a 6-tall card showing 7 where 9 fit. h=8 measures 13 rows of space, but
+// every rail feed slices to 12 departures, so 12 is the most data can fill.
+// bodyPx() is deliberately not used here: its cell estimate runs 7-12px under
+// the real box, which costs a row exactly at h=3.
+const RAIL_ROWS = Object.freeze({ 2: 2, 3: 4, 4: 5, 5: 7, 6: 9, 7: 11, 8: 12 });
+const railCapacity = (w, h) => (h < 2 ? 1 : RAIL_ROWS[Math.min(h, 8)]);
+
 // Per-widget capacity of the primary list, or null when there isn't one.
 const MODELS = {
   // ~67px row pitch (name+price stacked over a 28px spark, +10px row-gap) with
@@ -30,12 +45,14 @@ const MODELS = {
   // rows are taller, and the renderer's measure-trim sheds those days to the
   // corner badge) — a 3x3 fits 4 all-quiet lines instead of promising 3.
   subway: listCapacity(52, 42),
-  lirr: listCapacity(80, 56),
-  mnr: listCapacity(80, 56),
-  njt: listCapacity(80, 56),
-  amtrak: listCapacity(80, 56), // two-line train rows, same pitch as the other rail boards
+  // Measured .train rows (see RAIL_ROWS). Narrow cards wrap the meta line
+  // taller than 51px, so every one of these renderers ends with fitTrainRows().
+  lirr: railCapacity,
+  mnr: railCapacity,
+  njt: railCapacity,
+  amtrak: railCapacity,
   path: listCapacity(58, 44), // single-line rows, subway-like density
-  ferry: listCapacity(80, 56), // two-line train rows
+  ferry: railCapacity,
   // Row budget shared between each stop's header (~28px) and its arrival rows
   // (~41px). It borrowed lirr/mnr's 80px two-line pitch, which ~halved what
   // fits; 50 is the measured safe average (never overflows worst-case configs
@@ -150,6 +167,26 @@ export function capacityLabel(id, w, h, cfg = {}) {
     default:
       return null;
   }
+}
+
+// Measured backstop for the .train boards, the same contract subway and
+// services run: the static count above is calibrated on the TYPICAL 51px row,
+// but a 3-wide LIRR row with a track pill wraps its meta line to 75px and a
+// 3-wide NJT row with a status to 99px, and a device font with taller metrics
+// can add a pixel or two everywhere. After the card renders, shed trailing rows
+// until nothing is clipped, so an optimistic estimate costs a row rather than
+// drawing half of one. Departures outrank banners at the floor: a shallow card
+// carrying two alert banners has less than one row of space left, so the last
+// banner yields rather than clip the next train (with no banners even the 99px
+// worst-case row fits the 121px h=2 box, so the cascade always terminates).
+export function fitTrainRows(el) {
+  const trains = el.querySelector?.('.trains');
+  if (!trains || !trains.clientHeight) return; // no layout engine (unit tests)
+  const over = () => trains.scrollHeight > trains.clientHeight;
+  const rows = [...trains.querySelectorAll('.train')];
+  while (over() && rows.length > 1) rows.pop().remove();
+  const banners = [...el.querySelectorAll('.talert')];
+  while (over() && banners.length) banners.pop().remove();
 }
 
 // Renderers read their card's size from the DOM (data-w/data-h set by the

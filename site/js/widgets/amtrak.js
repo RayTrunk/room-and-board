@@ -7,7 +7,7 @@
 import { escapeHtml, fmtTime, fmtClock, setCardNote, setupPrompt } from '../util.js';
 import { WORKER_URL } from '../env.js';
 import { renderAlertRows } from '../transit-alerts.js';
-import { itemCapacity, cardSize } from '../capacity.js';
+import { itemCapacity, cardSize, fitTrainRows } from '../capacity.js';
 
 export const meta = { id: 'amtrak', title: 'Amtrak', refreshMs: 60 * 1000 };
 
@@ -62,6 +62,7 @@ export function render(el, vm, cfg) {
 
   el.innerHTML = renderAlertRows(alerts) + '<div class="trains">' +
     (shown.length ? shown.map(row).join('') : '<div class="empty">No departures</div>') + '</div>';
+  fitTrainRows(el);
 }
 
 let stationsCache = null;
