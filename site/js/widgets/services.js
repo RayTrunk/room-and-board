@@ -1,7 +1,8 @@
 // Cloud Services: subway-board-style rows for the cloud services the office
 // depends on, from their public status pages via the Worker's whitelisted
 // /services/status proxy. Degraded rows are tappable — the existing
-// full-screen text viewer shows the incident detail.
+// full-screen text viewer shows the incident detail. Rows sort worst-first
+// (see SEVERITY) so a problem survives the capacity slice.
 
 import { escapeHtml, fmtClock, setCardNote, setMoreBadge, setupPrompt } from '../util.js';
 import { WORKER_URL } from '../env.js';
@@ -28,6 +29,23 @@ export const DEFAULT_SERVICES = ['webex', 'slack', 'm365']; // mirrors DEFAULT_C
 
 const STATE_LABEL = { ok: 'Operational', minor: 'Minor issue', major: 'Major outage', unknown: 'Unknown' };
 
+// Trouble first, the way the subway wall floats alerting lines above Good
+// Service: a long list gets sliced to the card's capacity, and the row that
+// matters must not be the one the +N badge eats. 'unknown' is a failed status
+// fetch (the Worker never fakes green) — it MIGHT be a problem, so it outranks
+// Operational, but it is not a confirmed one, so it stays below major/minor.
+// A state this map has never heard of is treated as unknown for that same
+// reason. The widget already renders unknown as its own thing (tappable, note
+// shown, but no alert-red name), and this ranking follows that middle reading.
+const SEVERITY = { major: 0, minor: 1, unknown: 2, ok: 3 };
+const severity = (s) => SEVERITY[s?.state] ?? SEVERITY.unknown;
+
+// Array#sort is stable, so services of equal severity keep the user's chosen
+// config order — the tiebreak is "the order you picked", and an all-quiet board
+// renders exactly as it did before. Sorted before the capacity slice, so the
+// ordering decides who makes the cut, not just who sits where.
+export const bySeverity = (services) => [...services].sort((a, b) => severity(a) - severity(b));
+
 const sinceLabel = (iso) => {
   const t = Date.parse(iso);
   return Number.isFinite(t)
@@ -39,7 +57,9 @@ export function render(el, vm, cfg) {
   // Freshness note in the card header (worker check time, not render time) —
   // a clock reading, so it honors cfg.clock24.
   if (vm.updatedAt) setCardNote(el, `as of ${fmtClock(vm.updatedAt, cfg?.clock24)}`);
-  const all = vm.services ?? [];
+  // Severity-ordered once, up front: every slice, the +N count and the tap
+  // handler's data-svc index all read this same array, so they stay in sync.
+  const all = bySeverity(vm.services ?? []);
   if (!all.length) {
     el.innerHTML = setupPrompt('services', 'pick services', 'Cloud Services');
     return;

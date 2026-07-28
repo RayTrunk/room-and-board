@@ -3,6 +3,10 @@
     "date": "July 28",
     "items": [
       {
+        "lead": "Cloud services",
+        "text": "Services having an outage now rise to the top of the card, so a problem is visible even when your list is longer than the card."
+      },
+      {
         "lead": "Weather",
         "text": "Tap the Weather card for the full picture: 24 hours of temperature and rain, a 7 day outlook, wind, humidity, UV, and sunrise and sunset times."
       },

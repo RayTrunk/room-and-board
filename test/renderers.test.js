@@ -642,6 +642,102 @@ describe('widget renderers', () => {
   });
 });
 
+// Sean: "make the services with an outage bubble to the top like we do with
+// subways, so if an affected service is outside the card size it's more likely
+// to be visible." Severity decides the capacity slice; config order is the
+// tiebreak inside a tier.
+describe('services severity ordering', () => {
+  const svc = (id, state) => ({ id, label: id.toUpperCase(), state, note: `${id} note`, incidents: [] });
+  // A card the size the widget actually reads (data-w/h → cardSize), with the
+  // title element setMoreBadge hangs the +N off.
+  const card = (w, h) => {
+    const c = document.createElement('article');
+    c.className = 'card card--services';
+    c.dataset.w = String(w);
+    c.dataset.h = String(h);
+    c.innerHTML = '<h2 class="card__title">Cloud Services</h2><div class="card__body"></div>';
+    return c;
+  };
+  const labels = (host) => [...host.querySelectorAll('.svc__name')].map((n) => n.textContent);
+
+  it('ranks major outages first, then minor, then unknown, then operational', () => {
+    const rows = services.bySeverity([
+      svc('a', 'ok'), svc('b', 'unknown'), svc('c', 'minor'), svc('d', 'major'),
+    ]);
+    expect(rows.map((s) => s.id)).toEqual(['d', 'c', 'b', 'a']);
+  });
+
+  it('places unknown above operational but below any confirmed trouble', () => {
+    // A failed status fetch is "might be a problem" — worth a look, but it must
+    // never outrank a service we KNOW is down.
+    const rows = services.bySeverity([svc('ok1', 'ok'), svc('dead', 'unknown'), svc('bad', 'minor')]);
+    expect(rows.map((s) => s.id)).toEqual(['bad', 'dead', 'ok1']);
+  });
+
+  it('treats a state it has never seen as unknown, not as green', () => {
+    const rows = services.bySeverity([svc('fine', 'ok'), svc('weird', 'maintenance-ish')]);
+    expect(rows.map((s) => s.id)).toEqual(['weird', 'fine']);
+  });
+
+  it('keeps config order as the tiebreak inside a severity tier', () => {
+    const rows = services.bySeverity([
+      svc('ok1', 'ok'), svc('down1', 'major'), svc('ok2', 'ok'), svc('down2', 'major'), svc('ok3', 'ok'),
+    ]);
+    expect(rows.map((s) => s.id)).toEqual(['down1', 'down2', 'ok1', 'ok2', 'ok3']);
+  });
+
+  it('leaves an all-operational board exactly as configured, and never mutates the vm', () => {
+    const input = [svc('webex', 'ok'), svc('slack', 'ok'), svc('m365', 'ok')];
+    expect(services.bySeverity(input).map((s) => s.id)).toEqual(['webex', 'slack', 'm365']);
+    const mixed = [svc('a', 'ok'), svc('b', 'major')];
+    services.bySeverity(mixed);
+    expect(mixed.map((s) => s.id)).toEqual(['a', 'b']); // sorted a copy
+  });
+
+  it('handles a single-service config and an all-down board', () => {
+    expect(services.bySeverity([svc('only', 'major')]).map((s) => s.id)).toEqual(['only']);
+    const allDown = [svc('a', 'major'), svc('b', 'major'), svc('c', 'major')];
+    expect(services.bySeverity(allDown).map((s) => s.id)).toEqual(['a', 'b', 'c']);
+  });
+
+  // The point of the whole change: visibility, not just position.
+  it('shows a down service configured LAST in a card too small to hold the list', () => {
+    const c = card(3, 3); // capacity model: 5 rows at 3x3
+    document.body.appendChild(c);
+    const body = c.querySelector('.card__body');
+    const vm = { updatedAt: 1783000000, services: [
+      svc('one', 'ok'), svc('two', 'ok'), svc('three', 'ok'),
+      svc('four', 'ok'), svc('five', 'ok'), svc('last', 'major'),
+    ] };
+    services.render(body, vm, CFG);
+    const shown = labels(body);
+    expect(shown).toHaveLength(5);            // sliced to capacity
+    expect(shown[0]).toBe('LAST');            // the outage survived the slice
+    expect(shown).not.toContain('FIVE');      // the quiet tail is what got cut
+    expect(c.querySelector('.card__more').textContent).toBe('+1'); // badge math unchanged
+    c.remove();
+  });
+
+  it('keeps the tap target pointing at the service its row shows after the reorder', () => {
+    document.querySelector('#text-viewer')?.remove();
+    const c = card(3, 5);
+    document.body.appendChild(c);
+    const body = c.querySelector('.card__body');
+    services.render(body, { services: [
+      svc('quiet', 'ok'),
+      { ...svc('broken', 'major'), note: 'Everything is on fire', incidents: [] },
+    ] }, CFG);
+    const first = body.querySelector('.svc');
+    expect(first.querySelector('.svc__name').textContent).toBe('BROKEN');
+    first.click();
+    const viewer = document.querySelector('#text-viewer');
+    expect(viewer.textContent).toContain('BROKEN');
+    expect(viewer.textContent).toContain('Everything is on fire');
+    viewer.remove();
+    c.remove();
+  });
+});
+
 describe('art full-screen viewer', () => {
   it('opens on card tap and closes on viewer tap', () => {
     const host = el();
