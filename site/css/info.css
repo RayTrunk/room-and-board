@@ -74,8 +74,26 @@ img { max-width: 100%; }
 
 /* ---------- hero ---------- */
 .hero { padding-top: 84px; padding-bottom: 12px; }
-.eyebrow { font-size: 13px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-dim); margin-bottom: 18px; }
-.hero__title { font-size: clamp(38px, 5vw, 56px); font-weight: 700; margin: 0 0 16px; letter-spacing: -0.015em; line-height: 1.05; }
+/* The masthead IS the logo: the h1 holds the lockup and nothing else, so the
+   mark has to sit on the same optical left edge and vertical rhythm as the
+   prose beneath it. Its own box does not give you that, because the SVG carries
+   3.5/373 of empty bearing to the left of the icon's stroked rect and 13.5/373
+   above and below it. The negative margins cancel exactly those bearings, which
+   is why they are ratios of --lockup-w and not fixed pixels: they have to track
+   the mark as it scales. */
+.hero__title {
+  --lockup-w: min(540px, 92vw);
+  --lockup-bleed: calc(var(--lockup-w) * 0.0362);
+  line-height: 0;
+  margin: calc(0px - var(--lockup-bleed)) 0 calc(30px - var(--lockup-bleed));
+}
+.hero__lockup {
+  display: block;
+  width: var(--lockup-w);
+  max-width: 100%;
+  height: auto;
+  margin-left: calc(var(--lockup-w) * -0.00938);
+}
 .hero__lede { font-size: clamp(19px, 2.2vw, 23px); line-height: 1.45; color: var(--ink-mid); margin: 0 0 14px; max-width: var(--measure); text-wrap: pretty; }
 .hero__note { font-size: 16px; color: var(--ink-dim); margin: 0; max-width: var(--measure); }
 
@@ -236,6 +254,9 @@ img { max-width: 100%; }
 @media (max-width: 900px) {
   :root { --pad: 20px; }
   .hero { padding-top: 56px; }
+  /* 100% is the 350px measure the lede wraps to at a 390px viewport, so the
+     mark never outruns the text block it heads. */
+  .hero__title { --lockup-w: min(380px, 100%); margin-bottom: calc(24px - var(--lockup-bleed)); }
   .section { padding-top: 56px; }
   .h2 { font-size: 26px; }
   .duo--weather { grid-template-columns: 1fr; }

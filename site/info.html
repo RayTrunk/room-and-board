@@ -29,8 +29,11 @@
 
 <header id="top" class="wrap hero">
   <div class="hero__text">
-    <div class="eyebrow">Widget Guide</div>
-    <h1 class="hero__title">Room &amp; Board</h1>
+    <!-- The lockup is the whole masthead. It stays inside the h1 so the page
+         keeps exactly one h1 and its accessible name is still "Room & Board";
+         width/height are on the tag so the hero does not reflow once the SVG
+         lands. CSS scales it from there. -->
+    <h1 class="hero__title"><img class="hero__lockup" src="assets/room-and-board-lockup-dark.svg" alt="Room &amp; Board" width="373" height="96" fetchpriority="high"></h1>
     <p class="hero__lede">A glanceable dashboard for your personal screen: your commute, your weather, your markets, your images.</p>
     <p class="hero__note">Every widget is added and configured right on the board, or from your phone. 32 widgets, six groups.</p>
   </div>
