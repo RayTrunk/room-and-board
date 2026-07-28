@@ -27,7 +27,17 @@ import {
   ALERT_STEPS,
 } from '../site/js/widgets/subway.js';
 import { render as renderWeather } from '../site/js/widgets/weather.js';
+import { fmtClock } from '../site/js/util.js';
 import { DEMO_VMS } from '../site/demo/fixtures.js';
+
+// The freshness stamp every card writes is an EPOCH rendered in the runner's
+// local timezone, so a literal ("as of 9:55 AM") only holds on a New York
+// machine: CI runs UTC and reads the same instant as 1:55 PM. Derive the
+// expected string through fmtClock, the one formatter the widgets use, so the
+// assertion tests the wiring rather than the runner's clock. (Pinning
+// process.env.TZ instead would hide real timezone bugs everywhere else.)
+const STAMP_EPOCH = 1783000500;
+const AS_OF = `as of ${fmtClock(STAMP_EPOCH)}`;
 
 const NAMES = {
   '^DJI': 'Dow Jones',
@@ -44,7 +54,7 @@ const NAMES = {
 
 // A view model in CONFIG ORDER, the way mapMarkets hands it over.
 const vmOf = (symbols, price = 100) => ({
-  updatedAt: 1783000500,
+  updatedAt: STAMP_EPOCH,
   stale: false,
   indices: symbols.map((symbol, i) => ({
     symbol,
@@ -201,7 +211,7 @@ describe('markets card tap', () => {
       expect(overlay().textContent).toContain(NAMES[s]);
     }
     expect(overlay().querySelector('.expand__title').textContent).toBe('Markets');
-    expect(overlay().querySelector('.expand__note').textContent).toMatch(/^as of /);
+    expect(overlay().querySelector('.expand__note').textContent).toBe(AS_OF);
   });
 
   it('is inert when nothing is hidden: no badge, no expansion', () => {
@@ -402,7 +412,7 @@ const LINE_IDS = ['1', '2', '3', '4', '5', '6', '7', 'A', 'C', 'E', 'B', 'D', 'F
 // `alerts` alerting lines first (config order is preserved as written), then
 // `good` healthy ones — the shape mapSubwayStatus produces.
 const subwayVm = (alerts, good, headers = [SHORT]) => ({
-  updatedAt: 1783000500,
+  updatedAt: STAMP_EPOCH,
   stale: false,
   lines: [
     ...LINE_IDS.slice(0, alerts).map((line) => ({ line, ok: false, headers })),
@@ -448,7 +458,7 @@ describe('subway card tap', () => {
     card.click();
     expect(isExpandOpen()).toBe(true);
     expect(overlay().querySelector('.expand__title').textContent).toBe('Subway Status');
-    expect(overlay().querySelector('.expand__note').textContent).toBe('2 of 12 lines with alerts · as of 9:55 AM');
+    expect(overlay().querySelector('.expand__note').textContent).toBe(`2 of 12 lines with alerts · ${AS_OF}`);
     // Every line is present: 10 in the band, 2 as wells.
     expect(overlay().querySelectorAll('.wall__bullets .bullet').length).toBe(10);
     expect(overlay().querySelectorAll('.sbalert').length).toBe(2);
@@ -474,7 +484,7 @@ describe('subway card tap', () => {
   it('drops its title-line note and the alert count when every line is good', () => {
     const { card } = subwayBoard(subwayVm(0, 12));
     card.click();
-    expect(overlay().querySelector('.expand__note').textContent).toBe('as of 9:55 AM');
+    expect(overlay().querySelector('.expand__note').textContent).toBe(AS_OF);
     expect(overlay().querySelector('.wall__alerts')).toBeNull();
   });
 
