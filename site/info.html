@@ -10,23 +10,24 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https: data: blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Room &amp; Board — Widget Guide</title>
-<meta name="description" content="Every widget card the Room &amp; Board signage dashboard can show: commute, weather, markets, news, ambient art, and daily extras.">
+<meta name="description" content="Every widget card the Room &amp; Board signage dashboard can show: commute, weather, markets, news, images, and daily extras.">
 <link rel="icon" href="assets/room-and-board-favicon-32.png" sizes="32x32">
 <link rel="apple-touch-icon" href="assets/room-and-board-icon-180.png">
 <link rel="stylesheet" href="css/info.css">
 </head>
 <body>
 
+<!-- Four pills, and four is the point: the rail used to carry one pill per
+     product group, so it grew every time the product's taxonomy did (nine
+     already, eleven once the facts were fixed — which overflows the 1240px
+     container at DESKTOP and shows one or two of eleven on a phone). The
+     catalogue is one section now, so a new widget group costs a hairline
+     inside it and nothing up here. -->
 <nav class="nav">
   <div class="nav__inner">
     <a class="nav__brand" href="#top"><img src="assets/room-and-board-wordmark-dark.svg" alt="Room &amp; Board" width="152" height="35"></a>
     <a class="nav__link" href="#yours">Making it yours</a>
-    <a class="nav__link" href="#commute">Commute</a>
-    <a class="nav__link" href="#weather">Weather &amp; Air</a>
-    <a class="nav__link" href="#markets">Markets &amp; Sports</a>
-    <a class="nav__link" href="#news">News &amp; Social</a>
-    <a class="nav__link" href="#ambient">Ambient</a>
-    <a class="nav__link" href="#extras">Daily Extras</a>
+    <a class="nav__link" href="#widgets">The widgets</a>
     <a class="nav__link" href="#screensavers">Screensavers</a>
     <a class="nav__link" href="#whatsnew">What&rsquo;s new</a>
   </div>
@@ -40,7 +41,11 @@
          lands. CSS scales it from there. -->
     <h1 class="hero__title"><img class="hero__lockup" src="assets/room-and-board-lockup-dark.svg" alt="Room &amp; Board" width="373" height="96" fetchpriority="high"></h1>
     <p class="hero__lede">A glanceable dashboard for your personal screen: your commute, your weather, your markets, your images.</p>
-    <p class="hero__note">Every widget is added and configured right on the board, or from your phone. 32 widgets, six groups.</p>
+    <!-- 33 = every widget a reader of this page can actually add today: the 35
+         ids in config.js less the one that retired (World Cup) and the one
+         still behind the beta gate (Live Video). No group count: the taxonomy
+         moves every few weeks and a number here is a promise to keep it. -->
+    <p class="hero__note">Every widget is added and configured right on the board, or from your phone. 33 to choose from &mdash; take the ones you want.</p>
   </div>
   <!-- The hero image is the LCP: eager and high priority. The asset name is
        stable on purpose: hero-board.webp is swapped on disk, never here.
@@ -60,8 +65,8 @@
 
 <section id="yours" class="wrap section" data-nav-section="yours">
   <h2 class="h2 h2--tight">Making it yours</h2>
-  <p class="section__lede">Two buttons sit in the bottom-right corner of the board. Everything you can change lives behind one of them. Rather configure things from your computer? Visit <a href="/setup">roomboard.app/setup</a>, pick your widgets, and it gives you a code. On the board, tap the gear, choose Setup code, type it in, and Save. Codes last an hour.</p>
-  <div class="duo">
+  <p class="section__lede">The board is a touchscreen: two buttons sit in the bottom-right corner, and the cards themselves are the third control. Rather set it up from your computer? <a href="/setup">roomboard.app/setup</a> lets you pick your widgets and hands you a code &mdash; on the board, tap the gear, choose Setup code, type it in, and Save. Codes last an hour.</p>
+  <div class="duo duo--trio">
     <article class="card card--row">
       <span class="fab" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 5.5l4 4L8 20l-4.6 1 1-4.6L14.5 5.5zM12.5 7.5l4 4"/></svg></span>
       <div class="card__stack">
@@ -73,7 +78,22 @@
       <span class="fab" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span>
       <div class="card__stack">
         <h3 class="card__h">Settings</h3>
-        <p class="card__p">Everything else: your display mode and schedule, screensaver sources, which stations, teams, tickers, and news outlets you follow, °F or °C, 12- or 24-hour time, and your display name.</p>
+        <p class="card__p">Everything else: your display mode and schedule, screensaver sources, which stations, teams, tickers, and news outlets you follow, &deg;F or &deg;C, 12- or 24-hour time, and your display name.</p>
+      </div>
+    </article>
+    <!-- The third control, stated ONCE. Tap-to-expand was the page's biggest
+         undocumented behaviour and it used to leak out as a "tap for full
+         screen" clause bolted onto whichever rows happened to get one. Saying
+         it here, beside the two buttons it belongs with, closes the gap and
+         costs fewer words than the scattered clauses did. The fingertip is
+         drawn in the same 1.6px stroke as the two FABs above so the three
+         controls read as one family. -->
+    <article class="card card--row">
+      <span class="fab" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11V6.5a1.5 1.5 0 0 1 3 0V11"/><path d="M12 11V9.5a1.5 1.5 0 0 1 3 0V12"/><path d="M15 12v-1a1.5 1.5 0 0 1 3 0v5.5a5.5 5.5 0 0 1-5.5 5.5h-1a5.5 5.5 0 0 1-4.6-2.5L4.6 15.6a1.5 1.5 0 0 1 2.4-1.8L9 16"/></svg></span>
+      <div class="card__stack">
+        <h3 class="card__h">Tap a card</h3>
+        <p class="card__p">A card that holds more than it shows opens full screen. Weather gives you the next 24 hours, Markets every ticker you follow, Subway the full alert text, Surf the 48-hour picture. A headline opens with a summary and a QR code so you can finish reading on your phone, and any picture fills the screen.</p>
+        <p class="card__fine">Tap anywhere to close. The board puts itself back on its own.</p>
       </div>
     </article>
   </div>
@@ -81,8 +101,8 @@
   <!-- Display modes are one of the things you set behind the gear, so they sit
        inside this section rather than standing above it with a nav pill of their
        own. The id stays on the subhead so older /info#modes links still land.
-       Same card surface as Edit layout and Settings above: one section, one
-       card treatment. -->
+       Same card surface as the three controls above: one section, one card
+       treatment. -->
   <div id="modes" class="subhead subhead--gap">
     <h3 class="subhead__title">Display Modes</h3>
     <span class="subhead__note">Three ways the board can spend its day.</span>
@@ -103,157 +123,215 @@
   </div>
 </section>
 
-<section id="commute" class="wrap section" data-nav-section="commute">
-  <div class="head"><h2 class="h2 h2--flush">Commute</h2><span class="count">10 widgets</span></div>
-  <p class="section__sub">Live departures for the way you actually get home.</p>
-  <div class="list">
-    <div class="row"><h3 class="row__name">Subway Status</h3><p class="row__desc">NYC subway line status with authentic line bullets: delays, planned work, and good service at a glance.<span class="row__note">Pick the lines you follow.</span></p></div>
-    <div class="row"><h3 class="row__name">LIRR</h3><p class="row__desc">The next Long Island Rail Road departures (from Penn Station or Grand Central) with service advisories.<span class="row__note">Pick your departing station and destination.</span></p></div>
-    <div class="row"><h3 class="row__name">Metro-North</h3><p class="row__desc">The next departures from Grand Central, with service advisories.<span class="row__note">Pick your destination.</span></p></div>
-    <div class="row"><h3 class="row__name">NJ Transit</h3><p class="row__desc">NJ Transit rail departures from New York Penn, with service advisories.<span class="row__note">Pick your line.</span></p></div>
-    <div class="row"><h3 class="row__name">Amtrak</h3><p class="row__desc">The Moynihan / Penn Station departure board.<span class="row__note">Filter to a destination, or show everything.</span></p></div>
-    <div class="row"><h3 class="row__name">PATH</h3><p class="row__desc">Real-time PATH departures.<span class="row__note">Pick your station.</span></p></div>
-    <div class="row"><h3 class="row__name">NYC Ferry</h3><p class="row__desc">The next ferries on your route.<span class="row__note">Pick your route and pier.</span></p></div>
-    <div class="row"><h3 class="row__name">Express Bus</h3><p class="row__desc">MTA express-bus arrivals at your stop.<span class="row__note">Pick route, direction, and stop.</span></p></div>
-    <div class="row"><h3 class="row__name">Citi Bike</h3><p class="row__desc">Live bikes, e-bikes, and open docks at the stations you watch.<span class="row__note">Choose up to six stations.</span></p></div>
-    <div class="row"><h3 class="row__name">TfL Status</h3><p class="row__desc">London Underground line status.</p></div>
-  </div>
-  <figure class="shot">
-    <button class="shot__btn" type="button" aria-label="Enlarge the Commute widgets screenshot">
-      <img src="assets/info/commute.webp" data-zoom data-caption="Commute widgets on the board" alt="A board showing Subway Status, Metro-North, NYC Ferry, Amtrak, PATH, LIRR, Citi Bike, Express Bus, and TfL Status widgets." width="1920" height="1080" loading="lazy">
-    </button>
-  </figure>
-</section>
-
-<section id="weather" class="wrap section" data-nav-section="weather">
-  <div class="head"><h2 class="h2 h2--flush">Weather &amp; Air</h2><span class="count">3 widgets</span></div>
-  <p class="section__sub">Do you need an umbrella? One glance.</p>
-  <div class="duo duo--weather">
-    <article class="card card--wx">
-      <h3 class="card__h">Weather</h3>
-      <p class="card__p">Current conditions, an hourly temperature trend, and a 5-day outlook for any city worldwide, with severe-weather alerts in the US.</p>
-      <div class="glance">
-        <span class="glance__temp">68°</span>
-        <span class="glance__cond">Clear</span>
-        <span class="glance__hilo">H 74° · L 59°</span>
+<!-- The whole catalogue, one section.
+     It used to be one section per product group — heading, count chip, dek,
+     rows, a full-width board screenshot — six times, and eight once the facts
+     were straightened out. That IA was welded 1:1 to config.js's WIDGET_GROUPS,
+     so the page grew every time the taxonomy did. The groups survive here as
+     hairline dividers carrying their own deks, which keeps every word of the
+     copy and loses seven false summits.
+     The fold rule, and it is the whole design: what folds is the PROSE, never
+     the inventory. Every widget name is on screen at rest in .fold__ids, so a
+     scanner takes in all 33 in about a screen and a half and opens only the
+     group they came for. Native <details>: <summary> is focusable and
+     keyboard-operable with no script, and the print block in info.css forces
+     every group open, because paper has no disclosure.
+     The ids on each <details> are the ones the old per-group sections carried,
+     so /info#commute and friends still land; info.js opens the fold a hash
+     points at. -->
+<section id="widgets" class="wrap section" data-nav-section="widgets">
+  <h2 class="h2 h2--tight">The widgets</h2>
+  <p class="section__sub">All 33 of them, in the groups the board&rsquo;s own widget picker uses. Open a group for what each card does.</p>
+  <div class="folds">
+    <details class="fold" id="commute">
+      <summary class="fold__sum">
+        <h3 class="fold__name">Commute</h3>
+        <span class="fold__dek">Live departures for the way you actually get home.</span>
+        <span class="fold__ids">Subway Status &middot; LIRR &middot; Metro-North &middot; NJ Transit &middot; Amtrak &middot; PATH &middot; NYC Ferry &middot; Express Bus &middot; Citi Bike &middot; TfL Status</span>
+        <span class="fold__caret" aria-hidden="true"></span>
+      </summary>
+      <div class="list">
+        <div class="row"><h4 class="row__name">Subway Status</h4><p class="row__desc">NYC subway line status with authentic line bullets: delays, planned work, and good service at a glance. Tap it for the full alert text.<span class="row__note">Pick the lines you follow.</span></p></div>
+        <div class="row"><h4 class="row__name">LIRR</h4><p class="row__desc">The next Long Island Rail Road departures (from Penn Station or Grand Central) with service advisories.<span class="row__note">Pick your departing station and destination.</span></p></div>
+        <div class="row"><h4 class="row__name">Metro-North</h4><p class="row__desc">The next departures from Grand Central, with service advisories.<span class="row__note">Pick your destination.</span></p></div>
+        <div class="row"><h4 class="row__name">NJ Transit</h4><p class="row__desc">NJ Transit rail departures from New York Penn, with service advisories.<span class="row__note">Pick your line.</span></p></div>
+        <div class="row"><h4 class="row__name">Amtrak</h4><p class="row__desc">The Moynihan / Penn Station departure board.<span class="row__note">Filter to a destination, or show everything.</span></p></div>
+        <div class="row"><h4 class="row__name">PATH</h4><p class="row__desc">Real-time PATH departures.<span class="row__note">Pick your station.</span></p></div>
+        <div class="row"><h4 class="row__name">NYC Ferry</h4><p class="row__desc">The next ferries on your route.<span class="row__note">Pick your route and pier.</span></p></div>
+        <div class="row"><h4 class="row__name">Express Bus</h4><p class="row__desc">MTA express-bus arrivals at your stop.<span class="row__note">Pick route, direction, and stop.</span></p></div>
+        <div class="row"><h4 class="row__name">Citi Bike</h4><p class="row__desc">Live bikes, e-bikes, and open docks at the stations you watch.<span class="row__note">Choose up to six stations.</span></p></div>
+        <div class="row"><h4 class="row__name">TfL Status</h4><p class="row__desc">London Underground line status.</p></div>
       </div>
-      <div class="card__note">Pick your city, and °F or °C.</div>
-    </article>
-    <article class="card">
-      <h3 class="card__h">Air &amp; Sky</h3>
-      <p class="card__p">Air quality, plus sun and sky details for your location.</p>
-    </article>
-    <article class="card">
-      <h3 class="card__h">Surf</h3>
-      <p class="card__p">Water temperature, wave height and period, and whether the wind is helping, for the water near your board. Tap it for the 48 hour picture.</p>
-      <div class="card__note">Appears only where there is a coast or a great lake nearby.</div>
-    </article>
+    </details>
+    <details class="fold" id="weather">
+      <summary class="fold__sum">
+        <h3 class="fold__name">Weather &amp; Air</h3>
+        <span class="fold__dek">Do you need an umbrella? One glance.</span>
+        <span class="fold__ids">Weather &middot; Air &amp; Sky &middot; Surf</span>
+        <span class="fold__caret" aria-hidden="true"></span>
+      </summary>
+      <div class="list">
+        <div class="row"><h4 class="row__name">Weather</h4><p class="row__desc">Current conditions, an hourly temperature trend, and a 5-day outlook for any city worldwide, with severe-weather alerts in the US. Tap it for the next 24 hours.<span class="row__note">Pick your city, and &deg;F or &deg;C.</span></p></div>
+        <div class="row"><h4 class="row__name">Air &amp; Sky</h4><p class="row__desc">Air quality, plus sun and sky details for your location.</p></div>
+        <div class="row"><h4 class="row__name">Surf</h4><p class="row__desc">Water temperature, wave height and period, and whether the wind is helping, for the water near your board. Tap it for the 48-hour picture.<span class="row__note">Offered only where there is a coast or a great lake nearby.</span></p></div>
+      </div>
+    </details>
+    <details class="fold" id="markets">
+      <summary class="fold__sum">
+        <h3 class="fold__name">Markets</h3>
+        <span class="fold__dek">The numbers you&rsquo;d check anyway.</span>
+        <span class="fold__ids">Markets &middot; Markets News</span>
+        <span class="fold__caret" aria-hidden="true"></span>
+      </summary>
+      <div class="list">
+        <div class="row"><h4 class="row__name">Markets</h4><p class="row__desc">Dow, Nasdaq, and S&amp;P 500, with sparklines colored against the prior close. Tap it for every ticker you follow.<span class="row__note">Add any tickers you like, in Yahoo Finance format.</span></p></div>
+        <div class="row"><h4 class="row__name">Markets News</h4><p class="row__desc">Business headlines from WSJ, FT, CNBC, MarketWatch, and more.<span class="row__note">Toggle which sources appear in the feed.</span></p></div>
+      </div>
+    </details>
+    <!-- Sports is its own group in the picker, and no World Cup: it retired on
+         2026-07-20 (RETIRED_AFTER in config.js) and no picker offers it. -->
+    <details class="fold" id="sports">
+      <summary class="fold__sum">
+        <h3 class="fold__name">Sports</h3>
+        <span class="fold__dek">Who won, and who plays next.</span>
+        <span class="fold__ids">My Teams &middot; Formula 1 &middot; Golf &middot; Tennis</span>
+        <span class="fold__caret" aria-hidden="true"></span>
+      </summary>
+      <div class="list">
+        <div class="row"><h4 class="row__name">My Teams</h4><p class="row__desc">Your teams&rsquo; latest result, live score, and next game.<span class="row__note">Pick up to six teams.</span></p></div>
+        <div class="row"><h4 class="row__name">Formula 1</h4><p class="row__desc">The F1 season: race results and standings.</p></div>
+        <div class="row"><h4 class="row__name">Golf</h4><p class="row__desc">The current tournament leaderboard.</p></div>
+        <div class="row"><h4 class="row__name">Tennis</h4><p class="row__desc">Scores from the current tournament.</p></div>
+      </div>
+    </details>
+    <details class="fold" id="news">
+      <summary class="fold__sum">
+        <h3 class="fold__name">News &amp; Social</h3>
+        <span class="fold__dek">Headlines and feeds from top sources.</span>
+        <span class="fold__ids">Headlines &middot; Substack &middot; Bluesky</span>
+        <span class="fold__caret" aria-hidden="true"></span>
+      </summary>
+      <div class="list">
+        <div class="row"><h4 class="row__name">Headlines</h4><p class="row__desc">Top stories from the outlets you choose: NYT, NPR, BBC, Gothamist, and more. Tap any headline for a summary and a QR code that opens the full article on your phone.<span class="row__note">Toggle which sources appear in the feed.</span></p></div>
+        <div class="row"><h4 class="row__name">Substack</h4><p class="row__desc">The latest posts from any Substack, and the same tap-to-read view.<span class="row__note">Name the publication when you add it.</span></p></div>
+        <div class="row"><h4 class="row__name">Bluesky</h4><p class="row__desc">Recent posts from Bluesky accounts you select.<span class="row__note">Pick the account when you add it.</span></p></div>
+      </div>
+    </details>
+    <!-- Images is a real group in config.js now: every card whose content IS a
+         picture. It inherits "The board as a beautiful object", which used to
+         head the old Ambient section and in fact described these five. -->
+    <details class="fold" id="images">
+      <summary class="fold__sum">
+        <h3 class="fold__name">Images</h3>
+        <span class="fold__dek">The board as a beautiful object.</span>
+        <span class="fold__ids">Art &middot; Landscapes &middot; iCloud Photos &middot; Google Drive Photos &middot; NASA Daily Photo</span>
+        <span class="fold__caret" aria-hidden="true"></span>
+      </summary>
+      <div class="list">
+        <div class="row"><h4 class="row__name">Art</h4><p class="row__desc">Rotating public-domain masterpieces.<span class="row__note">Choose the collections, and how often it changes.</span></p></div>
+        <div class="row"><h4 class="row__name">Landscapes</h4><p class="row__desc">A curated landscape-photography collection.<span class="row__note">Set how often it changes.</span></p></div>
+        <div class="row"><h4 class="row__name">iCloud Photos</h4><p class="row__desc">Your own iCloud shared album, on the board.<span class="row__note">Paste a shared-album link.</span></p></div>
+        <div class="row"><h4 class="row__name">Google Drive Photos</h4><p class="row__desc">Your own photos, from a Google Drive folder.<span class="row__note">Pick the folder when you add it.</span></p></div>
+        <div class="row"><h4 class="row__name">NASA Daily Photo</h4><p class="row__desc">NASA&rsquo;s Astronomy Picture of the Day.</p></div>
+      </div>
+    </details>
+    <!-- One card, on purpose. Ambient holds Live Video and World Clock in
+         config.js, but Live Video is gated twice (BETA_ONLY and
+         ADVANCED_WIDGETS) and every add surface routes through isAddable — so
+         on roomboard.app the picker's Ambient group shows exactly this one
+         card. A guide that says "the groups the picker uses" has to match the
+         picker a reader actually has. Live Video gets documented the day the
+         beta gate comes off, not before. -->
+    <details class="fold" id="ambient">
+      <summary class="fold__sum">
+        <h3 class="fold__name">Ambient</h3>
+        <span class="fold__dek">What time it is everywhere else.</span>
+        <span class="fold__ids">World Clock</span>
+        <span class="fold__caret" aria-hidden="true"></span>
+      </summary>
+      <div class="list">
+        <div class="row"><h4 class="row__name">World Clock</h4><p class="row__desc">The time in the cities you care about, side by side.<span class="row__note">Pick your cities.</span></p></div>
+      </div>
+    </details>
+    <details class="fold" id="extras">
+      <summary class="fold__sum">
+        <h3 class="fold__name">Daily Extras</h3>
+        <span class="fold__dek">Small delights that change every day.</span>
+        <span class="fold__ids">This Day in History &middot; Quote of the Day &middot; Word of the Day &middot; Cloud Services &middot; Chart of the Day</span>
+        <span class="fold__caret" aria-hidden="true"></span>
+      </summary>
+      <div class="list">
+        <div class="row"><h4 class="row__name">This Day in History</h4><p class="row__desc">Notable events from today&rsquo;s date.</p></div>
+        <div class="row"><h4 class="row__name">Quote of the Day</h4><p class="row__desc">One good quote a day.</p></div>
+        <div class="row"><h4 class="row__name">Word of the Day</h4><p class="row__desc">A daily vocabulary word, with pronunciation and a real example.</p></div>
+        <div class="row"><h4 class="row__name">Cloud Services</h4><p class="row__desc">Live status of the services your team relies on: Webex, Slack, GitHub, AWS, and more.<span class="row__note">Pick the services you watch.</span></p></div>
+        <div class="row"><h4 class="row__name">Chart of the Day</h4><p class="row__desc">Statista&rsquo;s daily infographic.<span class="row__note">Toggle categories, or turn off political charts.</span></p></div>
+      </div>
+    </details>
+  </div>
+
+  <!-- One contact sheet instead of four full-width boards buried in four
+       sections. Four near-identical dark rectangles at 1184px wide were 2,664px
+       of the desktop page — 29% of it — and on a phone each one renders at
+       about 0.18 scale whatever column it sits in, so a full-width one buys
+       nothing but scroll. Two up they read as one exhibit, and the lightbox is
+       still one tap away. -->
+  <div class="subhead subhead--gap">
+    <h3 class="subhead__title">On a board</h3>
+    <span class="subhead__note">Tap any of them to fill the screen.</span>
+  </div>
+  <div class="gal">
+    <figure class="shot shot--half">
+      <button class="shot__btn" type="button" aria-label="Enlarge the Commute board screenshot">
+        <img src="assets/info/commute.webp" data-zoom data-caption="Commute" alt="A board showing Subway Status, Metro-North, NYC Ferry, Amtrak, PATH, LIRR, Citi Bike, Express Bus, and TfL Status widgets." width="1920" height="1080" loading="lazy">
+      </button>
+      <figcaption class="shot__cap">Commute</figcaption>
+    </figure>
+    <figure class="shot shot--half">
+      <button class="shot__btn" type="button" aria-label="Enlarge the Markets and Sports board screenshot">
+        <img src="assets/info/markets.webp" data-zoom data-caption="Markets &amp; Sports" alt="A board showing Markets, Markets News, Golf, My Teams, Formula 1, and Tennis widgets side by side." width="1920" height="1080" loading="lazy">
+      </button>
+      <figcaption class="shot__cap">Markets &amp; Sports</figcaption>
+    </figure>
+    <!-- Captioned Images, not Ambient: the capture is Art, Landscapes and NASA
+         Daily Photo, which is the Images group, plus one World Clock. The
+         caption follows the picture rather than the picture being re-shot. -->
+    <figure class="shot shot--half">
+      <button class="shot__btn" type="button" aria-label="Enlarge the Images board screenshot">
+        <img src="assets/info/ambient.webp" data-zoom data-caption="Images" alt="A board showing Art, World Clock, Landscapes, and NASA Daily Photo widgets." width="1920" height="1080" loading="lazy">
+      </button>
+      <figcaption class="shot__cap">Images</figcaption>
+    </figure>
+    <figure class="shot shot--half">
+      <button class="shot__btn" type="button" aria-label="Enlarge the Daily Extras board screenshot">
+        <img src="assets/info/extras.webp" data-zoom data-caption="Daily Extras" alt="A board showing This Day in History, Quote of the Day, Chart of the Day, Cloud Services, and Word of the Day widgets." width="1920" height="1080" loading="lazy">
+      </button>
+      <figcaption class="shot__cap">Daily Extras</figcaption>
+    </figure>
   </div>
 </section>
 
-<section id="markets" class="wrap section" data-nav-section="markets">
-  <div class="head"><h2 class="h2 h2--flush">Markets &amp; Sports</h2><span class="count">6 widgets</span></div>
-  <p class="section__sub">The numbers you&rsquo;d check anyway.</p>
-  <div class="list">
-    <div class="row"><h3 class="row__name">Markets</h3><p class="row__desc">Dow, Nasdaq, and S&amp;P 500, with sparklines colored against the prior close.<span class="row__note">Add any tickers you follow, in Yahoo Finance format.</span></p></div>
-    <div class="row"><h3 class="row__name">Markets News</h3><p class="row__desc">Business headlines from WSJ, FT, CNBC, MarketWatch, and more.<span class="row__note">Toggle which sources appear in the feed.</span></p></div>
-    <div class="row"><h3 class="row__name">My Teams</h3><p class="row__desc">Your teams&rsquo; latest result, live score, and next game.<span class="row__note">Pick your teams.</span></p></div>
-    <div class="row"><h3 class="row__name">Formula 1</h3><p class="row__desc">The F1 season: race results and standings.</p></div>
-    <div class="row"><h3 class="row__name">Golf</h3><p class="row__desc">The current tournament leaderboard.</p></div>
-    <div class="row"><h3 class="row__name">Tennis</h3><p class="row__desc">Scores from the current tournament.</p></div>
-  </div>
-  <figure class="shot">
-    <button class="shot__btn" type="button" aria-label="Enlarge the Markets &amp; Sports screenshot">
-      <img src="assets/info/markets.webp" data-zoom data-caption="Markets &amp; Sports on the board" alt="A board showing Markets, Markets News, Golf, My Teams, Formula 1, and Tennis widgets side by side." width="1920" height="1080" loading="lazy">
-    </button>
-  </figure>
-</section>
-
-<section id="news" class="wrap section" data-nav-section="news">
-  <div class="head"><h2 class="h2 h2--flush">News &amp; Social</h2><span class="count">3 widgets</span></div>
-  <p class="section__sub">Headlines and feeds from top sources.</p>
-  <div class="list">
-    <div class="row"><h3 class="row__name">Headlines</h3><p class="row__desc">Top stories from the outlets you choose: NYT, NPR, BBC, Gothamist, and more. Tap any headline for a summary and a QR code that opens the full article on your phone.<span class="row__note">Toggle which sources appear in the feed.</span></p></div>
-    <div class="row"><h3 class="row__name">Substack</h3><p class="row__desc">The latest posts from any Substack.<span class="row__note">Name the publication when you add it.</span></p></div>
-    <div class="row"><h3 class="row__name">Bluesky</h3><p class="row__desc">Recent posts from Bluesky accounts you select.<span class="row__note">Pick the account when you add it.</span></p></div>
-  </div>
-</section>
-
-<section id="ambient" class="wrap section" data-nav-section="ambient">
-  <div class="head"><h2 class="h2 h2--flush">Ambient</h2><span class="count">6 widgets</span></div>
-  <p class="section__sub">The board as a beautiful object.</p>
-  <div class="list">
-    <div class="row"><h3 class="row__name">Art</h3><p class="row__desc">Rotating public-domain masterpieces. Tap for full screen.</p></div>
-    <div class="row"><h3 class="row__name">Landscapes</h3><p class="row__desc">A curated landscape-photography collection.</p></div>
-    <div class="row"><h3 class="row__name">iCloud Photos</h3><p class="row__desc">Your own iCloud shared album, on the board.<span class="row__note">Paste a shared-album link.</span></p></div>
-    <div class="row"><h3 class="row__name">Google Drive Photos</h3><p class="row__desc">Your own photos, from a Google Drive folder.<span class="row__note">Pick the folder when you add it.</span></p></div>
-    <div class="row"><h3 class="row__name">NASA Daily Photo</h3><p class="row__desc">NASA&rsquo;s Astronomy Picture of the Day.</p></div>
-    <div class="row"><h3 class="row__name">World Clock</h3><p class="row__desc">The time in the cities you care about.<span class="row__note">Pick your cities.</span></p></div>
-  </div>
-  <figure class="shot">
-    <button class="shot__btn" type="button" aria-label="Enlarge the Ambient widgets screenshot">
-      <img src="assets/info/ambient.webp" data-zoom data-caption="Ambient widgets on the board" alt="A board showing Art, World Clock, Landscapes, and NASA Daily Photo widgets." width="1920" height="1080" loading="lazy">
-    </button>
-  </figure>
-</section>
-
-<section id="extras" class="wrap section" data-nav-section="extras">
-  <div class="head"><h2 class="h2 h2--flush">Daily Extras</h2><span class="count">5 widgets</span></div>
-  <p class="section__sub">Small delights that change every day.</p>
-  <div class="list">
-    <div class="row"><h3 class="row__name">This Day in History</h3><p class="row__desc">Notable events from today&rsquo;s date.</p></div>
-    <div class="row"><h3 class="row__name">Quote of the Day</h3><p class="row__desc">One good quote a day.</p></div>
-    <div class="row"><h3 class="row__name">Word of the Day</h3><p class="row__desc">A daily vocabulary word, with pronunciation and a real example.</p></div>
-    <div class="row"><h3 class="row__name">Cloud Services</h3><p class="row__desc">Live status of the services your team relies on: Webex, Slack, GitHub, AWS, and more.<span class="row__note">Pick the services you watch.</span></p></div>
-    <div class="row"><h3 class="row__name">Chart of the Day</h3><p class="row__desc">Statista&rsquo;s daily infographic. Tap for full screen.<span class="row__note">Toggle categories, or turn off political charts.</span></p></div>
-  </div>
-  <figure class="shot">
-    <button class="shot__btn" type="button" aria-label="Enlarge the Daily Extras screenshot">
-      <img src="assets/info/extras.webp" data-zoom data-caption="Daily Extras on the board" alt="A board showing This Day in History, Quote of the Day, Chart of the Day, Cloud Services, and Word of the Day widgets." width="1920" height="1080" loading="lazy">
-    </button>
-  </figure>
-</section>
-
+<!-- Seven sources in three cards, grouped by what they are. The old "6 sources"
+     chip could never be made to add up: Settings offers art, landscapes,
+     photos, gdrivephotos, clock, worldclocks and clockrow. -->
 <section id="screensavers" class="wrap section" data-nav-section="screensavers">
-  <div class="head"><h2 class="h2 h2--flush">Screensavers</h2><span class="count">6 sources</span></div>
-  <p class="section__lede">When the board is idle in Screensaver or Scheduled mode, it shows the full-screen scenes you&rsquo;ve chosen instead of the widget grid.</p>
+  <h2 class="h2 h2--tight">Screensavers</h2>
+  <p class="section__lede">When the board is idle in Screensaver or Scheduled mode, it shows the full-screen scenes you&rsquo;ve chosen instead of the widget grid. Pick one source; swipe the screen to advance it on demand.</p>
   <div class="tiles tiles--cards">
     <article class="card card--pad">
-      <h3 class="card__h">Art</h3>
-      <p class="card__p">Public-domain masterpieces, full screen.</p>
+      <h3 class="card__h">Art, Landscapes</h3>
+      <p class="card__p">The public-domain masterpieces and the curated landscape collection, full screen.</p>
     </article>
     <article class="card card--pad">
-      <h3 class="card__h">Landscapes</h3>
-      <p class="card__p">The curated landscape collection, filling the screen edge to edge.</p>
-    </article>
-    <article class="card card--pad">
-      <h3 class="card__h">iCloud Photos and Google Drive Photos</h3>
+      <h3 class="card__h">iCloud Photos, Google Drive Photos</h3>
       <p class="card__p">Your own albums, always shown whole, never cropped.</p>
     </article>
-  </div>
-  <p class="aside">Images change on the schedule you choose in settings. Swipe the screen to advance on demand.</p>
-
-  <div class="subhead">
-    <h3 class="subhead__title">Clocks</h3>
-    <span class="subhead__note">Three faces, one shared option.</span>
-  </div>
-  <div class="tiles tiles--cards">
     <article class="card card--pad">
-      <h3 class="card__h">Big clock</h3>
-      <p class="card__p">One large clock face.</p>
-    </article>
-    <article class="card card--pad">
-      <h3 class="card__h">World clocks</h3>
-      <p class="card__p">Analog dials, one per World Clock city.</p>
-      <div class="card__note">Cities come from your World Clock settings.</div>
-    </article>
-    <article class="card card--pad">
-      <h3 class="card__h">Clock + world times</h3>
-      <p class="card__p">A main clock, with your world times beneath it.</p>
+      <h3 class="card__h">Big clock, World clocks, Clock + world times</h3>
+      <p class="card__p">One large face, analog dials for each of your World Clock cities, or a main clock with your world times beneath it.</p>
       <div class="card__note">Cities come from your World Clock settings.</div>
     </article>
   </div>
-
   <div class="shots">
     <figure class="shot shot--half">
       <button class="shot__btn" type="button" aria-label="Enlarge the World clocks screensaver screenshot">
@@ -268,7 +346,6 @@
       <figcaption class="shot__cap">Clock + world times</figcaption>
     </figure>
   </div>
-
   <div class="notes">
     <p class="notes__p">Backdrop image: a scenic photo behind any of the three clock faces, changing once a day. Swipe to skip to the next one early.</p>
     <p class="notes__p">Info strip: a slim strip along the bottom edge during screensavers showing weather and next trains. It can be turned off.</p>

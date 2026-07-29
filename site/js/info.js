@@ -1,7 +1,9 @@
-// roomboard.app/info — the public widget guide. Two behaviors: a scroll-spy
-// that highlights the current section in the sticky nav, and a click-to-zoom
-// lightbox for the board screenshots. Lives in its own file because the page's
-// CSP is script-src 'self' (no inline handlers).
+// roomboard.app/info — the public widget guide. Three behaviors: a scroll-spy
+// that highlights the current section in the sticky nav, a click-to-zoom
+// lightbox for the board screenshots, and the changelog rendered from JSON.
+// Lives in its own file because the page's CSP is script-src 'self' (no inline
+// handlers). The catalogue's disclosures are native <details> and need no
+// script at all; the only thing here is deep-link courtesy.
 
 const NAV_OFFSET = 140; // a section counts as "current" once its top passes this
 const BOTTOM_SLACK = 4; // fractional-pixel zooms never land exactly on the end
@@ -80,6 +82,49 @@ if (sections.length) {
 navInner?.addEventListener('scroll', syncFade, { passive: true });
 window.addEventListener('resize', syncFade, { passive: true });
 syncFade();
+
+// ---------- the folded index ----------
+// Every group's <details> keeps the id its old standalone section had, so
+// /info#commute and the rest still land. Landing on a CLOSED fold would show a
+// reader the one summary line instead of the guide they linked to, so a hash
+// that names a fold opens it. Opening only adds height below the anchor, so
+// the browser's own scroll stays correct either way.
+const folds = [...document.querySelectorAll('.fold')];
+function openHashFold() {
+  const id = location.hash.slice(1);
+  if (!id) return;
+  let el = null;
+  try { el = document.getElementById(decodeURIComponent(id)); } catch { el = document.getElementById(id); }
+  if (el?.tagName === 'DETAILS') el.open = true;
+}
+if (folds.length) {
+  openHashFold();
+  window.addEventListener('hashchange', () => { openHashFold(); syncNav(); });
+  // A fold that opens or closes changes the page height under the spy, the
+  // same way the changelog's "show earlier" does. (`toggle` does not bubble,
+  // hence one listener per fold.)
+  for (const fold of folds) fold.addEventListener('toggle', syncNav);
+
+  // Paper has no disclosure. info.css opens ::details-content under @media
+  // print, which is what print PREVIEW and print-to-PDF see; this is the other
+  // half, for browsers that do not support that pseudo yet. Open every fold
+  // before the sheet is composed and put the reader's own folds back after, so
+  // printing never silently rearranges the page they were reading.
+  let restore = null;
+  const printOpen = () => {
+    restore = folds.map((f) => f.open);
+    for (const f of folds) f.open = true;
+  };
+  const printRestore = () => {
+    if (!restore) return;
+    folds.forEach((f, i) => { f.open = restore[i]; });
+    restore = null;
+  };
+  window.addEventListener('beforeprint', printOpen);
+  window.addEventListener('afterprint', printRestore);
+  // Safari fires neither reliably; it flips this media query instead.
+  window.matchMedia?.('print')?.addEventListener?.('change', (e) => (e.matches ? printOpen() : printRestore()));
+}
 
 // ---------- lightbox ----------
 // Built on demand so the page ships no empty <img> and nothing renders until a

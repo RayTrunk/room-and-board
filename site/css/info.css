@@ -129,9 +129,10 @@ button:focus-visible {
 .section:first-of-type { padding-top: 56px; }
 .h2 { font-size: 30px; font-weight: 700; margin: 0 0 26px; letter-spacing: -0.01em; }
 .h2--tight { margin-bottom: 6px; }
-.h2--flush { margin: 0; }
-.head { display: flex; align-items: baseline; gap: 14px; margin-bottom: 6px; flex-wrap: wrap; }
-.count { font-size: 13px; color: var(--ink-dim); text-transform: uppercase; letter-spacing: 0.08em; }
+/* .h2--flush, .head and .count are gone with the per-group sections: a count
+   chip beside every heading was a third uppercase register saying what the list
+   under it already said, and the one on Screensavers had drifted (it claimed
+   six sources; there are seven). */
 .section__sub { font-size: 17px; color: var(--ink-dim); margin: 0 0 26px; max-width: var(--measure); }
 .section__lede { font-size: 17px; line-height: 1.5; color: var(--ink-dim); margin: 0 0 26px; max-width: var(--measure); text-wrap: pretty; }
 
@@ -156,12 +157,12 @@ button:focus-visible {
 .card--row .card__h { margin: 0; }
 .card__p { font-size: 16px; line-height: 1.5; color: var(--ink-mid); margin: 0; }
 .card__note { font-size: 15px; color: var(--ink-dim); margin-top: auto; padding-top: 14px; }
+.card__fine { font-size: 15px; line-height: 1.45; color: var(--ink-dim); margin: 10px 0 0; }
 .duo { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: var(--gap); }
-/* Air & Sky holds two lines beside a Weather card with a 40px glance figure in
-   it. Stretched to its sibling it was three-quarters air, which read as a card
-   waiting for content that never arrives. `start` lets each card end where its
-   copy ends. */
-.duo--weather { grid-template-columns: 1.5fr 1fr 1fr; align-items: start; }
+/* "Making it yours" grew a third control — the cards themselves — so the pair
+   becomes a trio. 300px is the floor at which a 56px FAB plus its copy still
+   reads; below it the row-cards stack, as they already did at 560px. */
+.duo--trio { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
 
 /* the two round board buttons, rendered calm like they are on the device */
 .fab {
@@ -170,8 +171,58 @@ button:focus-visible {
   flex-shrink: 0; color: var(--ink);
 }
 
+/* ---------- the folded index ----------
+   One disclosure per product group. What folds is the PROSE; the inventory
+   never folds, so all 33 widget names are on screen at rest and the reader
+   opens only the group they came for. No script: <summary> is natively
+   focusable and keyboard-operable, and the print block at the foot of this
+   file forces every group open. */
+.folds { display: flex; flex-direction: column; margin-top: 8px; }
+/* scroll-margin because each fold is a link target in its own right: the ids
+   are the ones the old per-group sections carried, so /info#commute still
+   lands, and the sticky nav would otherwise cover it. */
+.fold { border-top: 1px solid var(--bg-card-2); scroll-margin-top: 76px; }
+/* No closing rule: the "On a board" subhead below carries its own border-top,
+   and two hairlines 40px apart read as a mistake. */
+/* 150px + a 20px gutter puts the dek on the same optical left edge as the
+   .row__desc inside the group, so opening one does not shift the reading
+   column. Every child is placed explicitly: the caret spans both rows, and
+   auto-placement around a row-spanning item is not worth guessing at. */
+.fold__sum {
+  list-style: none; cursor: pointer;
+  display: grid; grid-template-columns: 150px minmax(0, 1fr) 1.1em;
+  gap: 6px 20px; align-items: baseline;
+  padding: 16px 2px;
+}
+.fold__sum::-webkit-details-marker { display: none; }
+.fold__sum:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+.fold__name { grid-column: 1; grid-row: 1; font-size: 15px; font-weight: 600; margin: 0; text-transform: uppercase; letter-spacing: 0.09em; color: var(--ink); }
+.fold__dek { grid-column: 2; grid-row: 1; font-size: 16px; line-height: 1.45; color: var(--ink-mid); }
+/* The inventory line: quiet, but present at rest — this is the part a scanner
+   is actually looking for. It goes away once the group is open, because every
+   name is then a row heading two lines below. */
+.fold__ids { grid-column: 2; grid-row: 2; font-size: 15px; line-height: 1.5; color: var(--ink-dim); }
+.fold[open] .fold__ids { display: none; }
+/* Calm at rest, ignites only on press — the page's own control idiom. */
+.fold__caret { grid-column: 3; grid-row: 1 / span 2; justify-self: end; align-self: center; color: var(--ink-dim); transition: color 150ms; }
+.fold__sum:hover .fold__caret { color: var(--ink); }
+.fold__sum:active .fold__caret { color: var(--accent); }
+.fold__caret::after {
+  content: ""; display: block; width: 0.55em; height: 0.55em;
+  border-right: 2px solid currentColor; border-bottom: 2px solid currentColor;
+  transform: translateY(-0.12em) rotate(45deg);
+  transition: transform 200ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.fold[open] .fold__caret::after { transform: translateY(0.12em) rotate(-135deg); }
+.fold > .list { padding-bottom: 14px; }
+
 /* ---------- widget rows ---------- */
 .list { display: grid; grid-template-columns: repeat(auto-fit, minmax(470px, 1fr)); column-gap: 56px; }
+/* An odd number of widgets in a two-column list leaves the last cell empty, and
+   with it a visibly missing hairline at the foot of the right column. A grid
+   ::after lands in exactly that cell, and only draws its rule when the count is
+   odd, so an even group gains a zero-height row that draws nothing. */
+.list:has(.row:nth-child(odd):last-child)::after { content: ""; border-top: 1px solid var(--bg-card-2); }
 .row { display: flex; flex-wrap: wrap; gap: 4px 20px; padding: 15px 2px; border-top: 1px solid var(--bg-card-2); }
 .row__name { font-size: 17px; font-weight: 600; margin: 0; flex: 0 0 150px; }
 .row__desc { font-size: 16px; line-height: 1.5; color: var(--ink-mid); margin: 0; flex: 1 1 260px; }
@@ -182,7 +233,6 @@ button:focus-visible {
    emoji that clashes with the type. */
 .row__note::before,
 .card__note::before,
-.aside::before,
 .notes__p::before {
   content: "";
   display: inline-block;
@@ -196,12 +246,6 @@ button:focus-visible {
 :root {
   --cog: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='3'/%3E%3Cpath d='M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z'/%3E%3C/svg%3E");
 }
-
-/* ---------- weather glance ---------- */
-.glance { display: flex; align-items: baseline; gap: 14px; margin-top: 16px; flex-wrap: wrap; }
-.glance__temp { font-size: 40px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1; }
-.glance__cond { font-size: 16px; font-weight: 600; color: #e3b341; }
-.glance__hilo { font-size: 15px; color: var(--ink-dim); font-variant-numeric: tabular-nums; }
 
 /* ---------- board screenshots ---------- */
 .shot { margin: 34px 0 0; border-radius: var(--radius); border: 1px solid var(--bg-card-2); overflow: hidden; }
@@ -223,13 +267,28 @@ button:focus-visible {
   border-radius: 10px; padding: 5px 11px; font-size: 14px; font-weight: 600; color: var(--ink);
 }
 
-/* ---------- screensaver asides ---------- */
-.aside { font-size: 15.5px; color: var(--ink-dim); margin: 0 0 40px; max-width: var(--measure); }
+/* ---------- the contact sheet ----------
+   The four board captures that used to interrupt four sections, gathered into
+   one block a reader passes once: 1,332px instead of 2,664px, and on a phone
+   one block to scroll past instead of four ambushes.
+   A contact sheet labels its plates underneath. The .shots chip overlay works
+   on the two screensaver captures (dark, empty top-left corner); on a dashboard
+   capture it lands squarely on the greeting and reads louder than the board it
+   is naming, which is the wrong way round. */
+.gal { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 440px), 1fr)); gap: 22px var(--gap); margin-top: 26px; }
+.gal .shot--half { margin: 0; position: static; border: 0; border-radius: 0; overflow: visible; }
+.gal .shot--half img { border: 1px solid var(--bg-card-2); border-radius: 14px; }
+.gal .shot__cap {
+  position: static; display: block; background: none; padding: 9px 2px 0;
+  font-size: 15px; font-weight: 600; color: var(--ink-dim);
+}
+
+/* ---------- subheads ---------- */
 /* scroll-margin because a subhead can be a link target in its own right:
    /info#modes lands on one, and the sticky nav would otherwise cover it. */
 .subhead { display: flex; align-items: baseline; gap: 14px; padding-top: 22px; border-top: 1px solid var(--bg-card-2); margin-bottom: 20px; flex-wrap: wrap; scroll-margin-top: 76px; }
-/* The Screensavers subhead inherits its breathing room from the .aside above
-   it; a subhead that follows a card grid has to bring its own. */
+/* A subhead that follows a card grid or a list has to bring its own breathing
+   room; the hairline alone lands too close to what it is separating. */
 .subhead--gap { margin-top: 40px; }
 .subhead__title { font-size: 20px; font-weight: 600; margin: 0; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-dim); }
 .subhead__note { font-size: 15px; color: var(--ink-dim); }
@@ -316,8 +375,21 @@ button:focus-visible {
   .hero__title { --lockup-w: min(380px, 100%); margin-bottom: calc(24px - var(--lockup-bleed)); }
   .section { padding-top: 56px; }
   .h2 { font-size: 26px; }
-  .duo--weather { grid-template-columns: 1fr; }
+  /* One column: the two-column ::after balancer has no empty cell to fill. */
   .list { grid-template-columns: 1fr; column-gap: 0; }
+  .list::after { display: none; }
+  /* The fold's three lines stack, and the caret spans all three. */
+  .fold__sum { grid-template-columns: minmax(0, 1fr) 1.1em; }
+  .fold__name { grid-column: 1; grid-row: 1; }
+  .fold__dek { grid-column: 1; grid-row: 2; }
+  .fold__ids { grid-column: 1; grid-row: 3; }
+  .fold__caret { grid-column: 2; grid-row: 1 / span 3; }
+  /* A phone renders a 1920px board at 0.18 scale whatever column it sits in,
+     so a full-width one buys nothing but scroll. Two up, the four read as one
+     contact sheet for half the height, and the lightbox is still one tap. */
+  .gal { grid-template-columns: 1fr 1fr; gap: 16px 14px; }
+  .gal .shot--half img { border-radius: 12px; }
+  .gal .shot__cap { padding-top: 7px; font-size: 13px; font-weight: 500; }
   .row__name { flex: 1 1 100%; }
   .row__desc { flex: 1 1 100%; }
   .log__date { flex: 1 1 100%; }
@@ -332,7 +404,7 @@ button:focus-visible {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .nav__link, .log__toggle, .log__toggle::after { transition: none; }
+  .nav__link, .log__toggle, .log__toggle::after, .fold__caret, .fold__caret::after { transition: none; }
   html { scroll-behavior: auto; }
 }
 
@@ -356,6 +428,25 @@ button:focus-visible {
   .nav, .lightbox, .log__toggle { display: none !important; }
   /* Paper has no "show more": print the history the toggle was hiding. */
   .log__more[hidden] { display: flex !important; }
+  /* Nor a disclosure. A closed <details> hides its content on the
+     ::details-content pseudo, NOT on the .list inside it, so overriding the
+     child does nothing at all — that mistake prints eight headings and no
+     guide. Open the pseudo itself.
+     info.js also sets `open` on every fold from beforeprint, which is what
+     actually fires on Cmd+P and covers browsers without ::details-content;
+     this rule is what Chrome's print PREVIEW and headless print-to-PDF get,
+     since neither dispatches that event. Belt and braces on purpose: a guide
+     has to survive being printed.
+     The inventory line is dropped in exactly the two cases where the rows
+     below it replace it: @supports covers the CSS path (the fold has no `open`
+     attribute, so the screen rule cannot see it), and the screen rule itself
+     covers the script path. A browser with neither still prints every widget
+     name rather than a blank page, which is the point of doing both. */
+  @supports selector(::details-content) {
+    .fold::details-content { content-visibility: visible !important; }
+    .fold__ids { display: none !important; }
+  }
+  .fold__caret { display: none !important; }
   .wrap { max-width: none; padding-left: 0; padding-right: 0; }
   a { color: #000; text-decoration: underline; }
   /* The lockup is white-on-transparent and would print as nothing at all.
@@ -367,9 +458,8 @@ button:focus-visible {
   .section { padding-top: 28px; }
   .card, .notes, .fab { border: 1px solid #c8c8c8; }
   .card, .notes { background: #fff; }
-  .shot, .hero__shot, .card, .notes, .row, .log__group, .subhead { break-inside: avoid; }
-  .h2, .subhead__title, .head { break-after: avoid; }
+  .shot, .hero__shot, .card, .notes, .row, .log__group, .subhead, .fold { break-inside: avoid; }
+  .h2, .subhead__title, .fold__name { break-after: avoid; }
   .footer { margin-top: 36px; padding-bottom: 0; }
   .footer__stamp { color: var(--ink-dim); opacity: 1; }
-  .glance__cond { color: #7a5c00; }
 }
