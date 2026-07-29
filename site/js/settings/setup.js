@@ -82,12 +82,13 @@ export const SETUP_SECTIONS = [
   { id: 'art-field', group: 'Images', triggers: ['art'] },
   { id: 'photos-field', group: 'Images', triggers: ['photos'] },
   { id: 'gdrivephotos-field', group: 'Images', triggers: ['gdrivephotos'] },
+  { id: 'iptv-field', group: 'Images', triggers: ['iptv'] },
   // Landscapes is in the Images group but has nothing to configure, so it has
-  // no section here — same as apod.
-  { id: 'iptv-field', group: 'Ambient', triggers: ['iptv'] },
-  { id: 'wc-field', group: 'Ambient', triggers: ['worldclock'] },
-  { id: 'services-field', group: 'Daily Extras', triggers: ['services'] },
-  { id: 'chart-field', group: 'Daily Extras', triggers: ['chart'] },
+  // no section here — same as apod. Same in Daily: only Chart of the Day has
+  // anything to ask about.
+  { id: 'chart-field', group: 'Daily', triggers: ['chart'] },
+  { id: 'wc-field', group: 'Reference', triggers: ['worldclock'] },
+  { id: 'services-field', group: 'Reference', triggers: ['services'] },
 ];
 
 // Which step-2 config sections + category dividers are visible for a set of

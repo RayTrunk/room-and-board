@@ -10,7 +10,7 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https: data: blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Room &amp; Board — Widget Guide</title>
-<meta name="description" content="Every widget card the Room &amp; Board signage dashboard can show: commute, weather, markets, news, images, and daily extras.">
+<meta name="description" content="Every widget card the Room &amp; Board signage dashboard can show: commute, weather, markets, news, images, and the daily reads.">
 <link rel="icon" href="assets/room-and-board-favicon-32.png" sizes="32x32">
 <link rel="apple-touch-icon" href="assets/room-and-board-icon-180.png">
 <link rel="stylesheet" href="css/info.css">
@@ -87,13 +87,19 @@
          it here, beside the two buttons it belongs with, closes the gap and
          costs fewer words than the scattered clauses did. The fingertip is
          drawn in the same 1.6px stroke as the two FABs above so the three
-         controls read as one family. -->
+         controls read as one family.
+         Trimmed 2026-07-29: the examples are the three cards people actually
+         tap (Surf came out of the LIST only — it keeps its full catalogue entry
+         under Weather & Air and is still tappable on the board), and the
+         closing-behaviour fine print went entirely, because the overlay prints
+         "Tap anywhere to close" on screen. Documenting an affordance that
+         explains itself is the one thing this section was not for. Do NOT pay
+         for the trim by re-scattering "tap for full screen" onto widget rows. -->
     <article class="card card--row">
       <span class="fab" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11V6.5a1.5 1.5 0 0 1 3 0V11"/><path d="M12 11V9.5a1.5 1.5 0 0 1 3 0V12"/><path d="M15 12v-1a1.5 1.5 0 0 1 3 0v5.5a5.5 5.5 0 0 1-5.5 5.5h-1a5.5 5.5 0 0 1-4.6-2.5L4.6 15.6a1.5 1.5 0 0 1 2.4-1.8L9 16"/></svg></span>
       <div class="card__stack">
         <h3 class="card__h">Tap a card</h3>
-        <p class="card__p">A card that holds more than it shows opens full screen. Weather gives you the next 24 hours, Markets every ticker you follow, Subway the full alert text, Surf the 48-hour picture. A headline opens with a summary and a QR code so you can finish reading on your phone, and any picture fills the screen.</p>
-        <p class="card__fine">Tap anywhere to close. The board puts itself back on its own.</p>
+        <p class="card__p">A card that holds more than it shows opens full screen. Weather gives you the next 24 hours, Markets every ticker you follow, Subway the full alert text. A headline opens with a summary and a QR code so you can finish reading on your phone, and any picture fills the screen.</p>
       </div>
     </article>
   </div>
@@ -219,7 +225,14 @@
     </details>
     <!-- Images is a real group in config.js now: every card whose content IS a
          picture. It inherits "The board as a beautiful object", which used to
-         head the old Ambient section and in fact described these five. -->
+         head the old Ambient section and in fact described these five.
+         SIX in config.js, five here, on purpose. Live Video joined this group
+         when Ambient retired (2026-07-29), but it is gated twice (BETA_ONLY and
+         ADVANCED_WIDGETS) and every add surface routes through isAddable — so
+         on roomboard.app the picker's Images group shows exactly these five. A
+         guide that says "the groups the board's own widget picker uses" has to
+         match the picker a reader actually has. Live Video gets documented the
+         day the beta gate comes off, not before. -->
     <details class="fold" id="images">
       <summary class="fold__sum">
         <h3 class="fold__name">Images</h3>
@@ -235,37 +248,38 @@
         <div class="row"><h4 class="row__name">NASA Daily Photo</h4><p class="row__desc">NASA&rsquo;s Astronomy Picture of the Day.</p></div>
       </div>
     </details>
-    <!-- One card, on purpose. Ambient holds Live Video and World Clock in
-         config.js, but Live Video is gated twice (BETA_ONLY and
-         ADVANCED_WIDGETS) and every add surface routes through isAddable — so
-         on roomboard.app the picker's Ambient group shows exactly this one
-         card. A guide that says "the groups the picker uses" has to match the
-         picker a reader actually has. Live Video gets documented the day the
-         beta gate comes off, not before. -->
-    <details class="fold" id="ambient">
-      <summary class="fold__sum">
-        <h3 class="fold__name">Ambient</h3>
-        <span class="fold__dek">What time it is everywhere else.</span>
-        <span class="fold__ids">World Clock</span>
-        <span class="fold__caret" aria-hidden="true"></span>
-      </summary>
-      <div class="list">
-        <div class="row"><h4 class="row__name">World Clock</h4><p class="row__desc">The time in the cities you care about, side by side.<span class="row__note">Pick your cities.</span></p></div>
-      </div>
-    </details>
+    <!-- id="extras" under a fold named Daily, deliberately: this group IS the
+         old Daily Extras, minus Cloud Services, which is live rather than daily
+         and moved to Reference (2026-07-29). Keeping the id keeps /info#extras
+         landing where its readers expect. Same reason #weather heads "Weather &
+         Air" and #news heads "News & Social". -->
     <details class="fold" id="extras">
       <summary class="fold__sum">
-        <h3 class="fold__name">Daily Extras</h3>
+        <h3 class="fold__name">Daily</h3>
         <span class="fold__dek">Small delights that change every day.</span>
-        <span class="fold__ids">This Day in History &middot; Quote of the Day &middot; Word of the Day &middot; Cloud Services &middot; Chart of the Day</span>
+        <span class="fold__ids">This Day in History &middot; Quote of the Day &middot; Word of the Day &middot; Chart of the Day</span>
         <span class="fold__caret" aria-hidden="true"></span>
       </summary>
       <div class="list">
         <div class="row"><h4 class="row__name">This Day in History</h4><p class="row__desc">Notable events from today&rsquo;s date.</p></div>
         <div class="row"><h4 class="row__name">Quote of the Day</h4><p class="row__desc">One good quote a day.</p></div>
         <div class="row"><h4 class="row__name">Word of the Day</h4><p class="row__desc">A daily vocabulary word, with pronunciation and a real example.</p></div>
-        <div class="row"><h4 class="row__name">Cloud Services</h4><p class="row__desc">Live status of the services your team relies on: Webex, Slack, GitHub, AWS, and more.<span class="row__note">Pick the services you watch.</span></p></div>
         <div class="row"><h4 class="row__name">Chart of the Day</h4><p class="row__desc">Statista&rsquo;s daily infographic.<span class="row__note">Toggle categories, or turn off political charts.</span></p></div>
+      </div>
+    </details>
+    <!-- Reference took the slot Ambient vacated. Both its cards answer the same
+         question — what is true right now somewhere else — where the old label
+         only ever described the clock. -->
+    <details class="fold" id="reference">
+      <summary class="fold__sum">
+        <h3 class="fold__name">Reference</h3>
+        <span class="fold__dek">What time it is where they are, and whether the tools are up.</span>
+        <span class="fold__ids">World Clock &middot; Cloud Services</span>
+        <span class="fold__caret" aria-hidden="true"></span>
+      </summary>
+      <div class="list">
+        <div class="row"><h4 class="row__name">World Clock</h4><p class="row__desc">The time in the cities you care about, side by side.<span class="row__note">Pick your cities.</span></p></div>
+        <div class="row"><h4 class="row__name">Cloud Services</h4><p class="row__desc">Live status of the services your team relies on: Webex, Slack, GitHub, AWS, and more.<span class="row__note">Pick the services you watch.</span></p></div>
       </div>
     </details>
   </div>
@@ -293,8 +307,8 @@
       </button>
       <figcaption class="shot__cap">Markets &amp; Sports</figcaption>
     </figure>
-    <!-- Captioned Images, not Ambient: the capture is Art, Landscapes and NASA
-         Daily Photo, which is the Images group, plus one World Clock. The
+    <!-- Captioned Images: the capture is Art, Landscapes and NASA Daily Photo,
+         which is the Images group, plus one World Clock (now Reference). The
          caption follows the picture rather than the picture being re-shot. -->
     <figure class="shot shot--half">
       <button class="shot__btn" type="button" aria-label="Enlarge the Images board screenshot">
@@ -303,10 +317,10 @@
       <figcaption class="shot__cap">Images</figcaption>
     </figure>
     <figure class="shot shot--half">
-      <button class="shot__btn" type="button" aria-label="Enlarge the Daily Extras board screenshot">
-        <img src="assets/info/extras.webp" data-zoom data-caption="Daily Extras" alt="A board showing This Day in History, Quote of the Day, Chart of the Day, Cloud Services, and Word of the Day widgets." width="1920" height="1080" loading="lazy">
+      <button class="shot__btn" type="button" aria-label="Enlarge the Daily board screenshot">
+        <img src="assets/info/extras.webp" data-zoom data-caption="Daily" alt="A board showing This Day in History, Quote of the Day, Chart of the Day, Cloud Services, and Word of the Day widgets." width="1920" height="1080" loading="lazy">
       </button>
-      <figcaption class="shot__cap">Daily Extras</figcaption>
+      <figcaption class="shot__cap">Daily</figcaption>
     </figure>
   </div>
 </section>

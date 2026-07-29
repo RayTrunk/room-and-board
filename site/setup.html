@@ -42,6 +42,26 @@
         <p class="step__label">Step 2 of 2 · Personalize your data</p>
       </div>
 
+      <!-- Display mode is the one step-2 field that belongs to no widget group:
+           it is board-wide and always visible. It used to sit under the Ambient
+           divider, which meant that on a board with neither Live Video nor the
+           world clock the divider hid and this section was left stranded under
+           whatever heading came before it. Ungrouped fields go ABOVE the first
+           divider, where nothing can hide out from under them. -->
+      <section class="field">
+        <h2>Display mode</h2>
+        <select id="mode">
+          <option value="dashboard">Always dashboard</option>
+          <option value="ambient">Always screensaver</option>
+          <option value="scheduled">Scheduled — dashboard on a timer, screensaver otherwise</option>
+        </select>
+        <div id="schedule-editor" hidden>
+          <p class="hint">Dashboard shows during these windows; the screensaver shows the rest of the time.</p>
+          <div id="schedule-rows"></div>
+          <button id="schedule-add" type="button">Add window</button>
+        </div>
+      </section>
+
       <h2 class="setup__group" data-group="Commute">Commute</h2>
 
       <section class="field" id="subway-field">
@@ -247,8 +267,6 @@
         <p id="gdrivephotos-status" class="hint"></p>
       </section>
 
-      <h2 class="setup__group" data-group="Ambient">Ambient</h2>
-
       <section class="field" id="iptv-field">
         <h2>Live Video</h2>
         <label for="iptv-url">HLS stream link (https, usually ends in .m3u8)</label>
@@ -258,6 +276,19 @@
         <input type="text" id="iptv-label" maxlength="40" placeholder="Lobby cam">
         <p class="hint">The card plays it muted. Use a stream you have the rights to show.</p>
       </section>
+
+      <h2 class="setup__group" data-group="Daily">Daily</h2>
+
+      <section class="field" id="chart-field">
+        <h2>Chart of the Day</h2>
+        <label>Topics</label>
+        <div id="chart-topics" class="checks"></div>
+        <p class="hint">Pick any number to cycle through. None selected shows the newest chart across everything.</p>
+        <label class="alertcheck"><input type="checkbox" id="chart-politics"> Hide political charts</label>
+      </section>
+
+      <h2 class="setup__group" data-group="Reference">Reference</h2>
+
       <section class="field" id="wc-field">
         <h2>World Clock <small>(shown in order of current time — up to 10)</small></h2>
         <div id="wc-chips" class="chips"></div>
@@ -269,34 +300,10 @@
         </div>
       </section>
 
-      <section class="field">
-        <h2>Display mode</h2>
-        <select id="mode">
-          <option value="dashboard">Always dashboard</option>
-          <option value="ambient">Always screensaver</option>
-          <option value="scheduled">Scheduled — dashboard on a timer, screensaver otherwise</option>
-        </select>
-        <div id="schedule-editor" hidden>
-          <p class="hint">Dashboard shows during these windows; the screensaver shows the rest of the time.</p>
-          <div id="schedule-rows"></div>
-          <button id="schedule-add" type="button">Add window</button>
-        </div>
-      </section>
-
-      <h2 class="setup__group" data-group="Daily Extras">Daily Extras</h2>
-
       <section class="field" id="services-field">
         <h2>Cloud Services</h2>
         <p class="hint">Pick the cloud services to watch on the board.</p>
         <div id="services-list" class="checks"></div>
-      </section>
-
-      <section class="field" id="chart-field">
-        <h2>Chart of the Day</h2>
-        <label>Topics</label>
-        <div id="chart-topics" class="checks"></div>
-        <p class="hint">Pick any number to cycle through. None selected shows the newest chart across everything.</p>
-        <label class="alertcheck"><input type="checkbox" id="chart-politics"> Hide political charts</label>
       </section>
 
       <footer class="setup__foot">

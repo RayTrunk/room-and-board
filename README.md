@@ -257,10 +257,11 @@ summary, and a QR code that hands the article to your phone.
 
 ### Images
 
-Every card whose content *is* a picture. All of them open full screen on a tap
-and swipe there to browse; all of them decode the next image before swapping it
-in and cross-fade between the two, so a half-painted photo never reaches the
-glass; and all but NASA can drive the screensaver.
+Every card whose content *is* the picture, moving ones included. The still-image
+cards (everything below except Live Video) all open full screen on a tap and
+swipe there to browse; all of them decode the next image before swapping it in
+and cross-fade between the two, so a half-painted photo never reaches the glass;
+and all but NASA can drive the screensaver.
 
 - **Art** — a rotating public-domain artwork (Met / Art Institute of Chicago /
   Cleveland). The default screensaver source. *Configure:* Settings → Art
@@ -285,11 +286,6 @@ glass; and all but NASA can drive the screensaver.
   title, tap for full screen with the explanation. Changes once a day; video
   days are skipped automatically. *Configure:* none (uses a free NASA key on the
   Worker; see Data sources).
-
-### Ambient
-
-- **World Clock** — up to 10 cities in order of their current time, with a
-  next-day marker. *Configure:* Settings → World Clock (offices or any zone).
 - **Live Video** *(gated — see [Add policy](#add-policy-and-gated-cards))* — a
   UniFi Protect Share-Livestream link (`monitor.ui.com/...`, embedded via UI's
   own player) or a live HLS stream (your own https `.m3u8` link) playing
@@ -298,8 +294,27 @@ glass; and all but NASA can drive the screensaver.
   `/video-setup` on your phone, then type the short code on the board.
   *Configure:* Settings → Live Video (or /setup → Live Video).
 
-### Daily Extras
+### Daily
 
+The cards that are literally "of the day": one new thing lands each morning and
+that *is* the card.
+
+- **This Day in History** — notable events on today's date (Wikimedia).
+- **Quote of the Day** / **Word of the Day** — a curated daily quote / word
+  with definition and example.
+- **Chart of the Day** — Statista's latest daily infographic; tap for full
+  screen with the description. Statista explicitly permits embedding their
+  infographics with attribution (CC BY-ND; their branding is part of the
+  image). *Configure:* Settings → Chart of the Day (which topics the card
+  cycles through; a hide-politics filter, on by default).
+
+### Reference
+
+What is true right now *somewhere else*: the time where your colleagues are, and
+whether the tools everyone depends on are up.
+
+- **World Clock** — up to 10 cities in order of their current time, with a
+  next-day marker. *Configure:* Settings → World Clock (offices or any zone).
 - **Cloud Services** — subway-board rows for the cloud services your office
   depends on (Webex, Zoom, Slack, Ubiquiti, Cloudflare, GitHub, Microsoft 365,
   Google Workspace, AWS, Claude, OpenAI) from their public status pages; tap a
@@ -312,14 +327,6 @@ glass; and all but NASA can drive the screensaver.
   sort runs *before* the list is sliced to the card's capacity, so the row that
   matters is never the one the "+N" badge eats. *Configure:* Settings → Cloud
   Services (toggle services on/off). No API keys — all sources are public.
-- **This Day in History** — notable events on today's date (Wikimedia).
-- **Quote of the Day** / **Word of the Day** — a curated daily quote / word
-  with definition and example.
-- **Chart of the Day** — Statista's latest daily infographic; tap for full
-  screen with the description. Statista explicitly permits embedding their
-  infographics with attribution (CC BY-ND; their branding is part of the
-  image). *Configure:* Settings → Chart of the Day (which topics the card
-  cycles through; a hide-politics filter, on by default).
 
 ## Local development
 

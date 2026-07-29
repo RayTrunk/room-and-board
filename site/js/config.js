@@ -33,14 +33,25 @@ export const WIDGET_GROUPS = [
   { label: 'Markets', ids: ['markets', 'marketsnews'] },
   { label: 'Sports', ids: ['sports', 'worldcup', 'f1', 'golf', 'tennis'] },
   { label: 'News & Social', ids: ['news', 'substack', 'bsky'] },
-  // Images = every card whose content IS a picture, apod included. It is a
-  // superset of the Settings NAV_MODEL 'Images' group, which lists only the
-  // four with something to configure — apod has no settings pane at all.
-  // Images sits immediately before Ambient; the two cards left over (a video
-  // stream and a clock) keep the Ambient label and its slot.
-  { label: 'Images', ids: ['art', 'landscapes', 'photos', 'gdrivephotos', 'apod'] },
-  { label: 'Ambient', ids: ['iptv', 'worldclock'] },
-  { label: 'Daily Extras', ids: ['history', 'quote', 'wotd', 'services', 'chart'] },
+  // Images = every card whose content IS the picture: art, photography, apod,
+  // and (since Ambient retired, 2026-07-29) the Live Video stream, which is the
+  // same media surface with the pictures moving. It is a superset of the
+  // Settings NAV_MODEL 'Images' group, which lists only the ones with something
+  // to configure — apod has no settings pane at all.
+  { label: 'Images', ids: ['art', 'landscapes', 'photos', 'gdrivephotos', 'apod', 'iptv'] },
+  // Daily = the cards that are literally "of the day": one new thing lands each
+  // morning and that IS the card. Cloud Services used to sit here and does not
+  // belong — it is live, not daily — so it left for Reference when the group
+  // narrowed and lost the "Extras" (2026-07-29).
+  { label: 'Daily', ids: ['history', 'quote', 'wotd', 'chart'] },
+  // Reference = "what is true right now somewhere else": the time where your
+  // colleagues are, and whether the tools everyone depends on are up. Took the
+  // slot Ambient vacated, which had become a rump of leftovers once Images was
+  // carved out of it.
+  // NAMING — decided with Sean, 2026-07-29: this group is "Reference", never
+  // "Work". RoomBoard is his personal project and a "Work" label would imply an
+  // employer sponsors it. Do not rename it back.
+  { label: 'Reference', ids: ['worldclock', 'services'] },
 ];
 
 const SERVICE_IDS = ['webex', 'zoom', 'slack', 'ubiquiti', 'cloudflare', 'github', 'm365', 'gworkspace', 'aws', 'claude', 'openai'];

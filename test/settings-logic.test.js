@@ -229,7 +229,7 @@ describe('WIDGET_GROUPS taxonomy', () => {
 
   it('has the eight expected group labels in order', () => {
     expect(WIDGET_GROUPS.map((g) => g.label)).toEqual([
-      'Commute', 'Weather & Air', 'Markets', 'Sports', 'News & Social', 'Images', 'Ambient', 'Daily Extras',
+      'Commute', 'Weather & Air', 'Markets', 'Sports', 'News & Social', 'Images', 'Daily', 'Reference',
     ]);
   });
 
@@ -242,29 +242,85 @@ describe('WIDGET_GROUPS taxonomy', () => {
     expect(WIDGET_GROUPS.map((g) => g.label)).not.toContain('Markets & Sports');
   });
 
-  // Ambient split the same way (2026-07-28) so the picture cards get their own
-  // tray expander. Membership is every card whose content IS a picture, apod
-  // included; what's left is a video stream and a clock.
-  it('carves Images out of Ambient with exactly the five picture cards', () => {
+  // Ambient split the same way (2026-07-28) so the picture cards got their own
+  // tray expander — and then RETIRED (2026-07-29), because what was left of it
+  // (a video stream and a clock) was a rump held together by nothing. Live
+  // Video joined Images, the clock joined Cloud Services under Reference.
+  it('retired Ambient: iptv joined Images, the clock left for Reference', () => {
     const ids = (label) => WIDGET_GROUPS.find((g) => g.label === label)?.ids;
-    expect(ids('Images')).toEqual(['art', 'landscapes', 'photos', 'gdrivephotos', 'apod']);
-    expect(ids('Ambient')).toEqual(['iptv', 'worldclock']); // the remainder keeps the label
-    // Images sits immediately before Ambient
-    const labels = WIDGET_GROUPS.map((g) => g.label);
-    expect(labels.indexOf('Ambient') - labels.indexOf('Images')).toBe(1);
+    expect(WIDGET_GROUPS.map((g) => g.label)).not.toContain('Ambient');
+    expect(ids('Images')).toEqual(['art', 'landscapes', 'photos', 'gdrivephotos', 'apod', 'iptv']);
+    expect(ids('Reference')).toEqual(['worldclock', 'services']);
+  });
+
+  // Daily narrowed to the cards that are literally "of the day" (2026-07-29):
+  // Cloud Services is live, not daily, and left for Reference.
+  it('narrows Daily to the of-the-day cards, Cloud Services excluded', () => {
+    const ids = (label) => WIDGET_GROUPS.find((g) => g.label === label)?.ids;
+    expect(WIDGET_GROUPS.map((g) => g.label)).not.toContain('Daily Extras');
+    expect(ids('Daily')).toEqual(['history', 'quote', 'wotd', 'chart']);
+    expect(ids('Daily')).not.toContain('services');
+  });
+
+  // NAMING GUARD, decided with Sean 2026-07-29: the group holding the world
+  // clock and cloud services is "Reference", never "Work" — RoomBoard is a
+  // personal project and a "Work" label would imply an employer sponsors it.
+  // See the comment on the group in config.js.
+  it('never labels a group Work', () => {
+    for (const g of WIDGET_GROUPS) expect(g.label).not.toMatch(/\bwork\b/i);
   });
 
   // The Settings nav is a separate hand-ordered spec with its own Images group,
-  // and it is deliberately NOT the same list: the nav only carries sections that
-  // exist, and apod has no settings pane. So nav ⊂ WIDGET_GROUPS, and the only
-  // id allowed to differ is one with no section at all.
+  // and it is deliberately NOT the same list — it is Sean's explicit ordering
+  // and does not derive from WIDGET_GROUPS. So nav ⊂ WIDGET_GROUPS, and an id
+  // may be missing from the nav's Images group for exactly two reasons: it has
+  // no settings pane at all (apod), or the nav carries it as its OWN top-level
+  // item rather than inside the group (iptv is "Live Video", pinned near
+  // Diagnostics because it is the nerd-mode card).
   it('keeps the NAV_MODEL Images group a subset of the WIDGET_GROUPS one', () => {
     const nav = NAV_MODEL.find((e) => e.type === 'group' && e.label === 'Images').items.map(([id]) => id);
+    const standalone = new Set(NAV_MODEL.filter((e) => e.type === 'item').map((e) => e.id));
     const group = WIDGET_GROUPS.find((g) => g.label === 'Images').ids;
     expect(nav).toEqual(group.filter((id) => nav.includes(id))); // same relative order, no strays
     for (const id of group.filter((id) => !nav.includes(id))) {
-      expect(SECTION_IDS, id).not.toContain(id); // only sectionless cards may be missing
+      if (standalone.has(id)) continue; // the nav lists it on its own line
+      expect(SECTION_IDS, id).not.toContain(id); // otherwise only sectionless cards may be missing
     }
+  });
+});
+
+// /info is the third consumer of the taxonomy and the one with no runtime: its
+// group dividers, the names under each, and the "All N of them" total are all
+// hand-written, so they drift silently the moment a group moves. The guide
+// deliberately documents FEWER cards than exist (nothing double-gated), so the
+// guard checks shape and internal arithmetic, never "documents everything".
+const guide = await readFile(resolve(process.cwd(), 'site/info.html'), 'utf8');
+const folds = [...guide.matchAll(/<details class="fold" id="[^"]+">([\s\S]*?)<\/details>/g)]
+  .map(([, body]) => ({
+    name: (body.match(/fold__name">([^<]+)</) || [])[1]?.replace(/&amp;/g, '&'),
+    listed: ((body.match(/fold__ids">([^<]*)</) || [])[1] || '').split('&middot;').filter((s) => s.trim()).length,
+    rows: (body.match(/row__name/g) || []).length,
+  }));
+
+describe('/info guide tracks WIDGET_GROUPS', () => {
+  it('carries one fold per group, in WIDGET_GROUPS order, and no retired label', () => {
+    expect(folds.map((f) => f.name)).toEqual(WIDGET_GROUPS.map((g) => g.label));
+  });
+
+  it('agrees with itself: the at-rest name list matches the rows behind each fold', () => {
+    for (const f of folds) expect(f.listed, f.name).toBe(f.rows);
+  });
+
+  it('documents no card that does not exist, and no more than the group holds', () => {
+    for (const f of folds) {
+      const group = WIDGET_GROUPS.find((g) => g.label === f.name);
+      expect(f.rows, f.name).toBeLessThanOrEqual(group.ids.filter((id) => !isRetired(id)).length);
+    }
+  });
+
+  it('the hero total is the number of cards actually documented', () => {
+    const total = folds.reduce((n, f) => n + f.rows, 0);
+    expect(guide).toContain(`All ${total} of them`);
   });
 });
 
@@ -309,9 +365,11 @@ const onTheCoast = (extra = {}) => {
 };
 
 describe('widgetChecksHtml (setup picker)', () => {
-  it('renders seven grouped sections, one checkbox per widget, reflecting the placed set', () => {
+  it('renders every grouped section, one checkbox per widget, reflecting the placed set', () => {
     const html = widgetChecksHtml(SETUP_LABELS, new Set(['subway', 'photos']), onTheCoast({ nerdMode: true }));
-    for (const label of ['Commute', 'Weather & Air', 'Markets', 'Sports', 'News & Social', 'Images', 'Ambient', 'Daily Extras']) {
+    // derived, not spelled out: the canonical label list is asserted once, in
+    // the WIDGET_GROUPS taxonomy suite above
+    for (const { label } of WIDGET_GROUPS) {
       expect(html).toContain(`<h3 class="wpick__title">${label}</h3>`);
     }
     expect((html.match(/data-w="/g) || []).length).toBe(LIVE_IDS.length); // one per non-retired widget
@@ -328,10 +386,9 @@ describe('widgetChecksHtml (setup picker)', () => {
 import { widgetGroupsHtml } from '../site/js/settings/settings.js';
 
 describe('widgetGroupsHtml', () => {
-  it('renders all seven group headers and one toggle per widget with correct on-state', () => {
+  it('renders every group header and one toggle per widget with correct on-state', () => {
     const html = widgetGroupsHtml([{ id: 'weather', x: 0, y: 0, w: 4, h: 4 }], onTheCoast({ nerdMode: true }));
-    // seven group headers
-    for (const label of ['Commute', 'Weather & Air', 'Markets', 'Sports', 'News & Social', 'Images', 'Ambient', 'Daily Extras']) {
+    for (const { label } of WIDGET_GROUPS) {
       expect(html).toContain(`<h3 class="wgroup__title">${label}</h3>`);
     }
     // one toggle per WIDGET_ID (21)
@@ -396,16 +453,23 @@ describe('stepTwoVisibility', () => {
     expect(sections.size).toBe(0);
     expect(groups.size).toBe(0);
   });
-  // Art / iCloud / GDrive moved to the Images divider when Ambient split; iptv
-  // and the world clock stayed behind. A board carrying only picture cards must
-  // get the Images divider and NOT the Ambient one, and vice versa.
-  it('splits the Ambient step-2 dividers: pictures under Images, the rest under Ambient', () => {
-    const pics = stepTwoVisibility(['art', 'photos', 'gdrivephotos', 'landscapes', 'apod']);
-    expect([...pics.sections].sort()).toEqual(['art-field', 'gdrivephotos-field', 'photos-field']);
+  // Every picture card, Live Video included, now files under one Images
+  // divider; the clock left for Reference with Cloud Services. A board carrying
+  // only picture cards must get the Images divider and nothing else.
+  it('files every picture card under Images, the clock and services under Reference', () => {
+    const pics = stepTwoVisibility(['art', 'photos', 'gdrivephotos', 'landscapes', 'apod', 'iptv']);
+    expect([...pics.sections].sort()).toEqual(['art-field', 'gdrivephotos-field', 'iptv-field', 'photos-field']);
     expect([...pics.groups]).toEqual(['Images']); // landscapes and apod have nothing to configure
-    const rest = stepTwoVisibility(['iptv', 'worldclock']);
-    expect([...rest.sections].sort()).toEqual(['iptv-field', 'wc-field']);
-    expect([...rest.groups]).toEqual(['Ambient']);
+    const ref = stepTwoVisibility(['worldclock', 'services']);
+    expect([...ref.sections].sort()).toEqual(['services-field', 'wc-field']);
+    expect([...ref.groups]).toEqual(['Reference']);
+  });
+
+  // Daily's only configurable card is the chart: the other three ask nothing.
+  it('shows the Daily divider for the chart alone', () => {
+    const daily = stepTwoVisibility(['history', 'quote', 'wotd', 'chart']);
+    expect([...daily.sections]).toEqual(['chart-field']);
+    expect([...daily.groups]).toEqual(['Daily']);
   });
   // applyStepTwo hides a divider whose label isn't in the visible-groups set and
   // a section whose id isn't in the visible-sections set, so a SETUP_SECTIONS
@@ -420,6 +484,42 @@ describe('stepTwoVisibility', () => {
       expect(html, s.id).toContain(`id="${s.id}"`);
       const divider = s.group.replace(/&/g, '&amp;');
       expect(html, s.group).toContain(`data-group="${divider}"`);
+    }
+  });
+
+  // The OTHER direction, and the one that actually bit: the guard above only
+  // proves that the groups SETUP_SECTIONS names have dividers. A brand-new
+  // WIDGET_GROUPS label with no divider and no section is invisible in step 2
+  // — its fields either never appear or sit stranded under the heading above
+  // them, and nothing above notices. Retiring Ambient and adding Reference is
+  // exactly that edit.
+  it('every WIDGET_GROUPS label has a step-2 divider AND at least one SETUP_SECTIONS entry', async () => {
+    const html = await readFile(resolve(process.cwd(), 'site/setup.html'), 'utf8');
+    const claimed = new Set(SETUP_SECTIONS.map((s) => s.group));
+    for (const { label } of WIDGET_GROUPS) {
+      expect(html, `${label} divider`).toContain(`data-group="${label.replace(/&/g, '&amp;')}"`);
+      expect(claimed.has(label), `${label} has no SETUP_SECTIONS entry`).toBe(true);
+    }
+    // and no divider survives for a group that no longer exists (retiring
+    // Ambient must take its <h2> with it, or step 2 grows a dead heading)
+    const dividers = [...html.matchAll(/data-group="([^"]+)"/g)].map((m) => m[1].replace(/&amp;/g, '&'));
+    expect([...new Set(dividers)].sort()).toEqual(WIDGET_GROUPS.map((g) => g.label).sort());
+  });
+
+  // Step-2 fields render in document order, so a divider whose fields sit above
+  // it labels the WRONG section. Walk the file once: every SETUP_SECTIONS field
+  // must appear after its own group's divider and before the next one.
+  it('every step-2 field sits under its own divider in setup.html', async () => {
+    const html = await readFile(resolve(process.cwd(), 'site/setup.html'), 'utf8');
+    const at = (needle) => html.indexOf(needle);
+    const dividerAt = (label) => at(`data-group="${label.replace(/&/g, '&amp;')}"`);
+    const labels = WIDGET_GROUPS.map((g) => g.label);
+    for (const s of SETUP_SECTIONS) {
+      const fieldAt = at(`id="${s.id}"`);
+      const own = dividerAt(s.group);
+      expect(fieldAt, `${s.id} after its ${s.group} divider`).toBeGreaterThan(own);
+      const next = labels.slice(labels.indexOf(s.group) + 1).map(dividerAt).find((i) => i > own);
+      if (next !== undefined) expect(fieldAt, `${s.id} before the next divider`).toBeLessThan(next);
     }
   });
 

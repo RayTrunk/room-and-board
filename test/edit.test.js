@@ -3,7 +3,7 @@
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { openEditMode } from '../site/js/edit.js';
-import { WIDGET_IDS, WIDGET_GROUPS, isRetired } from '../site/js/config.js';
+import { WIDGET_IDS, WIDGET_GROUPS, isRetired, isAddable } from '../site/js/config.js';
 import { writeProbe, spotKey } from '../site/js/surf-gate.js';
 import { installLocalStorage } from './stubs/localstorage.js';
 
@@ -125,24 +125,28 @@ describe('openEditMode', () => {
   });
 });
 
-// The three big categories hide behind expanders (Commute 10 cards, Images 5,
-// Sports 4 offered) so the tray stays a short list. Everything here is about
+// The big categories hide behind expanders (Commute 10 cards, Images 5, Daily
+// 4, Sports 4 offered) so the tray stays a short list. Everything here is about
 // that mechanism being per-group rather than the single Commute flag it grew
 // out of.
 describe('add-tray collapsible groups', () => {
   const idsOf = (label) => WIDGET_GROUPS.find((g) => g.label === label).ids;
-  const SPORTS_OFFERED = idsOf('Sports').filter((id) => !isRetired(id));
-  const IMAGES_OFFERED = idsOf('Images').filter((id) => !isRetired(id));
-  const COLLAPSED = ['Commute', 'Images', 'Sports'];
+  // OFFERED, not merely un-retired: the tray counts what isAddable lets through
+  // on THIS cfg, which is how Images reads 5 with six ids (Live Video is
+  // nerd-mode gated) and Sports reads 4 with five (worldcup retired).
+  const offeredIn = (label) => idsOf(label).filter((id) => isAddable(id, CFG));
+  const SPORTS_OFFERED = offeredIn('Sports');
+  const IMAGES_OFFERED = offeredIn('Images');
+  const COLLAPSED = ['Commute', 'Images', 'Daily', 'Sports'];
   const open = (cfg = CFG) => openEditMode(cfg, { root, cellSize: { w: 100, h: 100 } });
   const toggles = () => [...root.querySelectorAll('[data-tray-toggle]')];
   const toggle = (label) => toggles().find((t) => t.dataset.trayToggle === label);
   const group = (label) => [...root.querySelectorAll('[data-tray-group]')].find((g) => g.dataset.trayGroup === label);
   const chipsIn = (label) => [...group(label).querySelectorAll('[data-add]')].map((b) => b.textContent.trim());
 
-  it('collapses exactly Commute, Images and Sports, all closed, with a caret and a count', () => {
+  it('collapses exactly Commute, Images, Daily and Sports, all closed, with a caret and a count', () => {
     open();
-    // largest-offered-first: Commute 10 · Images 5 · Sports 4
+    // largest-offered-first, ties alphabetical: Commute 10 · Images 5 · Daily 4 · Sports 4
     expect(toggles().map((t) => t.dataset.trayToggle)).toEqual(COLLAPSED);
     for (const label of COLLAPSED) {
       expect(toggle(label).getAttribute('aria-expanded')).toBe('false');
@@ -150,22 +154,46 @@ describe('add-tray collapsible groups', () => {
       expect(group(label).hidden).toBe(true);
     }
     expect(toggle('Commute').textContent).toContain('· 10');
-    expect(toggle('Images').textContent).toContain(`· ${IMAGES_OFFERED.length}`); // 5
+    // 5, not 6: Live Video is BETA_ONLY + ADVANCED_WIDGETS and this cfg has no
+    // nerd mode, so it never reaches the tray.
+    expect(toggle('Images').textContent).toContain(`· ${IMAGES_OFFERED.length}`);
     expect(IMAGES_OFFERED).toHaveLength(5);
+    expect(IMAGES_OFFERED).not.toContain('iptv');
+    expect(toggle('Daily').textContent).toContain('· 4');
     // 4, not 5: worldcup retired (RETIRED_AFTER) and has left every add surface.
     expect(toggle('Sports').textContent).toContain(`· ${SPORTS_OFFERED.length}`);
     // no other category is behind a tap
     expect(root.querySelector('[data-tray-toggle="Markets"]')).toBeNull();
-    expect(root.querySelector('[data-tray-toggle="Ambient"]')).toBeNull();
+    expect(root.querySelector('[data-tray-toggle="Ambient"]')).toBeNull(); // retired outright
     const marketsChip = root.querySelector('.edit-tray__chips > [data-add="markets"]');
     expect(marketsChip).not.toBeNull(); // Markets flows inline, not in a drawer
-    // Ambient is down to Live Video + World Clock and stays inline: a two-item
-    // drawer would cost a tap to save one chip. (iptv is nerd-mode gated, so on
-    // this cfg only the clock is offered.)
+    // Reference is two cards and stays inline: a two-item drawer would cost a
+    // tap to save one chip.
+    expect(root.querySelector('[data-tray-toggle="Reference"]')).toBeNull();
     expect(root.querySelector('.edit-tray__chips > [data-add="worldclock"]')).not.toBeNull();
+    expect(root.querySelector('.edit-tray__chips > [data-add="services"]')).not.toBeNull();
     // apod moved INTO the Images drawer, so it is no longer a loose inline chip
     expect(root.querySelector('.edit-tray__chips > [data-add="apod"]')).toBeNull();
     expect(group('Images').querySelector('[data-add="apod"]')).not.toBeNull();
+    // …and the daily reads moved into theirs
+    expect(root.querySelector('.edit-tray__chips > [data-add="quote"]')).toBeNull();
+    expect(group('Daily').querySelector('[data-add="quote"]')).not.toBeNull();
+  });
+
+  // THE RULE the expander list encodes (see TRAY_COLLAPSIBLE in edit.js): a
+  // group collapses iff it offers four or more cards, largest first, ties
+  // alphabetical. Without this, "should Daily collapse?" gets re-litigated by
+  // taste at every regrouping — Daily Extras carried five cards inline while a
+  // four-card Sports sat behind a tap, and nothing caught it.
+  it('the expander set and its order are exactly what the four-or-more rule derives', () => {
+    const derived = WIDGET_GROUPS
+      .map((g) => ({ label: g.label, n: offeredIn(g.label).length }))
+      .filter((g) => g.n >= 4)
+      .sort((a, b) => b.n - a.n || a.label.localeCompare(b.label))
+      .map((g) => g.label);
+    expect(derived).toEqual(COLLAPSED);
+    open();
+    expect(toggles().map((t) => t.dataset.trayToggle)).toEqual(derived);
   });
 
   it('renders the expanders after every inline chip, so opening one pushes nothing above it', () => {
@@ -184,16 +212,17 @@ describe('add-tray collapsible groups', () => {
     expect(group('Sports').hidden).toBe(false);
     expect(toggle('Sports').getAttribute('aria-expanded')).toBe('true');
     expect(toggle('Sports').querySelector('.edit-tray__caret').textContent).toBe('▾');
-    // the other two are untouched
-    for (const label of ['Commute', 'Images']) {
-      expect(group(label).hidden).toBe(true);
-      expect(toggle(label).getAttribute('aria-expanded')).toBe('false');
+    // every other expander is untouched
+    for (const label of COLLAPSED.filter((l) => l !== 'Sports')) {
+      expect(group(label).hidden, label).toBe(true);
+      expect(toggle(label).getAttribute('aria-expanded'), label).toBe('false');
     }
 
     toggle('Commute').click();
     expect(group('Commute').hidden).toBe(false); // two open at once
     expect(group('Sports').hidden).toBe(false);
-    expect(group('Images').hidden).toBe(true); // and the third still closed
+    expect(group('Images').hidden).toBe(true); // and the rest still closed
+    expect(group('Daily').hidden).toBe(true);
 
     toggle('Sports').click();
     expect(group('Sports').hidden).toBe(true);
@@ -201,7 +230,7 @@ describe('add-tray collapsible groups', () => {
     expect(group('Commute').hidden).toBe(false); // closing one leaves the other open
   });
 
-  it('opens all three at once — no expander closes another', () => {
+  it('opens every expander at once — no expander closes another', () => {
     open();
     for (const label of COLLAPSED) toggle(label).click();
     for (const label of COLLAPSED) {
@@ -215,6 +244,7 @@ describe('add-tray collapsible groups', () => {
     open();
     expect(chipsIn('Sports')).toEqual(['Formula 1', 'Golf', 'My Teams', 'Tennis']);
     expect(chipsIn('Images')).toEqual(['Art', 'GDrive Photos', 'iCloud Photos', 'Landscapes', 'NASA Daily Photo']);
+    expect(chipsIn('Daily')).toEqual(['Chart of the Day', 'History', 'Quote', 'Word']);
     expect(chipsIn('Commute')).toEqual([...chipsIn('Commute')].sort((a, b) => a.localeCompare(b)));
   });
 
@@ -241,6 +271,30 @@ describe('add-tray collapsible groups', () => {
     expect(toggle('Images').textContent).toContain(`· ${IMAGES_OFFERED.length - 1}`);
     expect(group('Sports').hidden).toBe(true);
     expect(group('Commute').hidden).toBe(true);
+  });
+
+  // Daily is the newest drawer (2026-07-29) and the one whose membership just
+  // changed, so exercise the same add path through it.
+  it('adds a widget from the Daily drawer and keeps Daily open across the re-render', () => {
+    const editor = open();
+    toggle('Daily').click();
+    group('Daily').querySelector('[data-add="wotd"]').click();
+    expect(editor.layout().map((r) => r.id)).toContain('wotd');
+    expect(group('Daily').hidden).toBe(false);
+    expect(toggle('Daily').textContent).toContain('· 3');
+    // Cloud Services is NOT in this drawer — it left for Reference and flows inline
+    expect(group('Daily').querySelector('[data-add="services"]')).toBeNull();
+    expect(root.querySelector('.edit-tray__chips > [data-add="services"]')).not.toBeNull();
+  });
+
+  // Reference is inline, so its chips must be addable straight off the tray
+  // with no expander in the way.
+  it('adds a Reference widget straight from the inline chips', () => {
+    const editor = open();
+    root.querySelector('.edit-tray__chips > [data-add="services"]').click();
+    expect(editor.layout().map((r) => r.id)).toContain('services');
+    root.querySelector('.edit-tray__chips > [data-add="worldclock"]').click();
+    expect(editor.layout().map((r) => r.id)).toContain('worldclock');
   });
 
   // TRAY_COLLAPSIBLE names groups by label, and a label that no longer matches

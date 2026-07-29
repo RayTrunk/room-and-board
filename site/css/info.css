@@ -157,7 +157,9 @@ button:focus-visible {
 .card--row .card__h { margin: 0; }
 .card__p { font-size: 16px; line-height: 1.5; color: var(--ink-mid); margin: 0; }
 .card__note { font-size: 15px; color: var(--ink-dim); margin-top: auto; padding-top: 14px; }
-.card__fine { font-size: 15px; line-height: 1.45; color: var(--ink-dim); margin: 10px 0 0; }
+/* .card__fine retired 2026-07-29 with its only user, the "Tap anywhere to
+   close" fine print under Tap a card. Left as a note rather than silently
+   dropped: this file has grown orphaned declarations before. */
 .duo { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: var(--gap); }
 /* "Making it yours" grew a third control — the cards themselves — so the pair
    becomes a trio. 300px is the floor at which a 56px FAB plus its copy still

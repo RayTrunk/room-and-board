@@ -15,6 +15,10 @@
         "text": "Photos now fade gently from one to the next instead of drawing in from the top of the card. The same calm change covers Landscapes, Art and the daily NASA photo."
       },
       {
+        "lead": "Adding widgets",
+        "text": "The add menu is grouped more clearly. World Clock and Cloud Services now sit together under Reference, and the daily reads have their own Daily group: This Day in History, Quote of the Day, Word of the Day and Chart of the Day."
+      },
+      {
         "lead": "This guide",
         "text": "The widget guide is now one scannable list with the details a tap away, and it matches the current widget groups. Every widget name is on screen at once, so you can find the one you want without scrolling past six sections to reach it."
       }

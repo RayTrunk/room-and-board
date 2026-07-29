@@ -16,13 +16,17 @@ const RESIZE_ICON = `<svg width="28" height="28" viewBox="0 0 24 24" fill="none"
 // Add-tray category order: the same groups as Settings/setup, but the BIG
 // categories render LAST, each behind its own expander, so revealing one pushes
 // nothing above it. Every other group flows inline; chips sort alpha within
-// group. Order here is the render order of the expanders — largest first by the
-// count actually OFFERED (Commute 10 · Images 5 · Sports 4, since worldcup
-// retired out of a nominal 5), ties alphabetical — and each label must exist in
-// WIDGET_GROUPS (asserted in test/edit.test.js). Ambient is down to two cards
-// (Live Video, World Clock) and stays inline: a two-item drawer costs a tap to
-// save one chip.
-const TRAY_COLLAPSIBLE = ['Commute', 'Images', 'Sports'];
+// group.
+// THE RULE, so this list stops being a judgement call re-litigated every
+// regrouping: a group collapses iff it offers FOUR OR MORE cards, and the
+// expanders render largest first, ties alphabetical. Order here is that render
+// order — Commute 10 · Images 5 · Daily 4 · Sports 4 (Images is 6 nominal but
+// Live Video is double-gated; Sports is 5 nominal but worldcup retired). Below
+// four a drawer costs a tap to save one or two chips, so Weather & Air 3, News
+// & Social 3, Markets 2 and Reference 2 all flow inline. Each label must exist
+// in WIDGET_GROUPS, and the set must match the rule (both asserted in
+// test/edit.test.js).
+const TRAY_COLLAPSIBLE = ['Commute', 'Images', 'Daily', 'Sports'];
 const TRAY_INLINE_GROUPS = WIDGET_GROUPS.filter((g) => !TRAY_COLLAPSIBLE.includes(g.label));
 const TRAY_COLLAPSIBLE_GROUPS = TRAY_COLLAPSIBLE
   .map((label) => WIDGET_GROUPS.find((g) => g.label === label))
