@@ -15,6 +15,19 @@ import { swipeAction } from './imageshow.js';
 // that an abandoned board is canonical again before anyone else walks up.
 export const EXPAND_IDLE_MS = 60 * 1000;
 
+// The viewport the SMALLEST supported device hands the page, measured on-device
+// 2026-07-28: a Cisco Board Pro lays out at 1920x1040 CSS px and RoomOS paints
+// its "Tap here to start" bar in the 40 physical px BELOW that box, not over it.
+// A Room Navigator gives 1920x1200 and a desktop preview 1920x1080, so 1040 is
+// the floor and anything modelled against it fits all three.
+//
+// This is NOT the height of the dashboard: main.css pins html/body to a fixed
+// 1920x1080 page, so the grid, the editor and the settings overlay all live in
+// that 1080 box at every viewport (its last 40px fall outside a board's screen,
+// which the 84px --safe-bottom reserve already clears). Only the position:fixed
+// full-screen overlays are sized by the viewport, and this constant is for them.
+export const BOARD_VIEWPORT_H = 1040;
+
 // The canvas a full-screen view gets: .expand__body's content box, which every
 // overlay that MODELS its own fit reserves against (markets' ticker wall,
 // subway's alert ladder). One number instead of the two that had drifted apart
@@ -26,15 +39,13 @@ export const EXPAND_IDLE_MS = 60 * 1000;
 // whose font is not the one the widgets were measured in; test/expand.test.js
 // reads them back out of the stylesheet and re-does the sum.
 //
-// KNOWN WRONG BY 40px ON THE BOARD, and deliberately left that way for now.
-// H here is 1080, the height of the headless harness every widget in this repo
-// was measured in. Sean's on-device diagnostic of 2026-07-28 found the Board Pro
-// hands the page a 1920x1040 viewport (the OS bar sits BELOW it), so the real
-// canvas is 814, not 854: the models believe they have 40px they do not have,
-// and a dense wall can over-pack on-device while passing here. Correcting it
-// re-tunes both ladders and needs its own browser sweep at 1040 — tracked as a
-// follow-up, not folded into a chrome change.
-export const OVERLAY_BODY_H = 854;
+// H is the BOARD's 1040, not the 1080 of the headless harness the widgets were
+// originally measured in — that harness over-reported the canvas by 40px, and a
+// wall that packed to 854 lost its tail off the bottom of a real board. The
+// models get the smallest canvas any supported device gives them and leave the
+// spare 40 (Board) / 160 (Navigator) px as slack; spending it needs the overlay
+// to measure its own viewport, which is a later ship.
+export const OVERLAY_BODY_H = BOARD_VIEWPORT_H - 56 - 34 - 36 - 100; // 814
 
 let idleTimer = null;
 let rowTap = null; // per-session interactive-row handler (news family, wave 3)
@@ -119,7 +130,14 @@ export function isOverlayOpen(doc = document) {
 // out from under a reader (the idle cap bounds how stale it can get).
 // bodyHtml is trusted markup — widgets escape their own values, as they do for
 // the card body itself. Returns false when the overlay refuses to open.
-export function openExpand({ title = '', note = '', stamp = '', bodyHtml = '', onRowTap = null } = {}) {
+//
+// `onFit` is handed the live .expand__body once it is on screen and may rewrite
+// it. It is the same contract the CARDS have had all along — an optimistic
+// static estimate, then a measured trim (fitTrainRows, subway's own row loop,
+// services') — extended to the overlays, which had no way to check their work
+// and so shipped whatever their model believed. Fit, not content: it runs once,
+// before the reader sees anything, and must converge.
+export function openExpand({ title = '', note = '', stamp = '', bodyHtml = '', onRowTap = null, onFit = null } = {}) {
   if (isExpandOpen()) return false; // single instance: opening while open is a no-op
   if (isEditing()) return false;
   const host = overlayEl();
@@ -136,6 +154,8 @@ export function openExpand({ title = '', note = '', stamp = '', bodyHtml = '', o
     <div class="expand__body">${bodyHtml}</div>
     <p class="expand__hint">Tap anywhere to close</p>`;
   host.hidden = false;
+  // After `hidden` clears, so the body has a real clientHeight to measure.
+  if (onFit) onFit(host.querySelector('.expand__body'));
   resetIdle();
   return true;
 }

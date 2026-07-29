@@ -27,6 +27,7 @@ import {
   STATUS_RULES,
   STATUS_FALLBACK,
   ALERT_STEPS,
+  fitStatusBoard,
 } from '../site/js/widgets/subway.js';
 import { render as renderWeather } from '../site/js/widgets/weather.js';
 import { fmtClock } from '../site/js/util.js';
@@ -342,12 +343,15 @@ describe('markets ticker wall', () => {
   const indexSymbols = (n) => Array.from({ length: n }, (_, i) => `^IX${i}`);
 
   it('takes a sixth column only under a shelf, and marks it dense', () => {
-    // 16 stocks under a one-row shelf get 576px of canvas: three rows of tiles,
-    // so six across. Six-across tiles are 279px and need the denser type.
-    expect(tileCols(16, 1)).toBe(6);
+    // A one-row shelf leaves 536px of the board's 814px canvas: TWO rows of
+    // tiles, so twelve stocks go six across. (On the 854px canvas the harness
+    // used to report, the same shelf left room for three rows — and those rows
+    // were 165px tiles against a 163px floor, which is what cropped the company
+    // name off every tile on a real board.)
+    expect(tileCols(12, 1)).toBe(6);
     expect(tileCols(20)).toBe(5); // no shelf: 4 rows of 5 keeps the wider tile
     expect(tileCols(30, 1)).toBe(6); // six is the ceiling; seven ellipses GOOGL
-    const wall = wallOf(tileWall(vmOf([...indexSymbols(4), ...symbols(16)]).indices));
+    const wall = wallOf(tileWall(vmOf([...indexSymbols(4), ...symbols(12)]).indices));
     expect(wall.querySelector('.wall__grid').classList.contains('wall__grid--dense')).toBe(true);
     expect(wallOf(tileWall(vmOf(symbols(20)).indices))
       .querySelector('.wall__grid').classList.contains('wall__grid--dense')).toBe(false);
@@ -366,11 +370,28 @@ describe('markets ticker wall', () => {
   });
 
   it('keeps the shelf whenever the watchlist below it still fits', () => {
-    for (const nIdx of [2, 3, 4]) {
-      const wall = wallOf(tileWall(vmOf([...indexSymbols(nIdx), ...symbols(20 - nIdx)]).indices));
+    // Twelve stocks are two rows of six under a one-row shelf: 648px of the
+    // board's 814px canvas, so the shelf is affordable at any index count.
+    for (const nIdx of [1, 2, 3, 4]) {
+      const wall = wallOf(tileWall(vmOf([...indexSymbols(nIdx), ...symbols(12)]).indices));
       expect(wall.querySelectorAll('.wall__shelf .tile').length).toBe(nIdx);
-      expect(wall.querySelectorAll('.wall__grid .tile').length).toBe(20 - nIdx);
+      expect(wall.querySelectorAll('.wall__grid .tile').length).toBe(12);
       expect(wall.querySelector('.wall__rule')).not.toBeNull();
+    }
+  });
+
+  it('folds the shelf once the watchlist needs a third row it cannot have', () => {
+    // Thirteen and up: the grid wants three rows behind the shelf and the
+    // corrected canvas holds two, so the indices give up the shelf and rejoin
+    // the grid as ordinary tiles — the wall's designed degradation. On the
+    // over-reported 854px canvas this kept the shelf and squeezed the grid to
+    // 165px rows, where the browser cropped 13px off every company name.
+    for (const nIdx of [1, 2, 3, 4]) {
+      const n = 13;
+      const wall = wallOf(tileWall(vmOf([...indexSymbols(nIdx), ...symbols(n)]).indices));
+      expect(wall.querySelector('.wall__shelf')).toBeNull();
+      expect(wall.querySelectorAll('.wall__grid .tile').length).toBe(nIdx + n);
+      expect(wallHeight(0, nIdx + n)).toBeLessThanOrEqual(WALL_H);
     }
   });
 
@@ -634,9 +655,13 @@ describe('subway adaptive columns', () => {
   });
 
   it('moves the boundary with the canvas the band leaves behind', () => {
-    // No band at all (every line alerting) buys back its 113px: six fit.
-    expect(stepOf(6, 0).cols).toBe(1);
-    expect(stepOf(7, 0).cols).toBe(2);
+    // Five is the one-column ceiling with a band (680px of 701) and WITHOUT one
+    // too: six wells want 820px and the whole corrected canvas is 814. Dropping
+    // the canvas from the harness's 854 to the board's real 814 cost the wall
+    // exactly this — a bandless morning used to buy back the sixth well, and on
+    // a board it never could.
+    expect(stepOf(5, 0).cols).toBe(1);
+    expect(stepOf(6, 0).cols).toBe(2);
     // A band that wraps to a second row (18+ healthy lines) costs a well: four.
     expect(bandRows(18)).toBe(2);
     expect(stepOf(4, 18).cols).toBe(1);
@@ -644,9 +669,10 @@ describe('subway adaptive columns', () => {
   });
 
   it('measures the canvas the band and its hairline take', () => {
-    expect(alertsAvail(0)).toBe(854); // no band: the whole body
-    expect(alertsAvail(1)).toBe(741); // 60px band + 53px hairline block
-    expect(alertsAvail(2)).toBe(665);
+    // The BOARD's canvas (1040 − the chrome), not the 1080 headless harness's.
+    expect(alertsAvail(0)).toBe(814); // no band: the whole body
+    expect(alertsAvail(1)).toBe(701); // 60px band + 53px hairline block
+    expect(alertsAvail(2)).toBe(625);
     expect(bandRows(0)).toBe(0);
     expect([1, 17, 18, 24].map(bandRows)).toEqual([1, 1, 2, 2]);
   });
@@ -698,29 +724,119 @@ describe('subway adaptive columns', () => {
   it('measures a well from its bullet, its padding and every line of its text', () => {
     const [roomy] = ALERT_STEPS;
     expect(wellHeight([SHORT], roomy)).toBe(120); // one line: the bullet governs
-    expect(wellHeight([LONG], roomy)).toBe(128); // two lines of 41, the pill's share of a third, 40 of padding
-    expect(wellHeight([LONG, SECOND], roomy)).toBe(178); // 2 lines + 1 + the pill + the paragraph gap
+    expect(wellHeight([LONG], roomy)).toBe(122); // 132 chars + the pill's 9 wrap to two 41px lines, on 40 of padding
+    expect(wellHeight([LONG, SECOND], roomy)).toBe(172); // those two lines + the second header's one + the paragraph gap
     expect(wellHeight([], roomy)).toBe(120); // no header at all still frames the bullet
     // The same text costs less on a lower rung, which is the point of the ladder.
     expect(wellHeight([LONG, SECOND], ALERT_STEPS[4])).toBeLessThan(wellHeight([LONG, SECOND], roomy));
   });
 
-  it('prices the pill as a fraction of a line, in proportion to its label', () => {
-    // The pill takes characters out of ONE line, so that is what it costs. Pricing
-    // it as a whole line per lead read 812px on Sean's eight-alert morning where
-    // the browser renders 726 — a rung of type given up for nothing.
+  it('spends the pill where it sits — inside the lead line, not as a fraction after it', () => {
+    // The pill's characters are on the lead's FIRST LINE, so they wrap with it.
+    // Charging them as a fraction of a line added afterwards was the ladder's one
+    // real modelling error: a 113-character header is 1.98 lines of a 57-char
+    // rung, so the pill IS what pushes it to three, and the wall read 2.175 where
+    // the browser drew 3 — 102px of a nine-alert morning off the bottom of a
+    // board, at a rung the model believed had room to spare.
     const step = { cols: 2, chars: 60, line: 40, para: 8, pad: 0, bullet: 0, css: '' };
-    const sixty = (lead) => `${lead}${'A'.repeat(60 - lead.length)}`; // one line, whatever the label
-    expect(wellHeight([sixty('')], step)).toBe(51); // SERVICE ALERT (13) + 3 of 60 chars
-    expect(wellHeight([sixty('suspended ')], step)).toBe(48); // SUSPENDED (9) + 3
-    expect(wellHeight([sixty('delays ')], step)).toBe(46); // DELAYS (6) + 3, the cheapest
-    expect(statusLabel(sixty(''))).toBe(STATUS_FALLBACK);
-    // It always costs something, and never a whole line.
-    expect(wellHeight([sixty('delays ')], step)).toBeGreaterThan(step.line);
-    expect(wellHeight([sixty('')], step)).toBeLessThan(2 * step.line);
+    const pad = (lead, n) => lead + 'A'.repeat(n - lead.length);
+    // Nowhere near a boundary: the pill is free, exactly as the old model claimed.
+    expect(wellHeight([pad('delays ', 40)], step)).toBe(40);
+    expect(wellHeight([pad('', 40)], step)).toBe(40); // and the long fallback label is free too
+    // At the boundary it costs a whole line, and WHICH label decides: 51 chars
+    // plus DELAYS+3 is exactly 60 and holds; plus SERVICE ALERT+3 is 67 and wraps.
+    expect(statusLabel(pad('delays ', 51))).toBe('Delays');
+    expect(statusLabel(pad('', 51))).toBe(STATUS_FALLBACK);
+    expect(wellHeight([pad('delays ', 51)], step)).toBe(40);
+    expect(wellHeight([pad('', 51)], step)).toBe(80);
     // A second header carries no pill, so it pays for its own characters alone.
-    expect(wellHeight([sixty(''), 'A'.repeat(60)], step)).toBe(99); // 51 + one bare line + the gap
-    expect(wellHeight([sixty(''), 'A'.repeat(61)], step)).toBe(139); // and 61 chars is two lines
+    expect(wellHeight([pad('delays ', 51), pad('', 60)], step)).toBe(88); // two lines + the gap
+    expect(wellHeight([pad('delays ', 51), pad('', 61)], step)).toBe(128); // 61 chars is two lines
+  });
+
+  // ---- the measured backstop ----
+  // happy-dom has no layout engine, so the wall is faked: `heights` is the spill
+  // (scrollHeight − clientHeight) each rung would render at, and the fake reads
+  // the data-rung statusBoard() stamped to know which one it is being asked for.
+  const fakeBody = (heights) => {
+    const seen = [];
+    const el = {
+      innerHTML: '',
+      querySelector(sel) {
+        if (sel !== '.wall__alerts') return null;
+        const m = /data-rung="(\d+)"/.exec(el.innerHTML);
+        if (!m) return null;
+        const rung = Number(m[1]);
+        seen.push(rung);
+        return { clientHeight: 700, scrollHeight: 700 + heights[rung], dataset: { rung: String(rung) } };
+      },
+    };
+    return { el, seen, rung: () => Number(/data-rung="(\d+)"/.exec(el.innerHTML)?.[1] ?? -1) };
+  };
+  const twelve = () => subwayVm(12, 11, [LONG, SECOND]).lines;
+
+  it('leaves the wall alone when the estimate was right', () => {
+    const f = fakeBody([0, 0, 0, 0, 0, 0]);
+    f.el.innerHTML = statusBoard(twelve());
+    const before = f.el.innerHTML;
+    fitStatusBoard(f.el, twelve());
+    expect(f.el.innerHTML).toBe(before); // not one re-render on a normal morning
+  });
+
+  it('walks the ladder with a tape measure when it was wrong', () => {
+    // Only rung 4 actually holds it. The model picked the floor (5), which
+    // spills — so the wall stops guessing, tries the rungs in order and takes
+    // the first that genuinely fits, biggest type first.
+    const f = fakeBody([900, 700, 500, 300, 0, 40]);
+    f.el.innerHTML = statusBoard(twelve());
+    fitStatusBoard(f.el, twelve());
+    expect(f.rung()).toBe(4);
+  });
+
+  it('keeps the rung that loses least when no rung holds it at all', () => {
+    // Down the ladder is NOT monotonically better: a narrower column wraps a
+    // well taller, so the three-column floor can spill more than the rung above
+    // it. On a morning nothing fits, the wall keeps the best of them.
+    const f = fakeBody([900, 700, 500, 300, 60, 190]);
+    f.el.innerHTML = statusBoard(twelve());
+    fitStatusBoard(f.el, twelve());
+    expect(f.rung()).toBe(4);
+    // Bounded, and it terminates: every rung is rendered at most once.
+    expect(new Set(f.seen).size).toBeLessThanOrEqual(ALERT_STEPS.length);
+  });
+
+  it('does nothing at all without a layout engine', () => {
+    // Unit tests and the server-side render path have no clientHeight; the
+    // static estimate has to stand on its own there.
+    const el = { innerHTML: statusBoard(twelve()), querySelector: () => ({ clientHeight: 0, scrollHeight: 0, dataset: {} }) };
+    const before = el.innerHTML;
+    fitStatusBoard(el, twelve());
+    expect(el.innerHTML).toBe(before);
+    expect(() => fitStatusBoard(null, twelve())).not.toThrow();
+  });
+
+  it('hands the fitter through to the overlay that opened it', () => {
+    // The card registers onFit alongside its bodyHtml, and openExpand runs it on
+    // the LIVE body — after `hidden` clears, so there is something to measure.
+    const seen = [];
+    openExpand({ title: 'x', bodyHtml: '<div class="wall"></div>', onFit: (b) => seen.push(b?.className) });
+    expect(seen).toEqual(['expand__body']);
+    closeExpand();
+  });
+
+  it('ends the ladder on a third column, not on smaller type', () => {
+    // The floor is the card's own 20px alert copy and never less, so the last
+    // rung the wall can spend is a COLUMN: same scale as the rung above it, one
+    // more column, and a char budget measured for the narrower line (47 of the
+    // 470px three-column line, against 80 of the 770px two-column one).
+    const [, ...rest] = ALERT_STEPS;
+    expect(ALERT_STEPS.map((s) => s.cols)).toEqual([1, 2, 2, 2, 2, 3]);
+    expect(rest.map((s) => s.cols).every((c) => c >= 2)).toBe(true);
+    const [floor, above] = [ALERT_STEPS[5], ALERT_STEPS[4]];
+    expect(floor.css).toBe(above.css); // identical type: the step is the column
+    expect(floor.chars).toBeLessThan(above.chars); // on a narrower line
+    // Twelve two-alert lines used to fall off the floor; three columns hold them.
+    expect(stepOf(12, 11, [LONG, SECOND]).cols).toBe(3);
   });
 });
 

@@ -13,11 +13,14 @@ export function escapeHtml(s) {
 // it. A transform on an ancestor would instead become the containing block for
 // their fixed positioning and break them.
 //
-// WIDTH ONLY, deliberately. The visible HEIGHT is polluted by OS chrome (the
-// RoomOS bar overlays the bottom ~40px), so including a height term risks
-// computing a <1 scale for the production Board Pro itself. Guarded to only ever
-// shrink and to never touch a viewport already >= 1920 wide, so the Board Pro is
-// untouched by construction.
+// WIDTH ONLY, deliberately, and the 2026-07-28 on-device measurements are why:
+// a Board Pro lays the page out in 1920x1040 and a Room Navigator in 1920x1200,
+// so the page's fixed 1080px height is TALLER than the board's viewport. A
+// height term would read 1040/1080 and shrink the production board to 96% — the
+// one device this must never touch. The page overflowing a board by 40px is
+// deliberate and covered by the 84px --safe-bottom reserve (the grid ends at
+// y=996). Guarded to only ever shrink and to never touch a viewport already
+// >= 1920 wide, so the Board Pro is untouched by construction.
 //
 // `documentElement.clientWidth` is the LAYOUT viewport width. That makes this
 // complementary to index.html's `width=1920` viewport meta rather than

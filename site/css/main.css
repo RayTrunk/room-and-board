@@ -65,13 +65,27 @@
 /* The hidden attribute must always win, even over rules that set display. */
 [hidden] { display: none !important; }
 
-/* RoomOS draws a "Tap here to start" bar that OVERLAYS the bottom --roomos-bar
-   px of our web viewport in signage mode (board-verified: a FAB at bottom:14px
-   was ~45% covered), so anything at bottom:0 is cropped by it. --safe-bottom is
-   the comfortable clearance dashboard/settings content keeps; the ambient info
-   strip + gear sit at --roomos-bar (its top edge) so they clear the bar too. */
+/* RoomOS keeps a "Tap here to start" bar along the bottom of the screen in
+   signage mode. The long-held belief was that it OVERLAID the bottom
+   --roomos-bar px of our viewport (a FAB at bottom:14px came back ~45% covered,
+   which fit that story); Sean's on-device diagnostic of 2026-07-28 found the
+   truer version — the Board Pro lays the page out in 1920x1040 and the bar lives
+   in the 40 physical px BELOW that box. Nothing is painted over page content;
+   the bottom 40px of our fixed 1080px page simply fall off the screen, which
+   crops anything sitting there exactly as an overlay would have.
+   The two numbers are unchanged and still earn their keep under the corrected
+   story: --safe-bottom (84px) is the clearance that keeps dashboard/settings
+   content off that edge, and --roomos-bar is where the ambient info strip and
+   gear sit so they end flush with the last visible pixel. Do not spend the 40px
+   without re-measuring: they are the board's whole margin of error. */
 :root { --safe-bottom: 84px; --roomos-bar: 40px; }
 
+/* A FIXED PAGE, not a viewport. Every device gets these exact 1920x1080 CSS px,
+   so the grid, the editor and the settings overlay have identical geometry on a
+   1040 board, a 1200 Room Navigator and an 1080 desktop preview — and the widget
+   capacity tables in js/capacity.js are measured against THIS, not against any
+   screen. Only the position:fixed full-screen overlays are sized by the real
+   viewport; js/expand.js BOARD_VIEWPORT_H is the number they model against. */
 html, body {
   width: 1920px;
   height: 1080px;
@@ -1206,7 +1220,16 @@ body.mode-ambient .gear--edit { display: none; }
    The surface is the board's standard translucent card, the body copy is ink:
    eight amber wells at once turned the whole canvas into a warning and the words
    into decoration, so alerts read as CONTENT and the pill carries the alarm. */
+/* flex:none for the same reason .wall__good and .wall__rule carry it, and it was
+   the one band that missed it: in the SINGLE-column rung the wells are the flex
+   items of a height-constrained column, so without it they shrink to fit and
+   their text is cropped away inside the overflow:hidden above — silently, with
+   scrollHeight still equal to clientHeight, so nothing downstream could even
+   tell. A well must overflow the wall honestly and let the ladder step down. In
+   the two- and three-column rungs the .wall__col wrappers already absorbed this,
+   which is why it only ever bit the widest rung. */
 .sbalert {
+  flex: none;
   display: flex; align-items: center; min-width: 0; overflow: hidden;
   background: var(--bg-card-2); border-radius: 16px;
   gap: var(--well-gap, 30px); padding: var(--well-pad, 20px) var(--well-px, 30px);

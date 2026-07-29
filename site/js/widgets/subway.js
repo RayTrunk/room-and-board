@@ -37,11 +37,11 @@ export function mapSubwayStatus(alerts, lines) {
 
 // ---------- tap-to-expand: the full status board ----------
 
-// Overlay geometry, browser-measured on the fixed 1920x1080 board (the same
-// fixed-pixel reasoning capacity.js uses for card rows — the canvas never
-// changes size). .expand__body's content box measures 1776 wide; its height is
-// the shared overlay canvas (see the caveat on OVERLAY_BODY_H — on a real board
-// it is 40px less than this).
+// Overlay geometry, browser-measured on the 1920-wide overlay (the width is the
+// same on every supported device, so these are fixed pixels — the same reasoning
+// capacity.js uses for card rows). .expand__body's content box measures 1776
+// wide; its height is the shared overlay canvas, which since 2026-07-28 is the
+// BOARD's 814 rather than the headless harness's 854.
 const WALL_H = OVERLAY_BODY_H;
 const BAND_ROW = 60; // one row of Good Service bullets
 const BAND_GAP = 16;
@@ -66,6 +66,14 @@ const ALERT_GAP = 20;
 // clipping the tail. Bottom rung is 20px alert text: exactly what the CARD
 // already asks a reader to take, never less.
 //
+// Which is why the ladder ends on a COLUMN and not on a type step: the last two
+// rungs are the same 20px scale, dealt into two columns and then three. The
+// ladder used to stop at the two-column 20px rung and simply clip whatever did
+// not fit past it — 27px of a twelve-alert meltdown on the 854px harness canvas,
+// and 67px once that canvas was corrected to the board's real 814. A third
+// column costs no CSS (.wall__col is flex:1 1 0) and no legibility floor, and it
+// buys back more than the correction took.
+//
 // Each rung carries BOTH halves of its own bargain: `css` is the --well-* scale
 // it renders at (main.css holds the top rung as its defaults), and the rest is
 // that scale browser-measured — `chars` the alert copy that fits one line at
@@ -85,6 +93,16 @@ export const ALERT_STEPS = [
   },
   {
     cols: 2, chars: 80, line: 28, para: 7, pad: 24, bullet: 48,
+    css: '--well-fs:20px;--well-bullet:48px;--well-bfs:26px;--well-pad:12px;--well-px:20px;--well-gap:18px;--well-para:7px;',
+  },
+  // Same 20px scale as the rung above, one more column. Browser-measured on the
+  // 1776px canvas the same way the rungs above it were: two columns give the
+  // text 770px and three give it 470px, and 47 characters of prose fit that
+  // 470px line once WORD wrapping has had its share (a bare character count
+  // would say 52). That is the same 47 the two-column 30px rung measures — the
+  // column narrows by a third exactly as the type does.
+  {
+    cols: 3, chars: 47, line: 28, para: 7, pad: 24, bullet: 48,
     css: '--well-fs:20px;--well-bullet:48px;--well-bfs:26px;--well-pad:12px;--well-px:20px;--well-gap:18px;--well-para:7px;',
   },
 ];
@@ -125,21 +143,26 @@ export function statusLabel(header) {
 // price holds at every rung (browser-checked at rung 2: a 20px pill on 27px body
 // copy measures 111px against a 12.0px average character).
 //
-// It is charged as a FRACTION of a line, not as a line, because that is what it
-// costs: the pill takes nine characters out of ONE line of fifty-seven, and only
-// turns into a whole extra line when the lead was already sitting within nine
-// characters of a wrap boundary. Pricing it as a full line per lead read 812px
-// where the browser renders 726 on Sean's eight-alert morning — enough to cost
-// the wall a rung of type it did not need to give up.
+// It is spent WHERE IT SITS — at the head of the lead's first line, inside the
+// wrap arithmetic — and not as a fraction of a line added afterwards. The
+// fractional charge was the ladder's one real modelling error, and it was the
+// error the "only when the lead is within nine characters of a wrap boundary"
+// caveat described without pricing: a 113-character header is 1.98 lines of a
+// 57-character rung, so the pill IS what pushes it to three, and the model went
+// on reading 2.175 lines where the browser drew 3. Browser-measured on the real
+// classes at every rung: a 57-char line takes 58 characters of prose bare and 47
+// with the pill in front of it, and the model has to answer 3 for both.
+// Charging it inside the ceiling costs nothing when the lead is not near a
+// boundary — ceil((113+10)/80) and ceil(113/80) are the same two lines.
 const PILL_CHARS = 3;
-const pillLines = (header, step) => (statusLabel(header).length + PILL_CHARS) / step.chars;
+const pillChars = (header) => statusLabel(header).length + PILL_CHARS;
 
 // A well is its frame, or its text when the text is taller — EVERY header the
 // line carries, stacked (the card shows only the first, and clamps it). Only the
 // lead header pays for the pill: one well, one pill.
 export function wellHeight(headers, step) {
   const lines = headers.reduce(
-    (n, h, i) => n + Math.max(1, Math.ceil(String(h).length / step.chars)) + (i ? 0 : pillLines(h, step)),
+    (n, h, i) => n + Math.max(1, Math.ceil((String(h).length + (i ? 0 : pillChars(h))) / step.chars)),
     0,
   );
   const text = lines * step.line + Math.max(headers.length - 1, 0) * step.para;
@@ -193,7 +216,9 @@ export function alertStep(alerting, bRows = 0) {
 // Either band renders only when it has lines, so an all-good morning is the
 // bullet band alone (centered, no empty region) and a total meltdown is all
 // wells on the full canvas.
-export function statusBoard(lines) {
+// `rung` pins the ladder to one exact step, which is how fitStatusBoard puts a
+// tape measure to each of them; null leaves the choice to the model.
+export function statusBoard(lines, rung = null) {
   const good = lines.filter((l) => l.ok);
   const alerting = lines.filter((l) => !l.ok);
   const bullet = (l) => `<span class="bullet bullet--${escapeHtml(l.line)}">${escapeHtml(l.line)}</span>`;
@@ -207,7 +232,7 @@ export function statusBoard(lines) {
   }
   if (good.length && alerting.length) bands.push('<div class="wall__rule"></div>');
   if (alerting.length) {
-    const step = alertStep(alerting, bandRows(good.length));
+    const step = rung == null ? alertStep(alerting, bandRows(good.length)) : ALERT_STEPS[rung];
     const rows = Math.ceil(alerting.length / step.cols);
     const pill = (h) => `<span class="sbstatus">${escapeHtml(statusLabel(h))}</span>`;
     const well = (l) => `<div class="sbalert">${bullet(l)}
@@ -221,13 +246,49 @@ export function statusBoard(lines) {
         .map((col) => `<div class="wall__col">${col.map(well).join('')}</div>`)
         .join('')
       : alerting.map(well).join('');
+    // The rung rides on the element so fitStatusBoard knows where to resume.
     bands.push(
-      `<div class="wall__alerts${step.cols > 1 ? ' wall__alerts--split' : ''}" style="${step.css}--well-space:${ALERT_GAP}px">${body}</div>`,
+      `<div class="wall__alerts${step.cols > 1 ? ' wall__alerts--split' : ''}" data-rung="${ALERT_STEPS.indexOf(step)}" style="${step.css}--well-space:${ALERT_GAP}px">${body}</div>`,
     );
   }
   // A band with no wells under it centers rather than stranding itself at the
   // top edge (the markets wall does the same with a lone shelf).
   return `<div class="wall${alerting.length ? '' : ' wall--good-only'}">${bands.join('')}</div>`;
+}
+
+// The browser gets the last word on the ladder. Every rung's `chars` is a
+// measured average, and an average cannot be exact: whether a lead header lands
+// just before or just after a word boundary moves its real line count by one in
+// EITHER direction, so a rung the model accepts can render a well taller than it
+// priced. Measured on the real classes: at the 30px rung a 138-character header
+// wraps to three lines of one MTA sentence and four of another, a 40px swing per
+// well that no character count can predict.
+//
+// So: estimate, then check — the identical contract the card runs (its own row
+// loop), the rail boards run (fitTrainRows) and the services card runs. When the
+// estimate was right, which is every morning short of a meltdown, this measures
+// once and returns; nothing is re-rendered and nothing moves.
+//
+// When it was wrong the wall stops guessing and walks the whole ladder with a
+// tape measure, taking the FIRST rung that genuinely holds — biggest type wins,
+// same priority the model has. If none of them hold it keeps the rung that
+// spills least, because down the ladder is not monotonically better: a narrower
+// column wraps a well taller, so at sixteen alerting lines the three-column
+// floor loses more of the wall than the two-column rung above it. Bounded by the
+// six rungs, and only ever paid on a morning that was already going to clip.
+export function fitStatusBoard(body, lines) {
+  const wall = () => body?.querySelector?.('.wall__alerts');
+  if (!wall()?.clientHeight) return; // no layout engine (unit tests)
+  const spill = () => wall().scrollHeight - wall().clientHeight;
+  let best = { rung: Number(wall().dataset.rung ?? 0), spill: spill() };
+  if (best.spill <= 0) return;
+  for (let r = 0; r < ALERT_STEPS.length; r++) {
+    body.innerHTML = statusBoard(lines, r);
+    const s = spill();
+    if (s < best.spill) best = { rung: r, spill: s };
+    if (s <= 0) break;
+  }
+  body.innerHTML = statusBoard(lines, best.rung);
 }
 
 export function render(el, vm, cfg) {
@@ -280,7 +341,14 @@ export function render(el, vm, cfg) {
     .join(' · ');
   setExpandSource(
     el,
-    hidden > 0 ? () => ({ title: meta.title, note, bodyHtml: statusBoard(vm.lines) }) : null,
+    hidden > 0
+      ? () => ({
+        title: meta.title,
+        note,
+        bodyHtml: statusBoard(vm.lines),
+        onFit: (bodyEl) => fitStatusBoard(bodyEl, vm.lines),
+      })
+      : null,
   );
 }
 

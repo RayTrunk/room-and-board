@@ -17,7 +17,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { OVERLAY_BODY_H } from '../site/js/expand.js';
+import { OVERLAY_BODY_H, BOARD_VIEWPORT_H } from '../site/js/expand.js';
 import { imageFit, CURATED_SOURCES, SCREENSAVER_SOURCES } from '../site/js/config.js';
 import { openImageViewer } from '../site/js/imageshow.js';
 
@@ -87,11 +87,48 @@ describe('full-screen overlay chrome: the hint band', () => {
     expect(hintLift).toBeGreaterThanOrEqual(24);
   });
 
-  it('leaves the canvas both overlay models reserve against unchanged', () => {
+  it('sizes the canvas both overlay models reserve against to the BOARD', () => {
     // expand.js cannot read the stylesheet, so this is the join: change a pixel
-    // in main.css and OVERLAY_BODY_H has to move with it. (The constant is on
-    // the harness's 1080; see its own note on the 40px it owes a real board.)
-    expect(HARNESS_H - padTop - headH - bodyTop - band).toBe(OVERLAY_BODY_H);
+    // in main.css and OVERLAY_BODY_H has to move with it. The height it is
+    // measured at is the board's 1040 — the smallest viewport any supported
+    // device gives — so a wall modelled against it fits every one of them.
+    expect(BOARD_VIEWPORT_H).toBe(BOARD_H);
+    expect(BOARD_H - padTop - headH - bodyTop - band).toBe(OVERLAY_BODY_H);
+    expect(OVERLAY_BODY_H).toBe(814);
+    // The harness and the Navigator are TALLER, so the models under-fill there.
+    // That slack is deliberate and unspent: spending it needs the overlay to
+    // measure its own viewport, which is a later ship, and a model tuned to the
+    // harness's 1080 is exactly how a wall came to over-pack a real board by 40px.
+    for (const H of [HARNESS_H, 1200]) {
+      expect(H - padTop - headH - bodyTop - band).toBeGreaterThan(OVERLAY_BODY_H);
+    }
+  });
+
+  it('keeps the fixed PAGE and the device VIEWPORT as separate numbers', () => {
+    // The mistake this whole correction undid was reading one as the other.
+    // main.css pins html/body to a fixed 1920x1080 page that every device gets
+    // identically — which is why js/capacity.js's per-size row tables are NOT
+    // device-derived and did not move when the board's real viewport turned out
+    // to be 1040. Only the position:fixed overlays see the viewport.
+    expect(px(decl('html, body', 'width'))).toBe(1920);
+    expect(px(decl('html, body', 'height'))).toBe(1080);
+    expect(decl('html, body', 'overflow')).toBe('hidden');
+    expect(decl('.expand', 'position')).toBe('fixed');
+    // The page's last 40px fall off a board's screen, and the --safe-bottom
+    // reserve is what keeps the grid clear of that edge. Browser-verified: the
+    // grid ends at y=996, so it clears 1040 by 44px at every card size.
+    const safeBottom = px(/--safe-bottom:\s*([^;]+)/.exec(css)[1]);
+    expect(safeBottom).toBeGreaterThan(1080 - BOARD_VIEWPORT_H);
+  });
+
+  it('lets an alert well overflow the wall rather than silently squashing', () => {
+    // .sbalert is a flex item of a height-constrained column in the wall's
+    // single-column rung. Without flex:none it shrank to fit and cropped its own
+    // text away inside overflow:hidden — with scrollHeight still equal to
+    // clientHeight, so the ladder could not even tell it had failed.
+    expect(decl('.sbalert', 'flex')).toBe('none');
+    expect(decl('.wall__good', 'flex')).toBe('none');
+    expect(decl('.wall__rule', 'flex')).toBe('none');
   });
 
   it('pins the hint band against the rendering font', () => {
