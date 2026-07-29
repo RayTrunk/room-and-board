@@ -79,9 +79,11 @@ export const SETUP_SECTIONS = [
   { id: 'news-field', group: 'News & Social', triggers: ['news'] },
   { id: 'substack-field', group: 'News & Social', triggers: ['substack'] },
   { id: 'bsky-field', group: 'News & Social', triggers: ['bsky'] },
-  { id: 'art-field', group: 'Ambient', triggers: ['art'] },
-  { id: 'photos-field', group: 'Ambient', triggers: ['photos'] },
-  { id: 'gdrivephotos-field', group: 'Ambient', triggers: ['gdrivephotos'] },
+  { id: 'art-field', group: 'Images', triggers: ['art'] },
+  { id: 'photos-field', group: 'Images', triggers: ['photos'] },
+  { id: 'gdrivephotos-field', group: 'Images', triggers: ['gdrivephotos'] },
+  // Landscapes is in the Images group but has nothing to configure, so it has
+  // no section here — same as apod.
   { id: 'iptv-field', group: 'Ambient', triggers: ['iptv'] },
   { id: 'wc-field', group: 'Ambient', triggers: ['worldclock'] },
   { id: 'services-field', group: 'Daily Extras', triggers: ['services'] },

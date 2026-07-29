@@ -73,7 +73,7 @@ with its ambient info band.*
 
 Everything is opt-in. Toggle widgets on/off under **Settings → Widgets** —
 grouped by category (Commute, Weather & Air, Markets, Sports, News & Social,
-Ambient, Daily Extras) — then tap the **✎ pencil** to drag, resize, and arrange
+Images, Ambient, Daily Extras) — then tap the **✎ pencil** to drag, resize, and arrange
 them on the 12×8 grid — each
 widget has a minimum size and shows more content as you make its card bigger
 (the edit screen tells you how many rows fit). The clock/greeting across the top

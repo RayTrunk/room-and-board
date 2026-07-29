@@ -33,7 +33,13 @@ export const WIDGET_GROUPS = [
   { label: 'Markets', ids: ['markets', 'marketsnews'] },
   { label: 'Sports', ids: ['sports', 'worldcup', 'f1', 'golf', 'tennis'] },
   { label: 'News & Social', ids: ['news', 'substack', 'bsky'] },
-  { label: 'Ambient', ids: ['art', 'landscapes', 'photos', 'gdrivephotos', 'apod', 'iptv', 'worldclock'] },
+  // Images = every card whose content IS a picture, apod included. It is a
+  // superset of the Settings NAV_MODEL 'Images' group, which lists only the
+  // four with something to configure — apod has no settings pane at all.
+  // Images sits immediately before Ambient; the two cards left over (a video
+  // stream and a clock) keep the Ambient label and its slot.
+  { label: 'Images', ids: ['art', 'landscapes', 'photos', 'gdrivephotos', 'apod'] },
+  { label: 'Ambient', ids: ['iptv', 'worldclock'] },
   { label: 'Daily Extras', ids: ['history', 'quote', 'wotd', 'services', 'chart'] },
 ];
 

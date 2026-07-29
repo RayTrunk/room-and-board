@@ -125,33 +125,47 @@ describe('openEditMode', () => {
   });
 });
 
-// The two big categories hide behind expanders (Commute ~10 cards, Sports 5)
-// so the tray stays a short list. Everything here is about that mechanism
-// being per-group rather than the single Commute flag it grew out of.
+// The three big categories hide behind expanders (Commute 10 cards, Images 5,
+// Sports 4 offered) so the tray stays a short list. Everything here is about
+// that mechanism being per-group rather than the single Commute flag it grew
+// out of.
 describe('add-tray collapsible groups', () => {
-  const SPORTS = WIDGET_GROUPS.find((g) => g.label === 'Sports').ids;
-  const SPORTS_OFFERED = SPORTS.filter((id) => !isRetired(id));
+  const idsOf = (label) => WIDGET_GROUPS.find((g) => g.label === label).ids;
+  const SPORTS_OFFERED = idsOf('Sports').filter((id) => !isRetired(id));
+  const IMAGES_OFFERED = idsOf('Images').filter((id) => !isRetired(id));
+  const COLLAPSED = ['Commute', 'Images', 'Sports'];
   const open = (cfg = CFG) => openEditMode(cfg, { root, cellSize: { w: 100, h: 100 } });
   const toggles = () => [...root.querySelectorAll('[data-tray-toggle]')];
   const toggle = (label) => toggles().find((t) => t.dataset.trayToggle === label);
   const group = (label) => [...root.querySelectorAll('[data-tray-group]')].find((g) => g.dataset.trayGroup === label);
   const chipsIn = (label) => [...group(label).querySelectorAll('[data-add]')].map((b) => b.textContent.trim());
 
-  it('collapses exactly Commute and Sports, both closed, with a caret and a count', () => {
+  it('collapses exactly Commute, Images and Sports, all closed, with a caret and a count', () => {
     open();
-    expect(toggles().map((t) => t.dataset.trayToggle)).toEqual(['Commute', 'Sports']);
-    for (const label of ['Commute', 'Sports']) {
+    // largest-offered-first: Commute 10 · Images 5 · Sports 4
+    expect(toggles().map((t) => t.dataset.trayToggle)).toEqual(COLLAPSED);
+    for (const label of COLLAPSED) {
       expect(toggle(label).getAttribute('aria-expanded')).toBe('false');
       expect(toggle(label).querySelector('.edit-tray__caret').textContent).toBe('▸');
       expect(group(label).hidden).toBe(true);
     }
     expect(toggle('Commute').textContent).toContain('· 10');
+    expect(toggle('Images').textContent).toContain(`· ${IMAGES_OFFERED.length}`); // 5
+    expect(IMAGES_OFFERED).toHaveLength(5);
     // 4, not 5: worldcup retired (RETIRED_AFTER) and has left every add surface.
     expect(toggle('Sports').textContent).toContain(`· ${SPORTS_OFFERED.length}`);
     // no other category is behind a tap
     expect(root.querySelector('[data-tray-toggle="Markets"]')).toBeNull();
+    expect(root.querySelector('[data-tray-toggle="Ambient"]')).toBeNull();
     const marketsChip = root.querySelector('.edit-tray__chips > [data-add="markets"]');
     expect(marketsChip).not.toBeNull(); // Markets flows inline, not in a drawer
+    // Ambient is down to Live Video + World Clock and stays inline: a two-item
+    // drawer would cost a tap to save one chip. (iptv is nerd-mode gated, so on
+    // this cfg only the clock is offered.)
+    expect(root.querySelector('.edit-tray__chips > [data-add="worldclock"]')).not.toBeNull();
+    // apod moved INTO the Images drawer, so it is no longer a loose inline chip
+    expect(root.querySelector('.edit-tray__chips > [data-add="apod"]')).toBeNull();
+    expect(group('Images').querySelector('[data-add="apod"]')).not.toBeNull();
   });
 
   it('renders the expanders after every inline chip, so opening one pushes nothing above it', () => {
@@ -170,12 +184,16 @@ describe('add-tray collapsible groups', () => {
     expect(group('Sports').hidden).toBe(false);
     expect(toggle('Sports').getAttribute('aria-expanded')).toBe('true');
     expect(toggle('Sports').querySelector('.edit-tray__caret').textContent).toBe('▾');
-    expect(group('Commute').hidden).toBe(true); // untouched
-    expect(toggle('Commute').getAttribute('aria-expanded')).toBe('false');
+    // the other two are untouched
+    for (const label of ['Commute', 'Images']) {
+      expect(group(label).hidden).toBe(true);
+      expect(toggle(label).getAttribute('aria-expanded')).toBe('false');
+    }
 
     toggle('Commute').click();
-    expect(group('Commute').hidden).toBe(false); // both open at once
+    expect(group('Commute').hidden).toBe(false); // two open at once
     expect(group('Sports').hidden).toBe(false);
+    expect(group('Images').hidden).toBe(true); // and the third still closed
 
     toggle('Sports').click();
     expect(group('Sports').hidden).toBe(true);
@@ -183,9 +201,20 @@ describe('add-tray collapsible groups', () => {
     expect(group('Commute').hidden).toBe(false); // closing one leaves the other open
   });
 
+  it('opens all three at once — no expander closes another', () => {
+    open();
+    for (const label of COLLAPSED) toggle(label).click();
+    for (const label of COLLAPSED) {
+      expect(group(label).hidden, label).toBe(false);
+      expect(toggle(label).getAttribute('aria-expanded'), label).toBe('true');
+      expect(toggle(label).querySelector('.edit-tray__caret').textContent, label).toBe('▾');
+    }
+  });
+
   it('sorts chips alphabetically by title inside a group', () => {
     open();
     expect(chipsIn('Sports')).toEqual(['Formula 1', 'Golf', 'My Teams', 'Tennis']);
+    expect(chipsIn('Images')).toEqual(['Art', 'GDrive Photos', 'iCloud Photos', 'Landscapes', 'NASA Daily Photo']);
     expect(chipsIn('Commute')).toEqual([...chipsIn('Commute')].sort((a, b) => a.localeCompare(b)));
   });
 
@@ -199,6 +228,19 @@ describe('add-tray collapsible groups', () => {
     expect(toggle('Sports').getAttribute('aria-expanded')).toBe('true');
     expect(toggle('Sports').textContent).toContain(`· ${SPORTS_OFFERED.length - 1}`); // count drops with the pick
     expect(group('Commute').hidden).toBe(true); // still independent after a re-render
+    expect(group('Images').hidden).toBe(true);
+  });
+
+  it('adds a widget from the Images drawer and keeps Images open across the re-render', () => {
+    const editor = open();
+    toggle('Images').click();
+    group('Images').querySelector('[data-add="landscapes"]').click();
+    expect(editor.layout().map((r) => r.id)).toContain('landscapes');
+    expect(group('Images').hidden).toBe(false);
+    expect(toggle('Images').getAttribute('aria-expanded')).toBe('true');
+    expect(toggle('Images').textContent).toContain(`· ${IMAGES_OFFERED.length - 1}`);
+    expect(group('Sports').hidden).toBe(true);
+    expect(group('Commute').hidden).toBe(true);
   });
 
   // TRAY_COLLAPSIBLE names groups by label, and a label that no longer matches
@@ -215,5 +257,6 @@ describe('add-tray collapsible groups', () => {
     for (const id of SPORTS_OFFERED) editor._test.add(id);
     expect(toggle('Sports')).toBeUndefined();
     expect(toggle('Commute')).toBeDefined();
+    expect(toggle('Images')).toBeDefined();
   });
 });

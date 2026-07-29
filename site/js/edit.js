@@ -14,12 +14,15 @@ import { WIDGET_GROUPS, isAddable } from './config.js';
 const RESIZE_ICON = `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 9 4 4m0 0v5m0-5h5M15 15l5 5m0 0v-5m0 5h-5"/></svg>`;
 
 // Add-tray category order: the same groups as Settings/setup, but the BIG
-// categories (Commute ~10, Sports 5) render LAST, each behind its own expander,
-// so revealing one pushes nothing above it. Every other group flows inline;
-// chips sort alpha within group. Order here is the render order of the
-// expanders — largest first — and each label must exist in WIDGET_GROUPS
-// (asserted in test/edit.test.js).
-const TRAY_COLLAPSIBLE = ['Commute', 'Sports'];
+// categories render LAST, each behind its own expander, so revealing one pushes
+// nothing above it. Every other group flows inline; chips sort alpha within
+// group. Order here is the render order of the expanders — largest first by the
+// count actually OFFERED (Commute 10 · Images 5 · Sports 4, since worldcup
+// retired out of a nominal 5), ties alphabetical — and each label must exist in
+// WIDGET_GROUPS (asserted in test/edit.test.js). Ambient is down to two cards
+// (Live Video, World Clock) and stays inline: a two-item drawer costs a tap to
+// save one chip.
+const TRAY_COLLAPSIBLE = ['Commute', 'Images', 'Sports'];
 const TRAY_INLINE_GROUPS = WIDGET_GROUPS.filter((g) => !TRAY_COLLAPSIBLE.includes(g.label));
 const TRAY_COLLAPSIBLE_GROUPS = TRAY_COLLAPSIBLE
   .map((label) => WIDGET_GROUPS.find((g) => g.label === label))

@@ -227,9 +227,9 @@ describe('WIDGET_GROUPS taxonomy', () => {
     expect([...grouped].sort()).toEqual([...ALL_IDS].sort());
   });
 
-  it('has the seven expected group labels in order', () => {
+  it('has the eight expected group labels in order', () => {
     expect(WIDGET_GROUPS.map((g) => g.label)).toEqual([
-      'Commute', 'Weather & Air', 'Markets', 'Sports', 'News & Social', 'Ambient', 'Daily Extras',
+      'Commute', 'Weather & Air', 'Markets', 'Sports', 'News & Social', 'Images', 'Ambient', 'Daily Extras',
     ]);
   });
 
@@ -240,6 +240,31 @@ describe('WIDGET_GROUPS taxonomy', () => {
     expect(ids('Markets')).toEqual(['markets', 'marketsnews']);
     expect(ids('Sports')).toEqual(['sports', 'worldcup', 'f1', 'golf', 'tennis']);
     expect(WIDGET_GROUPS.map((g) => g.label)).not.toContain('Markets & Sports');
+  });
+
+  // Ambient split the same way (2026-07-28) so the picture cards get their own
+  // tray expander. Membership is every card whose content IS a picture, apod
+  // included; what's left is a video stream and a clock.
+  it('carves Images out of Ambient with exactly the five picture cards', () => {
+    const ids = (label) => WIDGET_GROUPS.find((g) => g.label === label)?.ids;
+    expect(ids('Images')).toEqual(['art', 'landscapes', 'photos', 'gdrivephotos', 'apod']);
+    expect(ids('Ambient')).toEqual(['iptv', 'worldclock']); // the remainder keeps the label
+    // Images sits immediately before Ambient
+    const labels = WIDGET_GROUPS.map((g) => g.label);
+    expect(labels.indexOf('Ambient') - labels.indexOf('Images')).toBe(1);
+  });
+
+  // The Settings nav is a separate hand-ordered spec with its own Images group,
+  // and it is deliberately NOT the same list: the nav only carries sections that
+  // exist, and apod has no settings pane. So nav ⊂ WIDGET_GROUPS, and the only
+  // id allowed to differ is one with no section at all.
+  it('keeps the NAV_MODEL Images group a subset of the WIDGET_GROUPS one', () => {
+    const nav = NAV_MODEL.find((e) => e.type === 'group' && e.label === 'Images').items.map(([id]) => id);
+    const group = WIDGET_GROUPS.find((g) => g.label === 'Images').ids;
+    expect(nav).toEqual(group.filter((id) => nav.includes(id))); // same relative order, no strays
+    for (const id of group.filter((id) => !nav.includes(id))) {
+      expect(SECTION_IDS, id).not.toContain(id); // only sectionless cards may be missing
+    }
   });
 });
 
@@ -286,7 +311,7 @@ const onTheCoast = (extra = {}) => {
 describe('widgetChecksHtml (setup picker)', () => {
   it('renders seven grouped sections, one checkbox per widget, reflecting the placed set', () => {
     const html = widgetChecksHtml(SETUP_LABELS, new Set(['subway', 'photos']), onTheCoast({ nerdMode: true }));
-    for (const label of ['Commute', 'Weather & Air', 'Markets', 'Sports', 'News & Social', 'Ambient', 'Daily Extras']) {
+    for (const label of ['Commute', 'Weather & Air', 'Markets', 'Sports', 'News & Social', 'Images', 'Ambient', 'Daily Extras']) {
       expect(html).toContain(`<h3 class="wpick__title">${label}</h3>`);
     }
     expect((html.match(/data-w="/g) || []).length).toBe(LIVE_IDS.length); // one per non-retired widget
@@ -306,7 +331,7 @@ describe('widgetGroupsHtml', () => {
   it('renders all seven group headers and one toggle per widget with correct on-state', () => {
     const html = widgetGroupsHtml([{ id: 'weather', x: 0, y: 0, w: 4, h: 4 }], onTheCoast({ nerdMode: true }));
     // seven group headers
-    for (const label of ['Commute', 'Weather & Air', 'Markets', 'Sports', 'News & Social', 'Ambient', 'Daily Extras']) {
+    for (const label of ['Commute', 'Weather & Air', 'Markets', 'Sports', 'News & Social', 'Images', 'Ambient', 'Daily Extras']) {
       expect(html).toContain(`<h3 class="wgroup__title">${label}</h3>`);
     }
     // one toggle per WIDGET_ID (21)
@@ -370,6 +395,17 @@ describe('stepTwoVisibility', () => {
     const { sections, groups } = stepTwoVisibility(['worldcup', 'history']);
     expect(sections.size).toBe(0);
     expect(groups.size).toBe(0);
+  });
+  // Art / iCloud / GDrive moved to the Images divider when Ambient split; iptv
+  // and the world clock stayed behind. A board carrying only picture cards must
+  // get the Images divider and NOT the Ambient one, and vice versa.
+  it('splits the Ambient step-2 dividers: pictures under Images, the rest under Ambient', () => {
+    const pics = stepTwoVisibility(['art', 'photos', 'gdrivephotos', 'landscapes', 'apod']);
+    expect([...pics.sections].sort()).toEqual(['art-field', 'gdrivephotos-field', 'photos-field']);
+    expect([...pics.groups]).toEqual(['Images']); // landscapes and apod have nothing to configure
+    const rest = stepTwoVisibility(['iptv', 'worldclock']);
+    expect([...rest.sections].sort()).toEqual(['iptv-field', 'wc-field']);
+    expect([...rest.groups]).toEqual(['Ambient']);
   });
   // applyStepTwo hides a divider whose label isn't in the visible-groups set and
   // a section whose id isn't in the visible-sections set, so a SETUP_SECTIONS
