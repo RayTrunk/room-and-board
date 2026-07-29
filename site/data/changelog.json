@@ -3,6 +3,10 @@
     "date": "July 29",
     "items": [
       {
+        "lead": "Story view",
+        "text": "Long stories now fit the screen, so the headline and the code to open it on your phone are always visible. A summary too long for the display is trimmed at the end rather than pushed off the top and bottom."
+      },
+      {
         "lead": "Photos",
         "text": "Photos now fade gently from one to the next instead of drawing in from the top of the card. The same calm change covers Landscapes, Art and the daily NASA photo."
       }

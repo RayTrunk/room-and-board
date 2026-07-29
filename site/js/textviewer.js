@@ -60,6 +60,49 @@ const hostOf = (url) => {
   try { return new URL(url).hostname.replace(/^www\./, ''); } catch { return ''; }
 };
 
+// How many lines of summary honestly fit. Pure arithmetic so the decision can be
+// tested without a layout engine; 0 means "unmeasurable, leave it unclamped".
+// Floor, never round: a partial line is a clipped line. At least one line always
+// survives — a story with no visible summary at all is not worth opening.
+export function descLineBudget(viewportH, reservedH, lineH) {
+  if (!(viewportH > 0) || !(lineH > 0)) return 0;
+  return Math.max(1, Math.floor((viewportH - reservedH) / lineH));
+}
+
+// What the panel costs BEFORE the summary. Measured, not modelled: the headline
+// is feed text that wraps to one line or to four depending on the words in it,
+// and no character count predicts which. Collapsing the summary to a single line
+// and subtracting that line leaves exactly the fixed blocks — meta + headline +
+// QR block + hint + padding + gaps — whatever they happen to be right now.
+function measureStory(viewer, desc) {
+  const panel = desc.closest('.text-viewer__panel');
+  return {
+    viewportH: viewer.clientHeight,
+    reservedH: panel.getBoundingClientRect().height - desc.getBoundingClientRect().height,
+    lineH: parseFloat(getComputedStyle(desc).lineHeight),
+  };
+}
+
+// The story panel has no scroller and never will: a passerby will not discover a
+// scroll on a wall display. So the summary is fitted to the screen instead —
+// centring alone cannot save it, because a panel taller than the viewport spills
+// past BOTH edges and the top half is unreachable. The fixed blocks are reserved
+// first and the summary takes what is left, which keeps the headline and the QR
+// on screen at every board height; when that costs the tail of a long summary,
+// the QR is what completes it. Same measure-then-fit contract the cards run
+// (fitTrainRows, fitStatusBoard), and it runs on every open, so a viewer reused
+// for a different story is re-measured rather than inheriting the last one's fit.
+export function fitStoryDesc(viewer, measure = measureStory) {
+  const desc = viewer.querySelector('.story__desc');
+  if (!desc) return 0; // a story with no summary: nothing elastic to fit
+  desc.style.setProperty('--desc-lines', '1');
+  const { viewportH, reservedH, lineH } = measure(viewer, desc);
+  const lines = descLineBudget(viewportH, reservedH, lineH);
+  if (lines) desc.style.setProperty('--desc-lines', String(lines));
+  else desc.style.removeProperty('--desc-lines'); // no layout engine (unit tests)
+  return lines;
+}
+
 // The headline's summary at reading size, plus a QR to the full article. The
 // QR renders async (the generator is a lazy chunk); the destination host is
 // shown regardless, so a failed/slow load still tells you where it goes.
@@ -83,6 +126,9 @@ export function openStoryViewer({ title, source, age, desc, link }) {
       </div>` : ''}
       <p class="text-viewer__hint">Tap anywhere to close</p>
     </div>`);
+  // Fit before the QR chunk resolves: the QR's box is a fixed 232px whether or
+  // not the code has painted into it, so the reservation is the same either way.
+  fitStoryDesc(viewer);
   if (link) renderQr(viewer.querySelector('.story__qr'), link);
 }
 

@@ -2,7 +2,12 @@
  * @vitest-environment happy-dom
  */
 import { describe, it, expect, vi } from 'vitest';
-import { initTextViewer, openTextViewer } from '../site/js/textviewer.js';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
+import {
+  initTextViewer, openTextViewer, openStoryViewer, fitStoryDesc, descLineBudget,
+} from '../site/js/textviewer.js';
 
 describe('text viewer', () => {
   it('opens on tap of truncated text with the card title, closes on tap', () => {
@@ -42,5 +47,155 @@ describe('text viewer', () => {
     vi.advanceTimersByTime(20001);
     expect(viewer.hidden).toBe(true);
     vi.useRealTimers();
+  });
+});
+
+/*
+ * The story view has no scroller by design, so a panel taller than the viewport
+ * used to lose content at BOTH ends — and the top end silently, because
+ * `align-items: center` overflows a too-tall flex item past the start edge where
+ * nothing can reach it. Two things now stop that: safe centring in the
+ * stylesheet, and the summary being fitted to the measured screen here.
+ *
+ * The pixel numbers below were measured in headless Chrome at 1920 wide on the
+ * shipped classes: a 30px/1.5 summary is a 45px line, and the fixed blocks —
+ * meta + headline + QR block + hint + 120px of panel padding + gaps — cost 610px
+ * behind a two-line headline and 664px behind a three-line one.
+ */
+const LINE_H = 45;
+const RESERVED_2LINE_TITLE = 610;
+const RESERVED_3LINE_TITLE = 664;
+const BOARD_H = 1040;      // Board Pro, the height the fit has to survive
+const NAVIGATOR_H = 1200;  // Room Navigator PWA
+
+describe('story view: the summary is fitted to the screen', () => {
+  it('gives a long summary only the lines that honestly remain', () => {
+    // 1040 - 610 = 430px of slack, which is 9 whole 45px lines and a 25px
+    // remainder that must NOT be handed out — a partial line is a clipped line.
+    expect(descLineBudget(BOARD_H, RESERVED_2LINE_TITLE, LINE_H)).toBe(9);
+    expect(descLineBudget(1080, RESERVED_2LINE_TITLE, LINE_H)).toBe(10);
+    expect(descLineBudget(NAVIGATOR_H, RESERVED_2LINE_TITLE, LINE_H)).toBe(13);
+  });
+
+  it('keeps the whole panel inside the viewport, so the QR can never be clipped', () => {
+    // The reservation INCLUDES the QR block and the hint, so this identity is
+    // the guarantee: whatever the budget comes out at, the panel still fits.
+    for (const viewportH of [1040, 1080, 1200]) {
+      for (const reserved of [RESERVED_2LINE_TITLE, RESERVED_3LINE_TITLE]) {
+        const panelH = reserved + descLineBudget(viewportH, reserved, LINE_H) * LINE_H;
+        expect(panelH, `panel at H=${viewportH} reserved=${reserved}`).toBeLessThanOrEqual(viewportH);
+      }
+    }
+  });
+
+  it('leaves a summary that already fits alone', () => {
+    // A three-line summary against a nine-line budget: the clamp is above the
+    // natural line count, so it never bites and the text is untouched.
+    expect(descLineBudget(BOARD_H, RESERVED_2LINE_TITLE, LINE_H)).toBeGreaterThan(3);
+  });
+
+  it('keeps one line even when the fixed blocks alone overflow the screen', () => {
+    expect(descLineBudget(BOARD_H, 1400, LINE_H)).toBe(1);
+  });
+
+  it('reports 0 — leave it unclamped — when there is nothing to measure', () => {
+    expect(descLineBudget(0, 610, LINE_H)).toBe(0);   // viewer not laid out
+    expect(descLineBudget(BOARD_H, 610, NaN)).toBe(0); // no computed line-height
+  });
+
+  const story = (desc) => ({
+    title: 'Markets close higher as the central bank holds rates steady',
+    source: 'MarketWatch', age: '12m', desc,
+    link: 'https://www.marketwatch.com/story/example',
+  });
+  const LONG = 'Stocks rose broadly in afternoon trading. '.repeat(13);
+  const SHORT = 'Stocks rose broadly in afternoon trading.';
+  const stub = (reservedH, viewportH = BOARD_H) => () => ({ viewportH, reservedH, lineH: LINE_H });
+  const descLines = (v) => v.querySelector('.story__desc').style.getPropertyValue('--desc-lines');
+
+  it('writes the budget onto the summary, with the QR block still in the panel', () => {
+    document.body.innerHTML = '';
+    openStoryViewer(story(LONG));
+    const viewer = document.querySelector('#text-viewer');
+    expect(fitStoryDesc(viewer, stub(RESERVED_2LINE_TITLE))).toBe(9);
+    expect(descLines(viewer)).toBe('9');
+    // The affordance a truncated summary hands off to is still there.
+    expect(viewer.querySelector('.story__qr')).not.toBeNull();
+    expect(viewer.textContent).toContain('Read the full story');
+  });
+
+  it('re-measures on reuse: long story, short story, long story again', () => {
+    document.body.innerHTML = '';
+    // A three-line headline reserves more, so the same viewport yields fewer
+    // summary lines — the fit has to follow the story, not the last story.
+    openStoryViewer(story(LONG));
+    const viewer = document.querySelector('#text-viewer');
+    expect(fitStoryDesc(viewer, stub(RESERVED_3LINE_TITLE))).toBe(8);
+    expect(descLines(viewer)).toBe('8');
+
+    openStoryViewer(story(SHORT));
+    expect(descLines(viewer)).toBe(''); // rebuilt panel carries nothing stale
+    expect(fitStoryDesc(viewer, stub(RESERVED_2LINE_TITLE))).toBe(9);
+    expect(descLines(viewer)).toBe('9');
+
+    openStoryViewer(story(LONG));
+    expect(fitStoryDesc(viewer, stub(RESERVED_3LINE_TITLE))).toBe(8);
+    expect(descLines(viewer)).toBe('8');
+    // And the taller viewport re-measures too, rather than reusing the board's.
+    expect(fitStoryDesc(viewer, stub(RESERVED_3LINE_TITLE, NAVIGATOR_H))).toBe(11);
+  });
+
+  it('leaves a story with no summary alone', () => {
+    document.body.innerHTML = '';
+    openStoryViewer(story(''));
+    const viewer = document.querySelector('#text-viewer');
+    expect(viewer.querySelector('.story__desc')).toBeNull();
+    expect(fitStoryDesc(viewer, stub(RESERVED_2LINE_TITLE))).toBe(0);
+  });
+
+  it('unclamps rather than guesses when there is no layout engine', () => {
+    document.body.innerHTML = '';
+    openStoryViewer(story(LONG)); // openStoryViewer fits with the REAL measure
+    const viewer = document.querySelector('#text-viewer');
+    expect(descLines(viewer)).toBe('');
+  });
+});
+
+describe('story view: the stylesheet half of the fix', () => {
+  const css = readFileSync(
+    join(dirname(fileURLToPath(import.meta.url)), '../site/css/main.css'), 'utf8');
+  const rule = (selector) => {
+    const at = css.indexOf(`\n${selector} {`);
+    expect(at, `no rule for "${selector}" in main.css`).toBeGreaterThan(-1);
+    return css.slice(at, css.indexOf('}', at));
+  };
+
+  it('centres SAFELY, with plain center ordered FIRST as the fallback', () => {
+    const body = rule('.text-viewer');
+    const plain = body.indexOf('align-items: center');
+    const safe = body.indexOf('align-items: safe center');
+    expect(plain, 'no plain `align-items: center` to fall back to').toBeGreaterThan(-1);
+    expect(safe, 'no `align-items: safe center`').toBeGreaterThan(-1);
+    // Order is the whole point: an engine that does not know `safe` drops that
+    // declaration at parse time, so it has to be the LATER of the two or the
+    // fallback would win on an engine that does support it.
+    expect(safe).toBeGreaterThan(plain);
+  });
+
+  it('clamps the summary from --desc-lines and degrades to no clamp', () => {
+    const body = rule('.story__desc');
+    // -webkit-line-clamp only does anything inside a vertical -webkit-box.
+    expect(body).toContain('display: -webkit-box');
+    expect(body).toContain('-webkit-box-orient: vertical');
+    expect(body).toContain('overflow: hidden');
+    // Unset -- no layout engine, or a story with no summary -- must mean
+    // "no clamp", i.e. exactly the behaviour before this fix.
+    expect(body).toContain('-webkit-line-clamp: var(--desc-lines, none)');
+  });
+
+  it('breaks a headline that has no break opportunity of its own', () => {
+    // Feed text: one 160-character run with no space, slash or hyphen painted
+    // 3468px past the right edge of a 1920 board before this.
+    expect(rule('.story__title')).toContain('overflow-wrap: break-word');
   });
 });

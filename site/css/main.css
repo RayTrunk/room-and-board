@@ -1046,7 +1046,21 @@ body.mode-ambient .gear--edit { display: none; }
 .text-viewer {
   position: fixed; inset: 0; z-index: 46; /* above the art viewer's 45 */
   background: rgba(13, 17, 23, 0.96);
-  display: flex; align-items: center; justify-content: center;
+  display: flex; justify-content: center;
+  /* SAFE centring, and the two declarations are deliberate. Plain `center`
+     overflows a too-tall panel equally past BOTH edges, and the top half is
+     unreachable — there is no scroller here on purpose (a passerby will not
+     discover a scroll on a wall), so the meta line and the top of the headline
+     were simply gone. `safe` centres exactly as before while the panel fits and
+     falls back to start-alignment the instant it does not, which puts every
+     remaining pixel of overflow at the BOTTOM where it can at least be seen to
+     be missing. Ordered as a fallback pair because an unknown keyword
+     invalidates its own declaration only: an engine that has never heard of
+     `safe` drops the second line at parse time and keeps plain `center`, i.e.
+     exactly today's behaviour, while fitStoryDesc() below keeps the panel
+     inside the viewport on every engine regardless. */
+  align-items: center;
+  align-items: safe center;
   cursor: pointer;
 }
 .text-viewer__panel { max-width: 1400px; padding: 60px; display: flex; flex-direction: column; gap: 26px; }
@@ -1060,8 +1074,20 @@ body.mode-ambient .gear--edit { display: none; }
 .story__meta { display: flex; align-items: baseline; gap: 14px; font-size: 22px; text-transform: uppercase; letter-spacing: 0.08em; }
 .story__src { font-weight: 600; color: var(--ink-dim); }
 .story__age { color: var(--ink-faint); text-transform: none; } /* keep "12m", not "12M" */
-.story__title { font-size: 46px; line-height: 1.18; font-weight: 700; color: var(--ink); letter-spacing: -0.01em; text-wrap: balance; }
-.story__desc { font-size: 30px; line-height: 1.5; color: var(--ink); text-wrap: pretty; max-width: 34ch; } /* full ink: it's the content they tapped for, read at 6 ft */
+/* break-word: a headline is untrusted feed text. A real URL wraps on its own
+   (`/` and `-` are break opportunities), but one 160-character run with no
+   break at all painted 3468px past the right edge of a 1920 board. */
+.story__title { font-size: 46px; line-height: 1.18; font-weight: 700; color: var(--ink); letter-spacing: -0.01em; text-wrap: balance; overflow-wrap: break-word; }
+/* The summary is the panel's one ELASTIC block, so it is the one that yields.
+   fitStoryDesc() measures what the meta line, the headline and the QR block
+   actually cost at this viewport and writes the lines that honestly remain into
+   --desc-lines; the QR is the affordance a truncated summary hands off to, so it
+   must never be the thing that gets cut. Unset — no layout engine, or a story
+   with no summary — it resolves to `none`, i.e. the pre-clamp behaviour. */
+.story__desc {
+  font-size: 30px; line-height: 1.5; color: var(--ink); text-wrap: pretty; max-width: 34ch; /* full ink: it's the content they tapped for, read at 6 ft */
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: var(--desc-lines, none); overflow: hidden;
+}
 .story__more { display: flex; align-items: center; gap: 32px; margin-top: 10px; }
 /* QR must sit on white to scan; the padding is its quiet zone. */
 .story__qr { width: 232px; height: 232px; flex: none; background: #fff; border-radius: 18px; padding: 16px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; }
