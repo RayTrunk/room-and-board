@@ -230,6 +230,55 @@ describe('/njt/departures', () => {
     expect(body.trains).toHaveLength(1);
   });
 
+  // /njt/departures has no cache in front of it, so every board on every refresh
+  // arrives at getNjtSchedule directly. Mid-outage that used to mean one 10s
+  // timing-out upstream attempt PER REQUEST, stacked with the alerts call behind
+  // it — past the board's own 15s fetch timeout, so nothing ever refreshed.
+  it('attempts the upstream once per memo window while a refresh keeps failing', async () => {
+    await env.CODES.put('njt:schedule', JSON.stringify(priorDay));
+    const calls = stubFetch([
+      { match: /getToken/, body: TOKEN_RESPONSE, times: 8 },
+      { match: /getStationSchedule/, body: 'err', status: 500, times: 8 },
+      { match: /getStationMSG/, body: [], times: 8 },
+    ]);
+    const bodies = [];
+    for (let i = 0; i < 4; i += 1) {
+      bodies.push(await (await call('/njt/departures', {}, NJT_ENV)).json());
+    }
+    expect(calls.filter((u) => /getStationSchedule/.test(u)).length).toBe(1);
+    // Every request still gets the stored copy, flagged exactly as before.
+    for (const body of bodies) {
+      expect(body.trains).toHaveLength(1);
+      expect(body.stale).toBe(true);
+    }
+  });
+
+  it('re-attempts once the memo window lapses (the fallback never sets)', async () => {
+    // The backoff must not become a second way to serve a stale copy forever:
+    // when the window is up the TTL refresh is back in play, which is what
+    // escapes a midnight-rollover snapshot.
+    await env.CODES.put('njt:schedule', JSON.stringify(priorDay));
+    const calls = stubFetch([
+      { match: /getToken/, body: TOKEN_RESPONSE, times: 8 },
+      { match: /getStationSchedule/, body: 'err', status: 500 }, // the outage
+      { match: /getStationSchedule/, body: SCHEDULE_RESPONSE, times: 4 }, // recovered
+      { match: /getStationMSG/, body: [], times: 8 },
+    ]);
+    vi.useFakeTimers();
+    try {
+      await call('/njt/departures', {}, NJT_ENV);
+      await call('/njt/departures', {}, NJT_ENV);
+      expect(calls.filter((u) => /getStationSchedule/.test(u)).length).toBe(1); // backed off
+      vi.setSystemTime(Date.now() + 6 * 60 * 1000); // the window lapses
+      const body = await (await call('/njt/departures', {}, NJT_ENV)).json();
+      expect(calls.filter((u) => /getStationSchedule/.test(u)).length).toBe(2); // tried again
+      expect(body.trains).toHaveLength(2); // today's list, not the seeded prior day
+      expect(body.stale).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('a stale KV date triggers a refetch (service-day rollover)', async () => {
     await env.CODES.put('njt:schedule', JSON.stringify(priorDay));
     const calls = stubFetch([
