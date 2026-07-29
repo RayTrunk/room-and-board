@@ -58,10 +58,22 @@ Fixed px scale tuned for 3–6 ft viewing (1 px ≈ 0.64 mm):
   Cisco's bar *below* it (it does not overlay page content), and a Room Navigator in
   PWA mode reports **1920 × 1200** with no bar at all. An earlier belief that the bar
   overlaid the bottom 40 px was wrong; re-measure before reviving it.
-- Consequences: the grid ends at y=996, so it clears every real viewport; `--roomos-bar`
-  (40 px) and `--safe-bottom` (84 px) survive as conservative lifts rather than
-  necessities; and anything `position: fixed` must be calibrated against **1040**, not
-  1080 (`OVERLAY_BODY_H`). Audit at the real height — the harnesses take `?vh=`.
+- Consequences: the grid ends at y=996, so it clears every real viewport; `--safe-bottom`
+  (84 px) survives as the page's conservative bottom reserve; and anything
+  `position: fixed` must be calibrated against **1040**, not 1080 (`OVERLAY_BODY_H`).
+  Audit at the real height — the harnesses take `?vh=`.
+- **Two coordinate systems, and never mix them.** The dashboard, editor and settings
+  live on the fixed page. Every full-screen context — the ambient screensaver, the
+  image/text/story viewers, the tap-to-expand overlay, the settings preview — is
+  `position: fixed` to the real viewport and measures its offsets from the real
+  bottom edge (`bottom: 0`), so it needs no device number and fits 1040, 1080 and
+  1200 alike. `--roomos-bar` (40 px) is retired to a single plain margin on the
+  video mute button; reaching for it again almost certainly means re-deriving the
+  device instead of asking the glass. `test/viewport.test.js` holds all of this.
+- The page block is centred in a taller viewport (`body { top: max(0px, (100dvh -
+  1080px) / 2) }`), which is cosmetic only: the canvas keeps its exact 1080 px, so
+  no capacity number is viewport-derived and no future widget needs a Room
+  Navigator to sign it off.
 
 ## Motion
 
