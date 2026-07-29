@@ -719,6 +719,115 @@ describe('Chart of the Day pane (all topics on by default)', () => {
   });
 });
 
+describe('Markets pane (the ordered ticker list)', () => {
+  const settle = () => new Promise((r) => setTimeout(r, 30));
+  const POOL = ['^DJI', '^IXIC', '^GSPC', 'AAPL', 'MSFT', 'NVDA', 'CSCO', 'TSLA', 'AMZN', 'CBG.L',
+    'SAP.DE', '7203.T', 'GOOGL', 'META', 'NFLX', 'AMD', 'INTC', 'ORCL', 'CRM', 'ADBE'];
+  const open = async (n, rect = { w: 4, h: 4 }) => {
+    document.body.innerHTML = '<div id="settings-root"></div>';
+    const cfg = normalizeConfig({
+      markets: { symbols: POOL.slice(0, n) },
+      layout: [{ id: 'markets', x: 0, y: 0, ...rect }],
+    });
+    await openSettings(cfg, { focus: 'markets' });
+    await settle();
+  };
+  const rows = () => [...document.querySelectorAll('.settings__pane .tk-row')];
+  const q = (sel) => document.querySelector(`.settings__pane ${sel}`);
+
+  // Two columns is the whole point of this layout: the keypad has to stay put
+  // while the list grows, or adding a ticker means scrolling past all 20.
+  it('keeps the list and the keypad side by side', async () => {
+    await open(12);
+    expect(q('.pane__cols')).not.toBe(null);
+    expect(document.querySelectorAll('.settings__pane .pane__col').length).toBe(2);
+    expect(q('.pane__col:last-child .osk')).not.toBe(null); // keypad in the right column
+    expect(q('.pane__col:first-child .tk-list')).not.toBe(null);
+    closeSettings();
+  });
+
+  it('renders a row per ticker with a handle and a remove, and folds after 5 on a 4x4', async () => {
+    await open(12);
+    expect(rows().length).toBe(12);
+    expect(document.querySelectorAll('.settings__pane [data-reorder]').length).toBe(12);
+    expect(document.querySelectorAll('.settings__pane [data-remove-sym]').length).toBe(12);
+    expect(q('.colhead span').textContent).toBe('Markets card is 4×4, so it shows the first 5');
+    const labels = [...document.querySelectorAll('.settings__pane .tk-fold__label')].map((e) => e.textContent);
+    expect(labels).toEqual(['On the card now · 5', 'Behind a tap · 7']);
+    expect(document.querySelectorAll('.settings__pane .tk-row--below').length).toBe(7);
+    closeSettings();
+  });
+
+  // The number is read from the layout, never hard-coded: a taller card moves
+  // the line without the list changing at all.
+  it('moves the fold when the card is a different size', async () => {
+    await open(12, { w: 3, h: 3 });
+    expect(q('.tk-fold__label').textContent).toBe('On the card now · 3');
+    closeSettings();
+    await open(12, { w: 4, h: 8 });
+    expect(q('.tk-fold__label').textContent).toBe('On the card now · 11');
+    closeSettings();
+  });
+
+  it('handles the 1, 2 and 20 edges', async () => {
+    await open(1);
+    expect(rows().length).toBe(1);
+    expect(q('[data-reorder]')).toBe(null); // a handle that cannot reorder is a lie
+    expect(q('[data-remove-sym]')).not.toBe(null);
+    expect(q('.tk-fold')).toBe(null);
+    expect(q('.tk-note').textContent).toMatch(/Add a second ticker/);
+    closeSettings();
+
+    await open(2);
+    expect(document.querySelectorAll('.settings__pane [data-reorder]').length).toBe(2);
+    expect(q('.tk-fold')).toBe(null); // both fit a 4x4 card
+    expect(q('.tk-note')).toBe(null);
+    closeSettings();
+
+    await open(20);
+    expect(rows().length).toBe(20);
+    expect([...document.querySelectorAll('.settings__pane .tk-fold__label')].map((e) => e.textContent))
+      .toEqual(['On the card now · 5', 'Behind a tap · 15']);
+    expect(q('.pane__col:last-child .colhead span').textContent).toBe('0 slots left');
+    closeSettings();
+  });
+
+  it('says so when the Markets card is not on the board', async () => {
+    document.body.innerHTML = '<div id="settings-root"></div>';
+    await openSettings(normalizeConfig({
+      markets: { symbols: POOL.slice(0, 6) },
+      layout: [{ id: 'weather', x: 0, y: 0, w: 3, h: 3 }],
+    }), { focus: 'markets' });
+    await settle();
+    expect(q('.colhead span').textContent).toMatch(/isn.t on the board right now/);
+    expect(q('.tk-fold')).toBe(null); // no capacity exists, so no line is drawn
+    expect(rows().length).toBe(6); // the list still orders
+    closeSettings();
+  });
+
+  it('still removes a ticker, and re-numbers what is left', async () => {
+    await open(6);
+    document.querySelector('.settings__pane [data-remove-sym="^IXIC"]').click();
+    await settle();
+    expect(rows().map((r) => r.dataset.sym)).toEqual(['^DJI', '^GSPC', 'AAPL', 'MSFT', 'NVDA']);
+    expect([...document.querySelectorAll('.settings__pane .tk-pos')].map((e) => e.textContent))
+      .toEqual(['1', '2', '3', '4', '5']);
+    closeSettings();
+  });
+
+  // Reachable only by removing the last ticker in the pane — normalizeConfig
+  // refills an empty list from the defaults, so no saved config lands here.
+  it('offers no order UI at all once the last ticker is removed', async () => {
+    await open(1);
+    document.querySelector('.settings__pane [data-remove-sym]').click();
+    await settle();
+    expect(rows().length).toBe(0);
+    expect(q('.pane__empty').textContent).toMatch(/three index defaults return on save/);
+    expect(q('.osk')).not.toBe(null); // the keypad never left the right column
+    closeSettings();
+  });
+});
+
 /* ---------- What's new: the rail FOOTER's entry, not a 16th nav row ---------- */
 
 // The placement is the whole point and it is load-bearing, so it is asserted

@@ -271,14 +271,39 @@ export function tileWall(indices) {
   return `<div class="wall${solo}">${bands.join('')}</div>`;
 }
 
+// Config order is the CLIENT's business, applied at render, not the Worker's.
+//
+// /markets deliberately sorts its cache key so AAPL,MSFT and MSFT,AAPL coalesce
+// to one entry (~20 Yahoo subrequests saved per permutation), while fetchMarkets
+// returns quotes in REQUEST order. Reordering therefore hits the same cached
+// payload and gets the old order back for up to 300s — and a settings save
+// reloads the board, so the very first thing a user saw after reordering was
+// nothing changing. Ordering here instead keeps that coalescing AND fixes the
+// older `partial: true` case, where a symbol Yahoo failed on is dropped from
+// `indices` and every later ticker silently shifts up a slot.
+//
+// Quotes for symbols the config doesn't name (the defaults path, where the
+// Worker picks the list) are appended rather than dropped.
+export function orderBySymbols(indices, symbols) {
+  if (!Array.isArray(symbols) || !symbols.length) return indices;
+  const by = new Map(indices.map((ix) => [ix.symbol, ix]));
+  const wanted = new Set(symbols);
+  return [
+    ...symbols.map((s) => by.get(s)).filter(Boolean),
+    ...indices.filter((ix) => !wanted.has(ix.symbol)),
+  ];
+}
+
 export function render(el, vm, cfg) {
   // Freshness note in the card header (worker fetch time, not render time) —
   // a clock reading, so it honors cfg.clock24.
   if (vm.updatedAt) setCardNote(el, `as of ${fmtClock(vm.updatedAt, cfg?.clock24)}`);
   const [w, h] = cardSize(el, [4, 4]);
   const cap = itemCapacity('markets', w, h);
-  const shown = vm.indices.slice(0, cap);
-  const hidden = vm.indices.length - shown.length;
+  // Config order once, for BOTH the card and the wall behind the tap.
+  const indices = orderBySymbols(vm.indices, cfg?.markets?.symbols ?? []);
+  const shown = indices.slice(0, cap);
+  const hidden = indices.length - shown.length;
   // At full width (4 cols — markets caps there, see MAX_SIZE) show the
   // two-session sparkline; the 3-wide min keeps the compact last-session shape.
   const twoDay = w >= 4;
@@ -310,7 +335,7 @@ export function render(el, vm, cfg) {
   setExpandSource(
     el,
     shown.length && hidden > 0
-      ? () => ({ title: meta.title, note, bodyHtml: tileWall(vm.indices) })
+      ? () => ({ title: meta.title, note, bodyHtml: tileWall(indices) })
       : null,
   );
 }

@@ -74,6 +74,49 @@ button.primary { background: rgba(255, 255, 255, 0.95); color: rgba(0, 0, 0, 0.9
   background: var(--bg-card-2); border: none; border-radius: 999px; font-size: 0.95rem;
 }
 
+/* Ordered ticker list — the SAME component as the board's Markets pane
+   (site/js/settings/reorder.js), skinned for 390px. Two deliberate
+   differences from the board: rows go two-line (symbol over name — three 44px
+   controls plus "CBG.L · Close Brothers" truncates on one line here), and
+   controls drop from 56px to the 44px touch floor. */
+.tk-list { display: flex; flex-direction: column; gap: 8px; position: relative; margin-bottom: 6px; }
+.tk-row {
+  display: flex; align-items: center; gap: 8px; min-height: 64px; padding: 8px 10px;
+  background: var(--bg-card-2); border: 1px solid transparent; border-radius: 12px; flex: none;
+  -webkit-user-select: none; user-select: none;
+}
+.tk-row--below { background: transparent; border-color: rgba(147, 160, 180, 0.18); }
+.tk-pos { width: 20px; flex: none; font-size: 0.875rem; color: var(--ink-dim); font-variant-numeric: tabular-nums; text-align: right; }
+.tk-txt { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
+.tk-lead { font-size: 1rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tk-sub { font-size: 0.875rem; color: var(--ink-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* touch-action:none is on the handle ALONE. Anywhere else and a drag would
+   fight the page scroll, which is the classic touch-list failure. */
+.tk-grip {
+  width: 44px; height: 44px; min-height: 44px; flex: none; padding: 0; border: none;
+  border-radius: 10px; background: rgba(255, 255, 255, 0.09); color: var(--ink-dim);
+  touch-action: none; display: inline-flex; align-items: center; justify-content: center;
+}
+.tk-grip svg { width: 24px; height: 24px; pointer-events: none; }
+.tk-grip:active { background: rgba(100, 180, 250, 0.35); color: var(--ink); }
+.tk-rm {
+  width: 44px; height: 44px; min-height: 44px; flex: none; margin-left: 8px; padding: 0;
+  border: none; border-radius: 50%; background: rgba(255, 255, 255, 0.09);
+  color: var(--ink); font-size: 1.05rem;
+}
+.tk-row--drag {
+  position: absolute; left: 0; right: 0; z-index: 4;
+  background: #232323; border-color: rgba(255, 255, 255, 0.22);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.85);
+}
+.tk-slot { background: transparent; border: 2px dashed rgba(100, 180, 250, 0.55); }
+.tk-fold { display: flex; align-items: center; gap: 10px; min-height: 44px; }
+.tk-fold__rule { flex: 1 1 auto; height: 1px; background: rgba(100, 180, 250, 0.45); }
+.tk-fold__label { font-size: 0.8rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent); white-space: nowrap; }
+.tk-fold--below .tk-fold__rule { background: rgba(147, 160, 180, 0.3); }
+.tk-fold--below .tk-fold__label { color: var(--ink-dim); }
+#sym-note:empty { display: none; }
+
 /* TfL line picker — /setup loads only setup.css, so these mirror main.css's
    .tflchip rules (were missing here: no gap → chips overlapped; no --off dim →
    selection looked like it did nothing; no dot size → invisible dots). */

@@ -902,6 +902,79 @@ body.mode-ambient .gear--edit { display: none; }
   background: var(--bg-card-2); color: var(--ink); font-size: 26px;
 }
 .chips { display: flex; flex-wrap: wrap; gap: 10px; margin: 12px 0 20px; }
+
+/* ---- ordered ticker list (Settings › Markets; skinned again in setup.css) ----
+   The ONE two-column settings pane. The Markets pane is 1538px of content wide
+   and every other control in it caps at 860, so half of it was dead space; the
+   ordered list takes a 660px left column and the add-a-ticker keypad keeps the
+   right. Twelve rows would otherwise push the keypad 671px below the pane's
+   bottom edge (browser-measured on the mockups) and adding a ticker would mean
+   scrolling past the whole list. Nothing here scrolls but the list, inside its
+   own column. */
+.pane__cols { display: grid; grid-template-columns: 660px minmax(0, 1fr); gap: 48px; align-items: start; max-width: 1538px; }
+.pane__col { min-width: 0; }
+.colhead { display: flex; align-items: baseline; gap: 14px; margin-bottom: 12px; }
+.colhead h3 { font-size: 25px; font-weight: 600; color: var(--ink); }
+/* 20px is the --ink-faint AA floor, so a 20px sub-label takes --ink-dim. */
+.colhead span { font-size: 20px; color: var(--ink-dim); }
+/* 640px = nine and a half 68px rows, and the largest cap that keeps the list's
+   last pixel clear of a Board Pro's 1040px glass with the 84px safe-bottom
+   reserve intact (measured at the 20-ticker cap: the list ends at 895). The
+   title, hint, column head and fold band spend the rest. */
+.tk-listwrap { position: relative; max-width: 660px; }
+.tk-list { display: flex; flex-direction: column; gap: 8px; position: relative; max-height: 640px; overflow-y: auto; }
+/* The shipped .drill__list scroll idiom: a persistent 6px white thumb. */
+.tk-list::-webkit-scrollbar { width: 6px; }
+.tk-list::-webkit-scrollbar-track { background: transparent; margin: 10px 0; }
+.tk-list::-webkit-scrollbar-thumb { background: #fff; border-radius: 999px; }
+.tk-row {
+  display: flex; align-items: center; gap: 16px; min-height: 60px; padding: 0 14px;
+  background: var(--bg-card); border: 1px solid transparent; border-radius: 12px; flex: none;
+  /* A drag over text otherwise leaves the row's label selected behind it. */
+  -webkit-user-select: none; user-select: none;
+}
+/* Below the fold: same text contrast (AA is not negotiable), no card fill — the
+   demotion is carried by the surface, not by dimming the words. */
+.tk-row--below { background: transparent; border-color: rgba(147, 160, 180, 0.14); }
+.tk-pos { width: 34px; flex: none; font-size: 20px; color: var(--ink-dim); font-variant-numeric: tabular-nums; text-align: right; }
+.tk-txt { flex: 1 1 auto; min-width: 0; display: flex; align-items: baseline; gap: 12px; }
+.tk-lead { font-size: 24px; font-weight: 600; color: var(--ink); white-space: nowrap; }
+.tk-sub { font-size: 21px; color: var(--ink-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* The drag handle, and the ONLY thing that starts a drag: touch-action:none
+   lives here and nowhere else, so a finger on the row body still scrolls the
+   column (and, on the phone, the page). A stacked chevron pair reads as "move
+   this"; a grip that cannot drag is never rendered at all (one-item lists). */
+.tk-grip {
+  width: 56px; height: 56px; flex: none; border-radius: 12px; border: none; cursor: grab;
+  background: var(--bg-card-2); color: var(--ink-dim); touch-action: none;
+  display: inline-flex; align-items: center; justify-content: center; padding: 0;
+}
+.tk-grip svg { width: 30px; height: 30px; pointer-events: none; }
+.tk-grip:active { background: rgba(88, 166, 255, 0.35); color: var(--ink); }
+/* Held apart from the handle: a control you press repeatedly must not sit
+   flush against a destructive one (the shipped .sched__rm 20px precedent). */
+.tk-rm { margin-left: 24px; }
+.tk-rm:active { background: var(--bad); color: #06131f; }
+/* Lifted row: out of flow in the list's content coordinates, so it keeps
+   tracking the finger while the column auto-scrolls underneath it. */
+.tk-row--drag {
+  position: absolute; left: 0; right: 6px; z-index: 4;
+  background: #1c1c1c; border-color: rgba(255, 255, 255, 0.18);
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.8);
+}
+/* Drop target. A dashed accent outline, matching edit mode's .editor__cell
+   drop target — the dash IS the affordance here, not decoration. */
+.tk-slot { background: transparent; border: 2px dashed rgba(100, 180, 250, 0.55); }
+.is-reordering { cursor: grabbing; }
+/* The fold: drawn at the card's REAL capacity, so ordering stops being
+   abstract ("what number is CSCO?") and becomes "get CSCO above the line". */
+.tk-fold { display: flex; align-items: center; gap: 16px; margin: 6px 0; min-height: 44px; flex: none; }
+.tk-fold__rule { flex: 1 1 auto; height: 1px; background: rgba(100, 180, 250, 0.45); }
+.tk-fold__label { font-size: 20px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent); white-space: nowrap; }
+.tk-fold--below .tk-fold__rule { background: rgba(147, 160, 180, 0.3); }
+.tk-fold--below .tk-fold__label { color: var(--ink-dim); }
+.tk-note { max-width: 660px; }
+
 /* One chip primitive: the shipped outline language (transparent + hairline,
    radius 12) — the old solid radius-28 pill read as a different control. */
 .chip {

@@ -204,6 +204,25 @@ describe('encode/decode round trip', () => {
     expect(plain.length).toBeLessThan(700); // starter lists never ship
   });
 
+  // The user arranges markets.symbols by hand and the card fills from the top
+  // of it down, so order is DATA. This pins the guard rail: never add an
+  // order-insensitive `sameSet` strip for markets the way chart.topics has
+  // one — it would erase a deliberate permutation of the starter three the
+  // moment it happened to be one.
+  it('keeps a reordered ticker list through a setup code', async () => {
+    const shuffled = ['^GSPC', '^DJI', '^IXIC']; // a permutation of the defaults
+    const cfg = normalizeConfig({ markets: { symbols: shuffled } });
+    expect(cfg.markets.symbols).toEqual(shuffled); // normalizeConfig does not sort
+    const dec = await decodeConfig(await encodeConfig(cfg));
+    expect(dec.markets.symbols).toEqual(shuffled);
+    // ...and it costs bytes, because it reached the wire at all.
+    expect((await encodeConfig(cfg)).length).toBeGreaterThan((await encodeConfig(normalizeConfig({}))).length - 1);
+
+    const custom = normalizeConfig({ markets: { symbols: ['CSCO', 'AAPL', '^DJI', 'MSFT'] } });
+    expect((await decodeConfig(await encodeConfig(custom))).markets.symbols)
+      .toEqual(['CSCO', 'AAPL', '^DJI', 'MSFT']);
+  });
+
   it('throws on corrupt input', async () => {
     await expect(decodeConfig('!!!not-base64url!!!')).rejects.toThrow();
     await expect(decodeConfig('AAAA')).rejects.toThrow();

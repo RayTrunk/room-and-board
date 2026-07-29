@@ -11,7 +11,9 @@ import { WORKER_URL } from '../env.js';
 import { escapeHtml } from '../util.js';
 import { locationSearch } from '../geo.js';
 import { stepTime, fmtHM } from '../modes.js';
-import { toggleIn, applyNameKey, nameAutoCap, searchStations, canAddTicker, TICKER_MAX } from './pickers.js';
+import { toggleIn, applyNameKey, nameAutoCap, searchStations, canAddTicker, TICKER_MAX, foldAt, marketsRect } from './pickers.js';
+import { attachReorder, foldHeadHtml, tickerRowsHtml } from './reorder.js';
+import { itemCapacity } from '../capacity.js';
 import { paneHtml as whatsNewHtml, railFootHtml, loadChangelog, fitChangelog, wireChangelog } from './whatsnew.js';
 import { MIN_SIZE, firstFit } from '../layout.js';
 
@@ -955,8 +957,6 @@ async function renderCitibike() {
   draw();
 }
 
-const INDEX_NAMES = { '^DJI': 'Dow Jones', '^IXIC': 'Nasdaq', '^GSPC': 'S&P 500' };
-
 // QWERTY-ordered keypad rows filtered to the field's alphabet: keys keep their
 // familiar positions, and characters the field doesn't accept simply don't
 // appear (setup codes have no I/L/O/U on purpose). Reuses the photos
@@ -988,25 +988,70 @@ export function qwertyKeypad(alphabet, extraKeys, actionsHtml, { lower = false, 
     .join('')}<div class="osk__row">${space}${actionsHtml}</div></div>`;
 }
 
+// Company names for the list's second line, borrowed from the last markets
+// payload the board fetched. Best-effort decoration only: with no cache the
+// rows show symbols alone, which is what the chips did.
+function marketNames() {
+  const out = {};
+  for (const ix of loadCache('markets')?.data?.indices ?? []) {
+    if (typeof ix?.symbol === 'string' && typeof ix?.name === 'string') out[ix.symbol] = ix.name;
+  }
+  return out;
+}
+
+// Two columns, and the ONE settings pane that has them. It earns the exception:
+// this is the only pane holding both a 20-item ordered list and an on-screen
+// keyboard, and one column puts the keypad 671px below the pane's bottom edge
+// at 12 tickers (measured) — so adding a ticker would mean scrolling past the
+// whole list first. Here the list scrolls inside its own column and the keypad
+// never moves. Citi Bike (max 6), My Teams (max 6) and the station pickers all
+// still fit one column.
 function renderMarkets() {
   const symbols = state.cfg.markets.symbols;
-  const chips = symbols
-    .map((t) => `<button class="chip" data-remove-sym="${t}">${INDEX_NAMES[t] ?? t} ✕</button>`)
-    .join('');
+  const rect = marketsRect(state.cfg);
+  const cap = foldAt(state.cfg);
+  // The size→capacity relationship, stated in words for the first time
+  // anywhere in the product: it teaches that resizing the card is the OTHER
+  // lever, so ordering isn't the only answer to "I can't see CSCO".
+  const note = !rect
+    ? 'Markets isn’t on the board right now'
+    : `Markets card is ${rect.w}×${rect.h}, so it shows the first ${itemCapacity('markets', rect.w, rect.h)}`;
+  const list = symbols.length
+    ? `<div class="colhead"><h3>Order</h3><span>${escapeHtml(note)}</span></div>
+       ${foldHeadHtml(cap, symbols.length)}
+       <div class="tk-listwrap"><div class="tk-list" data-tk-list>${tickerRowsHtml(symbols, { cap, names: marketNames() })}</div></div>
+       ${symbols.length === 1 ? '<p class="pane__hint tk-note">Add a second ticker and each row gains a handle to drag it by.</p>' : ''}`
+    : `<div class="colhead"><h3>Order</h3><span>nothing to order yet</span></div>
+       <p class="pane__empty">No tickers; the three index defaults return on save.</p>`;
   pane().innerHTML = `
     <h2 class="pane__title">Markets</h2>
-    <p class="pane__hint">Add up to ${TICKER_MAX} tickers (indexes start with ^). Non-US listings use the exchange suffix: London CBG.L, Frankfurt SAP.DE, Tokyo 7203.T. Remove any you don't want; the defaults are just entries like the rest. The card shows as many as fit its size. Tap the card to see your full list, full screen.</p>
-    <div class="chips">${chips || '<span class="pane__empty">No tickers; defaults return on save</span>'}</div>
-    <output class="code__display" aria-live="polite"></output>
-    ${qwertyKeypad('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', ['^', '.', '-'],
-      '<button class="key osk__key" data-key="⌫">⌫</button><button class="key osk__key osk__key--primary osk__key--wide" data-key="Add">Add</button>')}
-    <p class="code__status"></p>`;
-  pane().querySelectorAll('[data-remove-sym]').forEach((chip) =>
-    chip.addEventListener('click', () => {
-      state.cfg.markets.symbols = symbols.filter((t) => t !== chip.dataset.removeSym);
+    <p class="pane__hint">Drag a ticker by its arrows to reorder the list; the card fills from the top of it down, and everything under the line is one tap away on the card, where the ^ indexes always lead on their own shelf. Add up to ${TICKER_MAX} (indexes start with ^; non-US listings use the exchange suffix: London CBG.L, Frankfurt SAP.DE, Tokyo 7203.T).</p>
+    <div class="pane__cols">
+      <div class="pane__col">${list}</div>
+      <div class="pane__col">
+        <div class="colhead"><h3>Add a ticker</h3><span>${TICKER_MAX - symbols.length} slot${TICKER_MAX - symbols.length === 1 ? '' : 's'} left</span></div>
+        <output class="code__display" aria-live="polite"></output>
+        ${qwertyKeypad('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', ['^', '.', '-'],
+          '<button class="key osk__key" data-key="⌫">⌫</button><button class="key osk__key osk__key--primary osk__key--wide" data-key="Add">Add</button>')}
+        <p class="code__status"></p>
+      </div>
+    </div>`;
+  pane().querySelectorAll('[data-remove-sym]').forEach((btn) =>
+    btn.addEventListener('click', () => {
+      state.cfg.markets.symbols = symbols.filter((t) => t !== btn.dataset.removeSym);
       renderMarkets();
     }),
   );
+  const listEl = pane().querySelector('[data-tk-list]');
+  if (listEl) {
+    attachReorder(listEl, {
+      order: () => state.cfg.markets.symbols,
+      cap,
+      // The list column is what scrolls under a drag here, not the pane.
+      scroller: listEl,
+      commit: (next) => { state.cfg.markets.symbols = next; renderMarkets(); },
+    });
+  }
   let ticker = '';
   const display = pane().querySelector('.code__display');
   const status = pane().querySelector('.code__status');

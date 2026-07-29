@@ -1,5 +1,7 @@
 // Pure selectors behind the tap-only station pickers.
 
+import { itemCapacity } from '../capacity.js';
+
 export function boroughs(stations) {
   return [...new Set(stations.map((s) => s.borough))];
 }
@@ -63,6 +65,10 @@ const TICKER_RE = /^[\^A-Z0-9.\-]{1,10}$/;
 export const canAddTicker = (symbols, ticker) =>
   TICKER_RE.test(ticker) && symbols.length < TICKER_MAX && !symbols.includes(ticker);
 
+// Move one entry of an ordered list by `delta` places, returning a new list —
+// the reducer behind BOTH the ticker drag (delta = drop index − pick-up index)
+// and its keyboard ↑/↓. Out-of-range moves return the list unchanged, by
+// identity, so a caller can cheaply tell a no-op from a real move.
 export function moveWidget(ids, id, delta) {
   const from = ids.indexOf(id);
   const to = from + delta;
@@ -71,6 +77,27 @@ export function moveWidget(ids, id, delta) {
   next.splice(from, 1);
   next.splice(to, 0, id);
   return next;
+}
+
+// The Markets card's rect in a config's layout, or null when the card isn't on
+// the board at all.
+export const marketsRect = (cfg) => (cfg?.layout ?? []).find((r) => r.id === 'markets') ?? null;
+
+// Where the settings list draws its fold: the card's REAL capacity, from the
+// same itemCapacity() call the renderer slices with, against the layout rect
+// the surface is about to encode. Settings and card therefore cannot drift.
+//
+// Returns null in every case where there is no line to draw, so both surfaces
+// ask one question instead of repeating the rule:
+//   - the card isn't on the board (no capacity exists)
+//   - one ticker or none ("on the card now · 1" over a list of one is noise)
+//   - capacity >= the list (everything already reaches the card)
+export function foldAt(cfg) {
+  const symbols = cfg?.markets?.symbols ?? [];
+  const rect = marketsRect(cfg);
+  if (symbols.length <= 1 || !rect) return null;
+  const cap = itemCapacity('markets', rect.w, rect.h);
+  return cap != null && cap < symbols.length ? cap : null;
 }
 
 // Express Bus route-first pickers (data = site/data/express-bus.json shape).

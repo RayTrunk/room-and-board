@@ -352,6 +352,10 @@ export function normalizeConfig(raw) {
       // tickers is never useful — remove the widget instead). The 20-symbol cap
       // is the expand overlay's no-scroll ceiling; it is TICKER_MAX in
       // settings/pickers.js and the /markets slice in the Worker.
+      //
+      // ORDER IS DATA here: map and filter only, never a sort. The user
+      // arranges this list by hand in Settings › Markets and the card fills
+      // from the top of it down, so order in must be order out.
       symbols: (() => {
         const list = strList(raw.markets?.symbols, 20)
           .map((t) => t.toUpperCase())
@@ -506,6 +510,12 @@ export async function encodeConfig(cfg) {
     const b = new Set(defs);
     return a.size === b.size && [...a].every((x) => b.has(x));
   };
+  // NOTE: there is deliberately NO strip line for `markets`. Its `symbols` is
+  // an ORDERED list the user arranges by hand, and the card fills from the top
+  // of it down — so never add a `sameSet` strip for it. An order-insensitive
+  // compare would erase a deliberate permutation of the starter three the
+  // moment it happened to be one, and the user's order would silently revert
+  // on the next setup-code round trip. test/config.test.js pins this.
   if (wire.substack && isDefault(wire.substack.pubs, DEFAULT_CONFIG.substack.pubs)) delete wire.substack;
   if (wire.bsky && isDefault(wire.bsky.handles, DEFAULT_CONFIG.bsky.handles)) delete wire.bsky;
   if (wire.marketsnews && isDefault(wire.marketsnews.sources, DEFAULT_CONFIG.marketsnews.sources)) delete wire.marketsnews;

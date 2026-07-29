@@ -162,8 +162,10 @@
 
       <section class="field" id="markets-field">
         <h2>Markets <small>(indexes start with ^; non-US listings use a suffix: London CBG.L or just £CBG, Frankfurt SAP.DE)</small></h2>
-        <p class="hint">The card shows as many as fit its size. Tap the card to see your full list, full screen.</p>
-        <div id="sym-chips" class="chips"></div>
+        <p class="hint">The card fills from the top of this list down; drag a ticker by its arrows to reorder it. Everything under the line is one tap away on the card.</p>
+        <div id="sym-fold"></div>
+        <div id="sym-list" class="tk-list"></div>
+        <p id="sym-note" class="hint"></p>
         <div class="ziprow">
           <input id="sym-code" type="text" maxlength="10" placeholder="e.g. AAPL or ^GSPC" style="text-transform: uppercase">
           <button id="sym-add" type="button">Add ticker</button>

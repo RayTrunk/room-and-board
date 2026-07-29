@@ -3,6 +3,10 @@
     "date": "July 29",
     "items": [
       {
+        "lead": "Markets",
+        "text": "You can now put your tickers in the order you want. Drag a ticker by the arrows on the left of its row, and the list shows a line across it: everything above the line is on the card now, and everything below it is one tap away. Reordering also takes effect straight away instead of waiting a few minutes."
+      },
+      {
         "lead": "Screensaver",
         "text": "The screensaver now fills the whole display. Photos and artwork are no longer trimmed off at the bottom edge, and the title and artist line sits clear of the information band instead of half behind it. On a Room Navigator the black strip under the picture is gone."
       },

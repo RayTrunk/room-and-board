@@ -852,6 +852,62 @@ describe('markets freshness note', () => {
   });
 });
 
+// The regression test for the /markets cache bug. The Worker sorts its cache
+// key on purpose (AAPL,MSFT and MSFT,AAPL coalesce to one entry, ~20 Yahoo
+// subrequests saved per permutation) while fetchMarkets answers in REQUEST
+// order — so a reorder used to hit the same cached payload and render the old
+// order for up to 300s. Order is applied here, at render, on both surfaces.
+describe('orderBySymbols — config order reaches the screen', () => {
+  const quote = (symbol, price) => ({
+    symbol, name: symbol, price, change: 1, changePct: 0.1, spark: [1, 2, 3],
+  });
+  const syms = (list) => list.map((s, i) => quote(s, 100 + i));
+  const order = (payload, cfgSyms) => markets.orderBySymbols(payload, cfgSyms).map((ix) => ix.symbol);
+
+  it('re-seats a payload that arrived in a stale order', () => {
+    // What the 300s-old cache entry holds vs what the user just saved.
+    const cached = syms(['AAPL', 'MSFT', 'CSCO']);
+    expect(order(cached, ['CSCO', 'AAPL', 'MSFT'])).toEqual(['CSCO', 'AAPL', 'MSFT']);
+  });
+
+  // The pre-existing partial: true case — a symbol Yahoo failed on is dropped
+  // from `indices`, and every later ticker used to silently shift up a slot.
+  it('holds the surviving order when a symbol is missing', () => {
+    const partial = syms(['^DJI', 'AAPL', 'CSCO']); // MSFT failed upstream
+    expect(order(partial, ['^DJI', 'MSFT', 'AAPL', 'CSCO'])).toEqual(['^DJI', 'AAPL', 'CSCO']);
+  });
+
+  it('appends quotes the config never named rather than dropping them', () => {
+    // The defaults path: an empty/unsent symbols list means the Worker picked.
+    const payload = syms(['^DJI', '^IXIC', '^GSPC']);
+    expect(order(payload, ['^GSPC'])).toEqual(['^GSPC', '^DJI', '^IXIC']);
+    expect(order(payload, [])).toEqual(['^DJI', '^IXIC', '^GSPC']); // no config: leave it alone
+    expect(order(payload, undefined)).toEqual(['^DJI', '^IXIC', '^GSPC']);
+  });
+
+  it('renders the card and the wall behind the tap in the SAME config order', () => {
+    const card = document.createElement('article');
+    card.className = 'card card--markets';
+    card.dataset.w = '4';
+    card.dataset.h = '2'; // shallow: capacity 3, so a 4th falls behind the tap
+    card.innerHTML = '<h2 class="card__title">Markets</h2><div class="card__body"></div>';
+    document.body.appendChild(card);
+    const body = card.querySelector('.card__body');
+    const vm = { updatedAt: null, stale: false, indices: syms(['^DJI', 'AAPL', 'MSFT', 'CSCO']) };
+    markets.render(body, vm, { markets: { symbols: ['CSCO', '^DJI', 'MSFT', 'AAPL'] } });
+    expect([...body.querySelectorAll('.index__name')].map((e) => e.textContent))
+      .toEqual(['CSCO', '^DJI', 'MSFT']); // the card fills from the top of the list down
+    const wall = document.createElement('div');
+    wall.innerHTML = markets.tileWall(markets.orderBySymbols(vm.indices, ['CSCO', '^DJI', 'MSFT', 'AAPL']));
+    // ^DJI still LEADS on its own shelf (that band is the wall's, not the
+    // list's), and the stocks below it keep the order the user wrote.
+    expect([...wall.querySelectorAll('.wall__shelf .tile__sym')].map((e) => e.textContent)).toEqual(['^DJI']);
+    expect([...wall.querySelectorAll('.wall__grid .tile__sym')].map((e) => e.textContent))
+      .toEqual(['CSCO', 'MSFT', 'AAPL']);
+    card.remove();
+  });
+});
+
 describe('setCardNote', () => {
   it('creates, updates and removes the title note', async () => {
     const { setCardNote } = await import('../site/js/util.js');

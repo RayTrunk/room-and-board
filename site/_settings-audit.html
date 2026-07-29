@@ -63,6 +63,22 @@
   // ?iptv=1 places the advanced Live Video card, which is the 15th (and
   // last-possible) nav row — the worst case for the rail's height budget.
   if (q.get('iptv')) cfg.layout.push({ id: 'iptv', x: 0, y: 0, w: 3, h: 3 });
+  // ?tickers=N seeds the Markets list with N symbols (the reorder pane's list
+  // column is the one control in settings whose height is user-driven, so 1,
+  // 2, 12 and the 20 cap all need measuring). ?markets=WxH resizes the card so
+  // the fold band moves; ?markets=off takes the card off the board entirely.
+  const n = Number(q.get('tickers') ?? 0);
+  if (n) {
+    const pool = ['^DJI', '^IXIC', '^GSPC', 'AAPL', 'MSFT', 'NVDA', 'CSCO', 'TSLA', 'AMZN', 'CBG.L',
+      'SAP.DE', '7203.T', 'GOOGL', 'META', 'NFLX', 'AMD', 'INTC', 'ORCL', 'CRM', 'ADBE'];
+    cfg.markets.symbols = pool.slice(0, Math.min(n, pool.length));
+  }
+  const m = q.get('markets');
+  if (m === 'off') cfg.layout = cfg.layout.filter((r) => r.id !== 'markets');
+  else if (m) {
+    const [mw, mh] = m.split('x').map(Number);
+    cfg.layout = cfg.layout.map((r) => (r.id === 'markets' ? { ...r, w: mw, h: mh } : r));
+  }
   // ?configured=1 renders the photo panes in their album-connected state.
   if (q.get('configured')) {
     cfg.photos.album = 'B1m5fk75vLWwX';
@@ -118,6 +134,15 @@
     openGroups: document.querySelectorAll('.settings__pane .log > .log__group').length,
     hiddenGroups: document.querySelectorAll('.settings__pane .log__more > .log__group').length,
     toggleBottom: toggle ? Math.round(toggle.getBoundingClientRect().bottom) : null,
+    tickers: cfg.markets.symbols.length,
+    tkList: scrollOf('.settings__pane .tk-list'),
+    // The keypad's last key is the control the one-column layouts pushed off
+    // the pane; if it clears the screen edge, the two columns are paying off.
+    keypadBottom: (() => {
+      const rows = document.querySelectorAll('.settings__pane .osk__row');
+      const last = rows[rows.length - 1];
+      return last ? Math.round(last.getBoundingClientRect().bottom) : null;
+    })(),
     belowFold: below('.settings__rail > *, .settings__pane > *, .settings__navitem, .settings__navgroup'),
   };
   // ?nometa=1 for screenshots: the readout is fixed to the bottom-right and

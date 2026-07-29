@@ -4,7 +4,8 @@
 import { isAddable, normalizeConfig, encodeConfig, decodeConfig, WIDGET_IDS, WIDGET_GROUPS, ART_CATS, DEFAULT_CONFIG, NJT_LINES } from '../config.js';
 import { firstFitAny } from '../layout.js';
 import { WORKER_URL } from '../env.js';
-import { toggleIn, searchStations, canAddTicker } from './pickers.js';
+import { toggleIn, searchStations, canAddTicker, foldAt } from './pickers.js';
+import { attachReorder, foldHeadHtml, tickerRowsHtml } from './reorder.js';
 import { locationSearch } from '../geo.js';
 import { fetchJSON } from '../net.js';
 import { ensureOceanProbe } from '../surf-gate.js';
@@ -416,22 +417,42 @@ function renderWorldclockPrefs() {
   rerender();
 }
 
-const INDEX_NAMES = { '^DJI': 'Dow Jones', '^IXIC': 'Nasdaq', '^GSPC': 'S&P 500' };
-
+// Same component and same code path as the board pane, with two deliberate
+// differences that are the SURFACE's, not the code's: rows go two-line at
+// 390px (three controls plus "CBG.L · Close Brothers" truncates on one), and
+// the fold falls wherever this config's own layout puts it — /setup's markets
+// card is at its 3×3 default, so the line lands after the third row, not the
+// board's fifth. Never hard-coded: it reads the layout it is about to encode.
 function renderTickers() {
-  const chips = $('#sym-chips');
-  const renderChips = () => {
-    chips.innerHTML = cfg.markets.symbols
-      .map((t) => `<button type="button" data-sym="${t}">${INDEX_NAMES[t] ?? t} ✕</button>`)
-      .join('');
-    chips.querySelectorAll('[data-sym]').forEach((b) =>
+  const list = $('#sym-list');
+  const draw = () => {
+    const cap = foldAt(cfg);
+    const symbols = cfg.markets.symbols;
+    $('#sym-fold').innerHTML = foldHeadHtml(cap, symbols.length);
+    list.innerHTML = symbols.length
+      ? tickerRowsHtml(symbols, { cap })
+      : '<p class="hint">No tickers; the three index defaults return on save.</p>';
+    $('#sym-note').textContent = symbols.length === 1
+      ? 'Add a second ticker and each row gains a handle to drag it by.'
+      : '';
+    list.querySelectorAll('[data-remove-sym]').forEach((b) =>
       b.addEventListener('click', () => {
-        cfg.markets.symbols = cfg.markets.symbols.filter((t) => t !== b.dataset.sym);
-        renderChips();
+        cfg.markets.symbols = symbols.filter((t) => t !== b.dataset.removeSym);
+        draw();
       }),
     );
   };
-  renderChips();
+  draw();
+  // The PAGE is what scrolls here, so that is what auto-scrolls under a drag
+  // near the top or bottom of the screen. The handle carries touch-action:none
+  // and nothing else does, which is what keeps a drag from turning into a
+  // page scroll. Bound once to the list element, which outlives every draw().
+  attachReorder(list, {
+    order: () => cfg.markets.symbols,
+    cap: () => foldAt(cfg),
+    scroller: document.scrollingElement,
+    commit: (next) => { cfg.markets.symbols = next; draw(); },
+  });
   $('#sym-add').addEventListener('click', async () => {
     // Normalize BEFORE validating: "£CBG" used to fail the regex silently
     // (the £ never even produced a message) — now it becomes CBG.L.
@@ -444,7 +465,7 @@ function renderTickers() {
       cfg.markets.symbols = [...cfg.markets.symbols, t];
       $('#sym-code').value = '';
       $('#sym-status').textContent = '';
-      renderChips();
+      draw();
     } else {
       const tip = /^[A-Z]{1,6}$/.test(t) ? ' If it trades outside the US, add the exchange suffix: London CBG.L, Frankfurt SAP.DE, Toronto SHOP.TO.' : '';
       $('#sym-status').textContent = `${t} isn't a known ticker. Check the symbol.${tip}`;
