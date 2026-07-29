@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Widget audit harness</title>
+<link rel="stylesheet" href="css/main.css">
+<style>
+  /* main.css pins html/body to a fixed 1920x1080 PAGE and #app fills it, so the
+     cell geometry here is exact — and, importantly, it is the same at every
+     device height. That page is NOT the device viewport, and conflating the two
+     is how this harness spent a year reporting 40px of height the board does not
+     have. A Board Pro's viewport is 1920x1040 (measured on-device 2026-07-28)
+     and the last 40px of the page fall off the bottom of its screen; the 84px
+     --safe-bottom reserve is what keeps the grid (which ends at y=996) clear of
+     that edge. ?vh= draws the edge so it can be seen and measures every card
+     against it — 1040 board (default), 1200 Room Navigator, 1080 desktop. */
+  html, body { margin: 0; overflow: auto; }
+  #app { width: 1920px; }
+  #fold { position: absolute; left: 0; width: 1920px; height: 0; z-index: 98;
+    border-top: 1px dashed rgba(255,120,120,.9); pointer-events: none; }
+  #fold::after { content: attr(data-label); position: absolute; right: 6px; top: 2px;
+    font: 11px monospace; color: rgba(255,150,150,.95); }
+  /* Pinned to the VIEWPORT, so on a short device it sits over the bottom row of
+     cards — ?meta=0 takes it away for captures (it silently ate a ferry row out
+     of a 1040-vs-1200 comparison shot). window.__audit carries the same JSON. */
+  #audit-meta { position: fixed; right: 8px; bottom: 8px; z-index: 99; font: 12px monospace;
+    color: #93a0b4; background: rgba(13,17,23,.9); padding: 4px 8px; border-radius: 6px; }
+  body.hidemeta #audit-meta, body.hidemeta #fold { display: none; }
+</style>
+</head>
+<body>
+  <div id="app">
+    <header class="topbar" id="topbar"></header>
+    <main class="grid" id="grid"></main>
+  </div>
+  <div id="fold"></div>
+  <div id="audit-meta"></div>
+<script>
+  // Deterministic captures: ?freeze=<epochMs> pins Date so before/after
+  // pixel-diffs aren't polluted by the live clock / world-clock rows.
+  (() => {
+    const f = new URLSearchParams(location.search).get('freeze');
+    if (!f) return;
+    const fixed = Number(f);
+    const RealDate = Date;
+    class FrozenDate extends RealDate {
+      constructor(...a) { a.length ? super(...a) : super(fixed); }
+      static now() { return fixed; }
+    }
+    FrozenDate.parse = RealDate.parse;
+    FrozenDate.UTC = RealDate.UTC;
+    window.Date = FrozenDate;
+  })();
+</script>
+<script type="module">
+  import { normalizeConfig, DEFAULT_CONFIG } from './js/config.js';
+  import { MIN_SIZE, DEFAULT_LAYOUT, firstFit } from './js/layout.js';
+  import { DEMO_VMS } from './demo/fixtures.js';
+  import * as clock from './js/widgets/clock.js';
+  import * as weather from './js/widgets/weather.js';
+  import * as subway from './js/widgets/subway.js';
+  import * as lirr from './js/widgets/lirr.js';
+  import * as mnr from './js/widgets/mnr.js';
+  import * as njt from './js/widgets/njt.js';
+  import * as amtrak from './js/widgets/amtrak.js';
+  import * as pathw from './js/widgets/path.js';
+  import * as ferry from './js/widgets/ferry.js';
+  import * as bus from './js/widgets/bus.js';
+  import * as citibike from './js/widgets/citibike.js';
+  import * as tfl from './js/widgets/tfl.js';
+  import * as art from './js/widgets/art.js';
+  import * as photos from './js/widgets/photos.js';
+  import * as gdrivephotos from './js/widgets/gdrivephotos.js';
+  import * as apod from './js/widgets/apod.js';
+  import * as history from './js/widgets/history.js';
+  import * as aqi from './js/widgets/aqi.js';
+  import * as surf from './js/widgets/surf.js';
+  import * as quote from './js/widgets/quote.js';
+  import * as wotd from './js/widgets/wotd.js';
+  import * as markets from './js/widgets/markets.js';
+  import * as marketsnews from './js/widgets/marketsnews.js';
+  import * as worldclock from './js/widgets/worldclock.js';
+  import * as sports from './js/widgets/sports.js';
+  import * as worldcup from './js/widgets/worldcup.js';
+  import * as news from './js/widgets/news.js';
+  import * as substack from './js/widgets/substack.js';
+  import * as bsky from './js/widgets/bsky.js';
+  import * as services from './js/widgets/services.js';
+  import * as chart from './js/widgets/chart.js';
+  import * as f1 from './js/widgets/f1.js';
+  import * as golf from './js/widgets/golf.js';
+  import * as tennis from './js/widgets/tennis.js';
+  import * as iptv from './js/widgets/iptv.js';
+
+  const MODULES = [weather, subway, lirr, mnr, njt, amtrak, pathw, ferry, bus, citibike, tfl,
+    art, photos, gdrivephotos, apod, history, aqi, surf, quote, wotd, markets, marketsnews, worldclock,
+    sports, worldcup, news, substack, bsky, services, chart, f1, golf, tennis, iptv];
+  const byId = Object.fromEntries(MODULES.map((m) => [m.meta.id, m]));
+
+  const q = new URLSearchParams(location.search);
+  const mode = q.get('mode') ?? 'min';        // min | rep
+  const page = Number(q.get('page') ?? 1);
+  // The DEVICE's viewport height. The board is the default because the board is
+  // what ships; the other two are opt-in.
+  const VIEWPORTS = { 1040: 'Board Pro', 1200: 'Room Navigator', 1080: 'desktop preview' };
+  const vh = Number(q.get('vh') ?? 1040);
+  const fold = document.getElementById('fold');
+  fold.style.top = `${vh}px`;
+  fold.dataset.label = `${vh}px — bottom of the ${VIEWPORTS[vh] ?? 'UNSUPPORTED'} screen`;
+  if (q.get('meta') === '0') document.body.classList.add('hidemeta');
+  // Single theme since the 2026-07-19 fold — ?theme= is accepted but inert.
+  const only = (q.get('ids') ?? '').split(',').filter(Boolean);
+
+  const cfg = normalizeConfig(structuredClone(DEFAULT_CONFIG));
+  clock.render(document.getElementById('topbar'), null, cfg);
+
+  const repSize = (id) => {
+    const d = DEFAULT_LAYOUT.find((r) => r.id === id);
+    if (d) return [d.w, d.h];
+    const [mw, mh] = MIN_SIZE[id];
+    return [Math.max(mw, 3), Math.max(mh, 3)];
+  };
+
+  // Paginate: pack widgets into 12x8 pages with the real placement algorithm.
+  const ids = only.length ? only : MODULES.map((m) => m.meta.id);
+  const forceW = Number(q.get('w')) || 0;   // explicit size override (single-id runs)
+  const forceH = Number(q.get('h')) || 0;
+  const pages = [[]];
+  let layout = [];
+  for (const id of ids) {
+    const [w, h] = (forceW && forceH) ? [forceW, forceH]
+      : mode === 'min' ? MIN_SIZE[id] : repSize(id);
+    let rect = firstFit(layout, id, [w, h]);
+    if (!rect) { pages.push([]); layout = []; rect = firstFit(layout, id, [w, h]); }
+    if (!rect) continue; // wider than a page (never happens)
+    layout.push({ id, ...rect, w, h });
+    pages[pages.length - 1].push({ id, ...rect, w, h });
+  }
+
+  const grid = document.getElementById('grid');
+  const shown = pages[page - 1] ?? [];
+  for (const r of shown) {
+    const mod = byId[r.id];
+    const card = document.createElement('article');
+    card.className = `card card--${r.id}`;
+    card.setAttribute('data-widget', r.id);
+    card.innerHTML = `<h2 class="card__title">${mod.meta.title}</h2><div class="card__body"></div><div class="card__stamp" hidden></div>`;
+    card.style.gridColumn = `${r.x + 1} / span ${r.w}`;
+    card.style.gridRow = `${r.y + 1} / span ${r.h}`;
+    card.dataset.w = r.w; card.dataset.h = r.h;
+    card.classList.add(`t-${r.h <= 2 ? 's' : r.h <= 4 ? 'm' : 'l'}`);
+    if (r.w <= 4) card.classList.add('t-narrow');
+    grid.appendChild(card);
+    try { mod.render(card.querySelector('.card__body'), DEMO_VMS[r.id], cfg); }
+    catch (e) { card.querySelector('.card__body').textContent = `RENDER ERROR: ${e.message}`; }
+  }
+
+  // Deterministic measurements for the audit (read via window.__audit / #audit-meta).
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    const out = [];
+    for (const card of grid.querySelectorAll('.card')) {
+      const body = card.querySelector('.card__body');
+      const hint = card.querySelector('.more-hint');
+      const cardR = card.getBoundingClientRect();
+      const bodyR = body.getBoundingClientRect();
+      const rec = {
+        id: card.dataset.widget, w: +card.dataset.w, h: +card.dataset.h,
+        rect: [Math.round(cardR.x), Math.round(cardR.y), Math.round(cardR.width), Math.round(cardR.height)],
+        cardPx: [Math.round(cardR.width), Math.round(cardR.height)],
+        overflowY: Math.max(0, body.scrollHeight - body.clientHeight),
+        overflowX: Math.max(0, body.scrollWidth - body.clientWidth),
+        // clipped text anywhere inside?
+        clipped: [...body.querySelectorAll('*')].filter((el) =>
+          el.scrollHeight > el.clientHeight + 1 || el.scrollWidth > el.clientWidth + 1).length,
+        // How much of this card the DEVICE cannot show. Must be 0 everywhere:
+        // the grid ends at y=996 on the 1080 page, so even the board's 1040
+        // screen clears it by 44px. A non-zero value means the safe-bottom
+        // reserve stopped covering the difference.
+        belowFold: Math.max(0, Math.round(cardR.bottom - vh)),
+      };
+      const rowSel = body.querySelectorAll('.index, .train');
+      const rows = rowSel.length ? [...rowSel] : [...body.children].filter((c) => !c.classList.contains('more-hint'));
+      rec.rows = rows.map((r) => Math.round(r.getBoundingClientRect().height));
+      rec.bodyClientH = body.clientHeight;
+      if (hint) {
+        const hr = hint.getBoundingClientRect();
+        rec.hint = {
+          text: hint.textContent.trim().slice(0, 40),
+          fontPx: parseFloat(getComputedStyle(hint).fontSize),
+          top: Math.round(hr.top - bodyR.top), height: Math.round(hr.height),
+          slackBelow: Math.round(bodyR.bottom - hr.bottom),
+        };
+      }
+      out.push(rec);
+    }
+    const gridR = grid.getBoundingClientRect();
+    window.__audit = {
+      mode, page, pages: pages.length,
+      // Page vs device: the first is fixed by main.css, the second is the screen
+      // it lands on. Their difference is the whole reason this harness exists.
+      deviceH: vh, device: VIEWPORTS[vh] ?? 'UNSUPPORTED',
+      pageH: Math.round(document.body.getBoundingClientRect().height),
+      gridBottom: Math.round(gridR.bottom),
+      gridToFold: Math.round(vh - gridR.bottom),
+      cell: [
+        Math.round((grid.clientWidth - 11 * parseFloat(getComputedStyle(grid).columnGap)) / 12),
+        Math.round((grid.clientHeight - 7 * parseFloat(getComputedStyle(grid).rowGap)) / 8),
+      ],
+      cards: out,
+    };
+    document.getElementById('audit-meta').textContent = JSON.stringify(window.__audit);
+  }));
+</script>
+</body>
+</html>

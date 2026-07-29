@@ -21,8 +21,9 @@
   <div id="audit-meta"></div>
 <script type="module">
   import { normalizeConfig, DEFAULT_CONFIG, imageFit } from './js/config.js';
-  import { initExpand } from './js/expand.js';
+  import { initExpand, BOARD_VIEWPORT_H, OVERLAY_BODY_H } from './js/expand.js';
   import { openImageViewer } from './js/imageshow.js';
+  import { openTextViewer, openStoryViewer } from './js/textviewer.js';
   import { DEMO_VMS } from './demo/fixtures.js';
   import * as weather from './js/widgets/weather.js';
   import * as surf from './js/widgets/surf.js';
@@ -59,7 +60,21 @@
   const MODS = { weather, surf, subway, markets };
 
   // Worst cases, built the way the widgets' own view models are shaped.
-  const LONG = 'Trains are rerouted and running with delays in both directions because of a signal problem, and are making local stops between stations while crews work.';
+  //
+  // The lead alert's LENGTH is the variable the subway ladder is most sensitive
+  // to, so it is a knob rather than a constant: ?len=<chars> trims/pads this
+  // sentence. The default is 138, the longest header in the recorded MTA feed
+  // (test/fixtures/mta-alerts-subway.json: p50 113, p90 138, max 138) — the
+  // 155-char sentence this used to hard-code was 12% beyond anything the feed
+  // has ever produced, which made every dense subway run unwinnable by
+  // construction. ?two=1 puts a SECOND alert on every line (the feed's own cap,
+  // and rare on any one line) for the true ceiling.
+  const SENTENCE = 'Trains are rerouted and running with delays in both directions because of a signal problem, and are making local stops between stations while crews work.';
+  const LEN = Number(q.get('len') ?? 138);
+  const LONG = SENTENCE.length >= LEN
+    ? SENTENCE.slice(0, LEN).replace(/[ ,]+$/, '')
+    : SENTENCE + ' '.padEnd(LEN - SENTENCE.length, 'x');
+  const TWO = q.get('two') !== '0';
   const SUB_LINES = ['1', '2', '3', '4', '5', '6', '7', 'A', 'C', 'E', 'B', 'D', 'F', 'M', 'G', 'J', 'Z', 'L', 'N', 'Q', 'R', 'W', 'S'];
   const SYMS = ['^DJI', '^IXIC', '^GSPC', 'AAPL', 'MSFT', 'NVDA', 'GOOGL', 'AMZN', 'TSLA', 'META',
     'NFLX', 'AMD', 'INTC', 'CRM', 'ORCL', 'ADBE', 'PYPL', 'QCOM', 'TXN', 'AVGO'];
@@ -69,7 +84,7 @@
     if (which === 'subway') {
       return { updatedAt: Math.floor(Date.now() / 1000), stale: false,
         lines: SUB_LINES.slice(0, nAlert + nGood).map((line, i) => (i < nAlert
-          ? { line, ok: false, headers: [LONG, 'Expect longer waits in both directions.'] }
+          ? { line, ok: false, headers: TWO ? [LONG, 'Expect longer waits in both directions.'] : [LONG] }
           : { line, ok: true, headers: [] })) };
     }
     const syms = SYMS.slice(0, nAlert + nGood);
@@ -100,6 +115,22 @@
     const H = window.innerHeight;
     const host = document.querySelector('#expand-view:not([hidden])');
     const rec = { viewport: [window.innerWidth, H], id, dense, ...extra };
+    // Every overlay here is position:fixed, so this harness measures whatever
+    // height the BROWSER WINDOW happens to be — which is exactly how the repo
+    // came to believe the overlay canvas was 854px. It is 854 in a 1080 window,
+    // and a Board Pro's window is 1040. So the window height is reported as a
+    // first-class result and any run that is not on a supported device height is
+    // flagged, loudly, rather than quietly measuring a device nobody owns.
+    //   1040 = Board Pro (the default, and the floor the models size against)
+    //   1200 = Room Navigator PWA
+    //   1080 = desktop/legacy preview only — NOT a device
+    rec.deviceH = { 1040: 'board', 1200: 'navigator', 1080: 'desktop-preview(not a device)' }[H]
+      ?? 'UNSUPPORTED — resize the window to 1040 (board), 1200 (navigator) or 1080 (desktop)';
+    rec.boardH = BOARD_VIEWPORT_H;
+    // What the widgets' fit models believe they have, vs what this window gives
+    // them. Positive = unspent slack; NEGATIVE = the models are over-packing.
+    rec.modelCanvas = OVERLAY_BODY_H;
+    rec.canvasSlack = H - BOARD_VIEWPORT_H;
     if (host) {
       const body = host.querySelector('.expand__body');
       const hint = host.querySelector('.expand__hint');
@@ -128,6 +159,11 @@
         clippedAway = Math.max(clippedAway, r.bottom - limit);
       }
       rec.bodyBox = [Math.round(br.top), Math.round(br.bottom)];
+      // The canvas this window ACTUALLY hands the widgets, against the number
+      // they modelled. Must be >= 0 on every supported height, and exactly 0 on
+      // a board — that identity is what test/expand.test.js pins.
+      rec.measuredCanvas = Math.round(br.height - parseFloat(cs.paddingBottom) - parseFloat(cs.paddingTop));
+      rec.canvasVsModel = rec.measuredCanvas - OVERLAY_BODY_H;
       rec.bandFloor = Math.round(bandFloor);
       rec.paintedFloor = Math.round(painted);
       rec.hintBox = [Math.round(hr.top), Math.round(hr.bottom)];
@@ -155,6 +191,18 @@
         rec.pillOutsideLine = Math.round(Math.max(0, lr.top - r.top) + Math.max(0, r.bottom - lr.bottom));
       }
     }
+    // The text/story reader is the other position:fixed overlay, and the only
+    // one that CENTRES its content: a panel taller than the viewport overflows
+    // both ends with no scroller to catch it, so on a board it loses the top of
+    // the story as well as the bottom. Its worst case is therefore a height
+    // check against the viewport, not against the expand canvas.
+    const panel = document.querySelector('#text-viewer:not([hidden]) .text-viewer__panel');
+    if (panel) {
+      const r = panel.getBoundingClientRect();
+      rec.panelBox = [Math.round(r.top), Math.round(r.bottom)];
+      rec.panelH = Math.round(r.height);
+      rec.panelOverflow = Math.round(Math.max(0, -r.top) + Math.max(0, r.bottom - H));
+    }
     const viewer = document.querySelector('#art-viewer:not([hidden])');
     if (viewer) {
       const img = viewer.querySelector('.art-viewer__img');
@@ -167,12 +215,32 @@
     document.getElementById('audit-meta').textContent = JSON.stringify(rec);
   }
 
+  // Longest realistic payloads for the reader overlays. ?len= scales both, the
+  // same knob the subway wall uses.
+  const pad = (s, n) => (s.length >= n ? s.slice(0, n) : s + ' ' + 'lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor '.repeat(9).slice(0, n - s.length - 1));
+
   if (id === 'viewer') {
     const which = q.get('src') ?? 'landscapes';
     document.body.classList.add('mode-ambient');
     openImageViewer({ img: PHOTO, title: 'Test photo' }, cfg,
       { list: [], caption: false, strip: false, fit: imageFit(which) });
     setTimeout(() => measure({ src: which, fitAsked: imageFit(which) }), 250);
+  } else if (id === 'text') {
+    // Tap-to-read plain text: the longest thing any card hands it is a This Day
+    // in History event or an Art description. ?len= defaults to 700 characters.
+    const n = Number(q.get('len') ?? 700);
+    openTextViewer('This day in history', pad('1969 — Apollo 11 lands on the Moon.', n));
+    setTimeout(() => measure({ len: n }), 250);
+  } else if (id === 'story') {
+    // Tapped headline: title + summary + QR block. RSS descriptions run long.
+    const n = Number(q.get('len') ?? 700);
+    openStoryViewer({
+      title: pad('Markets close higher as the central bank holds rates steady', Number(q.get('tlen') ?? 120)),
+      source: 'MarketWatch', age: '12m',
+      desc: pad('Stocks rose broadly in afternoon trading.', n),
+      link: 'https://www.marketwatch.com/story/example-story-for-the-audit-harness',
+    });
+    setTimeout(() => measure({ len: n }), 400);
   } else {
     const mod = MODS[id];
     const card = document.createElement('article');

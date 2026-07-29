@@ -21,9 +21,12 @@ RoomOS.md
 .env*
 !.env.example
 
-# Local visual-audit harnesses (dev-only, not deployed)
-site/_audit.html
-site/_settings-audit.html
+# (site/_audit.html and site/_settings-audit.html used to be ignored here as
+#  "local, dev-only". They are tracked now, alongside site/_overlay-audit.html
+#  which always was: both of them hard-coded the board's screen as 1920x1080,
+#  which is where the repo's belief that a Board Pro has 1080px of height came
+#  from. An untracked harness is one that arrives back on the next clone with
+#  the wrong number in it, and correcting them is worth nothing if it does.)
 
 # design-sync machine state
 .ds-sync/

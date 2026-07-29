@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Settings audit harness</title>
+<link rel="stylesheet" href="css/main.css">
+<style>
+  /* #app keeps main.css's fixed 1920x1080 PAGE, which is what .settings sizes
+     against (position:absolute inset:0 inside a position:relative #app) — so the
+     pane geometry here is the shipped geometry at every device height. What the
+     device changes is only how much of that page its SCREEN shows: 1040 on a
+     Board Pro (measured on-device 2026-07-28), 1200 on a Room Navigator, 1080 in
+     a desktop preview. ?vh= draws that edge; the rail's 52px bottom padding is
+     what keeps its footer above the board's. */
+  html, body { margin: 0; overflow: auto; }
+  #app { width: 1920px; height: 1080px; position: relative; background: var(--bg); }
+  #fold { position: absolute; left: 0; width: 1920px; height: 0; z-index: 98;
+    border-top: 1px dashed rgba(255,120,120,.9); pointer-events: none; }
+  #fold::after { content: attr(data-label); position: absolute; right: 6px; top: 2px;
+    font: 11px monospace; color: rgba(255,150,150,.95); }
+  #audit-meta { position: fixed; right: 8px; bottom: 8px; z-index: 99; font: 12px monospace;
+    color: #93a0b4; background: rgba(13,17,23,.9); padding: 4px 8px; border-radius: 6px; }
+</style>
+</head>
+<body>
+  <div id="app"><div id="settings-root"></div><div id="fold"></div></div>
+  <div id="audit-meta"></div>
+<script>
+  // Deterministic captures: ?freeze=<epochMs> pins Date so before/after
+  // pixel-diffs aren't polluted by the live clock / world-clock rows.
+  (() => {
+    const f = new URLSearchParams(location.search).get('freeze');
+    if (!f) return;
+    const fixed = Number(f);
+    const RealDate = Date;
+    class FrozenDate extends RealDate {
+      constructor(...a) { a.length ? super(...a) : super(fixed); }
+      static now() { return fixed; }
+    }
+    FrozenDate.parse = RealDate.parse;
+    FrozenDate.UTC = RealDate.UTC;
+    window.Date = FrozenDate;
+  })();
+</script>
+<script type="module">
+  import { openSettings, SECTION_IDS } from './js/settings/settings.js';
+  import { normalizeConfig, DEFAULT_CONFIG } from './js/config.js';
+
+  const q = new URLSearchParams(location.search);
+  const section = q.get('section') ?? '';
+  const VIEWPORTS = { 1040: 'Board Pro', 1200: 'Room Navigator', 1080: 'desktop preview' };
+  const vh = Number(q.get('vh') ?? 1040);
+  const fold = document.getElementById('fold');
+  fold.style.top = `${vh}px`;
+  fold.dataset.label = `${vh}px — bottom of the ${VIEWPORTS[vh] ?? 'UNSUPPORTED'} screen`;
+  // Single theme since the 2026-07-19 fold — no body class needed.
+  const cfg = normalizeConfig(structuredClone(DEFAULT_CONFIG));
+  // ?configured=1 renders the photo panes in their album-connected state.
+  if (q.get('configured')) {
+    cfg.photos.album = 'B1m5fk75vLWwX';
+    cfg.gdrivephotos.album = '1RHow60mcBwzMturimQSbziK3hqCvP2lz';
+  }
+  await openSettings(cfg, {});
+
+  // Navigate to the requested section: click its nav item; if it's a group
+  // child, open groups until it appears.
+  if (section) {
+    const find = () => document.querySelector(`.settings__nav [data-section="${section}"]`);
+    if (!find()) {
+      for (const g of document.querySelectorAll('.settings__nav .settings__navgroup')) {
+        g.click();
+        await new Promise((r) => setTimeout(r, 120));
+        if (find()) break;
+      }
+    }
+    find()?.click();
+  }
+  // Anything the device's screen cannot reach. The rail footer and the pane's
+  // last control are the two that have ever come close, so they are named rather
+  // than counted.
+  const below = (sel) => [...document.querySelectorAll(sel)]
+    .map((el) => [el.className.split(' ')[0], Math.round(el.getBoundingClientRect().bottom - vh)])
+    .filter(([, d]) => d > 0);
+  window.__sections = SECTION_IDS;
+  window.__audit = {
+    section: section || '(default)', deviceH: vh, device: VIEWPORTS[vh] ?? 'UNSUPPORTED',
+    railBottom: Math.round(document.querySelector('.settings__rail')?.getBoundingClientRect().bottom ?? 0),
+    belowFold: below('.settings__rail > *, .settings__pane > *, .settings__navitem, .settings__navgroup'),
+  };
+  document.getElementById('audit-meta').textContent =
+    `${JSON.stringify(window.__audit)} · all: ${SECTION_IDS.join(' ')}`;
+</script>
+</body>
+</html>
