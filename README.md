@@ -6,19 +6,20 @@
 </p>
 
 A lightweight, personal signage dashboard — **Room & Board** (`roomboard.app`) —
-for touch enabled Cisco RoomOS endpoints such as the Board Pro and Desk Pro: worldwide weather, transit boards (NYC Subway status, LIRR,
-Metro-North, NJ Transit, PATH, NYC Ferry, Express Bus, Citi Bike; London TfL
-status), market tickers, sports scores, headlines, cloud-service status,
-public-domain art, photo slideshows, and daily extras (NASA's photo of the
-day, Statista's chart of the day, and more). Hosted entirely on the
+for touch enabled Cisco RoomOS endpoints such as the Board Pro and Desk Pro:
+worldwide weather and surf, transit boards (NYC Subway status, LIRR,
+Metro-North, NJ Transit, Amtrak, PATH, NYC Ferry, Express Bus, Citi Bike;
+London TfL status), market tickers, sports scores, headlines, cloud-service
+status, public-domain art, photo slideshows, and daily extras (NASA's photo of
+the day, Statista's chart of the day, and more). Hosted entirely on the
 public internet, personalized per device **without authentication**, with
-preferences that survive reboots, RoomOS upgrades.
+preferences that survive reboots and RoomOS upgrades.
 
 ![A Room & Board dashboard in the Momentum theme: weather, public-domain art, world clock, subway status, markets, quote of the day, and cloud-service status](docs/screenshots/dashboard-classic.png)
 
 <table>
   <tr>
-    <td width="50%"><img src="docs/screenshots/dashboard-data-dense.png" alt="A denser layout: weather with a flood-watch alert, My Teams, World Cup 2026, Air & Sky, headlines, word of the day, this day in history, and Statista's chart of the day"></td>
+    <td width="50%"><img src="docs/screenshots/dashboard-data-dense.png" alt="A denser layout: weather with a flood-watch alert, My Teams, Air &amp; Sky, headlines, word of the day, this day in history, and Statista's chart of the day"></td>
     <td width="50%"><img src="docs/screenshots/edit-mode.png" alt="On-board edit mode: drag, resize, add and remove cards directly on the touchscreen"></td>
   </tr>
 </table>
@@ -36,13 +37,17 @@ with its ambient info band.*
 │ /        dashboard (widgets, ambient art, touch settings)    │
 │ /setup   companion page → 6-char setup code                  │
 │ /photo-setup  album/folder walkthrough → photos-only code    │
+│ /video-setup  stream-link preview      → video-only code     │
+│ /info    the widget guide (what every card does) + changelog │
 └──────────────────────────────────────────────────────────────┘
 ┌─ Cloudflare Worker (worker/) ────────────────────────────────┐
 │ /code            setup-code exchange (KV, 1h TTL, single-use)│
 │ /njt/*           NJ Transit proxy (their ToS requires one)   │
 │ /markets         tickers via Yahoo, cached 5 min             │
 │ /alerts/*        MTA service-alert digests (subway/lirr/mnr) │
+│ /amtrak/departures     NYP board from the Amtraker feed      │
 │ /sports/team     ESPN digest + live scoreboard score join    │
+│ /golf, /tennis, /f1    digested leaderboards + standings     │
 │ /news/*, /posts/substack     RSS + posts whitelist proxies   │
 │ /bus/stops, /path/realtime, /ferry/departures,               │
 │ /citibike/status, /tfl/status      more transit digests      │
@@ -50,6 +55,7 @@ with its ambient info band.*
 │ /services/status, /apod, /chart    status pages · NASA photo │
 │                                    · Statista chart of day   │
 │ /fleet           anonymous usage ping → Analytics Engine     │
+│ /health          content checks over the upstreams (+ cron)  │
 └──────────────────────────────────────────────────────────────┘
 ┌─ Each Board Pro ─────────────────────────────────────────────┐
 │ Dashboard macro (paste-and-go) configures + shows signage    │
@@ -58,69 +64,105 @@ with its ambient info band.*
 └──────────────────────────────────────────────────────────────┘
 ```
 
-- Weather/AQI (Open-Meteo), NWS alerts, LIRR + Metro-North GTFS-RT (decoded by
-  a ~120-line protobuf reader, oracle-tested against `gtfs-realtime-bindings`),
-  art (Met/AIC), and history (Wikimedia) are fetched **directly from the
-  browser** — all verified CORS-open and keyless. Everything else (subway alert
-  digests, PATH, ferry, bus, Citi Bike, TfL, sports, news, Substack, photo
-  albums, cloud-service status, NASA photo, the Statista chart) rides the
-  Worker's Cache-API layer.
+- Weather/AQI/marine (Open-Meteo), NWS alerts, LIRR + Metro-North GTFS-RT
+  (decoded by a small hand-rolled protobuf reader, `site/js/gtfs.js`,
+  oracle-tested against `gtfs-realtime-bindings`), art (Met / Art Institute of
+  Chicago / Cleveland), Bluesky, and history (Wikimedia) are fetched **directly
+  from the browser** — all verified CORS-open and keyless. Everything else
+  (subway alert digests, Amtrak, PATH, ferry, bus, Citi Bike, TfL, sports,
+  news, Substack, photo albums, cloud-service status, NASA photo, the Statista
+  chart) rides the Worker's Cache-API layer.
 - Config is deflate+base64url JSON (~200 chars). localStorage is the primary
   store; the same string also rides the signage URL's `#cfg=` fragment, so a
   board re-seeds its configuration from the URL after a web-storage wipe.
 
+### The page is a fixed canvas, not a viewport
+
+`site/css/main.css` pins `html, body` to exactly **1920×1080 CSS px** on every
+device. That is deliberate: the grid, the editor and the settings overlay then
+have identical geometry everywhere, and the per-widget capacity tables in
+`site/js/capacity.js` are measured once, against that page, instead of against a
+per-device matrix.
+
+The real screens differ from it, and this is the part that is easy to get wrong:
+
+| Device | Viewport handed to the page | Bottom bar |
+|---|---|---|
+| Board Pro / Desk Pro (signage) | **1920×1040** | RoomOS draws its "Tap here to start" bar in the 40 physical px **below** the viewport |
+| Room Navigator (PWA) | **1920×1200** | none |
+| Desktop preview | whatever the window is | none |
+
+The bar does **not** overlay page content. What happens instead is that the last
+40px of the fixed 1080px page fall off the bottom of a board's glass — which
+crops anything parked there exactly as an overlay would have, which is why the
+overlay theory survived as long as it did. The `--safe-bottom: 84px` reserve is
+what keeps the page's own content (grid, settings, editor) clear of that edge;
+don't spend it without re-measuring on a device.
+
+Only the `position: fixed` full-screen contexts — the expand overlay, the
+screensaver, the image viewer — are sized by the *real* viewport, and they model
+against 1040, the smallest height any supported device gives them
+(`BOARD_VIEWPORT_H` in `site/js/expand.js`). `test/overlay-chrome.test.js` reads
+the chrome dimensions back out of the stylesheet and re-derives the numbers, so
+a CSS edit cannot silently invalidate them.
+
 ## Widgets
 
 Everything is opt-in. Toggle widgets on/off under **Settings → Widgets** —
-grouped by category (Commute, Weather & Air, Markets, Sports, News & Social,
-Images, Ambient, Daily Extras) — then tap the **✎ pencil** to drag, resize, and arrange
-them on the 12×8 grid — each
-widget has a minimum size and shows more content as you make its card bigger
-(the edit screen tells you how many rows fit). The clock/greeting across the top
-is always on. Every widget degrades gracefully: a dead feed dims the card and
-stamps "as of …" rather than going blank, and long text taps to full screen.
+grouped into the eight categories below — then tap the **✎ pencil** to drag,
+resize, and arrange them on the 12×8 grid. Each widget has a minimum size and
+shows more content as you make its card bigger (the edit screen tells you how
+many rows fit). The clock/greeting across the top is always on. Every widget
+degrades gracefully: a dead feed dims the card and stamps "as of …" rather than
+going blank, and long text taps to full screen.
+
+`WIDGET_IDS` in `site/js/config.js` is the list of every card that exists, and
+`WIDGET_GROUPS` is its exact partition into the categories below — the same
+labels the on-board add tray, the Settings nav and the phone `/setup` page all
+use, so a card sits in the same place wherever you meet it. Not every card that
+exists is *offerable*: one predicate, `isAddable(id, cfg, host)`, decides that
+(see [Add policy and gated cards](#add-policy-and-gated-cards)).
 
 Configure each widget in its own **Settings** section (on the board by touch, or
-from your phone at `/setup` — whose widget picker and config sections share the
-same categories). Configurable list widgets (markets, sports, world
+from your phone at `/setup`). Configurable list widgets (markets, sports, world
 clock, headlines, Substack, Bluesky) ship with sensible starter entries you can
 remove like any other.
 
-### Weather & sky
+**Tap to expand.** Four cards hold more than fits: **Markets**, **Subway**,
+**Weather** and **Surf** open a full-screen view of everything they *already
+fetched* — the contents of the quiet "+N" badge — with no extra request. The
+overlay closes itself after 60 seconds without a touch, so a board someone
+walked away from returns to its resting state on its own
+(`site/js/expand.js`). Other long text (a headline, a quote, an incident
+detail) taps into the shared reader instead, which for a news story adds a QR
+code to the article.
 
-- **Weather** — current conditions, an hourly temperature trend line, and a
-  multi-day forecast strip, worldwide (Open-Meteo). US locations also get a
-  National Weather Service alert banner when one is active. *Configure:*
-  Settings → Weather (search any city worldwide or a 5-digit US ZIP; drives
-  Air & Sky too). Picking a location defaults the unit by region (US → °F,
-  elsewhere → °C); the °F/°C toggle overrides.
-- **Air & Sky** — labeled AQI and UV-index dials (color-coded by band), plus
-  sunrise, sunset, and the moon phase. *Configure:* none — uses your weather location.
-- **Surf** — wave height and period, the swell bearing, water temperature and
-  whether the wind is onshore, offshore or cross-shore, over an hourly build
-  chart. Tap for the 48-hour picture: the groundswell split out from the local
-  wind chop, the week's peaks, and the water paired with the air. Modeled
-  (Open-Meteo Marine), not buoy-observed, and the card says how far offshore
-  the model cell sits. *Configure:* none — uses your weather location. The card
-  is only OFFERED where a probe confirms open water nearby (see below).
+### Commute
 
-### NYC-area transit
+Ten cards, NYC-area except TfL. The three commuter-rail boards (**LIRR**,
+**Metro-North**, **NJ Transit**) print each row's line name as a filled chip in
+the agency's own official colour rather than as one more line of dim text, so
+the line reads at a glance instead of looking like a repeat of the destination
+above it (`site/js/lines.js`; every colour pair is gated at the 4.5:1 AA
+contrast floor by `test/transit.test.js`).
 
-- **Subway Status** — Good Service or the current alert for each line you pick.
-  *Configure:* Settings → Subway (tap line bullets; shuttle "S" and express
-  variants are matched automatically).
+- **Subway Status** — Good Service or the current alert for each line you pick;
+  alerting lines float above the quiet ones, and the card taps into the full
+  status board. *Configure:* Settings → Subway (tap line bullets; shuttle "S"
+  and express variants are matched automatically).
 - **LIRR** / **Metro-North** — departure boards with live minutes, track, and
   service alerts. LIRR picks its terminal — Penn Station (default), Grand
   Central, or both, with each row tagged by terminal when both. Metro-North is
   Grand Central. *Configure:* their Settings sections; pick the station your
   trains must stop at (named in the card corner — required, the card prompts
   until one is chosen), and toggle the alert banner.
-- **NJ Transit** — scheduled departures from one NJT rail station (default New
-  York Penn) — time, destination, and line. RailData's schedule feed carries no
-  live track or per-train status, so live delays and disruptions show as a
-  service-alert banner instead. Amtrak trains that share the station are filtered
-  out (they have their own card). *Configure:* Settings → NJ Transit (pick the
-  origin station; toggle alerts).
+- **NJ Transit** — scheduled departures from **New York Penn** (fixed, like
+  LIRR and Amtrak; named in the card corner) — time, destination, and line.
+  RailData's schedule feed carries no live track or per-train status, so live
+  delays and disruptions arrive as a service-alert banner instead. Amtrak trains
+  that share the station are filtered out (they have their own card).
+  *Configure:* Settings → NJ Transit (filter to the lines you ride — none
+  selected means all of them; toggle alerts).
 - **Amtrak** — departures from Moynihan Train Hall / New York Penn (NYP), with
   route, train number, status, and platform when assigned. Shows trains
   stopping at your destination (named in the card corner) with the arrival
@@ -142,64 +184,101 @@ remove like any other.
   pick; tap a disrupted line for the full reason. *Configure:* Settings → TfL
   Status (toggle lines by mode). Keyless.
 
-### Markets, sports & news
+### Weather & Air
+
+One location drives all three cards.
+
+- **Weather** — current conditions, an hourly temperature trend line, and a
+  multi-day forecast strip, worldwide (Open-Meteo). US locations also get a
+  National Weather Service alert banner when one is active. Tap for the fuller
+  picture — a single upstream call serves both the card and the overlay.
+  *Configure:* Settings → Weather (search any city worldwide or a 5-digit US
+  ZIP). Picking a location defaults the unit by region (US → °F, elsewhere →
+  °C); the °F/°C toggle overrides.
+- **Air & Sky** — labeled AQI and UV-index dials (color-coded by band), plus
+  sunrise, sunset, and the moon phase. *Configure:* none — uses your weather location.
+- **Surf** — wave height and period, the swell bearing, water temperature and
+  whether the wind is onshore, offshore or cross-shore, over an hourly build
+  chart. Tap for the 48-hour picture: the groundswell split out from the local
+  wind chop, the week's peaks, and the water paired with the air. Modeled
+  (Open-Meteo Marine), not buoy-observed, and the card says how far offshore
+  the model cell sits. Every marine field is independently nullable upstream, so
+  a spot can legitimately report a wave height and no period. *Configure:* none
+  — uses your weather location. The card is only OFFERED where a probe confirms
+  open water nearby (see [Place gating](#place-gating-surf)).
+
+### Markets
 
 - **Markets** — Dow / Nasdaq / S&P by default, plus any tickers you add
-  (indexes start with `^`), each with a sparkline and change. *Configure:*
-  Settings → Markets (add/remove tickers; unknown symbols are rejected).
+  (indexes start with `^`), each with a sparkline and change. The card shows as
+  many as fit and puts the rest behind a "+N" badge; tap for the full ticker
+  wall. Up to **20 symbols** — that ceiling is what the full-screen wall can
+  hold without scrolling, and it is enforced identically in the config
+  normalizer, the picker and the Worker. *Configure:* Settings → Markets
+  (add/remove tickers; unknown symbols are rejected).
+- **Markets News** — newest finance stories merged across the sources you
+  enable (MarketWatch, WSJ Markets, FT Markets, CNBC, NYT Business, Yahoo
+  Finance on by default; Seeking Alpha opt-in). *Configure:* Settings →
+  Markets News.
+
+### Sports
+
 - **My Teams** — one glanceable row per followed team: live score, final, or
   next game, with the last result. *Configure:* Settings → My Teams (up to 6,
   across MLB/NFL/NBA/NHL/MLS/EPL).
-- **World Cup 2026** — live / upcoming / recent matches during the tournament.
-  Results linger through July 27, 2026; after that the card invites a
-  tap-to-swap (never auto-removed) and leaves the add pickers.
-  *Configure:* none.
 - **Formula 1** — next Grand Prix, last race's podium, and the driver and
   constructor standings. Team-colour dots and driver country flags; the layout
   adapts to the card size (standings side-by-side when wide, stacked when
   narrow). *Configure:* none.
-- **Live Video** *(beta-only for now: beta.roomboard.app)* — a UniFi Protect
-  Share-Livestream link (`monitor.ui.com/...`, embedded via UI's own player)
-  or a live HLS stream (your own https `.m3u8` link) playing
-  muted on the card via a vendored hls.js (no native HLS in RoomOS's
-  Chromium). No stream is bundled; paste and preview the link at
-  `/video-setup` on your phone, then type the short code on the board.
-  *Configure:* Settings → Live Video (or /setup → Live Video).
 - **Golf (PGA)** — live PGA Tour leaderboard for the current tournament
   (majors included), with each player's total and today's round. Off weeks
   show the next event and start date. *Configure:* none.
 - **Tennis** — the current ATP and WTA tournaments: live singles matches
   first, then today's upcoming and the freshest finals. *Configure:* none.
-- **Markets News** — newest finance stories merged across the sources you
-  enable (MarketWatch, WSJ Markets, FT Markets, CNBC, NYT Business, Yahoo
-  Finance on by default; Seeking Alpha opt-in). *Configure:* Settings →
-  Markets News.
+- **World Cup 2026** — *retired.* The card covered the tournament and sunset on
+  its own schedule the day after the final, via the `RETIRED_AFTER` date table
+  in `site/js/config.js`: it has dropped out of every add picker, while a board
+  that still has it placed keeps its slot and gets a tap-to-swap prompt — an
+  event card is never yanked out of somebody's layout from the server side. The
+  code stays in the tree as the worked example of how a dated card retires.
+
+### News & Social
+
 - **Headlines** — newest stories merged across the news sources you enable
-  (NYT sections, NPR, BBC, Gothamist). *Configure:* Settings → Headlines.
+  (NYT Top Stories / U.S. / Business / New York, NPR News, BBC World,
+  Gothamist). *Configure:* Settings → Headlines.
 - **Substack** — latest posts from up to 6 followed publications. *Configure:*
   Settings → Substack (type the publication name before `.substack.com`).
 - **Bluesky** — latest posts from up to 6 followed accounts. *Configure:*
   Settings → Bluesky (type the handle; a one-tap `.bsky.social` key helps).
 
-### Time & ambient
+All three share one renderer, and a row taps into the story reader: headline,
+summary, and a QR code that hands the article to your phone.
 
-- **World Clock** — up to 10 cities in order of their current time, with a
-  next-day marker. *Configure:* Settings → World Clock (offices or any zone).
+### Images
+
+Every card whose content *is* a picture. All of them open full screen on a tap
+and swipe there to browse; all of them decode the next image before swapping it
+in and cross-fade between the two, so a half-painted photo never reaches the
+glass; and all but NASA can drive the screensaver.
+
 - **Art** — a rotating public-domain artwork (Met / Art Institute of Chicago /
-  Cleveland); tap it for full screen, and swipe there to browse. Also the
-  default screensaver source. *Configure:* Settings → Art (rotation interval;
-  optional collections).
+  Cleveland). The default screensaver source. *Configure:* Settings → Art
+  (rotation interval; optional collections).
+- **Landscapes** — the same slideshow machinery pointed at a built-in,
+  hand-curated folder of landscape photography, so it needs no setup at all:
+  add the card and it works. *Configure:* Settings → Landscapes (rotation
+  interval only — the folder is baked in).
 - **iCloud Photos** / **GDrive Photos** — rotating photo slideshows from an
   iCloud **Shared Album** and/or a **public Google Drive folder**. They're two
   independent widgets — add either or both, each with its own album and
-  rotation interval (on the dashboard both cards are titled simply "Photos");
-  tap for full screen, swipe to browse. Either can drive the screensaver via
-  **Settings → Screensaver**. *Configure:* from your
-  phone at **`/photo-setup`** (each widget's Settings pane shows a QR straight
-  to it): the page walks through creating the shared album/folder, checks your
-  link against the live feed, and mints a short board code — one code covers
-  either source or both, and entering it changes only the photo slots it
-  carries. Drive needs a free API key on the Worker; see Data sources.
+  rotation interval (on the dashboard both cards are titled simply "Photos").
+  *Configure:* from your phone at **`/photo-setup`** (each widget's Settings
+  pane shows a QR straight to it): the page walks through creating the shared
+  album/folder, checks your link against the live feed, and mints a short board
+  code — one code covers either source or both, and entering it changes only the
+  photo slots it carries. Drive needs a free API key on the Worker; see Data
+  sources.
   ⚠️ The album/folder is shared with a public link — anyone with the link can
   view the photos, so add only office-appropriate ones.
 - **NASA Daily Photo** — NASA's Astronomy Picture of the Day: the image + its
@@ -207,34 +286,76 @@ remove like any other.
   days are skipped automatically. *Configure:* none (uses a free NASA key on the
   Worker; see Data sources).
 
-### Daily extras
+### Ambient
+
+- **World Clock** — up to 10 cities in order of their current time, with a
+  next-day marker. *Configure:* Settings → World Clock (offices or any zone).
+- **Live Video** *(gated — see [Add policy](#add-policy-and-gated-cards))* — a
+  UniFi Protect Share-Livestream link (`monitor.ui.com/...`, embedded via UI's
+  own player) or a live HLS stream (your own https `.m3u8` link) playing
+  muted on the card via a vendored hls.js (no native HLS in RoomOS's
+  Chromium). No stream is bundled; paste and preview the link at
+  `/video-setup` on your phone, then type the short code on the board.
+  *Configure:* Settings → Live Video (or /setup → Live Video).
+
+### Daily Extras
 
 - **Cloud Services** — subway-board rows for the cloud services your office
   depends on (Webex, Zoom, Slack, Ubiquiti, Cloudflare, GitHub, Microsoft 365,
   Google Workspace, AWS, Claude, OpenAI) from their public status pages; tap a
   degraded service for the full incident detail. Starts with Webex, Slack, and
-  Microsoft 365. *Configure:* Settings → Cloud Services (toggle services
-  on/off). No API keys — all sources are public.
+  Microsoft 365. **Trouble sorts to the top:** major outage, then minor issue,
+  then a status page that could not be read at all (it *might* be a problem, so
+  it outranks "Operational" — but it is not a confirmed one, so it stays below
+  the other two), then everything healthy, with your own chosen order as the
+  stable tiebreak so an all-quiet board looks exactly as you arranged it. The
+  sort runs *before* the list is sliced to the card's capacity, so the row that
+  matters is never the one the "+N" badge eats. *Configure:* Settings → Cloud
+  Services (toggle services on/off). No API keys — all sources are public.
 - **This Day in History** — notable events on today's date (Wikimedia).
 - **Quote of the Day** / **Word of the Day** — a curated daily quote / word
   with definition and example.
 - **Chart of the Day** — Statista's latest daily infographic; tap for full
   screen with the description. Statista explicitly permits embedding their
   infographics with attribution (CC BY-ND; their branding is part of the
-  image). *Configure:* none.
+  image). *Configure:* Settings → Chart of the Day (which topics the card
+  cycles through; a hide-politics filter, on by default).
 
 ## Local development
 
 ```bash
 npm install
-npm test                # site+logic suites, then worker suite
+npm test                # site suite (happy-dom), then worker suite (workerd)
 npx http-server site -c-1 -p 8087   # -c-1 matters: Chrome heuristic-caches ES modules otherwise
 open 'http://localhost:8087/?demo=1'           # full dashboard, canned data
 open 'http://localhost:8087/?demo=1&mode=ambient'
 npx wrangler dev --config worker/wrangler.toml # worker on :8787
 ```
 
-`?demo=1` renders every widget from fixtures with zero network.
+`?demo=1` renders every widget from fixtures with zero network. `npm run
+test:site` and `npm run test:worker` run the halves on their own. Both are
+offline unit/integration suites, so a green `npm test` is the gate for every
+change.
+
+### Audit harnesses
+
+Three pages under `site/` render real components at real board geometry, so
+overflow can be *measured* instead of eyeballed. They are tracked in git on
+purpose: they used to be local-only, and they hard-coded the board's screen as
+1920×1080 — which is where this repo's long-held belief in a 1080px-tall board
+came from. An untracked harness is one that arrives back wrong on the next
+clone.
+
+| Harness | Renders | Useful query params |
+|---|---|---|
+| `site/_audit.html` | dashboard cards on the grid | `ids` (comma-separated widget ids), `mode` (`min`/`rep`), `w`/`h` size override, `page`, `freeze`, `vh`, `meta=0` |
+| `site/_settings-audit.html` | one Settings section at a time | `section`, `configured`, `freeze`, `vh` |
+| `site/_overlay-audit.html` | the full-screen expand / reader overlays | `id`, `dense=1`, `len`, `src`, `metrics`, `fix=0`, `meta=0` |
+
+`vh` draws the device's real bottom edge across the page and measures every card
+against it. It defaults to **1040** — a Board Pro — and takes `1200` for a Room
+Navigator or `1080` for a desktop preview. Each harness also publishes its
+measurements as JSON on `window.__audit`, so a headless run can assert on them.
 
 ## Deployment
 
@@ -317,7 +438,27 @@ would take the whole dashboard down in a desktop preview.)
 > against a real response once credentials exist (all shape knowledge is
 > isolated in that file).
 
-### 3. Boards
+### 3. Branches and CI
+
+Day-to-day work happens on **`dev`**; **`main` is what ships**. Two GitHub
+Actions workflows in `.github/workflows/` do the rest:
+
+- `test.yml` runs `npm test` on every push and every pull request, and — on a
+  push to `main` only — then runs `npm run deploy:site` to publish the Pages
+  project.
+- `deploy-worker.yml` is separate and **path-filtered to `worker/`** on `main`,
+  because the API worker changes far less often than the site. It re-runs the
+  worker suite before deploying.
+
+Both need `CLOUDFLARE_API_TOKEN` (plus the account id, for the worker) in the
+repository secrets. Promote by fast-forwarding `main` to `dev`.
+
+One deployment gotcha worth knowing: Cloudflare Pages propagates **per asset**,
+not atomically, so for a short window after a deploy a board can hold a fresh
+`index.html` next to a stale ES module and throw an import error. Boards recover
+on their next hourly version check.
+
+### 4. Boards
 
 Install the signage macro on each touch board:
 
@@ -334,7 +475,7 @@ The overridable defaults sit at the top of the file: the signage URL plus
 first. Recommended extra per Cisco guidance: configure `Time OfficeHours` so
 signage runs ≤ 12 h/day.
 
-### 4. Non-touch devices (Room series driving a TV)
+### 5. Non-touch devices (Room series driving a TV)
 
 Non-touch devices can't enter setup codes, so they take the configuration in
 the signage URL itself. Get the URL from a working config: on a template
@@ -363,52 +504,70 @@ macro-managed board's URL carries.
 ### Screensaver
 
 **Settings → Screensaver** picks what fills the screen when the board is idle:
-the **Art slideshow**, either **photo widget's album**, one of three clock
-faces — **Big clock** (a giant digital time + date), **World clocks** (an
-analog dial per World Clock city, night cities dimmed), **Clock + world
-times** (digital hero with a city row) — or **Off**. Every option has a
-full-screen **Preview** (tap anywhere to exit). A toggle controls the bottom
-info strip (weather + next trains). The screensaver only appears when Display
-mode is *Always screensaver*, or *Scheduled* outside the dashboard windows
-(both under Settings → Display) — the dashboard shows during your daily time
-windows (up to four, 15-minute steps) and the screensaver the rest of the
-time. If a photo source loses its album the board falls back to Art, then to
-the Big clock, so the screen never goes blank. Clocks repaint once per
-minute, aligned to the minute boundary.
+
+- a **slideshow** — the Art rotation, the curated **Landscapes** folder, or
+  either photo widget's album;
+- one of three **clock faces** — **Big clock** (a giant digital time + date),
+  **World clocks** (an analog dial per World Clock city, night cities dimmed),
+  or **Clock + world times** (digital hero with a city row);
+- or **Off**.
+
+Every option has a full-screen **Preview** (tap anywhere to exit). Three toggles
+ride alongside: the bottom **info strip** (weather + next trains), the clock
+faces' **hour markers**, and a **backdrop image** that puts a curated photo
+behind a clock face (one picture per day, picked deterministically).
+
+The screensaver only appears when Display mode is *Always screensaver*, or
+*Scheduled* outside the dashboard windows (both under Settings → Display) — the
+dashboard shows during your daily time windows (up to four, 15-minute steps) and
+the screensaver the rest of the time. If a photo source loses its album the
+board falls back to Art, then to the Big clock, so the screen never goes blank.
+Clocks repaint once per minute, aligned to the minute boundary.
 
 ### Arranging the dashboard
 
 Tap the ✎ pencil button: the 12×8 grid appears — drag widgets to move them
 (colliders are pushed aside live), drag the corner handle to resize (snaps to
 cells, per-widget minimums), ✕ removes, and the bottom tray re-adds anything
-removed. Invalid drops flash red and snap back. Done saves (localStorage);
-Cancel discards. Layouts live in config v3; v1/v2 configs migrate
-automatically on first load.
+removed. The tray flows most groups inline and folds the three largest —
+Commute, Images, Sports — into collapsible drawers, so the whole thing still
+fits above the grid. Invalid drops flash red and snap back. Done saves
+(localStorage); Cancel discards. Layouts live in config v3; v1/v2 configs
+migrate automatically on first load.
 
 Widget notes: **LIRR** (Penn Station, Grand Central, or both) / **Metro-North**
 (Grand Central) are departure boards with a required stops-at-station filter
-(named in the card corner; the card prompts until one is picked); **Subway** is
-a line-status board — Good Service or the current alert per chosen line;
+(named in the card corner; the card prompts until one is picked); **NJ
+Transit** and **Amtrak** are fixed to New York Penn; **Subway** is a
+line-status board — Good Service or the current alert per chosen line;
 **PATH** / **NYC Ferry** show one chosen station/landing (named in the card
 corner); **Weather** defaults to ZIP 10001; **World Clock** holds up to 10
 cities (defaults: New York, San Francisco, London, Hyderabad, Hong Kong).
 
-### Advanced ("nerd mode") cards
+### Add policy and gated cards
 
-Cards that need self-hosted infrastructure behind them (Live Video, and
-camera gateways to come) stay out of every add picker unless the board owner
-turns on **Settings → Diagnostics → Nerd mode**. Non-technical users never
-see them; a placed card always keeps rendering and stays removable regardless.
+Every add surface — the edit-mode tray, the Settings widget toggles, the
+`/setup` checkboxes, and the settings nav — routes its "may I offer this?"
+decision through the single `isAddable(id, cfg, host)` predicate in
+`site/js/config.js`, which composes four independent gates:
 
-To gate a new card this way, add its id to `ADVANCED_WIDGETS` in
-`site/js/config.js` — nothing else. Every add surface (edit-mode tray, the
-Settings widget toggles, the `/setup` checkboxes, and the settings nav) routes
-its "may I offer this?" decision through the single `isAddable(id, cfg)`
-predicate, which composes four gates: `RETIRED_AFTER` (sunset an event card),
-`BETA_ONLY` (staging-host only), `ADVANCED_WIDGETS` (nerd mode), and
-`OCEAN_WIDGETS` (see below). One predicate, so a new surface or a new gated
-card can't leak through a path someone forgot.
-`test/settings-logic.test.js` asserts the policy holds across all surfaces.
+| Gate | Meaning | Currently |
+|---|---|---|
+| `RETIRED_AFTER` | a dated card sunsets on a fixed date | World Cup 2026, retired |
+| `BETA_ONLY` | staging hosts only; production ships the code dark | Live Video |
+| `ADVANCED_WIDGETS` | needs self-hosted infrastructure behind it, so it hides until **Settings → Diagnostics → Nerd mode** is on | Live Video |
+| `OCEAN_WIDGETS` | depends on *where* the board is (below) | Surf |
+
+One predicate, so a new surface or a new gated card can't leak through a path
+someone forgot; `test/settings-logic.test.js` asserts the policy holds across
+every surface. To gate a new card behind nerd mode, add its id to
+`ADVANCED_WIDGETS` — nothing else.
+
+A card that is already **placed** is unaffected by all of this: it keeps
+rendering, and it stays removable, whatever the gates say. Gates decide what is
+*offered*, never what is taken away — so a beta-configured board does not break
+by visiting production, a non-technical owner never sees the advanced cards, and
+a retired event card is never yanked out of somebody's layout.
 
 ### Place gating (Surf)
 
@@ -464,26 +623,26 @@ welcome screen; re-enter a setup code to restore.
 
 | Source | Access | Notes |
 |---|---|---|
-| Open-Meteo (weather, AQI) | direct, keyless | free tier is "non-commercial" — buy their inexpensive key if strictness matters |
-| Open-Meteo Marine (surf) | direct, keyless | same free tier; ~1.9 weighted calls per 30-min refresh (marine payload + a minimal forecast call for the wind, which the marine endpoint does not serve) |
-| api.weather.gov (alerts) | direct, keyless | enhancement-only |
-| MTA LIRR + MNR GTFS-RT | direct, keyless | GET only (HEAD returns 403); 60 s jittered polling |
+| Open-Meteo (weather, AQI) | direct, keyless | free tier is "non-commercial" — buy their inexpensive key if strictness matters. Requests are weighted by variable count (weight = variables / 10), so the weather card plus the fields its overlay adds costs ~2.0 weighted calls per refresh: ~288/day per board against a 10,000/day free ceiling |
+| Open-Meteo Marine (surf) | direct, keyless | same free tier; ~1.9 weighted calls per 30-min refresh — the marine payload plus a minimal forecast call for the wind, which the marine endpoint accepts as a parameter but answers null for (it serves marine variables only) |
+| api.weather.gov (alerts) | direct, keyless | enhancement-only; skipped outside the US bounding boxes so a non-US board doesn't 400 on every refresh |
+| MTA LIRR + MNR GTFS-RT | direct, keyless | GET only (HEAD returns 403); 60 s jittered polling. No key and no documented rate limit — but their terms do bar serving MTA data to end users straight off MTA servers, so anything at fleet scale belongs behind a cache, which is what the Worker does for the alert digests |
 | MTA alert feeds (camsys) | Worker digest | raw subway feed ~800 KB → ~2 KB digest shared fleet-wide |
 | MTA BusTime SIRI | Worker + free key | `wrangler secret put MTA_BUS_KEY`; widget reports unconfigured until set |
-| Google Drive API | Worker + free key | `wrangler secret put GDRIVE_KEY` (free Cloud project, Drive API enabled, key restricted to it); the GDrive Photos widget reports unconfigured until set. Lists images sitting directly in the folder — subfolders aren't traversed |
-| Service status pages | Worker proxy, no keys | Statuspage instances (Zoom/Ubiquiti/Cloudflare/GitHub/Claude) + OpenAI (incident.io compat) + Slack/Microsoft/Google/Webex/AWS public JSON; failures report "Unknown", never fake green |
+| Google Drive API | Worker + free key | `wrangler secret put GDRIVE_KEY` (free Cloud project, Drive API enabled, key restricted to it); the GDrive Photos widget reports unconfigured until set. The same route serves the built-in curated folders (Landscapes, the clock backdrop) — those folder ids are public and link-shared; only the key is secret. Lists images sitting directly in the folder — subfolders aren't traversed |
+| Service status pages | Worker proxy, no keys | Statuspage instances (Zoom/Ubiquiti/Cloudflare/GitHub/Claude) + OpenAI (incident.io compat) + Slack/Microsoft/Google/Webex/AWS public JSON; failures report "Unknown", never fake green. Several deliver incident prose as HTML, so the Worker reduces it to plain text at the data boundary (`worker/src/htmltext.js`) instead of letting the board's escape-on-render print the tags out literally |
 | NASA APOD | Worker + free key | `wrangler secret put NASA_KEY` (free key from api.nasa.gov); falls back to `DEMO_KEY` when unset — viable because the 1h fleet-shared cache stays under DEMO_KEY's daily cap, but the real key is preferred |
 | Statista Chart of the Day | Worker, keyless | No feed exists — the worker scrapes the listing page (session-cookie SSO bounce walked manually, see `worker/src/chart.js`), cached 1 h; boards hotlink the infographic from `cdn.statcdn.com` (probe-verified: no referer/cookie checks). Scrape breaks if Statista reworks the page markup |
-| ESPN site API (sports, World Cup) | Worker + browser | live scores join the league scoreboard Worker-side (team feed nulls them mid-game) |
+| ESPN site API (sports) | Worker + browser | live scores join the league scoreboard Worker-side (team feed nulls them mid-game) |
 | Amtraker (Amtrak) | Worker, keyless | unofficial community API (no official public Amtrak feed); worker filters the all-trains feed to NYP departures, caches 60 s fleet-wide, empty/stale-tolerant; destination filter is client-side over each train's downstream stops (`worker/src/amtrak.js`) |
 | Your HLS stream (Live Video) | Browser, user-supplied | https .m3u8 the user provides; played via vendored hls.js light (Apache-2.0) over MSE, quality capped to card size; nothing bundled or defaulted (`site/js/widgets/iptv.js`, `site/js/vendor/hls.light.min.js`) |
 | ESPN scoreboard (Golf, Tennis) | Worker-first, keyless | Raw scoreboards run 0.6-2.4 MB, so the worker digests them to ~2 KB via the shared mappers (`site/js/espn-scores.js`, cached 5 min + 24h stale); the board falls back to the CORS-open feeds directly if the worker is unreachable (`worker/src/scores.js`) |
 | Jolpica-F1 (Formula 1) | Worker, keyless | Ergast successor, not CORS-open; worker fans out next race + last result + driver/constructor standings, merges + caches 1 h, serves partial on upstream failure (`worker/src/f1.js`) |
-| NYT / Gothamist / NPR / BBC (headlines) | direct + Worker proxy | feed whitelist in `worker/src/news.js` |
+| NYT / Gothamist / NPR / BBC (headlines) | direct + Worker proxy | feed whitelist in `worker/src/news.js` — an id that isn't in the table 404s, so the route can't be aimed anywhere else |
 | Substack publications (latest posts) | Worker, keyless | `/posts/substack?pub=<slug>` digest; no CORS upstream |
 | Bluesky public AppView (latest posts) | direct, keyless | CORS-open; also validates handles when adding accounts |
 | TrainTime (LIRR tracks) | direct, unofficial | feature-detected; drops silently if the host vanishes |
-| NJ Transit RailData | Worker + credentials | their ToS **requires** serving from a non-NJT server; auth is your developer-portal login (no separate key) exchanged for a session token. **`getToken` is capped at just 10/day** (the data endpoints allow 40,000/day), so the worker caches the token in the **Cache API** — it survives isolate eviction and is shared across boards/isolates, so `getToken` fires ~once per token lifetime, not per cold start — and re-authenticates only on a 401. `getStationSchedule` is a whole-day timetable per station (array of station objects; departures nested in `ITEMS`) with no live track/status — delays arrive via `getStationMSG` as alerts; NJT vs Amtrak is split by numeric-vs-letter train id (`worker/src/njt.js`) |
+| NJ Transit RailData | Worker + credentials | their ToS **requires** serving from a non-NJT server; auth is your developer-portal login (no separate key) exchanged for a session token. **`getToken` is capped at just 10/day** (the data endpoints allow 40,000/day), so the worker caches the token in the **Cache API** — it survives isolate eviction and is shared across boards/isolates, so `getToken` fires ~once per token lifetime, not per cold start — and re-authenticates only on a 401. `getStationSchedule` is a whole-day timetable per station (array of station objects; departures nested in `ITEMS`) with no live track/status, refreshed on a TTL so a fetch that lands inside NJT's midnight rollover can't strand a board on a near-empty day — delays arrive via `getStationMSG` as alerts; NJT vs Amtrak is split by numeric-vs-letter train id (`worker/src/njt.js`) |
 | Yahoo Finance (markets) | Worker, unofficial | browser UA + 5 min cache; widget hides if it breaks |
 | Met + AIC + Cleveland (art) | build-time manifest | CC0 works; `node tools/build-art-manifest.js` to refresh |
 | Wikimedia (history) | direct, keyless | |
@@ -495,12 +654,14 @@ welcome screen; re-enter a setup code to restore.
 | iCloud Shared Streams (photos) | Worker, keyless (unofficial) | webstream + webasseturls endpoints; CORS-locked Worker-side; digest cached ~30 min; signed image URLs fetched by the board via `<img>` |
 
 **Resize-fit audit (standing policy):** widgets must fit their text at every
-supported size. After renderer/CSS changes, open `?demo=1` in Chrome and, for
-each `.card`, place it at its demo size, its `MIN_SIZE`, and a 3-tall variant
-(set `gridColumn`/`gridRow` spans + `data-w`/`data-h`), then assert
-`card__body.scrollHeight <= clientHeight + 2`. Fix overflows with measured
-`data-w`/`data-h` compact CSS variants (no container queries on gen1 Chromium).
-Ship only at zero overflow.
+supported size, and this gets checked in a real browser — a DOM shim does not
+lay text out. After renderer/CSS changes, open `site/_audit.html` and, for each
+card, place it at its demo size, its `MIN_SIZE`, and a 3-tall variant
+(`?ids=<id>&w=&h=` does exactly that), then assert `card__body.scrollHeight <=
+clientHeight + 2`; `window.__audit` carries the measurement. Judge it against
+the board's real bottom edge (`vh=1040`, the default), not against the design
+canvas. Fix overflows with measured `data-w`/`data-h` compact CSS variants (no
+container queries on gen1 Chromium). Ship only at zero overflow.
 
 Rebuild station data after MTA changes: `node tools/build-stations.js`.
 Rebuild ferry landings/trips after NYC Ferry schedule changes:
@@ -521,7 +682,7 @@ is written to keep it that way.
   Configuration that arrives in the URL fragment is sanitized in
   `normalizeConfig` — labels stripped of markup, ids constrained to their
   charset — before it can reach the DOM.
-- **Content-Security-Policy.** Both pages ship a strict CSP (`script-src 'self'`,
+- **Content-Security-Policy.** Every page ships a strict CSP (`script-src 'self'`,
   `object-src 'none'`, `base-uri 'none'`, …) as defense-in-depth: an injected
   inline handler or foreign script is blocked even if encoding were bypassed.
 - **No dynamic code.** No `eval`, `new Function`, `document.write`, or
@@ -534,6 +695,10 @@ is written to keep it that way.
 - **Secrets stay server-side.** Optional API keys (MTA BusTime, Google Drive,
   NASA) live as Worker secrets, are URL-encoded into upstream requests, and are
   never returned to the client or written to logs.
+- **Markup dies at the data boundary.** Feeds that deliver prose as HTML are
+  reduced to plain text in the digest (`worker/src/htmltext.js`), so the
+  client's escape-on-render has no tags left to print literally. The escaping
+  stays regardless — the two are layers, not alternatives.
 - **Bounded & resilient.** Responses cache in the Cache API (never KV); routes
   validate and cap their parameters; upstream failures degrade to stale-or-empty
   rather than a wrong answer.
@@ -548,7 +713,9 @@ is written to keep it that way.
 **Review & testing.** The codebase has been through a multi-pass security and
 correctness review (SSRF, XSS/injection, cache poisoning, secret handling, and
 long-running-device reliability); findings were fixed and are covered by the
-test suite (`npm test` — 400+ cases across site and Worker).
+test suite. `npm test` runs both halves — the site suite under happy-dom and the
+Worker suite under the real `workerd` pool — and CI gates every push and pull
+request on it.
 
 **Reporting a vulnerability.** Please open a private security advisory via
 GitHub's *Report a vulnerability* rather than a public issue.
@@ -557,8 +724,11 @@ GitHub's *Report a vulnerability* rather than a public issue.
 
 ```
 site/       static app (no framework, no bundler; ES modules)
+  _*-audit.html   browser harnesses that render cards, settings panes and
+                  overlays at the real board geometry (see Local development)
 worker/     Cloudflare Worker (code exchange + cached upstream digests)
 macro/      Dashboard RoomOS macro (paste-and-go device setup + signage)
-tools/      data builders (stations, art manifest, fixtures)
+tools/      data builders (stations, ferry, Citi Bike, art manifest, fixtures)
 test/       vitest suites (+ worker pool project in worker/vitest.config.js)
+docs/       the screenshots this README uses
 ```
