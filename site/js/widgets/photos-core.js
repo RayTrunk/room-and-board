@@ -7,7 +7,7 @@
 import { escapeHtml, setupPrompt } from '../util.js';
 import { WORKER_URL } from '../env.js';
 import { imageFit } from '../config.js';
-import { openImageViewer } from '../imageshow.js';
+import { openImageViewer, renderImageCard } from '../imageshow.js';
 
 // Worker digest → slideshow-shaped list ({img, ar, title, date}).
 export function mapPhotos(digest) {
@@ -51,15 +51,20 @@ export function createPhotoWidget({ id, cfgKey, endpoint, emptyAction, emptyDest
     const everyMs = (curated ? (cfg?.[cfgKey]?.every ?? curated.every) : (cfg?.[cfgKey]?.every ?? 30)) * 60 * 1000;
     const idx = Math.floor(Date.now() / everyMs) % sessionList.length;
     const p = sessionList[idx];
-    el.innerHTML = `
-      <figure class="artwork" role="button" tabindex="0" aria-label="View photo full screen">
-        <img class="artwork__img" src="${escapeHtml(p.img)}" alt="${escapeHtml(p.title)}" loading="lazy">
-        ${p.title ? `<figcaption class="artwork__caption"><span class="artwork__title">${escapeHtml(p.title)}</span></figcaption>` : ''}
-      </figure>`;
-    // Opened the way this widget's own screensaver shows the same photo: the
-    // curated sources fill the glass, a user's album letterboxes.
-    el.querySelector('.artwork').addEventListener('click', () =>
-      openImageViewer(p, cfg, { list: sessionList, fit: imageFit(id) }));
+    // Shared image surface: an unchanged photo survives the 60 s refresh
+    // untouched, and a rotation decodes the next one before dissolving to it.
+    // onOpen is re-read on every tap, so a tap always opens the photo and the
+    // album list from the LATEST fetch, never the ones captured when this
+    // photo first went up.
+    renderImageCard(el, {
+      src: p.img,
+      alt: p.title,
+      label: 'View photo full screen',
+      caption: p.title ? `<span class="artwork__title">${escapeHtml(p.title)}</span>` : '',
+      // Opened the way this widget's own screensaver shows the same photo: the
+      // curated sources fill the glass, a user's album letterboxes.
+      onOpen: () => openImageViewer(p, cfg, { list: sessionList, fit: imageFit(id) }),
+    });
   }
 
   // Used by ambient mode when these photos are the chosen screensaver source.

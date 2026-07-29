@@ -4,7 +4,7 @@
 // transition only (gen1-safe) and preloads the next image before switching.
 
 import { escapeHtml } from '../util.js';
-import { openImageViewer } from '../imageshow.js';
+import { openImageViewer, renderImageCard } from '../imageshow.js';
 export { createSlideshow } from '../imageshow.js';
 
 export const meta = { id: 'art', title: 'Art', refreshMs: 60 * 1000 };
@@ -18,15 +18,16 @@ export function filterByCats(manifest, cats) {
 }
 
 export function render(el, vm, cfg) {
-  el.innerHTML = `
-    <figure class="artwork" role="button" tabindex="0" aria-label="View artwork full screen">
-      <img class="artwork__img" src="${escapeHtml(vm.img)}" alt="${escapeHtml(vm.title)}" loading="lazy">
-      <figcaption class="artwork__caption">
-        <span class="artwork__title">${escapeHtml(vm.title)}</span>
-        <span class="artwork__artist">${escapeHtml(vm.artist)}${vm.year ? ` (${escapeHtml(vm.year)})` : ''}</span>
-      </figcaption>
-    </figure>`;
-  el.querySelector('.artwork').addEventListener('click', () => openImageViewer(vm, cfg, { list: artList.length ? artList : [vm] }));
+  // Shared image surface: unchanged art is left alone across the 60 s refresh,
+  // and a rotation decodes the next work before dissolving to it.
+  renderImageCard(el, {
+    src: vm.img,
+    alt: vm.title,
+    label: 'View artwork full screen',
+    caption: `<span class="artwork__title">${escapeHtml(vm.title)}</span>`
+      + `<span class="artwork__artist">${escapeHtml(vm.artist)}${vm.year ? ` (${escapeHtml(vm.year)})` : ''}</span>`,
+    onOpen: () => openImageViewer(vm, cfg, { list: artList.length ? artList : [vm] }),
+  });
 }
 
 let artList = []; // cats-filtered manifest, for fullscreen swiping

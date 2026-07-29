@@ -1,6 +1,12 @@
-// Shared image viewer + ambient slideshow engine, used by both the Art widget
-// and the Photos widget.  The viewer takes a pre-built photo list; callers are
-// responsible for fetching/building that list before opening.
+// Shared image surface: the in-card image (art, photos, landscapes, APOD), the
+// full-screen viewer, and the ambient slideshow engine.  The viewer takes a
+// pre-built photo list; callers are responsible for fetching/building that list
+// before opening.
+//
+// One rule runs through all three: an image is never put on the glass until its
+// bitmap is decoded.  Assigning a src to a visible <img> lets the engine paint
+// the picture band by band as the bytes arrive — the "drawing in from the top"
+// that made a rotating card yank the eye across the room.
 
 import { escapeHtml } from './util.js';
 import { stripData, stripHtml } from './ambient.js';
@@ -46,6 +52,153 @@ export function swipeAction(dx, dy) {
   if (Math.abs(dx) >= 60 && Math.abs(dx) >= 2 * Math.abs(dy)) return dx < 0 ? 'next' : 'prev';
   if (Math.abs(dx) < 10 && Math.abs(dy) < 10) return 'tap';
   return null;
+}
+
+// Ready-to-paint promise for an image.  decode() is the real guarantee (the
+// bitmap exists before anything is shown); the load event is the fallback for
+// engines without it.  Never rejects: a broken image resolves too, so a dead URL
+// degrades to the same broken/alt state it always did instead of freezing the
+// card on the previous photo for ever.
+export function loadImage(img, src) {
+  return new Promise((resolve) => {
+    let settled = false;
+    const done = () => {
+      if (settled) return;
+      settled = true;
+      resolve(img);
+    };
+    // Property handlers rather than addEventListener: this also runs against the
+    // bare `Image` stubs the ambient/viewer tests install, which only fire onload.
+    img.onload = done;
+    img.onerror = done;
+    img.src = src;
+    // decode() only means anything once src is set, and it rejects for a broken
+    // or empty source — treat that as "as ready as it will ever be" so a failed
+    // decode can never block the swap.
+    if (typeof img.decode === 'function') img.decode().then(done, done);
+    else if (img.complete) done();
+  });
+}
+
+// ---------- in-card image surface (art, photos, landscapes, APOD) ----------
+
+// Cross-fade duration for a card swap.  The ambient screensaver dissolves over
+// 2.5 s because it owns the whole 55" glass; a card is one small object on a
+// busy board, so it takes the project's UI easing (ease-out
+// cubic-bezier(0.22, 1, 0.36, 1)) stretched to 700 ms — long enough to read as a
+// dissolve rather than a cut, short enough that it never becomes the thing you
+// look at.  Mirrored in main.css; the timer below is only a cleanup net, so a
+// few ms of drift between the two is harmless.
+export const CARD_FADE_MS = 700;
+
+const cardState = new WeakMap(); // .card__body → { src, caption, gen, open }
+
+const reducedMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches === true;
+
+// Caption presence follows content, like the viewer's: a titleless photo gets no
+// figcaption at all rather than an empty padded box.
+function setFigCaption(fig, html) {
+  let cap = fig.querySelector('.artwork__caption');
+  if (!html) {
+    cap?.remove();
+    return;
+  }
+  if (!cap) {
+    cap = document.createElement('figcaption');
+    cap.className = 'artwork__caption';
+    fig.appendChild(cap);
+  }
+  cap.innerHTML = html;
+}
+
+// Reveal a layer that was inserted transparent.  The forced layout read flushes
+// opacity:0 as the transition's start value; without it the engine coalesces
+// insert+unset into a single style pass and the fade never runs.
+function enter(img) {
+  void img.offsetWidth;
+  img.classList.remove('is-entering');
+}
+
+// Dissolve `next` (already decoded, already stacked over `current`) in, then drop
+// the outgoing layer so a card rotating 24/7 keeps exactly one <img> instead of
+// accumulating one per photo.
+function crossfade(current, next) {
+  if (reducedMotion()) {
+    next.classList.remove('is-entering');
+    current.remove();
+    return;
+  }
+  enter(next);
+  let timer = 0;
+  const done = () => {
+    clearTimeout(timer);
+    next.removeEventListener('transitionend', done);
+    current.remove();
+  };
+  // transitionend is the accurate signal; the timer is the net for a transition
+  // that never runs at all (card hidden, motion disabled in CSS, engine quirk).
+  next.addEventListener('transitionend', done, { once: true });
+  timer = setTimeout(done, CARD_FADE_MS + 150);
+}
+
+function paintImage(frame, src, alt, state) {
+  const gen = ++state.gen; // a newer render wins; a stale load drops on arrival
+  if (!src) {
+    frame.replaceChildren();
+    return;
+  }
+  const next = document.createElement('img');
+  next.className = 'artwork__img is-entering';
+  next.alt = alt;
+  const current = frame.querySelector('.artwork__img');
+  if (!current) {
+    // First paint: the <img> joins the DOM immediately (callers and tests read
+    // the markup synchronously) but stays transparent until its bitmap is ready,
+    // so the card fades up from its own surface instead of drawing in bands.
+    frame.appendChild(next);
+    loadImage(next, src).then(() => {
+      if (state.gen === gen) enter(next);
+    });
+    return;
+  }
+  // Rotation: decode off-screen first and only then stack the new layer over the
+  // old one.  Nothing half-drawn ever reaches the glass.
+  loadImage(next, src).then(() => {
+    if (state.gen !== gen) return;
+    frame.appendChild(next);
+    crossfade(current, next);
+  });
+}
+
+// Paints an image card in place: builds the .artwork scaffold once, then only
+// touches what actually changed.  `caption` is trusted HTML (callers escape),
+// '' means no caption box; `onOpen` is re-read on every tap, so a refreshed
+// photo list or config is always what the full-screen viewer receives.
+export function renderImageCard(el, { src, alt = '', caption = '', label = 'View image full screen', contain = false, onOpen } = {}) {
+  let state = cardState.get(el);
+  let fig = el.querySelector('.artwork');
+  if (!fig || !state) {
+    // No scaffold yet, or the card was showing something else entirely (an
+    // empty/setup state), so any remembered src is void.
+    el.innerHTML = '<figure class="artwork" role="button" tabindex="0"><div class="artwork__frame"></div></figure>';
+    fig = el.querySelector('.artwork');
+    state = { src: '', caption: null, gen: 0, open: null };
+    cardState.set(el, state);
+    fig.addEventListener('click', () => state.open?.());
+  }
+  state.open = onOpen;
+  fig.setAttribute('aria-label', label);
+  fig.classList.toggle('artwork--contain', contain);
+  if (state.caption !== caption) {
+    setFigCaption(fig, caption);
+    state.caption = caption;
+  }
+  // The card re-renders every 60 s but the photo only changes when its rotation
+  // bucket flips.  Re-creating the <img> for an unchanged URL would re-decode
+  // and re-paint the same picture dozens of times an hour, on every image card.
+  if (state.src === src) return;
+  state.src = src;
+  paintImage(fig.querySelector('.artwork__frame'), src, alt, state);
 }
 
 let stripTimer = null;
@@ -138,22 +291,20 @@ export function openImageViewer(current, cfg, { list = [], caption = true, strip
   viewer.hidden = false;
 }
 
-// Swap in place: preload first (slideshow pattern), then update img + caption.
+// Swap in place: preload+decode first (slideshow pattern), then update img +
+// caption.  Swapping only a decoded bitmap keeps a swipe from flashing a
+// half-drawn photo across the full screen.
 function step(viewer, dir) {
   if (!viewerList?.length) return;
   userStepped = true;
   viewerIndex = (viewerIndex + dir + viewerList.length) % viewerList.length;
   const item = viewerList[viewerIndex];
-  const img = new Image();
-  const swap = () => {
+  loadImage(new Image(), item.img).then(() => {
     const imgEl = viewer.querySelector('.art-viewer__img');
     imgEl.src = item.img;
     imgEl.alt = item.title ?? '';
     renderViewerCaption(viewer, item);
-  };
-  img.onload = swap;
-  img.onerror = swap; // show anyway; <img> will retry like the slideshow does
-  img.src = item.img;
+  });
 }
 
 // Ambient slideshow engine: two stacked layers, crossfade via [data-active].
@@ -206,11 +357,11 @@ export function createSlideshow(manifest, host, { intervalMs = 75000, random = M
     caption.innerHTML = captionHtml(item);
   }
 
+  // Decode before the crossfade starts, so the incoming layer is a finished
+  // picture the moment it becomes visible (a broken URL resolves too; the
+  // background-image will retry).
   function preload(item, done) {
-    const img = new Image();
-    img.onload = () => done();
-    img.onerror = () => done(); // show anyway; background-image will retry
-    img.src = item.img;
+    loadImage(new Image(), item.img).then(() => done());
   }
 
   function advance() {

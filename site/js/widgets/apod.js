@@ -5,7 +5,7 @@
 
 import { escapeHtml } from '../util.js';
 import { WORKER_URL } from '../env.js';
-import { openImageViewer } from '../imageshow.js';
+import { openImageViewer, renderImageCard } from '../imageshow.js';
 
 export const meta = { id: 'apod', title: 'NASA Daily Photo', refreshMs: 30 * 60 * 1000 };
 
@@ -18,16 +18,17 @@ export function render(el, vm, cfg) {
   // No date note: APOD's date is the publish date (== today's dashboard clock),
   // not a capture date — so it would just duplicate the header time.
   const credit = p.credit ? `© ${p.credit}` : '';
-  el.innerHTML = `
-    <figure class="artwork" role="button" tabindex="0" aria-label="View photo full screen">
-      <img class="artwork__img" src="${escapeHtml(p.url)}" alt="${escapeHtml(p.title)}" loading="lazy">
-      <figcaption class="artwork__caption">
-        <span class="artwork__title">${escapeHtml(p.title)}</span>
-        ${credit ? `<span class="artwork__artist">${escapeHtml(credit)}</span>` : ''}
-      </figcaption>
-    </figure>`;
-  el.querySelector('.artwork').addEventListener('click', () =>
-    openImageViewer({ img: p.url, title: p.title, artist: credit, desc: p.explanation }, cfg, { list: [] }));
+  // Shared image surface: the picture changes once a day but the card refreshes
+  // every 30 minutes, so the early return is what stops it re-decoding the same
+  // photo all day; the day's change dissolves in.
+  renderImageCard(el, {
+    src: p.url,
+    alt: p.title,
+    label: 'View photo full screen',
+    caption: `<span class="artwork__title">${escapeHtml(p.title)}</span>`
+      + (credit ? `<span class="artwork__artist">${escapeHtml(credit)}</span>` : ''),
+    onOpen: () => openImageViewer({ img: p.url, title: p.title, artist: credit, desc: p.explanation }, cfg, { list: [] }),
+  });
 }
 
 export async function fetchData(_cfg, net) {

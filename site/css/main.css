@@ -2187,3 +2187,25 @@ body.ss-backdrop .cf-dial__svg, .ss-preview.ss-backdrop .cf-dial__svg {
    on the passive forecast chips it reads as the brightest surface on the
    board. Dim just the chips — buttons/keys/nav keep the .11 idiom. */
 .wx-day { background: rgba(255, 255, 255, 0.07); }
+
+/* ---------- in-card image cross-fade (art, photos, landscapes, APOD) ---------- */
+/* The frame takes the flex slot the single <img> used to hold, so the geometry
+   is unchanged; its layers are absolute, which also means a swap can never push
+   the caption around. Two layers exist only for the length of one dissolve —
+   the outgoing one is removed when the transition ends. */
+.artwork__frame { position: relative; flex: 1; min-height: 0; }
+/* Opacity only, no filters, no layout properties: this runs every rotation,
+   all day, on a gen1 web engine. object-fit is deliberately NOT set here so
+   .artwork--contain keeps deciding crop vs letterbox. 700 ms sits between the
+   2.5 s ambient dissolve (whole glass) and the 150-250 ms UI register (chrome),
+   on the project's standard ease-out curve. */
+.artwork__frame > .artwork__img {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  transition: opacity 700ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+/* Incoming layer starts invisible; it is only ever added to the DOM once its
+   bitmap has decoded, so removing this class dissolves in a finished picture. */
+.artwork__frame > .artwork__img.is-entering { opacity: 0; }
+@media (prefers-reduced-motion: reduce) {
+  .artwork__frame > .artwork__img { transition: none; }
+}
