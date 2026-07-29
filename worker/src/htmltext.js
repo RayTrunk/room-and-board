@@ -48,14 +48,33 @@ const ANY_TAG = /<\/?[a-z!/][^>]*>/gi;
 // Only re-strip after decoding when something tag-SHAPED appeared: requiring a
 // letter right after "<" keeps arithmetic prose ("a < b") intact.
 const TAGISH = /<\/?[a-z][a-z0-9]*[^>]*>/i;
+// How many decode/strip rounds htmlToText will run (see its header). Three
+// clears the encodings that occur in the wild — plain, once-encoded, and one
+// feed's re-encoded quote of another — without letting nesting run the loop.
+const MAX_DECODES = 3;
 
-function stripMarkup(s) {
+function stripOnce(s) {
   return s
     .replace(SCRIPTISH, ' ')
     .replace(COMMENT, ' ')
     .replace(LINE, '\n')
     .replace(BLOCK, '\n\n')
     .replace(ANY_TAG, '');
+}
+
+// Removing a tag can splice its neighbours into a NEW one ("<<p>p>" leaves
+// "<p>"), so sweep until the text settles. Capped: every sweep only runs
+// because the previous one changed something, and each removal shortens the
+// string, but a cap is cheaper than trusting that argument on hostile input.
+const STRIP_SWEEPS = 3;
+function stripMarkup(s) {
+  let out = s;
+  for (let i = 0; i < STRIP_SWEEPS; i += 1) {
+    const next = stripOnce(out);
+    if (next === out) break;
+    out = next;
+  }
+  return out;
 }
 
 // One space between words, at most one blank line between paragraphs, no
@@ -76,12 +95,24 @@ function collapse(s) {
  * Plain text passes through unchanged (beyond trimming/whitespace tidying).
  */
 export function htmlToText(input) {
-  let s = String(input ?? '');
-  // Two passes: some feeds entity-ENCODE their markup ("&lt;p&gt;"), so those
-  // tags only become strippable after the first decode.
-  for (let pass = 0; pass < 2; pass += 1) {
-    s = decodeEntities(stripMarkup(s));
-    if (!TAGISH.test(s)) break;
+  // Strip first, then alternate decode/strip — and ALWAYS finish on a strip.
+  // Some feeds entity-ENCODE their markup ("&lt;p&gt;"), so those tags only
+  // become strippable after a decode; but ending on the decode hands those
+  // freshly revealed tags straight back to the caller. That was a real hole: a
+  // once-encoded <p> wrapping a double-encoded <script> spent the last pass
+  // decoding "&lt;script&gt;" into a live tag with no strip behind it, and the
+  // returned string was literally "<script>alert(1)</script>".
+  //
+  // Each iteration therefore ends with the text post-strip, or post-decode with
+  // nothing tag-shaped in it. Capped, so deeply nested encodings terminate
+  // rather than spin; whatever survives the cap stays ENCODED, i.e. inert text.
+  let s = stripMarkup(String(input ?? ''));
+  for (let pass = 0; pass < MAX_DECODES; pass += 1) {
+    const decoded = decodeEntities(s);
+    if (decoded === s) break; // nothing left to decode: s is already stripped
+    s = decoded;
+    if (!TAGISH.test(s)) break; // the decode revealed no markup: nothing to strip
+    s = stripMarkup(s);
   }
   return collapse(s);
 }

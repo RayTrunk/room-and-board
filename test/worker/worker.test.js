@@ -963,6 +963,36 @@ describe('htmlToText (feed markup -> readable text)', () => {
   it('leaves arithmetic prose intact (a bare < is not a tag)', () => {
     expect(htmlToText('latency a < b and c > d')).toBe('latency a < b and c > d');
   });
+
+  // The sanitizer's LAST operation has to be the strip. When it was the decode,
+  // this payload walked straight out the other side: pass 0 decoded the
+  // once-encoded <p> (keeping the loop alive) and half-decoded the rest, pass 1
+  // stripped the <p> and then decoded "&lt;script&gt;" into a live tag with no
+  // strip behind it — htmlToText returned "<script>alert(1)</script>" verbatim.
+  it('never returns a tag, even when the encoding depths are mixed', () => {
+    const out = htmlToText('&lt;p&gt;&amp;lt;script&amp;gt;alert(1)&amp;lt;/script&amp;gt;');
+    expect(out).not.toMatch(/<\/?[a-z]/i);
+    expect(out).not.toContain('alert(1)'); // the whole script element is gone, not just its tags
+  });
+
+  it('keeps stripping as each encoding layer peels off (triple-encoded markup)', () => {
+    // Live tags wrapping once-encoded tags wrapping twice-encoded tags: three
+    // decode/strip rounds, and the words in the middle survive all of them.
+    expect(htmlToText('<p>&lt;b&gt;&amp;lt;i&amp;gt;deep&amp;lt;/i&amp;gt;&lt;/b&gt;</p>')).toBe('deep');
+  });
+
+  it('terminates on adversarially nested encoding, and still hands back no tag', () => {
+    // Twelve layers, each one escaping the last. The pass cap stops the work;
+    // what it stops on is text whose remaining markup is still ENCODED (inert),
+    // never a tag the board would have to print.
+    let deep = 'x';
+    for (let i = 0; i < 12; i += 1) {
+      deep = `<b>${deep.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</b>`;
+    }
+    const out = htmlToText(deep);
+    expect(out).not.toMatch(/<\/?[a-z]/i);
+    expect(out).toContain('&lt;b&gt;'); // the surviving layers stayed encoded
+  });
 });
 
 // The bug from the board: Slack publishes incident notes as HTML, the widget
