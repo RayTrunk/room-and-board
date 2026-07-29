@@ -15,6 +15,27 @@ import { swipeAction } from './imageshow.js';
 // that an abandoned board is canonical again before anyone else walks up.
 export const EXPAND_IDLE_MS = 60 * 1000;
 
+// The canvas a full-screen view gets: .expand__body's content box, which every
+// overlay that MODELS its own fit reserves against (markets' ticker wall,
+// subway's alert ladder). One number instead of the two that had drifted apart
+// in those two widgets. Arithmetic, not a measurement, and main.css is the other
+// half of it:
+//   H − 56 (.expand padding-top) − 34 (.expand__head, pinned)
+//     − 36 (.expand__body margin-top) − 100 (.expand__body padding-bottom)
+// Every term is a fixed px in main.css precisely so this stays exact on a board
+// whose font is not the one the widgets were measured in; test/expand.test.js
+// reads them back out of the stylesheet and re-does the sum.
+//
+// KNOWN WRONG BY 40px ON THE BOARD, and deliberately left that way for now.
+// H here is 1080, the height of the headless harness every widget in this repo
+// was measured in. Sean's on-device diagnostic of 2026-07-28 found the Board Pro
+// hands the page a 1920x1040 viewport (the OS bar sits BELOW it), so the real
+// canvas is 814, not 854: the models believe they have 40px they do not have,
+// and a dense wall can over-pack on-device while passing here. Correcting it
+// re-tunes both ladders and needs its own browser sweep at 1040 — tracked as a
+// follow-up, not folded into a chrome change.
+export const OVERLAY_BODY_H = 854;
+
 let idleTimer = null;
 let rowTap = null; // per-session interactive-row handler (news family, wave 3)
 

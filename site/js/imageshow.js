@@ -36,7 +36,9 @@ let userStepped = false; // guards against clobbering a swipe with deferred stat
 // strip so the clock stays visible.  Stays up indefinitely (mode changes don't
 // touch it).  strip:false suppresses the info band — used by the chart viewer,
 // where the band would cover chart content and the view is short-lived anyway.
-export function openImageViewer(current, cfg, { list = [], caption = true, strip = true } = {}) {
+// fit is the widget's own screensaver fit (config.js imageFit): 'contain'
+// letterboxes, 'cover' fills the glass and crops.
+export function openImageViewer(current, cfg, { list = [], caption = true, strip = true, fit = 'contain' } = {}) {
   // Reset session state synchronously.
   ++viewerGen;
   userStepped = false;
@@ -66,6 +68,8 @@ export function openImageViewer(current, cfg, { list = [], caption = true, strip
     });
     document.body.appendChild(viewer);
   }
+  // Per-open, not per-element: the shared viewer is reused by every image card.
+  viewer.classList.toggle('art-viewer--fill', fit === 'cover');
   viewer.innerHTML = `
     <img class="art-viewer__img" src="${escapeHtml(current.img)}" alt="${escapeHtml(current.title)}">
     ${caption ? `<div class="slide-caption">

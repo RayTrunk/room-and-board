@@ -6,6 +6,7 @@
 
 import { escapeHtml, setupPrompt } from '../util.js';
 import { WORKER_URL } from '../env.js';
+import { imageFit } from '../config.js';
 import { openImageViewer } from '../imageshow.js';
 
 // Worker digest → slideshow-shaped list ({img, ar, title, date}).
@@ -55,7 +56,10 @@ export function createPhotoWidget({ id, cfgKey, endpoint, emptyAction, emptyDest
         <img class="artwork__img" src="${escapeHtml(p.img)}" alt="${escapeHtml(p.title)}" loading="lazy">
         ${p.title ? `<figcaption class="artwork__caption"><span class="artwork__title">${escapeHtml(p.title)}</span></figcaption>` : ''}
       </figure>`;
-    el.querySelector('.artwork').addEventListener('click', () => openImageViewer(p, cfg, { list: sessionList }));
+    // Opened the way this widget's own screensaver shows the same photo: the
+    // curated sources fill the glass, a user's album letterboxes.
+    el.querySelector('.artwork').addEventListener('click', () =>
+      openImageViewer(p, cfg, { list: sessionList, fit: imageFit(id) }));
   }
 
   // Used by ambient mode when these photos are the chosen screensaver source.

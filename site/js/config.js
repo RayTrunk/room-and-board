@@ -179,6 +179,14 @@ export const CURATED_SOURCES = Object.freeze({
   landscapes: Object.freeze({ label: 'Landscapes', folder: '1RHow60mcBwzMturimQSbziK3hqCvP2lz', every: 30 }),
 });
 
+// How an image source fills a full screen, asked by BOTH full-screen paths: the
+// ambient slideshow (main.js) and the tap-opened viewer (imageshow.js). One rule
+// so a photo cannot letterbox when tapped and crop as a screensaver, which is
+// what Landscapes did. Curated sources are chosen scenery meant to fill the
+// glass; art and a viewer's own photos are never cropped (you do not crop a
+// painting, and a personal album is full of portraits).
+export const imageFit = (id) => (CURATED_SOURCES[id] ? 'cover' : 'contain');
+
 export const SCREENSAVER_SOURCES = Object.freeze([
   'art', 'photos', 'gdrivephotos', ...Object.keys(CURATED_SOURCES), 'clock', 'worldclocks', 'clockrow',
 ]);

@@ -6,7 +6,7 @@
 import { escapeHtml, fmtClock, setMoreBadge, setupPrompt } from '../util.js';
 import { WORKER_URL } from '../env.js';
 import { itemCapacity, cardSize } from '../capacity.js';
-import { setExpandSource } from '../expand.js';
+import { setExpandSource, OVERLAY_BODY_H } from '../expand.js';
 
 export const meta = { id: 'subway', title: 'Subway Status', refreshMs: 2 * 60 * 1000 };
 
@@ -39,8 +39,10 @@ export function mapSubwayStatus(alerts, lines) {
 
 // Overlay geometry, browser-measured on the fixed 1920x1080 board (the same
 // fixed-pixel reasoning capacity.js uses for card rows — the canvas never
-// changes size). .expand__body's content box measures 1776 x 854.
-const WALL_H = 854;
+// changes size). .expand__body's content box measures 1776 wide; its height is
+// the shared overlay canvas (see the caveat on OVERLAY_BODY_H — on a real board
+// it is 40px less than this).
+const WALL_H = OVERLAY_BODY_H;
 const BAND_ROW = 60; // one row of Good Service bullets
 const BAND_GAP = 16;
 // Bullets that fit on one band row beside the "Good Service" label and the

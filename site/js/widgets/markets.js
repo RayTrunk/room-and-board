@@ -5,7 +5,7 @@
 import { WORKER_URL } from '../env.js';
 import { escapeHtml, fmtClock, setCardNote, setMoreBadge, chaikin } from '../util.js';
 import { itemCapacity, cardSize } from '../capacity.js';
-import { setExpandSource } from '../expand.js';
+import { setExpandSource, OVERLAY_BODY_H } from '../expand.js';
 
 export const meta = { id: 'markets', title: 'Markets', refreshMs: 5 * 60 * 1000 };
 
@@ -139,8 +139,9 @@ export const isIndexSymbol = (symbol) => String(symbol ?? '').startsWith('^');
 // Overlay geometry, browser-measured on the fixed 1920x1080 board (the same
 // fixed-pixel reasoning capacity.js uses for card rows — the canvas never
 // changes size): the wall's content box, a shelf row, the shelf's hairline
-// block, and the floor a grid tile needs to hold its four lines.
-export const WALL_H = 854;
+// block, and the floor a grid tile needs to hold its four lines. The canvas
+// itself is the shared one every overlay gets.
+export const WALL_H = OVERLAY_BODY_H;
 const SHELF_ROW = 225;
 const RULE_BLOCK = 53;
 // A grid tile's four lines with the sparkline at its 36px minimum measure 163px

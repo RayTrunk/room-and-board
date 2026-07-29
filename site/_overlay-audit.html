@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Overlay audit harness</title>
+<link rel="stylesheet" href="css/main.css">
+<style>
+  html, body { margin: 0; overflow: hidden; }
+  #audit-meta { position: fixed; right: 6px; top: 6px; z-index: 999; font: 11px monospace;
+    color: #9fb; background: rgba(0,0,0,.85); padding: 3px 6px; border-radius: 5px; max-width: 900px; }
+  body.hidemeta #audit-meta { display: none; }
+</style>
+</head>
+<body>
+  <div id="app">
+    <header class="topbar" id="topbar"></header>
+    <main class="grid" id="grid"></main>
+  </div>
+  <div id="settings-root"></div>
+  <div id="edit-root"></div>
+  <div id="audit-meta"></div>
+<script type="module">
+  import { normalizeConfig, DEFAULT_CONFIG, imageFit } from './js/config.js';
+  import { initExpand } from './js/expand.js';
+  import { openImageViewer } from './js/imageshow.js';
+  import { DEMO_VMS } from './demo/fixtures.js';
+  import * as weather from './js/widgets/weather.js';
+  import * as surf from './js/widgets/surf.js';
+  import * as subway from './js/widgets/subway.js';
+  import * as markets from './js/widgets/markets.js';
+
+  const q = new URLSearchParams(location.search);
+  const id = q.get('id') ?? 'weather';
+  const dense = q.get('dense') === '1';
+
+  // Font substitution. The board's CiscoSansTT is not installed here, so stand
+  // in a face with the SAME glyphs and deliberately skewed line metrics: this is
+  // the variable that moves a label inside its pill, and nothing else changes.
+  // ?fix=0 puts the pill back on the shipped line-height construction so the two
+  // can be shot side by side under the same metrics.
+  const metrics = q.get('metrics');
+  if (metrics) {
+    const [asc, desc] = { cisco: [90, 45], hi: [85, 50], lo: [115, 10] }[metrics] ?? [90, 45];
+    const s = document.createElement('style');
+    s.textContent = `
+      @font-face { font-family: 'SimFace'; src: local('Helvetica Neue'), local('Arial');
+                   ascent-override: ${asc}%; descent-override: ${desc}%; line-gap-override: 0%; }
+      :root { --font-board: 'SimFace', sans-serif; }`;
+    document.head.appendChild(s);
+  }
+  if (q.get('fix') === '0') {
+    const s = document.createElement('style');
+    s.textContent = `.sbstatus { display: inline-block; line-height: 1.5em; font-family: var(--font-board); }
+                     .bullet, .sbalert__text { font-family: var(--font-board); }`;
+    document.head.appendChild(s);
+  }
+  if (q.get('meta') === '0') document.body.classList.add('hidemeta');
+  const cfg = normalizeConfig(structuredClone(DEFAULT_CONFIG));
+  const MODS = { weather, surf, subway, markets };
+
+  // Worst cases, built the way the widgets' own view models are shaped.
+  const LONG = 'Trains are rerouted and running with delays in both directions because of a signal problem, and are making local stops between stations while crews work.';
+  const SUB_LINES = ['1', '2', '3', '4', '5', '6', '7', 'A', 'C', 'E', 'B', 'D', 'F', 'M', 'G', 'J', 'Z', 'L', 'N', 'Q', 'R', 'W', 'S'];
+  const SYMS = ['^DJI', '^IXIC', '^GSPC', 'AAPL', 'MSFT', 'NVDA', 'GOOGL', 'AMZN', 'TSLA', 'META',
+    'NFLX', 'AMD', 'INTC', 'CRM', 'ORCL', 'ADBE', 'PYPL', 'QCOM', 'TXN', 'AVGO'];
+  // nAlert problem lines (each with a long lead + a second alert) and nGood
+  // healthy ones; markets takes nIdx indices ahead of the rest of the 20 cap.
+  function synthVm(which, nAlert, nGood) {
+    if (which === 'subway') {
+      return { updatedAt: Math.floor(Date.now() / 1000), stale: false,
+        lines: SUB_LINES.slice(0, nAlert + nGood).map((line, i) => (i < nAlert
+          ? { line, ok: false, headers: [LONG, 'Expect longer waits in both directions.'] }
+          : { line, ok: true, headers: [] })) };
+    }
+    const syms = SYMS.slice(0, nAlert + nGood);
+    return { updatedAt: Math.floor(Date.now() / 1000), stale: false,
+      indices: syms.map((symbol, i) => ({ symbol, name: `Company ${symbol}`, price: 100 + i,
+        change: i % 2 ? -1.25 : 2.5, changePct: i % 2 ? -0.4 : 0.8,
+        spark: [98, 99, 97, 100, 101, 100 + i], spark2: [95, 96, 94, 97, 98, 99, 97, 100, 101, 100 + i], split: 5 })) };
+  }
+
+  // A 3:2 test photo: cover crops it on a 16:9 frame, contain letterboxes it.
+  // Corner blocks and a hairline frame make either outcome unmistakable.
+  const PHOTO = 'data:image/svg+xml;base64,' + btoa(`<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800">
+    <defs><linearGradient id="s" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1b3a5c"/><stop offset="0.55" stop-color="#7fa8c9"/>
+      <stop offset="0.56" stop-color="#2f5a3a"/><stop offset="1" stop-color="#12301f"/></linearGradient></defs>
+    <rect width="1200" height="800" fill="url(#s)"/>
+    <circle cx="880" cy="180" r="70" fill="#ffe9a8"/>
+    <rect x="0" y="0" width="1200" height="800" fill="none" stroke="#ff2d55" stroke-width="16"/>
+    <rect x="16" y="16" width="120" height="120" fill="#ff2d55"/>
+    <rect x="1064" y="664" width="120" height="120" fill="#ff2d55"/>
+    <text x="600" y="420" font-size="90" fill="#fff" text-anchor="middle" font-family="sans-serif">3:2 SOURCE</text>
+  </svg>`);
+
+  const grid = document.getElementById('grid');
+  initExpand(grid);
+
+  function measure(extra = {}) {
+    const H = window.innerHeight;
+    const host = document.querySelector('#expand-view:not([hidden])');
+    const rec = { viewport: [window.innerWidth, H], id, dense, ...extra };
+    if (host) {
+      const body = host.querySelector('.expand__body');
+      const hint = host.querySelector('.expand__hint');
+      const br = body.getBoundingClientRect();
+      const hr = hint.getBoundingClientRect();
+      const cs = getComputedStyle(body);
+      // The floor the band reserves: the body's CONTENT box bottom.
+      const bandFloor = br.bottom - parseFloat(cs.paddingBottom);
+      // The lowest pixel actually PAINTED. Anything inside a scroller is clipped
+      // to it, so clamp there — an unclamped rect reports rows that scrolled out
+      // of sight as if they were on screen.
+      let painted = br.top;
+      let clippedAway = 0;
+      for (const el of body.querySelectorAll('*')) {
+        const r = el.getBoundingClientRect();
+        if (!r.height || !r.width) continue;
+        let limit = bandFloor;
+        for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) {
+          const o = getComputedStyle(p).overflowY;
+          if (o === 'auto' || o === 'scroll' || o === 'hidden') {
+            limit = Math.min(limit, p.getBoundingClientRect().bottom);
+            break;
+          }
+        }
+        painted = Math.max(painted, Math.min(r.bottom, limit));
+        clippedAway = Math.max(clippedAway, r.bottom - limit);
+      }
+      rec.bodyBox = [Math.round(br.top), Math.round(br.bottom)];
+      rec.bandFloor = Math.round(bandFloor);
+      rec.paintedFloor = Math.round(painted);
+      rec.hintBox = [Math.round(hr.top), Math.round(hr.bottom)];
+      rec.gapBandToHint = Math.round(hr.top - bandFloor);
+      rec.gapPaintedToHint = Math.round(hr.top - painted);
+      rec.hintToViewportBottom = Math.round(H - hr.bottom);
+      // > 0 means the widget modelled more canvas than it got: content is
+      // scrolled or clipped out of sight, which on a signage board is lost data.
+      rec.clippedAway = Math.round(Math.max(0, clippedAway));
+      rec.scrollers = [...body.querySelectorAll('*')]
+        .filter((el) => el.scrollHeight - el.clientHeight > 1)
+        .map((el) => `${el.className}:+${el.scrollHeight - el.clientHeight}`);
+      rec.belowBand = Math.round(Math.max(0, painted - bandFloor));
+    }
+    const pill = document.querySelector('.sbstatus');
+    if (pill) {
+      const r = pill.getBoundingClientRect();
+      rec.pillBox = [r.left, r.top, r.width, r.height].map((n) => Math.round(n * 100) / 100);
+      const line = pill.closest('.sbalert__text')?.querySelector('p');
+      if (line) {
+        const lr = line.getBoundingClientRect();
+        // The pill must stay inside the line box it hangs off: that is the
+        // claim that it costs the well no height.
+        rec.leadLineBox = [Math.round(lr.top), Math.round(lr.bottom)];
+        rec.pillOutsideLine = Math.round(Math.max(0, lr.top - r.top) + Math.max(0, r.bottom - lr.bottom));
+      }
+    }
+    const viewer = document.querySelector('#art-viewer:not([hidden])');
+    if (viewer) {
+      const img = viewer.querySelector('.art-viewer__img');
+      rec.viewerFit = getComputedStyle(img).objectFit;
+      rec.viewerFill = viewer.classList.contains('art-viewer--fill');
+      const r = img.getBoundingClientRect();
+      rec.imgBox = [Math.round(r.width), Math.round(r.height)];
+    }
+    window.__audit = rec;
+    document.getElementById('audit-meta').textContent = JSON.stringify(rec);
+  }
+
+  if (id === 'viewer') {
+    const which = q.get('src') ?? 'landscapes';
+    document.body.classList.add('mode-ambient');
+    openImageViewer({ img: PHOTO, title: 'Test photo' }, cfg,
+      { list: [], caption: false, strip: false, fit: imageFit(which) });
+    setTimeout(() => measure({ src: which, fitAsked: imageFit(which) }), 250);
+  } else {
+    const mod = MODS[id];
+    const card = document.createElement('article');
+    card.className = `card card--${id}`;
+    card.setAttribute('data-widget', id);
+    card.innerHTML = `<h2 class="card__title">${mod.meta.title}</h2><div class="card__body"></div><div class="card__stamp" hidden></div>`;
+    card.style.gridColumn = '1 / span 6';
+    card.style.gridRow = '1 / span 4';
+    card.classList.add('t-l');
+    grid.appendChild(card);
+    const nA = Number(q.get('a') ?? (dense ? (id === 'subway' ? 12 : 20) : 0));
+    const nG = Number(q.get('g') ?? (dense ? (id === 'subway' ? 12 : 0) : 0));
+    const vm = (nA || nG) ? synthVm(id, nA, nG) : DEMO_VMS[id];
+    mod.render(card.querySelector('.card__body'), vm, cfg);
+    card.click();
+    setTimeout(() => measure(), 250);
+  }
+</script>
+</body>
+</html>

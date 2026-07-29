@@ -1,6 +1,6 @@
 // Boot and runtime orchestration for the signage dashboard.
 
-import { normalizeConfig, decodeConfig, CURATED_SOURCES } from './config.js';
+import { normalizeConfig, decodeConfig, CURATED_SOURCES, imageFit } from './config.js';
 import { loadConfig, saveConfig, loadCache, saveCache } from './store.js';
 import { fetchJSON, fetchBuffer, fetchText } from './net.js';
 import { fmtClock, fitViewport } from './util.js';
@@ -224,8 +224,8 @@ async function startSlideshow() {
       : CURATED_SOURCES[src] ? (cfg[src]?.every ?? CURATED_SOURCES[src].every)
       : cfg.art?.every) ?? 30;
     // Curated photo sources (Landscapes) fill the screen; art/personal photos
-    // letterbox to never crop the canvas.
-    const fit = CURATED_SOURCES[src] ? 'cover' : 'contain';
+    // letterbox to never crop the canvas. Same rule the tapped-open viewer asks.
+    const fit = imageFit(src);
     slideshow = createSlideshow(manifest, $('#slideshow'), { intervalMs: everyMin * 60 * 1000, fit });
     slideshow.start();
   } catch (err) { console.error('[signage] slideshow unavailable', err); }

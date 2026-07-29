@@ -25,6 +25,39 @@
   --warn-tint: #36220c;
   --good-tint: #0e2b20;
   --bad-tint: #4f0e10;
+  /* The board's own face first, then whatever the viewing device has. Named
+     once so the metric-pinned alias below can mirror it EXACTLY — the two lists
+     must resolve to the same physical font or a badge would render in a
+     different typeface from the copy beside it. */
+  --font-board: 'CiscoSansTT', 'Cisco SansTT', -apple-system, 'SF Pro Display', 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+  --font-centred: 'RB Centred', var(--font-board);
+}
+
+/* Text centred inside its own box, independent of the rendering font.
+   CSS centres the LINE BOX, never the glyphs: whatever the construction —
+   line-height == height, symmetric padding, or flex align-items:center — the
+   baseline lands at box-centre + (ascent − descent)/2, and ascent/descent are
+   read off the font. So a badge that is centred with the desktop fallback rides
+   high with the board's CiscoSansTT, whose metrics are taller (see the
+   .train__linechip note) and descend further. Pixel-measured over four synthetic
+   metric profiles: a 20px label travelled 7px between the extremes, by the same
+   amount in all three constructions, so no amount of re-centring in CSS fixes
+   it — the variable is the font, so the fix has to be too.
+   This face is the SAME glyphs the board already draws — the src list mirrors
+   --font-board, so it resolves to whatever --font-board resolves to — with its
+   line metrics pinned so ascent − descent equals a typical cap height. The
+   baseline then lands at box-centre + cap/2, i.e. the CAPS are centred, on any
+   font the OS hands us. If none of the names resolve the rule simply drops out
+   and the element falls through to --font-board, unchanged.
+   Use it on boxes whose height is explicit (a pill, a bullet); on a box sized by
+   its own line box, pinning the metrics would change its height. */
+@font-face {
+  font-family: 'RB Centred';
+  src: local('CiscoSansTT'), local('Cisco SansTT'), local('SF Pro Display'),
+       local('Segoe UI'), local('Roboto'), local('Helvetica Neue'), local('Arial');
+  ascent-override: 86%;
+  descent-override: 14%;
+  line-gap-override: 0%;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -45,7 +78,7 @@ html, body {
   overflow: hidden;
   background: var(--bg);
   color: var(--ink);
-  font-family: 'CiscoSansTT', 'Cisco SansTT', -apple-system, 'SF Pro Display', 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+  font-family: var(--font-board);
   -webkit-font-smoothing: antialiased;
 }
 
@@ -368,9 +401,13 @@ html, body {
 .arrival__min { font-weight: 700; font-variant-numeric: tabular-nums; }
 .arrival__unit { color: var(--ink-faint); font-size: 21px; }
 
+/* The line badge: a fixed circle with one glyph centred in it, so it wants the
+   metric-pinned face — the box cannot change size, only the glyph inside it can
+   sit off-centre (which it does on the board's own font). */
 .bullet {
   width: 36px; height: 36px; border-radius: 50%;
   display: inline-flex; align-items: center; justify-content: center;
+  font-family: var(--font-centred);
   font-weight: 700; font-size: 20px; color: #fff; background: #808183;
   flex: none;
 }
@@ -976,7 +1013,13 @@ body.mode-ambient .gear--edit { display: none; }
      classifier never runs (mouse drags were unaffected — no arbitration). */
   touch-action: none;
 }
+/* Default contain: art and personal photos are never cropped. A widget whose
+   SCREENSAVER fills the screen (the curated sources — Landscapes) opens its
+   tapped image the same way, or the same photo reads as two different pictures
+   depending on how you got to it. imageFit() in config.js is the one rule both
+   paths ask. */
 .art-viewer__img { width: 100%; height: 100%; object-fit: contain; }
+.art-viewer--fill .art-viewer__img { object-fit: cover; }
 
 /* ---------- full-screen text viewer (tap truncated text) ---------- */
 .text-viewer {
@@ -1036,15 +1079,40 @@ body.mode-ambient .gear--edit { display: none; }
   padding: 56px 72px 0;
   cursor: pointer;
 }
-.expand__head { flex: none; display: flex; align-items: baseline; gap: 20px; }
+/* Pinned, not measured: the head is baseline-aligned type, so its natural height
+   follows the rendering font's ascent — which would make the canvas the models
+   in markets.js/subway.js reserve against (OVERLAY_BODY_H) a different number on
+   the board than in the browser they were measured in. 34px is that measured
+   height; fixing it makes the canvas arithmetic exact everywhere. Anything a
+   taller face adds simply eats into the 36px below it. */
+.expand__head { flex: none; height: 34px; display: flex; align-items: baseline; gap: 20px; }
 .expand__title { font-size: 28px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-dim); }
 .expand__note { font-size: 24px; color: var(--ink-faint); }
 .expand__stamp { font-size: 24px; color: var(--warn); } /* the source card's stale stamp, carried through */
 .expand.is-stale .expand__body { opacity: 0.75; } /* same dimming as a stale card */
-/* The body reserves the hint band; the hint itself clears the RoomOS bar (the
-   overlay reaches bottom:0, but its text must not sit under the bar). */
+/* The hint band, in three parts that add up to the body's padding-bottom:
+     32.0px  the hint's margin off the floor;
+     26.4px  the hint's line box, pinned by a unitless line-height so the band
+             measures the same on the board as in the browser it was measured in;
+     41.6px  air between the data and the hint.
+   The hint used to sit 52px up, which left it ~22px under the content and
+   reading as part of the data rather than as chrome. Those 52px were bar
+   clearance: the belief was that RoomOS paints its "Tap here to start" bar OVER
+   the bottom 40px of our viewport. Sean's on-device diagnostic on 2026-07-28
+   settled it — the Board Pro hands the page a 1920x1040 viewport and the bar
+   lives in the 40 physical px BELOW it, so nothing is painted over page content
+   and there is no band to reserve. The clearance becomes air where it is wanted,
+   above the hint instead of under it, and the band as a whole does not grow:
+   the canvas the widget models reserve against (expand.js OVERLAY_BODY_H) is
+   untouched by this change.
+   All of it is viewport-relative — .expand is position:fixed and the body flexes
+   — so the same rules give the same 41.6px gap on a 1040 board, a 1200 Room
+   Navigator and an 1080 desktop preview. */
 .expand__body { flex: 1; min-height: 0; margin-top: 36px; padding-bottom: 100px; }
-.expand__hint { position: absolute; left: 0; right: 0; bottom: 52px; text-align: center; font-size: 22px; color: var(--ink-faint); }
+.expand__hint {
+  position: absolute; left: 0; right: 0; bottom: 32px;
+  text-align: center; font-size: 22px; line-height: 1.2; color: var(--ink-faint);
+}
 
 /* Markets: a ticker wall. Indices lead on their own shelf; the watchlist fills
    the grid below. Each band renders only when it has tiles, so removing the
@@ -1137,18 +1205,34 @@ body.mode-ambient .gear--edit { display: none; }
   gap: var(--well-gap, 30px); padding: var(--well-pad, 20px) var(--well-px, 30px);
 }
 .sbalert .bullet { width: var(--well-bullet, 80px); height: var(--well-bullet, 80px); font-size: var(--well-bfs, 42px); }
-.sbalert__text { font-size: var(--well-fs, 30px); line-height: 1.34; color: var(--ink); min-width: 0; }
+/* Metric-pinned too, and for the model's sake rather than the copy's: the pill
+   below hangs off THIS line box, and whether the pill fits inside it (the claim
+   that the pill costs the well no height) otherwise depends on the ascent the OS
+   font happens to have. The line box itself does not move — line-height is a
+   unitless 1.34, so the well's measured 41px line holds either way. */
+.sbalert__text {
+  font-family: var(--font-centred);
+  font-size: var(--well-fs, 30px); line-height: 1.34; color: var(--ink); min-width: 0;
+}
 .sbalert__text p + p { margin-top: var(--well-para, 9px); } /* a line's second alert */
 /* The only amber left in a well: one pill at the head of the lead alert naming
    what is wrong (subway.js reads the label off the prose). Every dimension is
    em-relative to the body copy, so it rides all five rungs of the ladder at one
    proportion — 0.74em, i.e. 20px against rung 2's 27px — and its 1.5em box stays
-   inside the 1.34 line box, which is how the pill costs the well no height. */
+   inside the 1.34 line box, which is how the pill costs the well no height.
+   The label is centred by LAYOUT (flex, not a line-height that happens to equal
+   the height) on the metric-pinned face: on the board the shipped rule put the
+   words visibly high in the pill, because line-height centring follows the
+   font's ascent and descent and CiscoSansTT's differ from the desktop
+   fallback's. Both halves are needed — pinning the metrics under a line-height
+   construction still leaves the label a pixel high. */
 .sbstatus {
-  display: inline-block; margin-right: 0.6em; padding: 0 0.65em;
-  height: 1.5em; line-height: 1.5em; vertical-align: 0.1em;
+  display: inline-flex; align-items: center; justify-content: center;
+  margin-right: 0.6em; padding: 0 0.65em;
+  height: 1.5em; line-height: 1; vertical-align: 0.1em;
   border-radius: 999px;
   background: var(--warn-tint); color: var(--warn);
+  font-family: var(--font-centred);
   font-size: 0.74em; font-weight: 600; letter-spacing: 0.06em;
   text-transform: uppercase; white-space: nowrap;
 }

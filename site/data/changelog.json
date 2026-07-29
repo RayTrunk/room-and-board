@@ -3,6 +3,10 @@
     "date": "July 28",
     "items": [
       {
+        "lead": "Full screen views",
+        "text": "Tap a card for its full screen view and the close hint now sits well clear of the data instead of crowding it. Tapping a Landscapes photo fills the whole display too, the way the screensaver already showed it, rather than leaving black bars down the sides."
+      },
+      {
         "lead": "Adding widgets",
         "text": "Sports and image widgets now sit in their own groups in the add menu, tucked behind a tap like Commute, so the list stays short."
       },
