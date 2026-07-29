@@ -53,9 +53,15 @@ Fixed px scale tuned for 3–6 ft viewing (1 px ≈ 0.64 mm):
   10 px, tracks/tiles 8 px, pills 999 px. No nested cards.
 - Base unit 4 px; common steps 4/8/10/12/14/20/26/44.
 - Touch targets: buttons 64 px, FABs/rows ≥ 44–56 px.
-- RoomOS overlays the bottom **40 px** (`--roomos-bar`) in idle modes; interactive
-  content clears it via `--safe-bottom: 84px`. Tap-opened overlays are NOT overlaid
-  — their strips sit flush at `bottom: 0`.
+- The page is a **fixed 1920 × 1080 canvas**, which is not the viewport. Measured
+  on-device 2026-07-28: a Board Pro / Desk Pro reports a **1920 × 1040** viewport with
+  Cisco's bar *below* it (it does not overlay page content), and a Room Navigator in
+  PWA mode reports **1920 × 1200** with no bar at all. An earlier belief that the bar
+  overlaid the bottom 40 px was wrong; re-measure before reviving it.
+- Consequences: the grid ends at y=996, so it clears every real viewport; `--roomos-bar`
+  (40 px) and `--safe-bottom` (84 px) survive as conservative lifts rather than
+  necessities; and anything `position: fixed` must be calibrated against **1040**, not
+  1080 (`OVERLAY_BODY_H`). Audit at the real height — the harnesses take `?vh=`.
 
 ## Motion
 
