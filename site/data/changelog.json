@@ -19,8 +19,8 @@
         "text": "The add menu is grouped more clearly. World Clock and Cloud Services now sit together under Reference, and the daily reads have their own Daily group: This Day in History, Quote of the Day, Word of the Day and Chart of the Day."
       },
       {
-        "lead": "This guide",
-        "text": "The widget guide is now one scannable list with the details a tap away, and it matches the current widget groups. Every widget name is on screen at once, so you can find the one you want without scrolling past six sections to reach it."
+        "lead": "On the board",
+        "text": "You can now read what is new on the board itself: open the gear and tap What’s new at the bottom of the settings list. The board also shows which version it is running."
       }
     ]
   },
@@ -50,10 +50,6 @@
       {
         "lead": "Weather",
         "text": "Tap the Weather card for the full picture: 24 hours of temperature and rain, a 7 day outlook, wind, humidity, UV, and sunrise and sunset times."
-      },
-      {
-        "lead": "This guide",
-        "text": "What’s new now opens with the three newest updates and keeps the rest behind Show earlier updates. The guide also prints properly now."
       }
     ]
   },
@@ -83,10 +79,6 @@
       {
         "lead": "Reliability",
         "text": "If an update ever goes wrong, the display explains what happened, keeps retrying, and recovers on its own instead of going dark."
-      },
-      {
-        "lead": "This guide",
-        "text": "The guide now opens with the Room & Board logo and a photo of a real board in action. Tap the photo for a full-screen look. The setup steps also now match how setup actually works."
       }
     ]
   },
@@ -113,10 +105,6 @@
       {
         "lead": "Headlines and Markets News",
         "text": "Tap a headline for its summary and a QR code to the full article. The board itself never navigates away."
-      },
-      {
-        "lead": "This guide",
-        "text": "roomboard.app/info went live."
       }
     ]
   },

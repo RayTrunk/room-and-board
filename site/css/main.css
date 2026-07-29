@@ -709,9 +709,14 @@ body.mode-ambient .gear--edit { display: none; }
   background: var(--bg);
 }
 .settings__rail {
-  /* Footer rides just above the RoomOS bar: its overlay covers the bottom
-     ~40 logical px, +12px breathing room (was the full 28+84 safe-bottom
-     cushion, which left the footer floating mid-rail). */
+  /* 52px = the 40px of PAGE a Board Pro's glass never shows (1080 page − 1040
+     viewport, measured on-device 2026-07-28) + 12px breathing room. The old
+     comment here credited the number to Cisco's bar "overlaying" the bottom
+     ~40px; that model was wrong (the bar sits BELOW the viewport — see
+     DESIGN.md and test/viewport.test.js) but the number survives it unchanged,
+     because the page/glass mismatch it now stands for is the same 40px. So this
+     is NOT spare room: trim it and the Save/Cancel/wordmark footer slides off
+     the bottom of a real board. test/viewport.test.js pins the floor. */
   background: var(--bg-card); padding: 20px 24px 52px;
   display: flex; flex-direction: column; gap: 12px;
   min-height: 0; /* children may scroll; the footer must never leave view */
@@ -744,9 +749,18 @@ body.mode-ambient .gear--edit { display: none; }
    (degrades to an instant snap on older engines). The inner clips during collapse. */
 .settings__navkids {
   display: grid; grid-template-rows: 0fr;
-  transition: grid-template-rows 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+  transition: grid-template-rows 0.2s cubic-bezier(0.22, 1, 0.36, 1), margin 0.2s cubic-bezier(0.22, 1, 0.36, 1);
 }
 .settings__navkids.is-open { grid-template-rows: 1fr; }
+/* A CLOSED group's wrapper is zero-height but still takes the nav's 4px flex
+   gap on both sides, so every collapsed category sat 8px from its neighbour
+   while every other pair of rows sat 4px — the rail's spacing was uneven and
+   nobody had noticed. Pulling it back evens the rail and returns 16px (4
+   groups x 4px), which is the difference between the footer's What's new entry
+   costing the nav its last pixel and it costing the nav nothing that shows.
+   Physical margins on purpose: margin-block is a Chrome 87 feature and this
+   ships to a gen1 Qt WebEngine. */
+.settings__navkids:not(.is-open) { margin-top: -2px; margin-bottom: -2px; }
 .settings__navkids__inner { min-height: 0; overflow: hidden; display: flex; flex-direction: column; gap: 4px; }
 .settings__navkids.is-open .settings__navkids__inner { padding-top: 4px; }
 @media (prefers-reduced-motion: reduce) {
@@ -754,9 +768,38 @@ body.mode-ambient .gear--edit { display: none; }
 }
 .settings__railfoot { display: flex; flex-direction: column; gap: 8px; flex: none; }
 /* Brand wordmark beneath the footer buttons, set apart by space alone
-   (calm-utility — no divider needed). Decorative; the dialog is already
-   labelled "Settings". */
-.settings__lockup { align-self: center; width: 180px; max-width: 100%; height: auto; margin-top: 8px; }
+   (calm-utility — no divider needed). It used to be purely decorative; it is
+   now the face of the What's new control below, which is what lets that
+   control cost the rail ~24px instead of a whole row. */
+.settings__lockup { align-self: center; width: 180px; max-width: 100%; height: auto; }
+/* The rail footer's What's new entry: the running version (shown nowhere else
+   in Settings) plus the control that opens the release notes. It lives in the
+   FOOTER, which is `flex: none` and never scrolls, rather than in the nav,
+   which is the list that grows with every widget that ships and the only part
+   of the rail that can scroll away from you.
+   Calm at rest — no fill, no ring, quiet ink — and it ignites only on press,
+   per the calm-affordance rule; the caret is the resting signifier that says
+   this is a control at all. ~72px tall, comfortably over the 44px touch floor. */
+.settings__whatsnew {
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  width: 100%; min-height: 44px; padding: 0; margin: 0;
+  font: inherit; background: none; border: 0; color: var(--ink-dim); cursor: pointer;
+}
+.settings__whatsnew:active { color: var(--ink); }
+.settings__whatsnew.is-active { color: var(--ink); }
+/* One line, always: the rail's content box is 222px and a wrap here costs the
+   nav another 24px it does not have. nowrap makes a regression visible (the
+   line overhangs) instead of silently eating a nav row. */
+.settings__wnline { display: flex; align-items: baseline; gap: 8px; font-size: 20px; white-space: nowrap; }
+.settings__wnline::after {
+  content: ""; align-self: center; width: 0.38em; height: 0.38em;
+  border-right: 2px solid currentColor; border-bottom: 2px solid currentColor;
+  transform: rotate(-45deg); margin-left: -2px;
+}
+/* 20px is the --ink-faint AA floor, so the version takes --ink-faint and
+   nothing smaller. It is context, not the label: the label is what a reader
+   is scanning for. */
+.settings__ver { font-size: 20px; color: var(--ink-faint); font-variant-numeric: tabular-nums; }
 .settings__pane { padding: 44px 56px calc(44px + var(--safe-bottom)); overflow-y: auto; }
 /* RoomOS-style scroll indicator. Nav + pane use a custom overlay thumb
    (settings.js attachScrollIndicator) — full control of offset, shortened
@@ -2286,4 +2329,94 @@ body.ss-backdrop .cf-dial__svg, .ss-preview.ss-backdrop .cf-dial__svg {
 .artwork__frame > .artwork__img.is-entering { opacity: 0; }
 @media (prefers-reduced-motion: reduce) {
   .artwork__frame > .artwork__img { transition: none; }
+}
+
+/* ---------- Settings → What's new (js/settings/whatsnew.js) ----------
+   The /info changelog's geometry at board scale. Deliberately NOT cards: a
+   changelog is a list, and reusing the row rhythm the settings pane already has
+   keeps it from becoming its own little design (the same reasoning as the
+   .log block in css/info.css, which this is the 6 ft port of — same class
+   names, same rhythm, retuned; info.css is a separate page's stylesheet and is
+   never loaded here).
+
+   Type is 1.5x the web page's — 24px body against /info's 16 — which is the
+   ratio the rest of this stylesheet already runs at (.row__label 24, .kv-grid
+   22, .pane__hint 21). Nothing here drops below 20px. */
+.pane__head { display: flex; align-items: center; gap: 16px; }
+.pane__head .pane__title { margin-bottom: 0; }
+.log { display: flex; flex-direction: column; max-width: 1460px; margin-top: 26px; }
+.log__group { display: flex; flex-wrap: wrap; gap: 6px 32px; padding: 22px 2px; border-top: 1px solid var(--bg-card-2); }
+/* The date gutter, sized to hold the longest label the file actually carries
+   ("July 20 and 21") on one line at 24px. */
+.log__date { font-size: 24px; font-weight: 600; color: var(--ink-dim); margin: 0; flex: 0 0 220px; }
+/* The items flow into two measure-sized columns rather than running one strip
+   down the left of a 1,460px row. MULTICOL, not the grid /info uses: at board
+   scale the items are three and four lines tall, and a grid aligns its rows —
+   so a two-line note beside a six-line note leaves a four-line hole. Multicol
+   balances by height and packs them, and `columns: 2` is already this
+   stylesheet's idiom for exactly this (.wgroups). Reading order becomes
+   column-wise, which is what a two-column list wants anyway.
+   The `width` (not `count`) form degrades to one column if the pane is ever
+   narrower, and 520px is ~43ch at 24px so a full pane yields two ~50ch
+   columns — inside the 45-75ch band where the eye finds the next line without
+   hunting. */
+.log__items { columns: 520px 2; column-gap: 40px; flex: 1 1 320px; min-width: 0; }
+/* An item never straddles a column break, and the cap keeps a lone item inside
+   the measure when there is only one column to fill — the job --measure does
+   on /info. */
+.log__item { font-size: 24px; line-height: 1.45; color: var(--ink-mid); margin: 0 0 16px; text-wrap: pretty; max-width: 66ch; break-inside: avoid; }
+.log__item:last-child { margin-bottom: 0; }
+.log__lead { font-weight: 600; color: var(--ink); margin-right: 0.4em; }
+
+/* The disclosure for older groups. Calm at rest — one more quiet row in the
+   list, not a button competing with the copy — and it ignites only on press
+   (the calm-affordance rule). 64px is the pane's control height (.btn, .row),
+   comfortably over the 44px touch floor. */
+.log__toggle {
+  font: inherit; font-size: 22px; text-align: left;
+  display: flex; align-items: center; gap: 12px;
+  min-height: 64px; padding: 0 2px; margin: 0; width: 100%;
+  background: none; border: 0; border-top: 1px solid var(--bg-card-2);
+  color: var(--ink-dim); cursor: pointer;
+}
+.log__toggle:active { color: var(--accent); }
+.log__count { color: var(--ink-faint); font-size: 20px; } /* AA: 20px is the --ink-faint floor */
+/* A control has to look like one before it is touched, so the caret carries the
+   affordance the calm colour deliberately does not. Down while there is more
+   below, up once there is not. */
+.log__toggle::after {
+  content: ""; display: inline-block; width: 0.42em; height: 0.42em;
+  margin-left: 4px;
+  border-right: 2px solid currentColor; border-bottom: 2px solid currentColor;
+  transform: translateY(-0.15em) rotate(45deg);
+  transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.log__toggle[aria-expanded="true"]::after { transform: translateY(0.1em) rotate(-135deg); }
+.log__more { display: flex; flex-direction: column; }
+.log__more[hidden] { display: none; }
+@media (prefers-reduced-motion: reduce) {
+  .log__toggle::after { transition: none; }
+}
+/* Fetch failed, or the file came back unusable. Quiet: an absence, not an error.
+   Full width so its hairline matches a group's rather than stopping short at a
+   measure; EMPTY_COPY is a module constant kept to a single line, so there is
+   no long prose here to cap. */
+.log__empty { font-size: 24px; line-height: 1.45; color: var(--ink-dim); margin: 0; padding: 22px 2px; border-top: 1px solid var(--bg-card-2); }
+/* min-height:100% resolves against .settings__pane's definite height (the
+   settings grid row on the fixed 1080px page), so the column is exactly the
+   pane's content box — 1080 − 44 top − 128 bottom = 908px — and its
+   scrollHeight equals the pane's clientHeight when the content is short. That
+   equality matters: fitChangelog tests `scrollHeight > clientHeight`, so a
+   full-height wrapper must not itself register as overflow. (The pane's 128px
+   bottom reserve also means anything the fit keeps ends by y=952, well clear
+   of a Board Pro's 1040 glass.) */
+.whatsnew { display: flex; flex-direction: column; min-height: 100%; }
+/* Closing hairline + the one fact this pane can offer that no other Settings
+   surface does: which version is running. margin-top:auto puts it on the pane's
+   floor, so the air a lumpy history leaves behind sits INSIDE the panel instead
+   of trailing off the bottom of it. 20px is the --ink-faint floor, so this
+   takes --ink-dim. */
+.log__foot {
+  font-size: 20px; color: var(--ink-dim); max-width: 1460px;
+  margin-top: auto; padding: 22px 2px 0; border-top: 1px solid var(--bg-card-2);
 }

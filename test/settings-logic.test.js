@@ -1,7 +1,7 @@
 /**
  * @vitest-environment happy-dom
  */
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import {
@@ -716,5 +716,108 @@ describe('Chart of the Day pane (all topics on by default)', () => {
     expect(lit()).toBe(2);
     expect(pills().filter((p) => p.classList.contains('is-on')).map((p) => p.dataset.topic)).toEqual(['finance', 'sports']);
     closeSettings();
+  });
+});
+
+/* ---------- What's new: the rail FOOTER's entry, not a 16th nav row ---------- */
+
+// The placement is the whole point and it is load-bearing, so it is asserted
+// rather than described. `.settings__nav` is the only part of the rail that
+// scrolls; `.settings__railfoot` is `flex: none` and never does. Putting the
+// entry in the footer is what keeps a growing Settings from pushing the rail's
+// last row (Diagnostics) out of sight on a board — and it is what keeps
+// NAV_MODEL === SECTION_IDS, which the coverage test above pins.
+const shippedLog = JSON.parse(await readFile(resolve(process.cwd(), 'site/data/changelog.json'), 'utf8'));
+
+describe('Settings → What’s new', () => {
+  const settle = () => new Promise((r) => setTimeout(r, 30));
+  const entry = () => document.querySelector('[data-whatsnew]');
+  const open = async () => {
+    document.body.innerHTML = '<div id="settings-root"></div>';
+    window.__signage = { version: 'fa395c8b41d2' };
+    await openSettings(normalizeConfig({}), {});
+    await settle();
+  };
+
+  beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(shippedLog), {
+      status: 200, headers: { 'content-type': 'application/json' },
+    })));
+  });
+  afterEach(() => {
+    closeSettings();
+    vi.unstubAllGlobals();
+    delete window.__signage;
+  });
+
+  it('adds no nav row: NAV_MODEL is untouched and the entry is in the footer', async () => {
+    await open();
+    expect(NAV_MODEL.some((e) => e.id === 'whatsnew')).toBe(false);
+    expect(SECTION_IDS).not.toContain('whatsnew');
+    expect(document.querySelector('.settings__nav [data-whatsnew]')).toBeNull();
+    expect(document.querySelector('.settings__railfoot [data-whatsnew]')).not.toBeNull();
+    // Save and Cancel keep their place above it; the wordmark is now its face.
+    const foot = [...document.querySelectorAll('.settings__railfoot > *')].map((e) => e.className.split(' ')[0]);
+    expect(foot).toEqual(['btn', 'btn', 'settings__whatsnew']);
+    expect(document.querySelector('.settings__whatsnew .settings__lockup')).not.toBeNull();
+  });
+
+  it('shows the running version on the entry, shortened, and in full in the pane', async () => {
+    await open();
+    expect(entry().textContent).toContain('What’s new');
+    expect(entry().textContent).toContain('fa395c8');
+    expect(entry().textContent).not.toContain('fa395c8b41d2'); // 222px of rail
+    entry().click();
+    await settle();
+    expect(document.querySelector('.log__foot').textContent).toContain('fa395c8b41d2');
+  });
+
+  it('opens the notes as a pane with a back control, and back returns to the section', async () => {
+    await open();
+    expect(document.querySelector('.settings__pane .pane__title').textContent).toBe('Display');
+    entry().click();
+    await settle();
+    expect(document.querySelector('.settings__pane .pane__title').textContent).toBe('What’s new');
+    expect(document.querySelectorAll('.settings__pane .log__group').length).toBe(shippedLog.length);
+    expect(entry().classList.contains('is-active')).toBe(true);
+    // The nav highlight never moved, so back has somewhere honest to go.
+    expect(document.querySelector('.settings__navitem.is-active').textContent).toBe('Display');
+    document.querySelector('[data-wn-back]').click();
+    await settle();
+    expect(document.querySelector('.settings__pane .pane__title').textContent).toBe('Display');
+    expect(entry().classList.contains('is-active')).toBe(false);
+  });
+
+  it('drops the active mark when the reader picks a nav section instead of backing out', async () => {
+    await open();
+    entry().click();
+    await settle();
+    document.querySelector('.settings__nav [data-section="widgets"]').click();
+    await settle();
+    expect(entry().classList.contains('is-active')).toBe(false);
+    expect(document.querySelector('.settings__pane .pane__title').textContent).toContain('Widgets');
+  });
+
+  it('leaves Save and Cancel working after a trip through the notes', async () => {
+    await open();
+    entry().click();
+    await settle();
+    document.querySelector('[data-wn-back]').click();
+    await settle();
+    document.querySelector('.settings__close').click();
+    expect(document.querySelector('.settings')).toBeNull();
+  });
+
+  it('renders one quiet line, never an error, when the notes cannot be fetched', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('offline'); }));
+    await open();
+    entry().click();
+    await settle();
+    // NOT the pane-level "Couldn't load this section" copy: loadChangelog's
+    // never-throw contract turns a dead network into an absence, not an error.
+    expect(document.querySelector('.pane__empty')).toBeNull();
+    expect(document.querySelector('.log__empty').textContent).toContain('roomboard.app/info');
+    expect(document.querySelector('.pane__title').textContent).toBe('What’s new');
+    expect(document.querySelector('[data-log-more]')).toBeNull();
   });
 });

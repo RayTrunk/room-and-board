@@ -12,6 +12,7 @@ import { escapeHtml } from '../util.js';
 import { locationSearch } from '../geo.js';
 import { stepTime, fmtHM } from '../modes.js';
 import { toggleIn, applyNameKey, nameAutoCap, searchStations, canAddTicker, TICKER_MAX } from './pickers.js';
+import { paneHtml as whatsNewHtml, railFootHtml, loadChangelog, fitChangelog, wireChangelog } from './whatsnew.js';
 import { MIN_SIZE, firstFit } from '../layout.js';
 
 export const WIDGET_LABELS = {
@@ -83,13 +84,14 @@ export async function openSettings(cfg, { focus } = {}) {
         <div class="settings__railfoot">
           <button class="btn btn--primary settings__save">Save</button>
           <button class="btn settings__close">Cancel</button>
-          <img class="settings__lockup" src="assets/room-and-board-wordmark-dark.svg" alt="Room & Board" width="216" height="50">
+          ${railFootHtml(window.__signage?.version ?? '')}
         </div>
       </aside>
       <section class="settings__pane"></section>
     </div>`;
   state.root.querySelector('.settings__close').addEventListener('click', closeSettings);
   state.root.querySelector('.settings__save').addEventListener('click', saveAndClose);
+  state.root.querySelector('[data-whatsnew]').addEventListener('click', openWhatsNew);
   attachScrollIndicator(state.root.querySelector('.settings__nav'), state.root.querySelector('.settings__rail'), 8);
   attachScrollIndicator(state.root.querySelector('.settings__pane'), state.root.querySelector('.settings'), 14);
   renderNav();
@@ -284,6 +286,7 @@ export function navStale(token) {
 function renderSection() {
   navToken += 1;
   const token = navToken;
+  markWhatsNew(false);
   // Several renderers await a fetch or a dynamic import (the deploy-skew
   // SyntaxError vector). A rejection here left the wrong pane under the new nav
   // highlight with no message on a console-less board. Surface a hint, unless
@@ -294,6 +297,40 @@ function renderSection() {
     const pane = document.querySelector('.settings__pane');
     if (pane) pane.innerHTML = '<p class="pane__empty">Couldn’t load this section. Check the connection and try again.</p>';
   });
+}
+
+/* ---------- what's new (rail footer, not a nav section) ---------- */
+
+// Deliberately NOT a NAV_MODEL entry. The rail is a list Sean specified by
+// hand and the one that grows every time a widget ships; this does not belong
+// in it. It hangs off the rail's FOOTER instead, which is `flex: none` and
+// never scrolls, so it costs the nav a little height once rather than joining
+// the queue that scrolls. That also keeps NAV_MODEL === SECTION_IDS, the
+// coverage invariant test/settings-logic.test.js pins.
+//
+// Measured at 1920x1040 with the entry present: the nav seats 669px of rows in
+// a 734px box on a default board and 717px on a board also showing the
+// advanced Live Video row (15 rows, the most there can be), so neither scrolls
+// at rest. test/viewport.test.js guards the geometry that makes that true.
+function markWhatsNew(on) {
+  state?.root.querySelector('[data-whatsnew]')?.classList.toggle('is-active', on);
+}
+
+// Same async shape as the section renderers (capture the token, bail if the
+// user navigated on), and it bumps the token itself so a section fetch still in
+// flight cannot repaint over the notes. Reached only from the footer, so the
+// pane carries its own back button; back re-renders whichever section the nav
+// is still highlighting, which is exactly where the reader came from.
+async function openWhatsNew() {
+  navToken += 1;
+  const _nav = navToken;
+  markWhatsNew(true);
+  const groups = await loadChangelog(fetchJSON);
+  if (!state || navStale(_nav)) return; // Cancel during the fetch tears `state` down
+  pane().innerHTML = whatsNewHtml(groups, { build: window.__signage?.version ?? '' });
+  fitChangelog(pane()); // optimistic build, measured trim (see whatsnew.js)
+  wireChangelog(pane());
+  pane().querySelector('[data-wn-back]').addEventListener('click', renderSection);
 }
 
 /* ---------- widgets ---------- */

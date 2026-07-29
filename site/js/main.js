@@ -394,6 +394,11 @@ function startSelfHealing() {
   cancels.push(
     schedule(async () => {
       const v = await fetchJSON(`version.json?bust=${Date.now()}`);
+      // Publish it rather than fetching version.json a third time: Settings'
+      // rail footer and its What's new pane both show the running version, and
+      // this poll's first run is a setTimeout(0), so it is populated within a
+      // tick of boot — long before anyone reaches for the gear.
+      if (window.__signage) window.__signage.version = v.version;
       if (bootVersion === null) bootVersion = v.version;
       else if (v.version !== bootVersion) location.reload();
     }, 60 * 60 * 1000),

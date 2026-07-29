@@ -194,3 +194,39 @@ describe('full-bleed contexts are fixed to the real viewport', () => {
     expect(users).toEqual(['.iptv__mute']);
   });
 });
+
+describe('the settings rail keeps its footer on a board’s glass', () => {
+  // The rail is a PAGE citizen: it is 1080px tall whatever the device shows.
+  // On a Board Pro the glass stops at 1040, so the bottom 40px of that rail is
+  // simply never seen, and the rail's bottom padding is what keeps Save,
+  // Cancel and the What's new entry above the cut. The stylesheet used to
+  // credit that number to Cisco's bar "overlaying" the page; the bar does no
+  // such thing (see above), but the number it produced is exactly the
+  // page-minus-glass strip, so it survived the correction unchanged. This is
+  // the guard that stops someone reading the retired bar model as spare room.
+  const shorthand = decl('.settings__rail', 'padding', bare).split(/\s+/);
+
+  it('reserves at least the page a board never shows', () => {
+    expect(shorthand).toHaveLength(3); // top | inline | bottom
+    expect(px(shorthand[2])).toBeGreaterThanOrEqual(DESKTOP - BOARD);
+  });
+
+  it('scrolls the nav and never the footer', () => {
+    // Everything pinned (the brand, Save/Cancel, the What's new entry) must sit
+    // outside the scrolling box, or growing Settings starts hiding its own
+    // primary action.
+    expect(decl('.settings__nav', 'overflow-y')).toBe('auto');
+    expect(decl('.settings__nav', 'flex')).toBe('1');
+    expect(decl('.settings__railfoot', 'flex')).toBe('none');
+    expect(decl('.settings__brand', 'flex')).toBe('none');
+  });
+
+  it('holds the What’s new entry to one line', () => {
+    // The rail's content box is 270 − 24 − 24 = 222px. A second line there
+    // costs the nav 24px, which is most of the slack the 15th nav row leaves —
+    // so the line is pinned to one and a regression overhangs visibly instead
+    // of quietly pushing a nav row off the bottom.
+    expect(decl('.settings__wnline', 'white-space')).toBe('nowrap');
+    expect(px(decl('.settings__whatsnew', 'min-height'))).toBeGreaterThanOrEqual(44);
+  });
+});

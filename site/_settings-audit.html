@@ -54,7 +54,15 @@
   fold.style.top = `${vh}px`;
   fold.dataset.label = `${vh}px — bottom of the ${VIEWPORTS[vh] ?? 'UNSUPPORTED'} screen`;
   // Single theme since the 2026-07-19 fold — no body class needed.
+  // main.js publishes the running version here from its hourly version.json
+  // poll; the harness never boots main.js, so it stands one in. The default is
+  // a full 12-character build id — the widest string the rail footer and the
+  // pane colophon will ever have to seat.
+  window.__signage = { version: q.get('build') ?? 'fa395c8b41d2' };
   const cfg = normalizeConfig(structuredClone(DEFAULT_CONFIG));
+  // ?iptv=1 places the advanced Live Video card, which is the 15th (and
+  // last-possible) nav row — the worst case for the rail's height budget.
+  if (q.get('iptv')) cfg.layout.push({ id: 'iptv', x: 0, y: 0, w: 3, h: 3 });
   // ?configured=1 renders the photo panes in their album-connected state.
   if (q.get('configured')) {
     cfg.photos.album = 'B1m5fk75vLWwX';
@@ -75,20 +83,49 @@
     }
     find()?.click();
   }
+  // ?whatsnew=1 opens the rail footer's What's new pane; &expand=1 also opens
+  // its earlier-updates drawer. The pane is not a NAV_MODEL section, so ?section=
+  // cannot reach it.
+  if (q.get('whatsnew')) {
+    document.querySelector('.settings__whatsnew')?.click();
+    await new Promise((r) => setTimeout(r, 400));
+    if (q.get('expand')) document.querySelector('.settings__pane [data-log-more]')?.click();
+  }
+
   // Anything the device's screen cannot reach. The rail footer and the pane's
   // last control are the two that have ever come close, so they are named rather
   // than counted.
   const below = (sel) => [...document.querySelectorAll(sel)]
     .map((el) => [el.className.split(' ')[0], Math.round(el.getBoundingClientRect().bottom - vh)])
     .filter(([, d]) => d > 0);
+  // The rail's own scroll budget. The nav is the only part of the rail allowed
+  // to scroll, and the footer must never need to: overflow > 0 here means the
+  // rail is one row taller than the page can seat it.
+  const scrollOf = (sel) => {
+    const el = document.querySelector(sel);
+    if (!el) return null;
+    return { sh: el.scrollHeight, ch: el.clientHeight, over: Math.max(0, el.scrollHeight - el.clientHeight) };
+  };
+  const toggle = document.querySelector('.settings__pane [data-log-more]');
   window.__sections = SECTION_IDS;
   window.__audit = {
-    section: section || '(default)', deviceH: vh, device: VIEWPORTS[vh] ?? 'UNSUPPORTED',
+    section: section || (q.get('whatsnew') ? 'whatsnew' : '(default)'), deviceH: vh, device: VIEWPORTS[vh] ?? 'UNSUPPORTED',
+    winH: window.innerHeight,
     railBottom: Math.round(document.querySelector('.settings__rail')?.getBoundingClientRect().bottom ?? 0),
+    footBottom: Math.round(document.querySelector('.settings__railfoot')?.getBoundingClientRect().bottom ?? 0),
+    nav: scrollOf('.settings__nav'),
+    pane: scrollOf('.settings__pane'),
+    openGroups: document.querySelectorAll('.settings__pane .log > .log__group').length,
+    hiddenGroups: document.querySelectorAll('.settings__pane .log__more > .log__group').length,
+    toggleBottom: toggle ? Math.round(toggle.getBoundingClientRect().bottom) : null,
     belowFold: below('.settings__rail > *, .settings__pane > *, .settings__navitem, .settings__navgroup'),
   };
+  // ?nometa=1 for screenshots: the readout is fixed to the bottom-right and
+  // would otherwise sit on top of the rail footer, which is the one part of
+  // this surface that lives on the last visible pixels.
   document.getElementById('audit-meta').textContent =
     `${JSON.stringify(window.__audit)} · all: ${SECTION_IDS.join(' ')}`;
+  if (q.get('nometa')) document.getElementById('audit-meta').hidden = true;
 </script>
 </body>
 </html>
