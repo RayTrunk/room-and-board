@@ -772,14 +772,15 @@ body.mode-ambient .gear--edit { display: none; }
    now the face of the What's new control below, which is what lets that
    control cost the rail ~24px instead of a whole row. */
 .settings__lockup { align-self: center; width: 180px; max-width: 100%; height: auto; }
-/* The rail footer's What's new entry: the running version (shown nowhere else
-   in Settings) plus the control that opens the release notes. It lives in the
-   FOOTER, which is `flex: none` and never scrolls, rather than in the nav,
-   which is the list that grows with every widget that ships and the only part
-   of the rail that can scroll away from you.
+/* The rail footer's What's new entry: the wordmark, and one line that opens the
+   release notes. It lives in the FOOTER, which is `flex: none` and never
+   scrolls, rather than in the nav, which is the list that grows with every
+   widget that ships and the only part of the rail that can scroll away from you.
    Calm at rest — no fill, no ring, quiet ink — and it ignites only on press,
    per the calm-affordance rule; the caret is the resting signifier that says
-   this is a control at all. ~72px tall, comfortably over the 44px touch floor. */
+   this is a control at all. ~72px tall, comfortably over the 44px touch floor.
+   The line carried the short build id until it read as noise nobody had asked
+   for; the version now lives only in the pane's colophon. */
 .settings__whatsnew {
   display: flex; flex-direction: column; align-items: center; gap: 6px;
   width: 100%; min-height: 44px; padding: 0; margin: 0;
@@ -789,17 +790,15 @@ body.mode-ambient .gear--edit { display: none; }
 .settings__whatsnew.is-active { color: var(--ink); }
 /* One line, always: the rail's content box is 222px and a wrap here costs the
    nav another 24px it does not have. nowrap makes a regression visible (the
-   line overhangs) instead of silently eating a nav row. */
+   line overhangs) instead of silently eating a nav row. Label plus caret
+   measures 119px of that 222 (it was 199 with the build id on it), so the
+   guard is cheap insurance now rather than a binding constraint. */
 .settings__wnline { display: flex; align-items: baseline; gap: 8px; font-size: 20px; white-space: nowrap; }
 .settings__wnline::after {
   content: ""; align-self: center; width: 0.38em; height: 0.38em;
   border-right: 2px solid currentColor; border-bottom: 2px solid currentColor;
   transform: rotate(-45deg); margin-left: -2px;
 }
-/* 20px is the --ink-faint AA floor, so the version takes --ink-faint and
-   nothing smaller. It is context, not the label: the label is what a reader
-   is scanning for. */
-.settings__ver { font-size: 20px; color: var(--ink-faint); font-variant-numeric: tabular-nums; }
 .settings__pane { padding: 44px 56px calc(44px + var(--safe-bottom)); overflow-y: auto; }
 /* RoomOS-style scroll indicator. Nav + pane use a custom overlay thumb
    (settings.js attachScrollIndicator) — full control of offset, shortened

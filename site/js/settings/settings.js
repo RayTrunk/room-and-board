@@ -86,7 +86,7 @@ export async function openSettings(cfg, { focus } = {}) {
         <div class="settings__railfoot">
           <button class="btn btn--primary settings__save">Save</button>
           <button class="btn settings__close">Cancel</button>
-          ${railFootHtml(window.__signage?.version ?? '')}
+          ${railFootHtml()}
         </div>
       </aside>
       <section class="settings__pane"></section>

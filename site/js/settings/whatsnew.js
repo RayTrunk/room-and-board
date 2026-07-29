@@ -148,8 +148,11 @@ export async function loadChangelog(fetchJSON, url = CHANGELOG_URL) {
 }
 
 // The pane, minus the fetch — so a test can render it from a fixture.
-// `build` is the running site version (version.json), which Settings does not
-// show anywhere else even though the fleet beacon has always reported it.
+// `build` is the running site version (version.json). The colophon is the ONLY
+// place a board states it: the fleet beacon has always reported it, but nothing
+// on the glass did until this pane, and the rail footer deliberately does not
+// (see railFootHtml). If this clause goes, the board stops answering "what
+// version am I running" altogether.
 //
 // The back button is the pane's own, not the nav's: What's new is reached from
 // the rail FOOTER, so no nav row is lit while it is open and there is nothing
@@ -173,26 +176,23 @@ export function paneHtml(groups, { build = '' } = {}) {
     </div>`;
 }
 
-// The rail footer's entry point: the running version, and the control that
-// opens the notes. Settings shows the version NOWHERE else today, so this fills
-// a real gap on the way past — and it lets the wordmark, which was decorative,
-// carry the affordance instead of costing the rail a row of its own. Measured:
-// the footer grows 22px, which the nav has spare even on a board showing the
-// advanced Live Video row (the 15th and last possible nav row), so the rail
-// still does not scroll at rest on any configuration. There is no room for a
-// second line: the rail's content box is 222px, so anything that wraps here
-// costs another 24px the nav does not have.
+// The rail footer's entry point: the control that opens the notes, and nothing
+// else. The wordmark, which was decorative, carries the affordance instead of
+// costing the rail a row of its own; the caret is the resting signifier.
+// Measured: the footer grows 22px, which the nav has spare even on a board
+// showing the advanced Live Video row (the 15th and last possible nav row), so
+// the rail still does not scroll at rest on any configuration. There is no room
+// for a second line: the rail's content box is 222px, so anything that wraps
+// here costs another 24px the nav does not have.
 //
-// The footer takes the SHORT build id and the pane's colophon states it in
-// full. A deploy stamps version.json with 12 characters of the commit SHA
-// (tools/stamp-version.js); seven is the git idiom, it is all anyone reads
-// aloud, and it is what keeps this line from wrapping.
-export const SHORT_BUILD = 7;
-
-export function railFootHtml(build = '') {
-  const short = String(build).slice(0, SHORT_BUILD);
+// The build id used to ride this line, shortened to 7 characters. It is gone:
+// a version number is what you go LOOKING for, once, and putting it in the
+// rail made every reader pay attention to a string they did not ask for. The
+// pane's colophon states it in full, one tap away, which is where someone who
+// wants it will look.
+export function railFootHtml() {
   return `<button class="settings__whatsnew" type="button" data-whatsnew>
       <img class="settings__lockup" src="assets/room-and-board-wordmark-dark.svg" alt="" width="216" height="50">
-      <span class="settings__wnline">What’s new${short ? `<span class="settings__ver">${escapeHtml(short)}</span>` : ''}</span>
+      <span class="settings__wnline">What’s new</span>
     </button>`;
 }

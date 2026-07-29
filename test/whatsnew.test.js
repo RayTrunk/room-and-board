@@ -17,7 +17,7 @@ import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import {
   changelogHtml, fitChangelog, wireChangelog, loadChangelog, paneHtml, emptyHtml,
-  railFootHtml, MIN_OPEN_GROUPS, CHANGELOG_URL, EMPTY_COPY, SHORT_BUILD,
+  railFootHtml, MIN_OPEN_GROUPS, CHANGELOG_URL, EMPTY_COPY,
 } from '../site/js/settings/whatsnew.js';
 
 const shipped = JSON.parse(await readFile(resolve(process.cwd(), 'site/data/changelog.json'), 'utf8'));
@@ -244,35 +244,37 @@ describe('paneHtml', () => {
 });
 
 describe('the rail-footer entry point', () => {
-  it('is a control that names itself and shows the running build', () => {
-    const html = railFootHtml('fa395c8b41d2');
+  it('is a control that names itself', () => {
+    const html = railFootHtml();
     expect(html).toContain('data-whatsnew');
     expect(html).toContain('What’s new');
     expect(html).toContain('type="button"');
   });
 
-  it('shortens the build id: the rail is 222px wide and a wrap costs a nav row', () => {
-    expect(SHORT_BUILD).toBe(7);
-    expect(railFootHtml('fa395c8b41d2')).toContain('>fa395c8<');
-    expect(railFootHtml('fa395c8b41d2')).not.toContain('fa395c8b41d2');
-    // …while the pane, which has the width, states it in full.
-    expect(paneHtml(shipped, { build: 'fa395c8b41d2' })).toContain('fa395c8b41d2');
+  it('carries no build id — the label and the caret, and nothing else', () => {
+    // A version number is something you go looking for once; the rail was
+    // showing it to everyone who walked past. The control's whole caption is
+    // now the two words, with the caret drawn by .settings__wnline::after.
+    const line = /<span class="settings__wnline">(.*?)<\/span>/s.exec(railFootHtml())[1];
+    expect(line).toBe('What’s new');
+    const html = railFootHtml();
+    expect(html).not.toContain('settings__ver');
+    expect(html).not.toMatch(/[0-9a-f]{7}/); // no build id, short or full
+    // It also takes no version to render: nothing here depends on the poll.
+    expect(railFootHtml.length).toBe(0);
   });
 
-  it('renders without a version at all (boot has not polled version.json yet)', () => {
-    const html = railFootHtml('');
-    expect(html).toContain('What’s new');
-    expect(html).not.toContain('settings__ver');
-    expect(railFootHtml()).toContain('data-whatsnew');
+  it('leaves the pane’s colophon as the one place a board states its version', () => {
+    // The load-bearing half of the removal. If this ever fails, the July 29
+    // changelog line "The board also shows which version it is running" has
+    // stopped being true and has to go with it.
+    expect(paneHtml(shipped, { build: 'fa395c8b41d2' })).toContain('version fa395c8b41d2');
+    expect(railFootHtml()).not.toContain('fa395c8b41d2');
   });
 
   it('keeps the wordmark decorative inside the control, not a second label', () => {
     // The lockup is the button's face; its alt is empty so the accessible name
     // is the caption, not "Room & Board Room & Board".
-    expect(railFootHtml('abc')).toContain('alt=""');
-  });
-
-  it('escapes the build id here too', () => {
-    expect(railFootHtml('<img onerror=x>')).not.toContain('<img onerror');
+    expect(railFootHtml()).toContain('alt=""');
   });
 });

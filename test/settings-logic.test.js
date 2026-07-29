@@ -871,13 +871,13 @@ describe('Settings → What’s new', () => {
     expect(document.querySelector('.settings__whatsnew .settings__lockup')).not.toBeNull();
   });
 
-  it('shows the running version on the entry, shortened, and in full in the pane', async () => {
+  it('names itself and nothing else; the version stays in the pane’s colophon', async () => {
     await open();
-    expect(entry().textContent).toContain('What’s new');
-    expect(entry().textContent).toContain('fa395c8');
-    expect(entry().textContent).not.toContain('fa395c8b41d2'); // 222px of rail
+    expect(entry().textContent.trim()).toBe('What’s new');
+    expect(entry().textContent).not.toMatch(/[0-9a-f]{7}/); // no build id on the rail
     entry().click();
     await settle();
+    // …and the board still answers "what version am I running", one tap in.
     expect(document.querySelector('.log__foot').textContent).toContain('fa395c8b41d2');
   });
 

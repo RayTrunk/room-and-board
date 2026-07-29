@@ -56,8 +56,8 @@
   // Single theme since the 2026-07-19 fold — no body class needed.
   // main.js publishes the running version here from its hourly version.json
   // poll; the harness never boots main.js, so it stands one in. The default is
-  // a full 12-character build id — the widest string the rail footer and the
-  // pane colophon will ever have to seat.
+  // a full 12-character build id — the widest string the pane's colophon, the
+  // one place a board states its version, will ever have to seat.
   window.__signage = { version: q.get('build') ?? 'fa395c8b41d2' };
   const cfg = normalizeConfig(structuredClone(DEFAULT_CONFIG));
   // ?iptv=1 places the advanced Live Video card, which is the 15th (and
