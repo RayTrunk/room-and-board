@@ -43,8 +43,18 @@ export const BOARD_VIEWPORT_H = 1040;
 // originally measured in — that harness over-reported the canvas by 40px, and a
 // wall that packed to 854 lost its tail off the bottom of a real board. The
 // models get the smallest canvas any supported device gives them and leave the
-// spare 40 (Board) / 160 (Navigator) px as slack; spending it needs the overlay
-// to measure its own viewport, which is a later ship.
+// spare 40 (Board) / 160 (Navigator) px as slack.
+//
+// DECIDED 2026-07-29, not deferred: that slack stays unspent, and this stays a
+// constant rather than a per-open measurement. A measured canvas is arithmetically
+// safe on a board (viewportH - 226 is exactly 814 at 1040), but it would hand a
+// Navigator a 974px canvas that no model has ever been checked at — and of the
+// two overlays that model their own fit, only subway has a measured backstop
+// (its onFit/fitStatusBoard); markets' ticker wall ships whatever wallHeight()
+// believes. So a taller canvas would mean every future change to that wall needs
+// verifying on a live Room Navigator as well as on a board, which is the ongoing
+// per-device test burden this project will not take on to win one more row on a
+// corner-case device. One canvas, verified once, everywhere.
 export const OVERLAY_BODY_H = BOARD_VIEWPORT_H - 56 - 34 - 36 - 100; // 814
 
 let idleTimer = null;

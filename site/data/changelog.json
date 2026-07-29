@@ -3,6 +3,10 @@
     "date": "July 29",
     "items": [
       {
+        "lead": "Screensaver",
+        "text": "The screensaver now fills the whole display. Photos and artwork are no longer trimmed off at the bottom edge, and the title and artist line sits clear of the information band instead of half behind it. On a Room Navigator the black strip under the picture is gone."
+      },
+      {
         "lead": "Story view",
         "text": "Long stories now fit the screen, so the headline and the code to open it on your phone are always visible. A summary too long for the display is trimmed at the end rather than pushed off the top and bottom."
       },

@@ -96,9 +96,11 @@ describe('full-screen overlay chrome: the hint band', () => {
     expect(BOARD_H - padTop - headH - bodyTop - band).toBe(OVERLAY_BODY_H);
     expect(OVERLAY_BODY_H).toBe(814);
     // The harness and the Navigator are TALLER, so the models under-fill there.
-    // That slack is deliberate and unspent: spending it needs the overlay to
-    // measure its own viewport, which is a later ship, and a model tuned to the
-    // harness's 1080 is exactly how a wall came to over-pack a real board by 40px.
+    // That slack is deliberate and stays unspent — see the DECIDED note on
+    // OVERLAY_BODY_H in expand.js: a measured canvas would give a Navigator
+    // 160px no model has been checked at, and markets' wall has no measured
+    // backstop to catch it. A model tuned to the harness's 1080 is exactly how
+    // a wall came to over-pack a real board by 40px.
     for (const H of [HARNESS_H, 1200]) {
       expect(H - padTop - headH - bodyTop - band).toBeGreaterThan(OVERLAY_BODY_H);
     }

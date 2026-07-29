@@ -73,19 +73,23 @@
    in the 40 physical px BELOW that box. Nothing is painted over page content;
    the bottom 40px of our fixed 1080px page simply fall off the screen, which
    crops anything sitting there exactly as an overlay would have.
-   The two numbers are unchanged and still earn their keep under the corrected
-   story: --safe-bottom (84px) is the clearance that keeps dashboard/settings
-   content off that edge, and --roomos-bar is where the ambient info strip and
-   gear sit so they end flush with the last visible pixel. Do not spend the 40px
-   without re-measuring: they are the board's whole margin of error. */
+   --safe-bottom (84px) is the clearance that keeps the PAGE's content (grid,
+   settings, editor) off that edge; do not spend it without re-measuring.
+   --roomos-bar is the leftover of the old story: anything that used it to "sit
+   flush with the last visible pixel" is now laid out against the REAL viewport
+   instead (position:fixed + bottom:0), which is self-maintaining and needs no
+   device number at all. Only .iptv__mute still asks for it, as a plain margin. */
 :root { --safe-bottom: 84px; --roomos-bar: 40px; }
 
 /* A FIXED PAGE, not a viewport. Every device gets these exact 1920x1080 CSS px,
    so the grid, the editor and the settings overlay have identical geometry on a
    1040 board, a 1200 Room Navigator and an 1080 desktop preview — and the widget
    capacity tables in js/capacity.js are measured against THIS, not against any
-   screen. Only the position:fixed full-screen overlays are sized by the real
-   viewport; js/expand.js BOARD_VIEWPORT_H is the number they model against. */
+   screen. Only the position:fixed full-screen contexts are sized by the real
+   viewport; js/expand.js BOARD_VIEWPORT_H is the number they model against.
+   This page height is deliberately NOT viewport-derived and must stay that way:
+   coupling it to the glass would put every future capacity change on a
+   per-device matrix. test/viewport.test.js is the guard. */
 html, body {
   width: 1920px;
   height: 1080px;
@@ -95,6 +99,19 @@ html, body {
   font-family: var(--font-board);
   -webkit-font-smoothing: antialiased;
 }
+
+/* …and on a viewport TALLER than the page (a Room Navigator's 1200), the
+   leftover splits evenly instead of pooling at the bottom as a band. Purely
+   cosmetic — the page block keeps its exact 1080px height, so nothing about
+   capacity, the grid or any card moves. `max()` clamps the offset to 0 on every
+   viewport at or below 1080 (a board's 1040 would otherwise compute -20px), so
+   the board and the desktop preview are untouched to the pixel; an engine with
+   no dvh support drops the declaration and lands on that same 0. Deliberately
+   `top`, not `transform`: a transformed body would become the containing block
+   for every position:fixed overlay and re-anchor them to the page we are
+   trying to escape. --bg is #000, the same colour the root canvas paints, so
+   the split reads as margin rather than as two bars. */
+body { position: relative; top: max(0px, calc((100dvh - 1080px) / 2)); }
 
 #app { position: relative; width: 100%; height: 100%; padding: 32px 40px; padding-bottom: var(--safe-bottom); display: flex; flex-direction: column; }
 
@@ -551,7 +568,22 @@ html, body {
 .delta--down { color: var(--bad); }
 
 /* ---------- ambient mode ---------- */
-.ambient { position: absolute; inset: 0; }
+/* FIXED TO THE VIEWPORT, not to the page — the one context in the app that can
+   safely be, and the reason ship 2 exists. The screensaver is a single image
+   plus an info band: it has no capacity math, no row tables and no per-size
+   audit, so nothing about it needs the fixed 1080 canvas the dashboard depends
+   on. As a child of #app it was 1080 tall on every device, which on a 1200
+   Room Navigator left a 120px black band under the picture and on a 1040 board
+   pushed the bottom 40px of the artwork (and 28px of the caption) off the
+   glass. `inset: 0` on a position:fixed box is the whole fix, expressed in
+   viewport terms and therefore self-maintaining: it is exactly what the
+   tap-opened image viewer (.art-viewer) and the settings preview (.ss-preview)
+   have always done, which is why THEY filled the screen correctly and this did
+   not. Everything inside now measures from the real bottom edge, so the offsets
+   below lose the --roomos-bar lift that only ever existed to undo the 1080/1040
+   mismatch (bottom:40 off a 1080 page == bottom:0 off a 1040 glass — the strip
+   and the gear do not move on a board). */
+.ambient { position: fixed; inset: 0; }
 .slideshow { position: absolute; inset: 0; background: #000; touch-action: none; /* swipes must reach the pointer handlers, not the browser's pan gesture */ }
 .slide {
   position: absolute; inset: 0;
@@ -563,7 +595,11 @@ html, body {
 }
 .slide[data-active] { opacity: 1; }
 .slide-caption {
-  /* Sit just above the info band (which sits at the very bottom). */
+  /* Sit just above the info band (which sits at the very bottom). Both are
+     measured off the same viewport bottom now: 82px clears the band's 70px by
+     12px. It was tuned in the .art-viewer, which has always been viewport-fixed
+     — in the ambient slideshow, which was not, the band ate the bottom 28px of
+     this box on every board until the .ambient fix above. */
   position: absolute; left: 48px; bottom: 82px;
   display: flex; flex-direction: column; gap: 4px;
   background: rgba(0, 0, 0, 0.55);
@@ -582,13 +618,15 @@ html, body {
 .slide-caption__meta { font-size: 21px; color: var(--ink-dim); }
 .slide-caption__desc { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; margin-top: 8px; font-size: 22px; line-height: 1.35; color: var(--ink-dim); max-width: 70ch; }
 .strip {
-  /* Translucent info band. This lift clears the RoomOS "Tap to start" bar in the
-     IDLE ambient screensaver, where the bar overlays the bottom --roomos-bar px
-     of the content (board-verified). The full-screen ACTIVE overlays — the art
-     viewer and the settings preview (both opened by a tap) — are the exceptions
-     (overridden below): there the bar doesn't reduce into the content, so a lift
-     just leaves a doubled dark gap above the bar; the strip sits flush instead. */
-  position: absolute; left: 0; right: 0; bottom: var(--roomos-bar);
+  /* Translucent info band, flush with the last visible pixel — one rule for all
+     three hosts (the ambient screensaver, the tap-opened art viewer, the
+     settings preview), because all three are now position:fixed to the viewport
+     and share one bottom edge. It used to carry a --roomos-bar lift in ambient
+     and drop to 0 in the other two; that split existed only because ambient was
+     the one host laid out against the 1080 PAGE, where 40px up from the page
+     bottom IS 0px up from a 1040 board's glass. Same pixels on a board, and now
+     also the right pixels on a Navigator. */
+  position: absolute; left: 0; right: 0; bottom: 0;
   display: flex; align-items: center; justify-content: center; gap: 36px;
   padding: 18px 48px;
   background: rgba(0, 0, 0, 0.65);
@@ -602,12 +640,6 @@ html, body {
 .strip__wx b { color: var(--ink); font-weight: 300; }
 .strip__transit { color: var(--ink-dim); }
 .strip__transit b { color: var(--ink); font-weight: 300; font-variant-numeric: tabular-nums; }
-/* Full-screen active overlays (image viewer opened from the dashboard; the
-   screensaver settings preview). No idle RoomOS bar reduces into these, so the
-   strip drops to the very bottom — a lift here just floats it a --roomos-bar gap
-   above the bottom (the "double safe zone"). In the viewer this also lets the
-   slide caption (bottom: 82px) sit just above the strip as designed. */
-.art-viewer .strip, .ss-preview .strip { bottom: 0; }
 body.mode-ambient .topbar, body.mode-ambient #grid { visibility: hidden; }
 
 /* ---------- welcome ---------- */
@@ -660,10 +692,14 @@ body.mode-ambient .topbar, body.mode-ambient #grid { visibility: hidden; }
   font-size: 26px; border: none; cursor: pointer;
   background: rgba(255, 255, 255, 0.08); color: var(--ink-dim);
 }
-/* Ambient mode keeps the settings gear at its default bottom:44px (clears the
-   RoomOS bar, sits on the lifted info strip); the earlier bottom:7px put it
-   inside the bar's overlaid zone and cropped it. The Edit-layout pencil hides:
-   there's no dashboard to arrange, so only the settings gear shows. */
+/* In ambient the gear belongs to the screensaver, not to the page: it rides the
+   info band, so it is fixed to the same viewport the band is. bottom:4px is the
+   board's existing position restated honestly — absolute bottom:44px off a
+   1080px page is 4px off a 1040px glass, so a board sees the identical FAB in
+   the identical place, while a Navigator stops stranding it 160px above the
+   band it is supposed to sit on. The Edit-layout pencil hides: there's no
+   dashboard to arrange, so only the settings gear shows. */
+body.mode-ambient .gear { position: fixed; bottom: 4px; }
 body.mode-ambient .gear--edit { display: none; }
 
 /* ---------- settings overlay ---------- */
@@ -1027,7 +1063,14 @@ body.mode-ambient .gear--edit { display: none; }
 
 /* ---------- full-screen art viewer (tap art card to open, tap to close) ---------- */
 .art-viewer {
-  position: absolute; inset: 0; z-index: 45;
+  /* FIXED, like every other full-screen view (.expand, .text-viewer,
+     .ss-preview, .iptv--full). It is appended to document.body and used to be
+     `absolute`, which happened to resolve to the viewport only because body was
+     unpositioned — an invariant nothing stated and nothing tested, and the
+     first rule that positioned body (the centring above) silently re-anchored
+     this viewer to the 1080 page and stretched it 40px past a board's glass.
+     `fixed` says what was always meant and cannot be broken from the outside. */
+  position: fixed; inset: 0; z-index: 45;
   background: #000; cursor: pointer;
   /* Without this, a touch swipe is claimed by the browser's gesture
      arbitration: pointercancel fires instead of pointerup and the swipe
@@ -1845,20 +1888,29 @@ body.mode-ambient .gear--edit { display: none; }
 /* Screensaver preview overlay (Settings → Screensaver → Preview): sits above
    the settings UI; any tap closes it. */
 .ss-preview { position: fixed; inset: 0; z-index: 60; background: #000; }
-/* Preview clock face reserves the same bottom space as ambient (bar always,
-   strip when shown) so a two-row grid doesn't collide with the strip. */
-.ss-preview .cf { bottom: calc(var(--roomos-bar) + 8px); }
-.ss-preview.has-strip .cf { bottom: 124px; }
+/* Preview clock face reserves exactly what ambient's .clockface reserves, off
+   the same viewport bottom: 8px of air normally, 84px when the info band is
+   shown (70px band + 14px). The two used to disagree by --roomos-bar on every
+   device — the preview is viewport-fixed and ambient was page-fixed, so the
+   preview drew its clock 20px higher than the screensaver it was previewing.
+   Keep these two pairs equal; test/viewport.test.js fails if they drift. */
+.ss-preview .cf { bottom: 8px; }
+.ss-preview.has-strip .cf { bottom: 84px; }
 .ss-preview__img { width: 100%; height: 100%; object-fit: cover; }
 /* Above the info strip band (~64px) so the two don't overlap. */
 .ss-preview__hint { position: absolute; bottom: 92px; left: 0; right: 0; text-align: center; font-size: 20px; color: var(--ink-dim); z-index: 1; }
 
 /* ---------- clock-face screensavers (Screensaver page: clock / worldclocks / clockrow) ---------- */
-/* The clock content centers within .clockface, which reserves the bottom for
-   the RoomOS bar (always) and the info strip (when shown) so a wrapped two-row
-   world-clock grid centers ABOVE the strip instead of colliding with it. */
-.clockface { position: absolute; top: 0; left: 0; right: 0; bottom: calc(var(--roomos-bar) + 8px); }
-body.has-strip .clockface { bottom: 124px; }
+/* The clock content centers within .clockface, which reserves the bottom air
+   (always) and the info strip's 70px band (when shown) so a wrapped two-row
+   world-clock grid centers ABOVE the strip instead of colliding with it. Both
+   offsets are measured off the real viewport now — .clockface sits inside the
+   position:fixed .ambient — so the old --roomos-bar term is gone: 48px up from
+   a 1080 page and 8px up from a 1040 glass are the same line on a board, and
+   only the second one is still true on a Navigator. Mirrored by .ss-preview .cf
+   above; the two must stay equal or the preview stops being a preview. */
+.clockface { position: absolute; top: 0; left: 0; right: 0; bottom: 8px; }
+body.has-strip .clockface { bottom: 84px; }
 .cf { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
 .cf-time {
   display: flex; align-items: baseline; gap: 28px;
