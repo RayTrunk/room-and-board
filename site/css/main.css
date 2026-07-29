@@ -555,7 +555,14 @@ html, body {
   background: rgba(0, 0, 0, 0.55);
   padding: 14px 22px; border-radius: 12px;
 }
-/* Titleless photos (e.g. GDrive) leave the caption empty — hide the box. */
+/* Backstop only. `:empty` matches an element with NO child nodes, so it cannot
+   hide a container holding blank <span>s — imageshow.js is therefore the real
+   guard: it emits no empty spans, and the full-screen viewer removes the box
+   outright when an image has no caption text. This still earns its keep for the
+   ambient slideshow's placeholder caption, which is genuinely childless until
+   the first show(). Kept as `:empty` rather than `:not(:has(*))` because an
+   engine without `:has()` would drop the whole rule and un-hide that
+   placeholder — the wrong way to fail on a board we can't upgrade. */
 .slide-caption:empty { display: none; }
 .slide-caption__title { font-size: 24px; font-weight: 600; }
 .slide-caption__meta { font-size: 21px; color: var(--ink-dim); }

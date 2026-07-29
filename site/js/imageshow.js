@@ -6,15 +6,38 @@ import { escapeHtml } from './util.js';
 import { stripData, stripHtml } from './ambient.js';
 import { loadCache } from './store.js';
 
+// Trimmed field read: whitespace-only is the same as absent for caption purposes
+// (an iCloud/GDrive "caption" of " " must not conjure a caption box).
+const field = (v) => (v == null ? '' : String(v).trim());
+
 // Caption metadata line: artist [· year] for art; empty when absent (e.g. photos).
 function captionMeta(item) {
-  if (!item.artist) return '';
-  return `${escapeHtml(item.artist)}${item.year ? ` · ${escapeHtml(item.year)}` : ''}`;
+  const artist = field(item.artist);
+  if (!artist) return '';
+  const year = field(item.year);
+  return `${escapeHtml(artist)}${year ? ` · ${escapeHtml(year)}` : ''}`;
 }
 
 // Optional third caption line (APOD explanation); clamped in CSS. Empty when absent.
 function captionDesc(item) {
-  return item.desc ? `<span class="slide-caption__desc">${escapeHtml(item.desc)}</span>` : '';
+  const desc = field(item.desc);
+  return desc ? `<span class="slide-caption__desc">${escapeHtml(desc)}</span>` : '';
+}
+
+// Caption innards — only the lines that actually carry text. Returns '' when the
+// item has no caption content at all, which is the signal callers use to skip the
+// box entirely. Emitting empty <span>s instead would defeat the `:empty` CSS
+// guard (an element with blank children is not `:empty`) and paint the padded
+// background as a stray grey rectangle in the lower left — exactly what an
+// untitled Landscapes/GDrive photo used to do.
+export function captionHtml(item) {
+  const title = field(item.title);
+  const meta = captionMeta(item);
+  const parts = [];
+  if (title) parts.push(`<span class="slide-caption__title">${escapeHtml(title)}</span>`);
+  if (meta) parts.push(`<span class="slide-caption__meta">${meta}</span>`);
+  parts.push(captionDesc(item));
+  return parts.filter(Boolean).join('');
 }
 
 // Pointer-gesture classifier for the viewer: horizontal drags navigate,
@@ -27,9 +50,31 @@ export function swipeAction(dx, dy) {
 
 let stripTimer = null;
 let viewerList = null; // photo list for the open viewer session
+let viewerCaption = true; // whether this session shows captions at all (chart: false)
 let viewerIndex = -1;
 let viewerGen = 0; // bumped per open; kept for session identity
 let userStepped = false; // guards against clobbering a swipe with deferred state
+
+// Put the caption box where the content says it belongs: create it only when
+// there is text to show, remove it the moment there isn't. Presence follows
+// content, so swiping from a captioned artwork to an untitled photo can't
+// strand an empty box, and swiping back brings the box straight back.
+function renderViewerCaption(viewer, item) {
+  const html = viewerCaption ? captionHtml(item) : '';
+  let cap = viewer.querySelector('.slide-caption');
+  if (!html) {
+    cap?.remove();
+    return;
+  }
+  if (!cap) {
+    cap = document.createElement('div');
+    cap.className = 'slide-caption';
+    // Ahead of the info strip, which stays last (insertBefore(…, null) appends
+    // when there is no strip, e.g. the chart viewer).
+    viewer.insertBefore(cap, viewer.querySelector('.strip'));
+  }
+  cap.innerHTML = html;
+}
 
 // Full-screen viewer: tap the dashboard card to open, tap anywhere to close,
 // swipe left/right to browse the supplied photo list.  Shows the ambient info
@@ -71,13 +116,10 @@ export function openImageViewer(current, cfg, { list = [], caption = true, strip
   // Per-open, not per-element: the shared viewer is reused by every image card.
   viewer.classList.toggle('art-viewer--fill', fit === 'cover');
   viewer.innerHTML = `
-    <img class="art-viewer__img" src="${escapeHtml(current.img)}" alt="${escapeHtml(current.title)}">
-    ${caption ? `<div class="slide-caption">
-      <span class="slide-caption__title">${escapeHtml(current.title)}</span>
-      <span class="slide-caption__meta">${captionMeta(current)}</span>
-      ${captionDesc(current)}
-    </div>` : ''}
+    <img class="art-viewer__img" src="${escapeHtml(current.img)}" alt="${escapeHtml(current.title ?? '')}">
     ${strip ? '<div class="strip"></div>' : ''}`;
+  viewerCaption = caption;
+  renderViewerCaption(viewer, current);
   const stripEl = viewer.querySelector('.strip');
   clearInterval(stripTimer);
   stripTimer = null;
@@ -106,12 +148,8 @@ function step(viewer, dir) {
   const swap = () => {
     const imgEl = viewer.querySelector('.art-viewer__img');
     imgEl.src = item.img;
-    imgEl.alt = item.title;
-    const cap = viewer.querySelector('.slide-caption');
-    if (cap) cap.innerHTML = `
-      <span class="slide-caption__title">${escapeHtml(item.title)}</span>
-      <span class="slide-caption__meta">${captionMeta(item)}</span>
-      ${captionDesc(item)}`;
+    imgEl.alt = item.title ?? '';
+    renderViewerCaption(viewer, item);
   };
   img.onload = swap;
   img.onerror = swap; // show anyway; <img> will retry like the slideshow does
@@ -162,15 +200,10 @@ export function createSlideshow(manifest, host, { intervalMs = 75000, random = M
     next.setAttribute('data-active', '');
     layers[active].removeAttribute('data-active');
     active = 1 - active;
-    // Only emit the pieces that exist — a titleless photo (common for GDrive
-    // folders) leaves the caption element empty, which `:empty` hides so the
+    // Only the pieces that exist — a titleless photo (common for GDrive folders)
+    // leaves this element with no children at all, which `:empty` hides so the
     // padded background box never shows as a stray grey rectangle.
-    const meta = captionMeta(item);
-    const parts = [];
-    if (item.title) parts.push(`<span class="slide-caption__title">${escapeHtml(item.title)}</span>`);
-    if (meta) parts.push(`<span class="slide-caption__meta">${meta}</span>`);
-    parts.push(captionDesc(item));
-    caption.innerHTML = parts.filter(Boolean).join('');
+    caption.innerHTML = captionHtml(item);
   }
 
   function preload(item, done) {

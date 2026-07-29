@@ -997,15 +997,78 @@ describe('viewer caption meta — photos vs art', () => {
     document.querySelector('#art-viewer')?.remove();
   });
 
-  it('photo item (no artist) shows empty meta — not "undefined"', async () => {
+  it('photo item (no artist) shows the title with no meta line — and no "undefined"', async () => {
     vi.resetModules();
     const { openImageViewer } = await import('../site/js/imageshow.js');
     const photo = { img: 'https://x.test/photo.jpg', title: 'Sunset', date: '2024-06-01', ar: 1.78 };
     openImageViewer(photo, CFG, { list: [photo] });
     const viewer = document.querySelector('#art-viewer');
-    const meta = viewer.querySelector('.slide-caption__meta');
-    expect(meta.textContent).not.toContain('undefined');
-    expect(meta.textContent).toBe('');
+    const cap = viewer.querySelector('.slide-caption');
+    expect(cap.querySelector('.slide-caption__title').textContent).toBe('Sunset');
+    // The meta span is dropped, not emitted blank: a childful-but-textless box
+    // defeats `.slide-caption:empty` and paints as a grey rectangle.
+    expect(viewer.querySelector('.slide-caption__meta')).toBeNull();
+    expect(cap.textContent).not.toContain('undefined');
+  });
+
+  it('untitled photo (Landscapes/GDrive) renders NO caption box at all', async () => {
+    vi.resetModules();
+    const { openImageViewer } = await import('../site/js/imageshow.js');
+    // mapPhotos gives an uncaptioned GDrive file title:'' and no artist.
+    const photo = { img: 'https://x.test/landscape.jpg', title: '', ar: 1.78 };
+    openImageViewer(photo, CFG, { list: [photo], fit: 'cover' });
+    const viewer = document.querySelector('#art-viewer');
+    expect(viewer.querySelector('.slide-caption')).toBeNull();
+    expect(viewer.querySelector('.slide-caption__title')).toBeNull();
+    expect(viewer.querySelector('.strip')).not.toBeNull(); // the info band is untouched
+  });
+
+  it('whitespace-only caption fields count as no caption', async () => {
+    vi.resetModules();
+    const { openImageViewer } = await import('../site/js/imageshow.js');
+    const photo = { img: 'https://x.test/blank.jpg', title: '   ', artist: ' ', desc: '\n ', ar: 1.5 };
+    openImageViewer(photo, CFG, { list: [photo] });
+    expect(document.querySelector('#art-viewer').querySelector('.slide-caption')).toBeNull();
+  });
+
+  it('missing title/artist entirely renders no caption box', async () => {
+    vi.resetModules();
+    const { openImageViewer } = await import('../site/js/imageshow.js');
+    const photo = { img: 'https://x.test/bare.jpg', ar: 1.5 };
+    openImageViewer(photo, CFG, { list: [photo] });
+    const viewer = document.querySelector('#art-viewer');
+    expect(viewer.querySelector('.slide-caption')).toBeNull();
+    expect(viewer.querySelector('.art-viewer__img').getAttribute('alt')).toBe(''); // not "undefined"
+  });
+
+  it('apod-style desc still renders its clamped third line', async () => {
+    vi.resetModules();
+    const { openImageViewer } = await import('../site/js/imageshow.js');
+    const apod = { img: 'https://x.test/apod.jpg', title: 'Andromeda', artist: 'NASA', desc: 'A spiral galaxy.' };
+    openImageViewer(apod, CFG, { list: [apod] });
+    const viewer = document.querySelector('#art-viewer');
+    expect(viewer.querySelector('.slide-caption__title').textContent).toBe('Andromeda');
+    expect(viewer.querySelector('.slide-caption__meta').textContent).toBe('NASA');
+    expect(viewer.querySelector('.slide-caption__desc').textContent).toBe('A spiral galaxy.');
+  });
+
+  it('a desc-only item still gets its box (content, not title, decides)', async () => {
+    vi.resetModules();
+    const { openImageViewer } = await import('../site/js/imageshow.js');
+    const item = { img: 'https://x.test/d.jpg', title: '', desc: 'Explanation only.' };
+    openImageViewer(item, CFG, { list: [item] });
+    const viewer = document.querySelector('#art-viewer');
+    expect(viewer.querySelector('.slide-caption')).not.toBeNull();
+    expect(viewer.querySelector('.slide-caption__title')).toBeNull();
+    expect(viewer.querySelector('.slide-caption__desc').textContent).toBe('Explanation only.');
+  });
+
+  it('caption:false (chart) never builds a caption box', async () => {
+    vi.resetModules();
+    const { openImageViewer } = await import('../site/js/imageshow.js');
+    const chart = { img: 'https://x.test/chart.png', title: 'Chart of the Day', artist: 'Statista', desc: 'why' };
+    openImageViewer(chart, CFG, { list: [chart], caption: false, strip: false });
+    expect(document.querySelector('#art-viewer').querySelector('.slide-caption')).toBeNull();
   });
 
   it('art item (with artist) still renders artist · year in meta', async () => {
@@ -1016,6 +1079,54 @@ describe('viewer caption meta — photos vs art', () => {
     const viewer = document.querySelector('#art-viewer');
     const meta = viewer.querySelector('.slide-caption__meta');
     expect(meta.textContent).toBe('Jacob van Ruisdael · 1670');
+  });
+});
+
+// The swap path is the sneaky one: it updates the open viewer in place, so a
+// mixed album could leave a captioned box stranded (or emptied) over a photo
+// that has no caption of its own.
+describe('viewer caption on the swipe/swap path', () => {
+  beforeAll(() => {
+    // Fresh element so its listeners bind to this module instance's step().
+    document.querySelector('#art-viewer')?.remove();
+  });
+  afterAll(() => {
+    vi.unstubAllGlobals();
+    document.querySelector('#art-viewer')?.remove();
+  });
+
+  it('drops the box swapping captioned → uncaptioned, and restores it swapping back', async () => {
+    vi.resetModules();
+    vi.stubGlobal('Image', class { set src(v) { queueMicrotask(() => this.onload?.()); } });
+    const { openImageViewer } = await import('../site/js/imageshow.js');
+    const artwork = { img: 'https://x.test/art.jpg', title: 'Wheat Fields', artist: 'Ruisdael', year: '1670' };
+    const bare = { img: 'https://x.test/bare.jpg', title: '', ar: 1.78 };
+    openImageViewer(artwork, CFG, { list: [artwork, bare] });
+    const viewer = document.querySelector('#art-viewer');
+    expect(viewer.querySelector('.slide-caption__title').textContent).toBe('Wheat Fields');
+
+    const swipe = (fromX, toX) => {
+      viewer.dispatchEvent(new MouseEvent('pointerdown', { clientX: fromX, clientY: 100 }));
+      viewer.dispatchEvent(new MouseEvent('pointerup', { clientX: toX, clientY: 104 }));
+      return new Promise((r) => setTimeout(r, 0)); // preload microtask
+    };
+
+    await swipe(600, 400); // next: the untitled photo
+    expect(viewer.querySelector('.art-viewer__img').getAttribute('src')).toBe('https://x.test/bare.jpg');
+    expect(viewer.querySelector('.slide-caption')).toBeNull(); // no stale box, no empty box
+    expect(viewer.textContent).not.toContain('Wheat Fields');
+
+    await swipe(600, 400); // wraps back to the artwork
+    expect(viewer.querySelector('.art-viewer__img').getAttribute('src')).toBe('https://x.test/art.jpg');
+    const cap = viewer.querySelector('.slide-caption');
+    expect(cap).not.toBeNull(); // the box comes back
+    expect(cap.querySelector('.slide-caption__title').textContent).toBe('Wheat Fields');
+    expect(cap.querySelector('.slide-caption__meta').textContent).toBe('Ruisdael · 1670');
+    // A re-created caption stays ahead of the info band it must not cover.
+    const kids = [...viewer.children].map((n) => n.className);
+    expect(kids.indexOf('slide-caption')).toBeLessThan(kids.indexOf('strip'));
+    expect(viewer.querySelectorAll('.slide-caption').length).toBe(1); // never duplicated
+    expect(viewer.querySelectorAll('.strip').length).toBe(1); // the strip is untouched
   });
 });
 
