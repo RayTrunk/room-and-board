@@ -140,7 +140,7 @@ export const isIndexSymbol = (symbol) => String(symbol ?? '').startsWith('^');
 // fixed-pixel reasoning capacity.js uses for card rows — the canvas never
 // changes size): the wall's content box, a shelf row, the shelf's hairline
 // block, and the floor a grid tile needs to hold its four lines.
-const WALL_H = 854;
+export const WALL_H = 854;
 const SHELF_ROW = 225;
 const RULE_BLOCK = 53;
 // A grid tile's four lines with the sparkline at its 36px minimum measure 163px
@@ -155,10 +155,29 @@ const TILE_GAP = 20;
 // At that width the tile switches to .wall__grid--dense in main.css.
 const MAX_COLS = 6;
 
-// Grid rows that clear the tile floor once the shelf has taken its share.
+// The band a shelf occupies: its own rows, plus the hairline block when a grid
+// follows it.
+function shelfBlock(rows, withGrid) {
+  return rows ? rows * SHELF_ROW + (rows - 1) * TILE_GAP + (withGrid ? RULE_BLOCK : 0) : 0;
+}
+
+// Grid rows that clear the tile floor once the shelf has taken its share. ZERO
+// is a real answer, and the reason there is no Math.max(1, …) here: three shelf
+// rows leave 86px, which does not hold a 175px tile, so claiming one row fits
+// there is how the wall came to approve a 943px layout on an 854px canvas.
+// Answering honestly makes gridFits fail and the shelf fold, which is the
+// degradation the wall already knows how to do.
 function maxRows(shelfRows) {
-  const avail = WALL_H - (shelfRows ? shelfRows * SHELF_ROW + (shelfRows - 1) * TILE_GAP + RULE_BLOCK : 0);
-  return Math.max(1, Math.floor((avail + TILE_GAP) / (TILE_MIN + TILE_GAP)));
+  const avail = WALL_H - shelfBlock(shelfRows, true);
+  return Math.max(0, Math.floor((avail + TILE_GAP) / (TILE_MIN + TILE_GAP)));
+}
+
+// The wall's modeled height — the one number the fit rules are judged against,
+// and the number a browser measurement of the overlay should match.
+export function wallHeight(nShelf, nRest) {
+  const sRows = nShelf ? Math.ceil(nShelf / shelfCols(nShelf)) : 0;
+  const gRows = nRest ? Math.ceil(nRest / tileCols(nRest, sRows)) : 0;
+  return shelfBlock(sRows, gRows > 0) + (gRows ? gRows * TILE_MIN + (gRows - 1) * TILE_GAP : 0);
 }
 
 // Columns for n tiles in the stock grid on the 1920-wide overlay. Config caps
@@ -183,8 +202,8 @@ const gridFits = (n, shelfRows) => Math.ceil(n / tileCols(n, shelfRows)) <= maxR
 export function shelfFits(nShelf, nRest) {
   if (!nShelf) return false;
   const rows = Math.ceil(nShelf / shelfCols(nShelf));
-  const block = rows * SHELF_ROW + (rows - 1) * TILE_GAP + (nRest ? RULE_BLOCK : 0);
-  return block <= WALL_H && (!nRest || gridFits(nRest, rows));
+  if (nRest && !gridFits(nRest, rows)) return false; // the watchlist can't clear its floor
+  return wallHeight(nShelf, nRest) <= WALL_H; // and the whole wall clears the canvas
 }
 
 // Shelf columns. Index tiles carry the big lead type (a 46px six-figure price

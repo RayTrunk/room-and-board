@@ -11,7 +11,9 @@ import {
   setExpandSource,
   EXPAND_IDLE_MS,
 } from '../site/js/expand.js';
-import { render as renderMarkets, tileWall, tileCols, shelfCols } from '../site/js/widgets/markets.js';
+import {
+  render as renderMarkets, tileWall, tileCols, shelfCols, shelfFits, wallHeight, WALL_H,
+} from '../site/js/widgets/markets.js';
 import {
   render as renderSubway,
   statusBoard,
@@ -383,6 +385,33 @@ describe('markets ticker wall', () => {
     expect(rows + badge).toBe(10); // never 20: nothing is invented for the missing ten
     card.querySelector('.card__body').click();
     expect(document.querySelectorAll('#expand-view .tile').length).toBe(10);
+  });
+
+  it('folds the shelf when its rows leave no room for a grid row', () => {
+    // Nine indices wrap to three 225px shelf rows: 768px with the hairline, so
+    // 86px of canvas is left and a grid tile's floor is 175. maxRows used to
+    // clamp that to "one row fits" and the wall approved a 943px layout on an
+    // 854px canvas — the indices overflowed the overlay instead of folding.
+    expect(shelfFits(9, 3)).toBe(false);
+    const wall = wallOf(tileWall(vmOf([...indexSymbols(9), ...symbols(3)]).indices));
+    expect(wall.querySelector('.wall__shelf')).toBeNull();
+    expect(wall.querySelector('.wall__rule')).toBeNull();
+    expect(wall.querySelectorAll('.wall__grid .tile').length).toBe(12);
+    expect(wallHeight(0, 12)).toBeLessThanOrEqual(WALL_H);
+  });
+
+  it('models no wall taller than the canvas, at any split of the 20-ticker cap', () => {
+    for (let nShelf = 0; nShelf <= 20; nShelf += 1) {
+      for (let nRest = 0; nShelf + nRest <= 20; nRest += 1) {
+        if (!nShelf && !nRest) continue;
+        // What tileWall would actually build for this split: shelf + grid, or
+        // one folded grid of everything.
+        const h = shelfFits(nShelf, nRest)
+          ? wallHeight(nShelf, nRest)
+          : wallHeight(0, nShelf + nRest);
+        expect(h, `${nShelf} indices + ${nRest} stocks`).toBeLessThanOrEqual(WALL_H);
+      }
+    }
   });
 
   it('folds an indices-only wall into a grid past three shelf rows', () => {
