@@ -2,6 +2,8 @@
  * @vitest-environment happy-dom
  */
 import { describe, it, expect, vi } from 'vitest';
+import { readFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
 import {
   boroughs,
   linesForBorough,
@@ -225,10 +227,19 @@ describe('WIDGET_GROUPS taxonomy', () => {
     expect([...grouped].sort()).toEqual([...ALL_IDS].sort());
   });
 
-  it('has the six expected group labels in order', () => {
+  it('has the seven expected group labels in order', () => {
     expect(WIDGET_GROUPS.map((g) => g.label)).toEqual([
-      'Commute', 'Weather & Air', 'Markets & Sports', 'News & Social', 'Ambient', 'Daily Extras',
+      'Commute', 'Weather & Air', 'Markets', 'Sports', 'News & Social', 'Ambient', 'Daily Extras',
     ]);
+  });
+
+  // Markets & Sports split in two (2026-07-28) so the add tray could tuck the
+  // five sports cards behind their own expander, the way Commute already is.
+  it('keeps Markets and Sports as separate groups with the right members', () => {
+    const ids = (label) => WIDGET_GROUPS.find((g) => g.label === label)?.ids;
+    expect(ids('Markets')).toEqual(['markets', 'marketsnews']);
+    expect(ids('Sports')).toEqual(['sports', 'worldcup', 'f1', 'golf', 'tennis']);
+    expect(WIDGET_GROUPS.map((g) => g.label)).not.toContain('Markets & Sports');
   });
 });
 
@@ -273,9 +284,9 @@ const onTheCoast = (extra = {}) => {
 };
 
 describe('widgetChecksHtml (setup picker)', () => {
-  it('renders six grouped sections, one checkbox per widget, reflecting the placed set', () => {
+  it('renders seven grouped sections, one checkbox per widget, reflecting the placed set', () => {
     const html = widgetChecksHtml(SETUP_LABELS, new Set(['subway', 'photos']), onTheCoast({ nerdMode: true }));
-    for (const label of ['Commute', 'Weather & Air', 'Markets & Sports', 'News & Social', 'Ambient', 'Daily Extras']) {
+    for (const label of ['Commute', 'Weather & Air', 'Markets', 'Sports', 'News & Social', 'Ambient', 'Daily Extras']) {
       expect(html).toContain(`<h3 class="wpick__title">${label}</h3>`);
     }
     expect((html.match(/data-w="/g) || []).length).toBe(LIVE_IDS.length); // one per non-retired widget
@@ -292,10 +303,10 @@ describe('widgetChecksHtml (setup picker)', () => {
 import { widgetGroupsHtml } from '../site/js/settings/settings.js';
 
 describe('widgetGroupsHtml', () => {
-  it('renders all six group headers and one toggle per widget with correct on-state', () => {
+  it('renders all seven group headers and one toggle per widget with correct on-state', () => {
     const html = widgetGroupsHtml([{ id: 'weather', x: 0, y: 0, w: 4, h: 4 }], onTheCoast({ nerdMode: true }));
-    // six group headers
-    for (const label of ['Commute', 'Weather & Air', 'Markets & Sports', 'News & Social', 'Ambient', 'Daily Extras']) {
+    // seven group headers
+    for (const label of ['Commute', 'Weather & Air', 'Markets', 'Sports', 'News & Social', 'Ambient', 'Daily Extras']) {
       expect(html).toContain(`<h3 class="wgroup__title">${label}</h3>`);
     }
     // one toggle per WIDGET_ID (21)
@@ -360,6 +371,22 @@ describe('stepTwoVisibility', () => {
     expect(sections.size).toBe(0);
     expect(groups.size).toBe(0);
   });
+  // applyStepTwo hides a divider whose label isn't in the visible-groups set and
+  // a section whose id isn't in the visible-sections set, so a SETUP_SECTIONS
+  // group with no matching <h2 data-group> (or a section with no element) is a
+  // silently unreachable field. Splitting Markets & Sports is exactly the kind
+  // of edit that strands one.
+  it('every SETUP_SECTIONS group + section id exists in setup.html', async () => {
+    // cwd-relative, not import.meta.url: under happy-dom import.meta.url is not
+    // a file: URL (same reason test/bootguard.test.js resolves this way).
+    const html = await readFile(resolve(process.cwd(), 'site/setup.html'), 'utf8');
+    for (const s of SETUP_SECTIONS) {
+      expect(html, s.id).toContain(`id="${s.id}"`);
+      const divider = s.group.replace(/&/g, '&amp;');
+      expect(html, s.group).toContain(`data-group="${divider}"`);
+    }
+  });
+
   it('SETUP_SECTIONS triggers are valid WIDGET_IDS and groups are valid WIDGET_GROUPS labels', () => {
     const validIds = new Set(ALL_IDS);
     const validGroups = new Set(WIDGET_GROUPS.map((g) => g.label));

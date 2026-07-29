@@ -3,7 +3,7 @@
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { openEditMode } from '../site/js/edit.js';
-import { WIDGET_IDS, isRetired } from '../site/js/config.js';
+import { WIDGET_IDS, WIDGET_GROUPS, isRetired } from '../site/js/config.js';
 import { writeProbe, spotKey } from '../site/js/surf-gate.js';
 import { installLocalStorage } from './stubs/localstorage.js';
 
@@ -122,5 +122,98 @@ describe('openEditMode', () => {
     const label = root.querySelector('.edit-block[data-id="weather"] .edit-block__size');
     expect(label.textContent).toContain('6×4 · min 3×4');
     expect(label.textContent).toContain('hourly'); // capacity impact line
+  });
+});
+
+// The two big categories hide behind expanders (Commute ~10 cards, Sports 5)
+// so the tray stays a short list. Everything here is about that mechanism
+// being per-group rather than the single Commute flag it grew out of.
+describe('add-tray collapsible groups', () => {
+  const SPORTS = WIDGET_GROUPS.find((g) => g.label === 'Sports').ids;
+  const SPORTS_OFFERED = SPORTS.filter((id) => !isRetired(id));
+  const open = (cfg = CFG) => openEditMode(cfg, { root, cellSize: { w: 100, h: 100 } });
+  const toggles = () => [...root.querySelectorAll('[data-tray-toggle]')];
+  const toggle = (label) => toggles().find((t) => t.dataset.trayToggle === label);
+  const group = (label) => [...root.querySelectorAll('[data-tray-group]')].find((g) => g.dataset.trayGroup === label);
+  const chipsIn = (label) => [...group(label).querySelectorAll('[data-add]')].map((b) => b.textContent.trim());
+
+  it('collapses exactly Commute and Sports, both closed, with a caret and a count', () => {
+    open();
+    expect(toggles().map((t) => t.dataset.trayToggle)).toEqual(['Commute', 'Sports']);
+    for (const label of ['Commute', 'Sports']) {
+      expect(toggle(label).getAttribute('aria-expanded')).toBe('false');
+      expect(toggle(label).querySelector('.edit-tray__caret').textContent).toBe('▸');
+      expect(group(label).hidden).toBe(true);
+    }
+    expect(toggle('Commute').textContent).toContain('· 10');
+    // 4, not 5: worldcup retired (RETIRED_AFTER) and has left every add surface.
+    expect(toggle('Sports').textContent).toContain(`· ${SPORTS_OFFERED.length}`);
+    // no other category is behind a tap
+    expect(root.querySelector('[data-tray-toggle="Markets"]')).toBeNull();
+    const marketsChip = root.querySelector('.edit-tray__chips > [data-add="markets"]');
+    expect(marketsChip).not.toBeNull(); // Markets flows inline, not in a drawer
+  });
+
+  it('renders the expanders after every inline chip, so opening one pushes nothing above it', () => {
+    open();
+    const chips = root.querySelector('.edit-tray__chips');
+    const kids = [...chips.children];
+    const firstToggle = kids.findIndex((el) => el.matches('[data-tray-toggle]'));
+    expect(firstToggle).toBeGreaterThan(0);
+    // nothing after the first toggle is a loose inline chip
+    expect(kids.slice(firstToggle).every((el) => el.matches('[data-tray-toggle],[data-tray-group]'))).toBe(true);
+  });
+
+  it('opens and closes each group independently', () => {
+    open();
+    toggle('Sports').click();
+    expect(group('Sports').hidden).toBe(false);
+    expect(toggle('Sports').getAttribute('aria-expanded')).toBe('true');
+    expect(toggle('Sports').querySelector('.edit-tray__caret').textContent).toBe('▾');
+    expect(group('Commute').hidden).toBe(true); // untouched
+    expect(toggle('Commute').getAttribute('aria-expanded')).toBe('false');
+
+    toggle('Commute').click();
+    expect(group('Commute').hidden).toBe(false); // both open at once
+    expect(group('Sports').hidden).toBe(false);
+
+    toggle('Sports').click();
+    expect(group('Sports').hidden).toBe(true);
+    expect(toggle('Sports').getAttribute('aria-expanded')).toBe('false');
+    expect(group('Commute').hidden).toBe(false); // closing one leaves the other open
+  });
+
+  it('sorts chips alphabetically by title inside a group', () => {
+    open();
+    expect(chipsIn('Sports')).toEqual(['Formula 1', 'Golf', 'My Teams', 'Tennis']);
+    expect(chipsIn('Commute')).toEqual([...chipsIn('Commute')].sort((a, b) => a.localeCompare(b)));
+  });
+
+  it('adds a widget from an expander and keeps that group open across the re-render', () => {
+    const editor = open();
+    toggle('Sports').click();
+    group('Sports').querySelector('[data-add="f1"]').click();
+    expect(editor.layout().map((r) => r.id)).toContain('f1');
+    // the re-render must not slam the drawer the user is picking from
+    expect(group('Sports').hidden).toBe(false);
+    expect(toggle('Sports').getAttribute('aria-expanded')).toBe('true');
+    expect(toggle('Sports').textContent).toContain(`· ${SPORTS_OFFERED.length - 1}`); // count drops with the pick
+    expect(group('Commute').hidden).toBe(true); // still independent after a re-render
+  });
+
+  // TRAY_COLLAPSIBLE names groups by label, and a label that no longer matches
+  // WIDGET_GROUPS fails open: the expander just disappears and its cards spill
+  // back inline. Catch the rename here rather than on the board.
+  it('every expander label is a real WIDGET_GROUPS label', () => {
+    open();
+    const valid = new Set(WIDGET_GROUPS.map((g) => g.label));
+    for (const t of toggles()) expect(valid.has(t.dataset.trayToggle), t.dataset.trayToggle).toBe(true);
+  });
+
+  it('drops a category whose widgets are all placed rather than offering an empty drawer', () => {
+    const editor = open();
+    for (const id of SPORTS_OFFERED) editor._test.add(id);
+    expect(toggle('Sports')).toBeUndefined();
+    expect(toggle('Commute')).toBeDefined();
   });
 });

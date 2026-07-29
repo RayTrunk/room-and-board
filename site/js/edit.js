@@ -13,11 +13,17 @@ import { WIDGET_GROUPS, isAddable } from './config.js';
 // along). Lives inside the filled resize chip; stroke follows the chip color.
 const RESIZE_ICON = `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 9 4 4m0 0v5m0-5h5M15 15l5 5m0 0v-5m0 5h-5"/></svg>`;
 
-// Add-tray category order: the same groups as Settings/setup, but Commute (the
-// biggest, ~10 widgets) rendered LAST behind an expander so revealing it pushes
-// nothing above it. Non-Commute groups flow inline; chips sort alpha within group.
-const TRAY_INLINE_GROUPS = WIDGET_GROUPS.filter((g) => g.label !== 'Commute');
-const TRAY_COMMUTE = WIDGET_GROUPS.find((g) => g.label === 'Commute');
+// Add-tray category order: the same groups as Settings/setup, but the BIG
+// categories (Commute ~10, Sports 5) render LAST, each behind its own expander,
+// so revealing one pushes nothing above it. Every other group flows inline;
+// chips sort alpha within group. Order here is the render order of the
+// expanders — largest first — and each label must exist in WIDGET_GROUPS
+// (asserted in test/edit.test.js).
+const TRAY_COLLAPSIBLE = ['Commute', 'Sports'];
+const TRAY_INLINE_GROUPS = WIDGET_GROUPS.filter((g) => !TRAY_COLLAPSIBLE.includes(g.label));
+const TRAY_COLLAPSIBLE_GROUPS = TRAY_COLLAPSIBLE
+  .map((label) => WIDGET_GROUPS.find((g) => g.label === label))
+  .filter(Boolean);
 
 const TITLES = {
   apod: 'NASA Daily Photo',
@@ -60,7 +66,10 @@ const TITLES = {
 export function openEditMode(cfg, { root, onDone, onCancel, cellSize } = {}) {
   root ??= document.querySelector('#edit-root');
   let layout = cfg.layout.map((r) => ({ ...r }));
-  let commuteOpen = false; // Commute expander state; persists across re-renders
+  // Labels of the currently-expanded tray groups. One Set rather than a flag
+  // per group so each expander is independent, and it lives out here so the
+  // open ones stay open across the re-render that adding a widget triggers.
+  const trayOpen = new Set();
 
   root.innerHTML = `
     <div class="editor">
@@ -171,15 +180,19 @@ export function openEditMode(cfg, { root, onDone, onCancel, cellSize } = {}) {
       .sort((a, b) => TITLES[a].localeCompare(TITLES[b]))
       .map(chip).join('');
     const inlineChips = TRAY_INLINE_GROUPS.map(chipsFor).join('');
-    const commuteN = TRAY_COMMUTE.ids.filter((id) => !rectOf(id) && isAddable(id, cfg)).length;
-    const commuteChips = chipsFor(TRAY_COMMUTE);
+    // One toggle + hidden group per collapsible category, in TRAY_COLLAPSIBLE
+    // order, after every inline chip. A category with nothing left to add
+    // drops out entirely rather than offering an empty drawer.
+    const expanders = TRAY_COLLAPSIBLE_GROUPS.map((g) => {
+      const n = g.ids.filter((id) => !rectOf(id) && isAddable(id, cfg)).length;
+      if (!n) return '';
+      const open = trayOpen.has(g.label);
+      return `<button class="edit-tray__toggle" data-tray-toggle="${g.label}" aria-expanded="${open}"><span class="edit-tray__caret">${open ? '▾' : '▸'}</span> ${g.label} <span class="edit-tray__count">· ${n}</span></button>`
+        + `<span class="edit-tray__group" data-tray-group="${g.label}"${open ? '' : ' hidden'}>${chipsFor(g)}</span>`;
+    }).join('');
     tray.innerHTML =
       '<p class="edit-tray__head">Add a widget</p>' +
-      '<div class="edit-tray__chips">' + inlineChips +
-        (commuteN
-          ? `<button class="edit-tray__toggle" data-commute-toggle aria-expanded="${commuteOpen}"><span class="edit-tray__caret">${commuteOpen ? '▾' : '▸'}</span> Commute <span class="edit-tray__count">· ${commuteN}</span></button><span class="edit-tray__group" data-commute-group${commuteOpen ? '' : ' hidden'}>${commuteChips}</span>`
-          : '') +
-      '</div>' +
+      '<div class="edit-tray__chips">' + inlineChips + expanders + '</div>' +
       (anyBlocked ? '<p class="edit-tray__legend">faded = no room at its minimum size</p>' : '');
 
     blocksHost.querySelectorAll('[data-remove]').forEach((btn) =>
@@ -191,14 +204,6 @@ export function openEditMode(cfg, { root, onDone, onCancel, cellSize } = {}) {
     tray.querySelectorAll('[data-add]').forEach((btn) =>
       btn.addEventListener('click', () => add(btn.dataset.add)),
     );
-    tray.querySelector('[data-commute-toggle]')?.addEventListener('click', (e) => {
-      commuteOpen = !commuteOpen;
-      const grp = tray.querySelector('[data-commute-group]');
-      if (grp) grp.hidden = !commuteOpen;
-      const tog = e.currentTarget;
-      tog.setAttribute('aria-expanded', String(commuteOpen));
-      tog.querySelector('.edit-tray__caret').textContent = commuteOpen ? '▾' : '▸';
-    });
     blocksHost.querySelectorAll('.edit-block').forEach(bindDrag);
     blocksHost.querySelectorAll('[data-resize]').forEach(bindResize);
   }
@@ -359,6 +364,24 @@ export function openEditMode(cfg, { root, onDone, onCancel, cellSize } = {}) {
   function destroy() {
     root.innerHTML = '';
   }
+
+  // One delegated handler for every collapsible category. Bound once, on the
+  // tray element that outlives each render's innerHTML swap, so adding an
+  // expander is a WIDGET_GROUPS + TRAY_COLLAPSIBLE edit and nothing else.
+  // The group is found by scanning rather than by an interpolated attribute
+  // selector — group labels are free text ("News & Social") and would need
+  // escaping.
+  tray.addEventListener('click', (e) => {
+    const tog = e.target.closest('[data-tray-toggle]');
+    if (!tog) return;
+    const label = tog.dataset.trayToggle;
+    const open = !trayOpen.has(label);
+    if (open) trayOpen.add(label); else trayOpen.delete(label);
+    const grp = [...tray.querySelectorAll('[data-tray-group]')].find((el) => el.dataset.trayGroup === label);
+    if (grp) grp.hidden = !open;
+    tog.setAttribute('aria-expanded', String(open));
+    tog.querySelector('.edit-tray__caret').textContent = open ? '▾' : '▸';
+  });
 
   root.querySelector('[data-done]').addEventListener('click', () => {
     const result = layout;

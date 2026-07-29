@@ -73,9 +73,9 @@ export const SETUP_SECTIONS = [
   // Surf shares the location field: it reads the very same cfg.loc (see
   // effectiveSurfSpot), so a board carrying ONLY Surf must still be asked where it is.
   { id: 'weather-field', group: 'Weather & Air', triggers: ['weather', 'aqi', 'surf'] },
-  { id: 'markets-field', group: 'Markets & Sports', triggers: ['markets'] },
-  { id: 'marketsnews-field', group: 'Markets & Sports', triggers: ['marketsnews'] },
-  { id: 'sports-field', group: 'Markets & Sports', triggers: ['sports'] },
+  { id: 'markets-field', group: 'Markets', triggers: ['markets'] },
+  { id: 'marketsnews-field', group: 'Markets', triggers: ['marketsnews'] },
+  { id: 'sports-field', group: 'Sports', triggers: ['sports'] },
   { id: 'news-field', group: 'News & Social', triggers: ['news'] },
   { id: 'substack-field', group: 'News & Social', triggers: ['substack'] },
   { id: 'bsky-field', group: 'News & Social', triggers: ['bsky'] },

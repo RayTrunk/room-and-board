@@ -943,7 +943,8 @@ body.mode-ambient .gear--edit { display: none; }
    chip to ~1.3:1 against the bg, so it vanished). */
 .edit-tray__chip:disabled { color: var(--ink-faint); border-color: rgba(147, 160, 180, 0.08); cursor: default; }
 .edit-tray__chip small { color: var(--ink-faint); font-size: 16px; margin-left: 6px; }
-/* Commute is the biggest category — a collapsed expander so it doesn't wall the tray. */
+/* The big categories (Commute, Sports) each get a collapsed expander so they
+   don't wall the tray; several can be open at once. */
 .edit-tray__toggle {
   font-size: 20px; min-height: 56px; padding: 0 18px;
   border: 1px solid rgba(88, 166, 255, 0.4); border-radius: 12px; cursor: pointer;
@@ -952,7 +953,7 @@ body.mode-ambient .gear--edit { display: none; }
 }
 .edit-tray__caret { color: var(--accent); font-size: 16px; }
 .edit-tray__count { color: var(--ink-faint); font-size: 17px; }
-/* Revealed Commute chips sit in a faint accent inset so they read as "inside Commute". */
+/* Revealed chips sit in a faint accent inset so they read as "inside" their category. */
 .edit-tray__group {
   display: inline-flex; flex-wrap: wrap; gap: 10px; align-items: center; padding: 8px;
   border-radius: 14px; background: rgba(88, 166, 255, 0.05); border: 1px dashed rgba(88, 166, 255, 0.25);

@@ -30,7 +30,8 @@ export const WIDGET_IDS = [
 export const WIDGET_GROUPS = [
   { label: 'Commute', ids: ['subway', 'lirr', 'mnr', 'njt', 'amtrak', 'path', 'ferry', 'bus', 'citibike', 'tfl'] },
   { label: 'Weather & Air', ids: ['weather', 'aqi', 'surf'] },
-  { label: 'Markets & Sports', ids: ['markets', 'marketsnews', 'sports', 'worldcup', 'f1', 'golf', 'tennis'] },
+  { label: 'Markets', ids: ['markets', 'marketsnews'] },
+  { label: 'Sports', ids: ['sports', 'worldcup', 'f1', 'golf', 'tennis'] },
   { label: 'News & Social', ids: ['news', 'substack', 'bsky'] },
   { label: 'Ambient', ids: ['art', 'landscapes', 'photos', 'gdrivephotos', 'apod', 'iptv', 'worldclock'] },
   { label: 'Daily Extras', ids: ['history', 'quote', 'wotd', 'services', 'chart'] },
