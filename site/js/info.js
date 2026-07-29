@@ -4,6 +4,16 @@
 // CSP is script-src 'self' (no inline handlers).
 
 const NAV_OFFSET = 140; // a section counts as "current" once its top passes this
+const BOTTOM_SLACK = 4; // fractional-pixel zooms never land exactly on the end
+
+// True once there is no page left to scroll. On a tall viewport the last
+// section is shorter than the screen, so its top never reaches NAV_OFFSET and
+// the offset math alone would keep the SECOND-to-last pill lit while the reader
+// is looking at the end of the page (2560x1440 and 4K both do it, as does any
+// viewport once a short last section — a changelog that failed to load, say —
+// is all that remains).
+const atBottom = () =>
+  window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - BOTTOM_SLACK;
 
 // ---------- scroll-spy ----------
 const sections = [...document.querySelectorAll('[data-nav-section]')];
@@ -43,6 +53,11 @@ function syncNav() {
     // destination instead, and send the rail home so the brand is back too.
     const atTop = !active;
     if (atTop) active = sections[0]?.dataset.navSection ?? '';
+    // The mirror of that clause at the other end: bottomed out, the last
+    // section is where the reader is, whatever its top says. (A page short
+    // enough to be at the top AND the bottom at once keeps the top's answer —
+    // nothing has been scrolled past.)
+    else if (atBottom()) active = sections[sections.length - 1]?.dataset.navSection ?? active;
     if (atTop !== wasTop) {
       wasTop = atTop;
       if (atTop && navInner) { navInner.scrollLeft = 0; syncFade(); }
