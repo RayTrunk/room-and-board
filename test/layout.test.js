@@ -14,6 +14,7 @@ import {
   meetsMin,
   firstFitAny,
 } from '../site/js/layout.js';
+import { DEFAULT_CONFIG, WIDGET_IDS, isAddable } from '../site/js/config.js';
 
 const area = (r) => r.w * r.h;
 
@@ -29,6 +30,36 @@ describe('DEFAULT_LAYOUT', () => {
       const [mw, mh] = MIN_SIZE[r.id];
       expect(r.w).toBeGreaterThanOrEqual(mw);
       expect(r.h).toBeGreaterThanOrEqual(mh);
+    }
+  });
+
+  // THE GUARD THAT WAS MISSING. World Cup retired on 2026-07-20 via
+  // RETIRED_AFTER, which gates it out of every add picker — but it sat in
+  // DEFAULT_LAYOUT until 2026-07-29, so it kept arriving on boards through the
+  // fallback paths and rendered pre-checked on /setup for nine days. Nothing
+  // failed, because no test asked the two halves to agree. Now one does.
+  //
+  // DEFAULT_LAYOUT is still reachable by real users after /setup stopped
+  // pre-checking anything (2026-07-29): normalizeConfig falls back to it for a
+  // config with no layout at all, normalizeLayout falls back to it when a
+  // stored layout is corrupt or filters down to nothing, and
+  // migrateWidgetsToLayout uses its slots as position templates for v1 boards.
+  // So it has to stay a layout we would be happy to ship.
+  it('offers every default: no id here is retired, unlaunched or gated', () => {
+    for (const r of DEFAULT_LAYOUT) {
+      expect(WIDGET_IDS, r.id).toContain(r.id);
+      // Production host + the stock config: the strictest surface a default can
+      // land on. A card that needs nerd mode, a beta host, or the ocean probe
+      // must not be a default.
+      expect(isAddable(r.id, DEFAULT_CONFIG, 'roomboard.app'), r.id).toBe(true);
+    }
+  });
+
+  it('respects the content-aware height caps the stock config implies', () => {
+    // A default taller than its own content cap would be dead air on arrival.
+    const caps = contentMaxH(DEFAULT_CONFIG);
+    for (const r of DEFAULT_LAYOUT) {
+      if (caps[r.id]) expect(r.h, r.id).toBeLessThanOrEqual(caps[r.id]);
     }
   });
 });

@@ -46,7 +46,6 @@ export const WIDGET_LABELS = {
   wotd: 'Word of the Day',
   worldclock: 'World Clock',
   sports: 'My Teams (sports)',
-  worldcup: 'World Cup 2026',
   f1: 'Formula 1',
   golf: 'Golf (PGA)',
   tennis: 'Tennis',
@@ -106,17 +105,38 @@ export function stepTwoVisibility(placed) {
 
 let cfg = structuredClone(DEFAULT_CONFIG);
 
+// A FRESH visit starts with nothing ticked (Sean, 2026-07-29): the wizard used
+// to arrive with DEFAULT_LAYOUT's nine cards pre-checked, which made the picker
+// read like a list to prune rather than a list to choose from — and quietly
+// shipped whatever was in DEFAULT_LAYOUT onto every board set up from a phone,
+// which is how a retired World Cup card kept arriving on new boards for nine
+// days. Everything else in DEFAULT_CONFIG (location, sources, tickers) is still
+// the starting point; only the layout starts empty. Pure so it can be tested
+// without the DOM: `normalized` is the config after normalizeConfig, `scanned`
+// is truthy only when a board QR decoded.
+export const startingLayout = (normalized, scanned) => (scanned ? normalized.layout : []);
+
 async function boot() {
-  // Pre-fill from a scanned board QR (#cfg=...).
+  // Pre-fill from a scanned board QR (#cfg=...). A scan is the one case that
+  // DOES arrive pre-checked: it is that board's own current card set, and the
+  // user came here to adjust it, not to start over.
   const hash = new URLSearchParams(location.hash.replace(/^#/, ''));
+  let scanned = null;
   if (hash.get('cfg')) {
     try {
-      cfg = await decodeConfig(hash.get('cfg'));
+      scanned = await decodeConfig(hash.get('cfg'));
+      cfg = scanned;
     } catch {
       // fall through to defaults
     }
   }
   cfg = structuredClone(normalizeConfig(cfg));
+  // normalizeConfig cannot represent an empty layout (normalizeLayout treats []
+  // as "no opinion" and hands back DEFAULT_LAYOUT, the safety net that keeps a
+  // corrupted stored config off a blank board). So the blank slate is applied
+  // AFTER normalizing, and getCode/getSignageUrl refuse to encode it.
+  cfg.layout = startingLayout(cfg, scanned);
+  cfg.widgets = cfg.layout.map((r) => r.id);
 
   $('#name').value = cfg.name;
   $('#mode').value = cfg.mode;
@@ -186,6 +206,16 @@ export function widgetChecksHtml(labels, placed, cfgRef = null) {
     </section>`).join('');
 }
 
+// Step 2 shows only the sections the picks call for, so it has two legitimately
+// bare states and they mean opposite things. Naming them is the difference
+// between "you're done here" and a page that looks broken. Pure; exported for
+// tests.
+export function stepTwoNote(pickedCount, visibleSections) {
+  if (pickedCount === 0) return 'No widgets picked yet. Go back to step 1 and choose at least one card for your board.';
+  if (visibleSections === 0) return 'Nothing to personalize: every card you picked works as it is.';
+  return '';
+}
+
 // Hide step-2 config sections + dividers that don't apply to the current picks.
 function applyStepTwo() {
   const placed = new Set(cfg.layout.map((r) => r.id));
@@ -197,6 +227,29 @@ function applyStepTwo() {
   document.querySelectorAll('#step-2 [data-group]').forEach((d) => {
     d.hidden = !groups.has(d.dataset.group);
   });
+  const note = document.getElementById('step-2-note');
+  if (note) {
+    note.textContent = stepTwoNote(placed.size, sections.size);
+    note.hidden = !note.textContent;
+  }
+}
+
+// Nothing picked = nothing to put on the board. Both output paths refuse rather
+// than encoding it, because normalizeConfig would silently swap the empty layout
+// for DEFAULT_LAYOUT (see normalizeLayout) and hand the user a code for a board
+// they did not choose — which is the exact failure the blank-slate picker was
+// meant to end. Exported for tests.
+export const canEncode = (layout) => Array.isArray(layout) && layout.length > 0;
+export const EMPTY_PICKS_NOTICE = 'Pick at least one widget first — a board with no cards has nothing to show.';
+
+// Returns true when it blocked.
+function blockedOnEmptyPicks() {
+  if (canEncode(cfg.layout)) return false;
+  notice(EMPTY_PICKS_NOTICE);
+  $('#step-2').hidden = true;
+  $('#step-1').hidden = false;
+  window.scrollTo(0, 0);
+  return true;
 }
 
 // In-app notice replacing browser alert(): the native "…says" chrome broke
@@ -237,9 +290,23 @@ function probeSurf() {
   ensureOceanProbe(cfg.loc, { fetchJSON }, () => repaintWidgets?.());
 }
 
+// Live running total under the picker. The wizard opens with nothing ticked, so
+// the empty state has to ASK rather than just sit there looking finished — and
+// once picking starts the same line becomes the count, which is the thing a user
+// scrolling a 34-card list actually wants to know. Exported for tests.
+export const pickedLabel = (n) =>
+  (n === 0
+    ? 'Nothing picked yet. Choose the cards you want on your board.'
+    : `${n} widget${n === 1 ? '' : 's'} picked.`);
+
 function renderWidgets() {
   const placed = () => new Set(cfg.layout.map((r) => r.id));
-  repaintWidgets = () => { $('#widgets').innerHTML = widgetChecksHtml(WIDGET_LABELS, placed(), cfg); };
+  const count = $('#widget-count');
+  const repaintCount = () => { if (count) count.textContent = pickedLabel(cfg.layout.length); };
+  repaintWidgets = () => {
+    $('#widgets').innerHTML = widgetChecksHtml(WIDGET_LABELS, placed(), cfg);
+    repaintCount();
+  };
   repaintWidgets();
   probeSurf();
   $('#widgets').addEventListener('change', (e) => {
@@ -260,6 +327,7 @@ function renderWidgets() {
         notice('No room left on the board for that widget — uncheck another widget to make space.');
       }
     }
+    repaintCount();
   });
 }
 
@@ -804,6 +872,7 @@ async function copySignageUrl() {
 }
 
 async function getSignageUrl() {
+  if (blockedOnEmptyPicks()) return;
   cfg.name = $('#name').value.trim();
   cfg.mode = $('#mode').value;
   cfg.t = Math.floor(Date.now() / 1000); // fresh t: a re-pasted URL always wins
@@ -814,6 +883,7 @@ async function getSignageUrl() {
 }
 
 async function getCode() {
+  if (blockedOnEmptyPicks()) return;
   cfg.name = $('#name').value.trim();
   cfg.mode = $('#mode').value;
   cfg.t = Math.floor(Date.now() / 1000);

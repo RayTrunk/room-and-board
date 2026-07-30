@@ -234,11 +234,14 @@ describe('WIDGET_GROUPS taxonomy', () => {
   });
 
   // Markets & Sports split in two (2026-07-28) so the add tray could tuck the
-  // five sports cards behind their own expander, the way Commute already is.
+  // sports cards behind their own expander, the way Commute already is. Sports
+  // was five until the World Cup card was deleted on 2026-07-29 (it had been
+  // gated out since it retired on 2026-07-20, so the tray already read 4).
   it('keeps Markets and Sports as separate groups with the right members', () => {
     const ids = (label) => WIDGET_GROUPS.find((g) => g.label === label)?.ids;
     expect(ids('Markets')).toEqual(['markets', 'marketsnews']);
-    expect(ids('Sports')).toEqual(['sports', 'worldcup', 'f1', 'golf', 'tennis']);
+    expect(ids('Sports')).toEqual(['sports', 'f1', 'golf', 'tennis']);
+    expect(ids('Sports')).not.toContain('worldcup'); // deleted, not merely retired
     expect(WIDGET_GROUPS.map((g) => g.label)).not.toContain('Markets & Sports');
   });
 
@@ -349,9 +352,18 @@ describe('qwertyKeypad shiftable variant (replaced keyboard.js)', () => {
   });
 });
 
-import { widgetChecksHtml, WIDGET_LABELS as SETUP_LABELS } from '../site/js/settings/setup.js';
+import {
+  widgetChecksHtml,
+  WIDGET_LABELS as SETUP_LABELS,
+  startingLayout,
+  pickedLabel,
+  stepTwoNote,
+  canEncode,
+  EMPTY_PICKS_NOTICE,
+} from '../site/js/settings/setup.js';
 import { writeProbe, spotKey } from '../site/js/surf-gate.js';
 import { installLocalStorage } from './stubs/localstorage.js';
+import { DEFAULT_CONFIG, normalizeConfig as normalizeCfg } from '../site/js/config.js';
 
 // A coastal board, with the ocean verdict already cached. Surf is place-gated
 // (see isOceanHidden), so "every live widget is offered" is only true on a
@@ -380,6 +392,55 @@ describe('widgetChecksHtml (setup picker)', () => {
     expect(html).not.toMatch(/data-w="lirr"[^>]*checked/);
     // uses the passed (phone) labels
     expect(html).toContain('Metro-North (GCT)');
+  });
+
+  // /setup used to open with DEFAULT_LAYOUT's nine cards ticked, which read as a
+  // list to prune and quietly shipped whatever DEFAULT_LAYOUT held onto every
+  // phone-configured board — that is how a World Cup card that had retired on
+  // 2026-07-20 kept arriving pre-checked for nine days. Sean's call
+  // (2026-07-29): open with nothing ticked and let the user choose.
+  it('opens with NOTHING checked on a fresh visit', () => {
+    const html = widgetChecksHtml(SETUP_LABELS, new Set(startingLayout(DEFAULT_CONFIG, null).map((r) => r.id)), {});
+    expect(html).not.toContain('checked');
+    expect(html).toContain('data-w="weather"'); // the full menu is still offered
+  });
+
+  it('still opens pre-checked from a scanned board QR — that board\'s own cards', () => {
+    const scannedCfg = { layout: [{ id: 'subway', x: 0, y: 0, w: 3, h: 3 }] };
+    const placed = new Set(startingLayout(scannedCfg, scannedCfg).map((r) => r.id));
+    const html = widgetChecksHtml(SETUP_LABELS, placed, {});
+    expect(html).toMatch(/data-w="subway"[^>]*checked/);
+    expect(html).not.toMatch(/data-w="weather"[^>]*checked/);
+  });
+
+  it('the blank slate cannot leak into a setup code', () => {
+    // The guard exists because normalizeConfig CANNOT carry an empty layout:
+    // normalizeLayout treats [] as "no opinion" and hands back DEFAULT_LAYOUT
+    // (the safety net that keeps a corrupt stored config off a blank board). So
+    // an unguarded empty submit would silently hand out a code for the default
+    // board — exactly the surprise the blank slate was meant to remove.
+    expect(normalizeCfg({ ...DEFAULT_CONFIG, layout: [] }).layout).toEqual(DEFAULT_CONFIG.layout);
+    expect(canEncode([])).toBe(false);
+    expect(canEncode(undefined)).toBe(false);
+    expect(canEncode([{ id: 'weather', x: 0, y: 0, w: 3, h: 4 }])).toBe(true);
+    expect(EMPTY_PICKS_NOTICE).toMatch(/at least one widget/i);
+  });
+});
+
+describe('setup step copy for the empty states', () => {
+  it('asks for a pick at zero, then reports the running count', () => {
+    expect(pickedLabel(0)).toMatch(/Nothing picked yet/);
+    expect(pickedLabel(1)).toBe('1 widget picked.');
+    expect(pickedLabel(7)).toBe('7 widgets picked.');
+  });
+
+  it('step 2 names its two bare states differently, and says nothing when it has content', () => {
+    // nothing picked at all: send them back, do not imply they are finished
+    expect(stepTwoNote(0, 0)).toMatch(/Go back to step 1/);
+    // picked, but every card is config-less (Tennis, History, Quote...)
+    expect(stepTwoNote(3, 0)).toMatch(/Nothing to personalize/);
+    // has sections: no note at all
+    expect(stepTwoNote(3, 2)).toBe('');
   });
 });
 
@@ -449,7 +510,12 @@ describe('stepTwoVisibility', () => {
     expect(groups.has('Weather & Air')).toBe(true);
   });
   it('shows nothing for config-less widgets', () => {
-    const { sections, groups } = stepTwoVisibility(['worldcup', 'history']);
+    const { sections, groups } = stepTwoVisibility(['tennis', 'history']);
+    expect(sections.size).toBe(0);
+    expect(groups.size).toBe(0);
+  });
+  it('shows nothing at all for an empty pick set (the wizard now opens there)', () => {
+    const { sections, groups } = stepTwoVisibility([]);
     expect(sections.size).toBe(0);
     expect(groups.size).toBe(0);
   });

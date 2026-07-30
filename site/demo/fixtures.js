@@ -236,27 +236,13 @@ export const DEMO_VMS = {
       { tour: 'WTA', state: 'post', t: 1782960000000, round: 'Round of 16', a: 'E. Rybakina', b: 'M. Keys', aFlag: 'https://a.espncdn.com/i/teamlogos/countries/500/kaz.png', bFlag: 'https://a.espncdn.com/i/teamlogos/countries/500/usa.png', sets: '7-6 6-3', winner: 'a', detail: 'Final' },
     ],
   },
-  worldcup: {
-    nowMs: 1783000000000,
-    live: [
-      { t: 1782998000000, state: 'in', detail: "68'", home: 'USA', away: 'CRC', hs: '2', as: '0', hf: 'https://a.espncdn.com/i/teamlogos/countries/500/usa.png', af: 'https://a.espncdn.com/i/teamlogos/countries/500/crc.png', note: '', stage: 'Round of 16' },
-    ],
-    upcoming: [
-      { t: 1783015200000, state: 'pre', detail: '', home: 'FRA', away: 'NGA', hs: null, as: null, note: '', stage: 'Round of 16' },
-      { t: 1783090000000, state: 'pre', detail: '', home: 'BRA', away: 'MEX', hs: null, as: null, note: '', stage: 'Round of 16' },
-    ],
-    results: [
-      { t: 1782920000000, state: 'post', detail: 'FT-Pens', home: 'GER', away: 'PAR', hs: '1', as: '1', note: 'Paraguay advance 4-3 on penalties', stage: 'Round of 32' },
-      { t: 1782910000000, state: 'post', detail: 'FT', home: 'BRA', away: 'JPN', hs: '2', as: '1', note: '', stage: 'Round of 32' },
-    ],
-  },
   news: {
     nowMs: 1783000000000,
     items: [
       { title: 'Council reaches deal on city budget ahead of deadline', t: 1782998200000, source: 'NYT New York' },
       { title: 'Federal Reserve signals patience on rate cuts', t: 1782996000000, source: 'NYT Business' },
       { title: 'Subway platform doors pilot expands to five stations', t: 1782990000000, source: 'Gothamist' },
-      { title: 'World Cup crowds boost midtown restaurants', t: 1782980000000, source: 'NYT Top Stories' },
+      { title: 'Summer crowds boost midtown restaurants', t: 1782980000000, source: 'NYT Top Stories' },
     ],
   },
   substack: {

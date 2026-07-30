@@ -45,7 +45,6 @@ export const WIDGET_LABELS = {
   citibike: 'Citi Bike',
   tfl: 'TfL Status',
   sports: 'My Teams (sports)',
-  worldcup: 'World Cup 2026',
   f1: 'Formula 1',
   golf: 'Golf (PGA)',
   tennis: 'Tennis',

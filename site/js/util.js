@@ -154,10 +154,13 @@ export function setupPrompt(section, action, dest) {
   return `<div class="empty" data-setup="${section}">Tap here to ${action} or ${viaSettings(dest)}</div>`;
 }
 
-// Sunset prompt for retired event cards (e.g. the World Cup after the final):
-// the whole card taps into edit mode to swap the widget (main.js wires
-// [data-edit]); the pencil glyph points at the on-screen button, same idea
-// as viaSettings' gear. The glyph phrase stays unbreakable.
+// Sunset prompt for a retired event card — the render half of the
+// RETIRED_AFTER mechanism in config.js. The whole card taps into edit mode to
+// swap the widget (main.js wires [data-edit]); the pencil glyph points at the
+// on-screen button, same idea as viaSettings' gear. The glyph phrase stays
+// unbreakable. No card uses it right now (World Cup 2026 was the last dated
+// one and left the tree 2026-07-29); it waits here for the next seasonal card,
+// which needs a RETIRED_AFTER line and this call and nothing else.
 export function editPrompt(message) {
   return `<div class="empty" data-edit>${message} Tap here to replace this card, <span class="empty__via">or via ${icon('pencil', 'icon--inline')} Edit layout</span></div>`;
 }

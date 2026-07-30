@@ -2,7 +2,6 @@ import { fetchAll, fetchBskyRows } from '../site/js/widgets/posts.js';
 import { describe, it, expect } from 'vitest';
 import { logoUrl } from '../site/js/widgets/sports.js';
 import { mapTeamSummary, digestSchedule, pickLogo, LEAGUE_PATHS } from '../worker/src/sports.js';
-import { mapWorldCup } from '../site/js/widgets/worldcup.js';
 import { mapPosts } from '../site/js/widgets/posts.js';
 import { parseRss, mergeNews, ageLabel } from '../site/js/widgets/news.js';
 import { renderHeadlines } from '../site/js/widgets/newscore.js';
@@ -46,35 +45,6 @@ describe('mapTeamSummary', () => {
   it('survives teams with no scheduled events and covers all leagues', () => {
     expect(mapTeamSummary({ team: { abbreviation: 'X', shortDisplayName: 'X' } }, null, 'nfl').line).toBe('No scheduled games');
     expect(Object.keys(LEAGUE_PATHS)).toEqual(['mlb', 'nfl', 'nba', 'nhl', 'mls', 'epl']);
-  });
-});
-
-describe('mapWorldCup', () => {
-  const ev = (state, dateIso, scores, note) => ({
-    date: dateIso,
-    season: { type: { name: 'Round of 16' } },
-    competitions: [{
-      status: { type: { state, shortDetail: state === 'post' ? 'FT' : state === 'in' ? "68'" : '' } },
-      competitors: [
-        { homeAway: 'home', team: { abbreviation: 'USA' }, score: scores?.[0] },
-        { homeAway: 'away', team: { abbreviation: 'CRC' }, score: scores?.[1] },
-      ],
-      notes: note ? [{ headline: note }] : [],
-    }],
-  });
-  it('buckets live, upcoming and results with correct ordering', () => {
-    const now = Date.parse('2026-07-02T18:00Z');
-    const vm = mapWorldCup({ events: [
-      ev('post', '2026-07-01T20:00Z', ['1', '1'], 'USA advance on penalties'),
-      ev('pre', '2026-07-03T20:00Z'),
-      ev('in', '2026-07-02T17:00Z', ['2', '0']),
-      ev('post', '2026-06-30T20:00Z', ['3', '0']),
-      ev('pre', '2026-07-02T22:00Z'),
-    ]}, now);
-    expect(vm.live).toHaveLength(1);
-    expect(vm.upcoming.map((m) => m.t)).toEqual([...vm.upcoming.map((m) => m.t)].sort((a, b) => a - b));
-    expect(vm.results[0].t).toBeGreaterThan(vm.results[1].t); // newest final first
-    expect(vm.results[0].note).toContain('penalties');
   });
 });
 

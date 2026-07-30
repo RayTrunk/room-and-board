@@ -45,7 +45,6 @@ export const MIN_SIZE = {
   surf: [3, 3],
   worldclock: [2, 3], // shortest card that fits a useful clock list (rows slice to fit)
   sports: [3, 2],
-  worldcup: [3, 3], // two section labels (LIVE/UPCOMING) don't fit the 2-tall body budget
   golf: [3, 3],
   tennis: [3, 3],
   iptv: [3, 3],
@@ -61,9 +60,18 @@ export const MIN_SIZE = {
 // cities), markets (3 default tickers) and subway (3 default lines) each
 // cap at 3 tall, so weather, art and lirr absorb the freed rows. Every
 // size is overflow-audited.
+//
+// EVERY ID HERE MUST BE OFFERABLE. The default board is what /setup renders
+// pre-checked and what a quick start ships, so an id that isAddable() has
+// stopped offering (retired, beta-only, gated) must leave this list in the
+// same change — World Cup sat here for nine days after it retired, seeding
+// every new board with a dead card. Pinned by test/layout.test.js.
+// news took that 3x3 slot on 2026-07-29: the default board had no news source
+// at all, and Headlines needs no location or account to be useful on arrival
+// (3 stories at 3x3, NYT Top Stories + NYT New York out of the box).
 export const DEFAULT_LAYOUT = Object.freeze([
   { id: 'weather', x: 0, y: 0, w: 3, h: 5 },
-  { id: 'worldcup', x: 3, y: 0, w: 3, h: 3 },
+  { id: 'news', x: 3, y: 0, w: 3, h: 3 },
   { id: 'worldclock', x: 6, y: 0, w: 3, h: 3 },
   { id: 'subway', x: 9, y: 0, w: 3, h: 3 },
   { id: 'sports', x: 3, y: 3, w: 3, h: 3 },

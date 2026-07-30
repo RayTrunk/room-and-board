@@ -1,5 +1,5 @@
 // PGA Tour leaderboard from ESPN's public scoreboard (CORS-open, keyless,
-// browser-direct — same source family as My Teams/World Cup). Config-less:
+// browser-direct — same source family as My Teams/Tennis). Config-less:
 // the feed's current event IS the card. Majors (Masters/PGA/US Open/The
 // Open) ride the pga scoreboard, so they appear automatically.
 

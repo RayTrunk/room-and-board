@@ -235,12 +235,6 @@ One location drives all three cards.
   show the next event and start date. *Configure:* none.
 - **Tennis** — the current ATP and WTA tournaments: live singles matches
   first, then today's upcoming and the freshest finals. *Configure:* none.
-- **World Cup 2026** — *retired.* The card covered the tournament and sunset on
-  its own schedule the day after the final, via the `RETIRED_AFTER` date table
-  in `site/js/config.js`: it has dropped out of every add picker, while a board
-  that still has it placed keeps its slot and gets a tap-to-swap prompt — an
-  event card is never yanked out of somebody's layout from the server side. The
-  code stays in the tree as the worked example of how a dated card retires.
 
 ### News & Social
 
@@ -560,7 +554,7 @@ decision through the single `isAddable(id, cfg, host)` predicate in
 
 | Gate | Meaning | Currently |
 |---|---|---|
-| `RETIRED_AFTER` | a dated card sunsets on a fixed date | World Cup 2026, retired |
+| `RETIRED_AFTER` | a dated card sunsets on a fixed date | *empty* (see below) |
 | `BETA_ONLY` | staging hosts only; production ships the code dark | Live Video |
 | `ADVANCED_WIDGETS` | needs self-hosted infrastructure behind it, so it hides until **Settings → Diagnostics → Nerd mode** is on | Live Video |
 | `OCEAN_WIDGETS` | depends on *where* the board is (below) | Surf |
@@ -575,6 +569,57 @@ rendering, and it stays removable, whatever the gates say. Gates decide what is
 *offered*, never what is taken away — so a beta-configured board does not break
 by visiting production, a non-technical owner never sees the advanced cards, and
 a retired event card is never yanked out of somebody's layout.
+
+#### Retiring a dated card
+
+`RETIRED_AFTER` maps a widget id to the UTC date it stops being offered
+(strictly: it lives through the whole day before that date). On the date the id
+leaves every add surface, while boards that already have it placed keep the slot
+and get a tap-to-swap prompt (`editPrompt` in `site/js/util.js`) instead of a
+card that has silently vanished. The map is empty today — **World Cup 2026** was
+the one card that used it: retired 2026-07-20, code deleted 2026-07-29 — and the
+mechanism stays for the next seasonal card, which needs one line here and one
+`editPrompt` call.
+
+Retirement is two steps, and the second is the one that bites. Sunsetting a card
+gates it out of the pickers but does **not** remove it from `DEFAULT_LAYOUT`, so
+World Cup went on arriving on boards for nine days after it retired: `/setup`
+seeded its checkboxes from `DEFAULT_LAYOUT` and rendered it pre-checked, and the
+`normalizeConfig` fallbacks handed it to any config that had no layout of its
+own. When a card retires, replace its slot in `DEFAULT_LAYOUT` in the same
+change; `test/layout.test.js` and `test/quickstart.test.js` now fail if any id in
+either default set is not `isAddable` under its own config.
+
+Deleting the widget outright is safe by construction: `normalizeLayout` keeps
+only ids it knows, so stored configs and old setup codes carrying a removed id
+decode cleanly, drop that card, and leave every other card exactly where it was
+(the vacated cells simply stay empty — nothing reflows).
+
+### Where the defaults come from
+
+There are **two** default board compositions, on purpose, and they are not the
+same arrangement:
+
+| Source | Used by | Notes |
+|---|---|---|
+| `DEFAULT_LAYOUT` (`site/js/layout.js`) | the `normalizeConfig` / `normalizeLayout` fallbacks — a config with no layout, a corrupt stored layout, or one whose ids all filter out; and `migrateWidgetsToLayout` as the slot template for v1 boards | nine cards tiling all 96 cells |
+| `QUICKSTART_CONFIG` (`site/js/quickstart.js`) | the board's welcome screen → **Quick start** | a hand-arranged showcase captured 2026-07-13; only the fields that differ from `DEFAULT_CONFIG` live here, so default improvements still flow in |
+
+`/setup` used to be a third consumer — it seeded its widget checkboxes from
+`DEFAULT_CONFIG.layout` (i.e. `DEFAULT_LAYOUT`) and so opened with nine boxes
+already ticked. Since 2026-07-29 **a fresh `/setup` visit opens with nothing
+ticked**: the picker reads as a list to choose from rather than a list to prune,
+and no board arrives carrying cards its owner never asked for. Arriving with a
+scanned board QR (`#cfg=…`) still pre-checks that board's own current cards —
+you came to adjust them, not to start over.
+
+Because the blank slate is not representable in a normalized config
+(`normalizeLayout` treats `[]` as "no opinion" and hands back `DEFAULT_LAYOUT`,
+which is the safety net that keeps a corrupt stored config off a blank board),
+`/setup` applies it *after* normalizing and refuses to encode it: both **Get my
+setup code** and **Get signage URL** bounce back to step 1 with "Pick at least
+one widget first". Every other default (location, news sources, tickers, chart
+topics, service list) still comes from `DEFAULT_CONFIG` on every path.
 
 ### Place gating (Surf)
 

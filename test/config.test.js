@@ -14,6 +14,7 @@ import {
   WIDGET_IDS,
   WIDGET_GROUPS,
   encodeVideoCode,
+  RETIRED_AFTER,
 } from '../site/js/config.js';
 import { CHART_TOPICS } from '../site/js/widgets/chart-topics.js';
 
@@ -477,13 +478,106 @@ describe('nerd mode (ADVANCED_WIDGETS gate)', () => {
   });
 });
 
+// The mechanism outlived its only user: World Cup 2026 retired on 2026-07-20
+// and its code left the tree on 2026-07-29, leaving the table empty. These
+// tests keep the SUNSET RULE pinned so the next seasonal card inherits a
+// working gate instead of re-deriving one — the boundary is tested against a
+// synthetic table, since a real entry would sunset a real card.
 describe('widget retirement (RETIRED_AFTER)', () => {
-  it('worldcup retires as of Jul 20 2026, not on the Jul 19 final day; other ids never', () => {
-    expect(isRetired('worldcup', Date.UTC(2026, 6, 19))).toBe(false); // final day, still live
-    expect(isRetired('worldcup', Date.UTC(2026, 6, 20, 12))).toBe(true); // retired the next day
-    expect(isRetired('worldcup', Date.UTC(2026, 7, 1))).toBe(true);
-    expect(isRetired('weather', Date.UTC(2030, 0, 1))).toBe(false);
-    expect(isRetired('nonexistent', Date.UTC(2030, 0, 1))).toBe(false);
+  it('is an empty frozen table today: nothing in the tree is retired', () => {
+    expect(RETIRED_AFTER).toEqual({});
+    expect(Object.isFrozen(RETIRED_AFTER)).toBe(true);
+    for (const id of WIDGET_IDS) expect(isRetired(id, Date.UTC(2030, 0, 1)), id).toBe(false);
+  });
+
+  it('sunsets on the date, and the card lives through the whole day before it', () => {
+    const table = { seasonal: Date.UTC(2026, 6, 20) };
+    expect(isRetired('seasonal', Date.UTC(2026, 6, 19, 23, 59), table)).toBe(false); // final day, still live
+    expect(isRetired('seasonal', Date.UTC(2026, 6, 20), table)).toBe(false); // the stroke of midnight is not yet past
+    expect(isRetired('seasonal', Date.UTC(2026, 6, 20, 0, 0, 1), table)).toBe(true);
+    expect(isRetired('seasonal', Date.UTC(2026, 7, 1), table)).toBe(true);
+  });
+
+  it('an id absent from the table is never retired, at any clock', () => {
+    const table = { seasonal: Date.UTC(2026, 6, 20) };
+    expect(isRetired('weather', Date.UTC(2030, 0, 1), table)).toBe(false);
+    expect(isRetired('nonexistent', Date.UTC(2030, 0, 1), table)).toBe(false);
+  });
+
+  it('isAddable routes through it: a retired id is not offerable', () => {
+    // isAddable reads the real (empty) table, so this asserts the composition
+    // by way of the gate that IS populated; the retirement branch is covered
+    // above. Both must hold for the one-predicate promise to mean anything.
+    expect(isAddable('sports', DEFAULT_CONFIG, 'roomboard.app')).toBe(true);
+    expect(isAddable('iptv', DEFAULT_CONFIG, 'roomboard.app')).toBe(false);
+  });
+});
+
+// World Cup was deleted outright on 2026-07-29 while real boards had it placed
+// and hour-old setup codes still encoded it. Dropping an id must be a non-event
+// for those boards: the card goes, nothing else moves, and no path throws.
+describe('a removed widget id in a stored config or an old setup code', () => {
+  // A board configured before the removal: worldcup in the middle of the layout,
+  // written on the wire exactly as encodeConfig would have written it.
+  const STORED = Object.freeze({
+    v: 3,
+    t: 1784000000,
+    name: 'Sean',
+    layout: [
+      { id: 'weather', x: 0, y: 0, w: 3, h: 5 },
+      { id: 'worldcup', x: 3, y: 0, w: 3, h: 3 },
+      { id: 'worldclock', x: 6, y: 0, w: 3, h: 3 },
+      { id: 'subway', x: 9, y: 0, w: 3, h: 3 },
+      { id: 'markets', x: 0, y: 5, w: 3, h: 3 },
+    ],
+  });
+
+  it('decodes without throwing and drops only the removed card', () => {
+    const cfg = normalizeConfig(STORED);
+    expect(cfg.widgets).not.toContain('worldcup');
+    expect(cfg.widgets).toEqual(['weather', 'worldclock', 'subway', 'markets']);
+  });
+
+  it('leaves every surviving card on the exact cell it was on', () => {
+    const cfg = normalizeConfig(STORED);
+    for (const kept of STORED.layout.filter((r) => r.id !== 'worldcup')) {
+      expect(cfg.layout.find((r) => r.id === kept.id), kept.id).toEqual(kept);
+    }
+  });
+
+  it('leaves the vacated cells EMPTY rather than reflowing the board', () => {
+    const cfg = normalizeConfig(STORED);
+    // x 3-5 / y 0-2 was the World Cup slot; nothing may slide into it.
+    const occupies = (x, y) => cfg.layout.some((r) => x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h);
+    for (let y = 0; y < 3; y++) for (let x = 3; x < 6; x++) expect(occupies(x, y), `${x},${y}`).toBe(false);
+  });
+
+  it('survives a config that is ONLY the removed card, falling back to defaults', () => {
+    // Every id dropping out is indistinguishable from "no layout given", so the
+    // safety net applies rather than handing a board zero cards.
+    const cfg = normalizeConfig({ v: 3, layout: [{ id: 'worldcup', x: 0, y: 0, w: 3, h: 3 }] });
+    expect(cfg.layout).toEqual(DEFAULT_CONFIG.layout);
+  });
+
+  it('round-trips through a real v3 setup code, as an hour-old code would', async () => {
+    const code = await encodeConfig(STORED);
+    const cfg = await decodeConfig(code);
+    expect(cfg.widgets).toEqual(['weather', 'worldclock', 'subway', 'markets']);
+    expect(cfg.name).toBe('Sean');
+  });
+
+  it('migrates a v1 widgets list that names it', () => {
+    const cfg = normalizeConfig({ v: 1, widgets: ['weather', 'worldcup', 'markets'] });
+    expect(cfg.widgets).toEqual(['weather', 'markets']);
+  });
+
+  it('migrates a v2 layout that names it, doubling the survivors onto 12x8', () => {
+    const cfg = normalizeConfig({
+      v: 2,
+      layout: [{ id: 'weather', x: 0, y: 0, w: 2, h: 2 }, { id: 'worldcup', x: 2, y: 0, w: 2, h: 2 }],
+    });
+    expect(cfg.widgets).toEqual(['weather']);
+    expect(cfg.layout[0]).toEqual({ id: 'weather', x: 0, y: 0, w: 4, h: 4 });
   });
 });
 

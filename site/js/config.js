@@ -20,7 +20,7 @@ export const ART_CATS = [
 ];
 
 export const WIDGET_IDS = [
-  'weather', 'subway', 'lirr', 'mnr', 'njt', 'amtrak', 'path', 'ferry', 'bus', 'citibike', 'tfl', 'art', 'photos', 'gdrivephotos', 'landscapes', 'apod', 'history', 'aqi', 'surf', 'quote', 'wotd', 'markets', 'marketsnews', 'worldclock', 'sports', 'worldcup', 'news', 'substack', 'bsky', 'services', 'chart', 'f1', 'golf', 'tennis', 'iptv',
+  'weather', 'subway', 'lirr', 'mnr', 'njt', 'amtrak', 'path', 'ferry', 'bus', 'citibike', 'tfl', 'art', 'photos', 'gdrivephotos', 'landscapes', 'apod', 'history', 'aqi', 'surf', 'quote', 'wotd', 'markets', 'marketsnews', 'worldclock', 'sports', 'news', 'substack', 'bsky', 'services', 'chart', 'f1', 'golf', 'tennis', 'iptv',
 ];
 
 // Display grouping for the widget pickers (board Settings and phone /setup).
@@ -31,7 +31,7 @@ export const WIDGET_GROUPS = [
   { label: 'Commute', ids: ['subway', 'lirr', 'mnr', 'njt', 'amtrak', 'path', 'ferry', 'bus', 'citibike', 'tfl'] },
   { label: 'Weather & Air', ids: ['weather', 'aqi', 'surf'] },
   { label: 'Markets', ids: ['markets', 'marketsnews'] },
-  { label: 'Sports', ids: ['sports', 'worldcup', 'f1', 'golf', 'tennis'] },
+  { label: 'Sports', ids: ['sports', 'f1', 'golf', 'tennis'] },
   { label: 'News & Social', ids: ['news', 'substack', 'bsky'] },
   // Images = every card whose content IS the picture: art, photography, apod,
   // and (since Ambient retired, 2026-07-29) the Live Video stream, which is the
@@ -591,12 +591,30 @@ export function normalizeGdrivePhotos(raw, rawPhotos) {
 // board's setup. Sparse: only the slots the sender filled travel, so applying
 // an iCloud-only code never disturbs an existing Drive slot. The '~P~' sentinel
 // can't collide with a full-config code (those are pure base64url).
-// Event widgets with a hard end date. After the date the card renders a
-// tap-to-swap prompt (never auto-removed from anyone's layout) and the id
-// drops out of every add picker. WC2026 final was Jul 19 (Spain won); the
-// card retires as of Jul 20.
-export const RETIRED_AFTER = Object.freeze({ worldcup: Date.UTC(2026, 6, 20) });
-export const isRetired = (id, nowMs = Date.now()) => (RETIRED_AFTER[id] ?? Infinity) < nowMs;
+// Event widgets with a hard end date. Add `id: Date.UTC(y, m, d)` here and on
+// that date the id drops out of every add picker (isAddable below) while a
+// board that already has the card placed keeps its slot and gets a tap-to-swap
+// prompt (util.js editPrompt) — an event card is never yanked out of somebody's
+// layout from the server side.
+//
+// The map is EMPTY today. World Cup 2026 was the first and so far only dated
+// card: it retired on 2026-07-20 (final was Jul 19, Spain won) and its code was
+// removed from the tree on 2026-07-29, which is the whole lifecycle this table
+// exists to make cheap. Kept empty rather than deleted because the next
+// seasonal card is one line, and because RETIRED_AFTER is one of the four
+// isAddable gates the add-policy tests assert as a set.
+//
+// A retired id must ALSO leave DEFAULT_LAYOUT in the same change — World Cup
+// did not, and every board quick-started between Jul 20 and Jul 29 shipped
+// with a dead card pre-checked on /setup. test/layout.test.js now fails if a
+// default is not offerable.
+export const RETIRED_AFTER = Object.freeze({});
+// The date is the first day the card is GONE: the comparison is strict against
+// that date's UTC midnight, so the card lives through the whole day before it.
+// `table` is the injection seam that keeps that rule under test while the real
+// map is empty; production callers never pass it.
+export const isRetired = (id, nowMs = Date.now(), table = RETIRED_AFTER) =>
+  (table[id] ?? Infinity) < nowMs;
 
 // Staged rollout: ids listed here surface only on staging hosts (beta.
 // roomboard.app, the rvc.tech fallback, local dev) — prod ships the code

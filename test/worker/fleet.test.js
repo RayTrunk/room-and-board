@@ -34,11 +34,19 @@ describe('parseBeacon', () => {
     expect(new Set(p.widgets).size).toBe(p.widgets.length);
   });
   it('keeps widget ids with digits (f1) but drops numeric-only ids', () => {
-    const p = parseBeacon(JSON.stringify({ ...VALID, widgets: ['f1', 'worldcup', '42', 'a1b2'] }));
+    const p = parseBeacon(JSON.stringify({ ...VALID, widgets: ['f1', 'worldclock', '42', 'a1b2'] }));
     expect(p.widgets).toContain('f1');
-    expect(p.widgets).toContain('worldcup');
+    expect(p.widgets).toContain('worldclock');
     expect(p.widgets).toContain('a1b2');
     expect(p.widgets).not.toContain('42'); // must start with a letter
+  });
+  // The filter is SHAPE-only on purpose, never WIDGET_IDS membership: a board
+  // still carrying a card the site has since deleted (worldcup, removed
+  // 2026-07-29) keeps reporting it, and the adoption history downstream depends
+  // on those pings arriving rather than being dropped at the edge.
+  it('still accepts ids the site no longer ships', () => {
+    const p = parseBeacon(JSON.stringify({ ...VALID, widgets: ['worldcup', 'ambient'] }));
+    expect(p.widgets).toEqual(['worldcup', 'ambient']);
   });
   it('rejects malformed bodies', () => {
     expect(parseBeacon('not json')).toBeNull();

@@ -19,8 +19,12 @@ export function parseBeacon(text) {
   if (typeof b?.deviceId !== 'string' || !/^[a-f0-9-]{8,64}$/i.test(b.deviceId)) return null;
   if (!Array.isArray(b.widgets)) return null;
   // Widget ids are a leading letter then lowercase alphanumerics (e.g. 'f1',
-  // 'worldcup') — digits MUST be allowed or numbered widgets like f1 get
+  // 'worldclock') — digits MUST be allowed or numbered widgets like f1 get
   // silently dropped from adoption. Still rejects markup, numeric-only, oversized.
+  // Deliberately SHAPE-only, never a WIDGET_IDS membership check: boards that
+  // still carry a card the site has since removed (World Cup, deleted
+  // 2026-07-29) keep reporting it, and the adoption history in the stats repo
+  // depends on those pings arriving instead of being filtered at the edge.
   const widgets = [...new Set(b.widgets.filter((w) => typeof w === 'string' && /^[a-z][a-z0-9]{1,19}$/.test(w)))].slice(0, 32);
   return {
     deviceId: b.deviceId.toLowerCase(),

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { QUICKSTART_CONFIG } from '../site/js/quickstart.js';
-import { normalizeConfig } from '../site/js/config.js';
+import { normalizeConfig, WIDGET_IDS, isAddable } from '../site/js/config.js';
 import { MIN_SIZE } from '../site/js/layout.js';
 
 describe('quick-start preset', () => {
@@ -36,5 +36,18 @@ describe('quick-start preset', () => {
   });
   it('carries no theme key (theme machinery retired)', () => {
     expect(cfg.theme).toBeUndefined(); // theme machinery retired
+  });
+
+  // Quick Start is the SECOND default source (DEFAULT_LAYOUT is the other, and
+  // they are deliberately different arrangements), so it needs the same guard:
+  // a card nobody can add must never be the card a new board arrives with. This
+  // preset never held the World Cup, which is why quick-started boards escaped
+  // the bug that hit every /setup board — the check is here so that stays luck
+  // we do not depend on.
+  it('offers every card it ships: no retired, unlaunched or gated id', () => {
+    for (const r of cfg.layout) {
+      expect(WIDGET_IDS, r.id).toContain(r.id);
+      expect(isAddable(r.id, cfg, 'roomboard.app'), r.id).toBe(true);
+    }
   });
 });

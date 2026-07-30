@@ -9,7 +9,6 @@ import * as lirr from '../site/js/widgets/lirr.js';
 import * as mnr from '../site/js/widgets/mnr.js';
 import * as busw from '../site/js/widgets/bus.js';
 import * as sports from '../site/js/widgets/sports.js';
-import * as worldcup from '../site/js/widgets/worldcup.js';
 import * as news from '../site/js/widgets/news.js';
 import * as substack from '../site/js/widgets/substack.js';
 import * as bsky from '../site/js/widgets/bsky.js';
@@ -38,7 +37,7 @@ import * as tennis from '../site/js/widgets/tennis.js';
 import * as iptv from '../site/js/widgets/iptv.js';
 import * as amtrak from '../site/js/widgets/amtrak.js';
 import * as clock from '../site/js/widgets/clock.js';
-import { fmtClock } from '../site/js/util.js';
+import { fmtClock, editPrompt } from '../site/js/util.js';
 import { sparkPath, sparkDividerX, yForValue, colorSplit, splitAtX, normalizeSymbol } from '../site/js/widgets/markets.js';
 import { chaikin } from '../site/js/util.js';
 
@@ -131,45 +130,21 @@ const CASES = [
   ['apod', apod, ['Messier 24', 'Chuck Ayoub']],
 ];
 
-// Worldcup renders time-dependently (RETIRED_AFTER sunsets the card after
-// Jul 27 2026), so its render tests pin the clock on each side of the cutoff
-// instead of riding the CASES loop.
-describe('worldcup render (pre-conclusion, pinned clock)', () => {
-  beforeAll(() => vi.useFakeTimers({ now: Date.UTC(2026, 6, 10) }));
-  afterAll(() => vi.useRealTimers());
-
-  it('renders its demo fixture', () => {
+// The render half of the RETIRED_AFTER mechanism, kept under test with no
+// retired card in the tree (World Cup 2026 was the last one and left on
+// 2026-07-29): the prompt must be tappable into edit mode and must name the
+// pencil button, because a card that has stopped fetching and says nothing is
+// indistinguishable from a broken one.
+describe('editPrompt (retired-card sunset prompt)', () => {
+  it('taps into edit mode and points at the pencil, carrying the caller message', () => {
     const host = el();
-    worldcup.render(host, DEMO_VMS.worldcup, CFG);
-    for (const t of ['USA', 'FRA vs NGA', 'penalties', 'Live', 'Upcoming']) expect(host.textContent).toContain(t);
-  });
-
-  it('escapes upstream score text', () => {
-    const host = el();
-    worldcup.render(host, { nowMs: 1783000000000, live: [{ state: 'in', detail: "12'", home: 'USA', away: 'CRC', hs: '<img src=x>', as: '0', hf: '', af: '', note: '' }], upcoming: [], results: [] }, CFG);
-    expect(host.innerHTML).not.toContain('<img src=x>');
-  });
-});
-
-describe('worldcup retirement (post Jul 20 2026, pinned clock)', () => {
-  beforeAll(() => vi.useFakeTimers({ now: Date.UTC(2026, 7, 1) }));
-  afterAll(() => vi.useRealTimers());
-
-  it('renders the tap-to-swap prompt with the Spain flag + pencil glyph', () => {
-    const host = el();
-    worldcup.render(host, DEMO_VMS.worldcup, CFG);
+    host.innerHTML = editPrompt('The season is over.');
     const prompt = host.querySelector('[data-edit]');
-    expect(prompt).toBeTruthy();
-    expect(host.textContent).toContain('The World Cup has concluded');
-    expect(host.textContent).toContain('Congratulations Spain!');
+    expect(prompt).toBeTruthy(); // main.js turns [data-edit] into an edit-mode tap
+    expect(host.textContent).toContain('The season is over.');
     expect(host.textContent).toContain('replace this card');
-    expect(prompt.querySelector('.flag-inline')).toBeTruthy(); // inline Spain flag
-    expect(prompt.querySelectorAll('svg').length).toBeGreaterThanOrEqual(2); // flag + pencil
-  });
-
-  it('fetchData goes quiet instead of hitting ESPN', async () => {
-    const vm = await worldcup.fetchData(CFG, { fetchJSON: () => { throw new Error('must not fetch'); } });
-    expect(vm).toEqual({ live: [], upcoming: [], results: [] });
+    expect(host.textContent).toContain('Edit layout');
+    expect(prompt.querySelector('svg')).toBeTruthy(); // pencil glyph
   });
 });
 

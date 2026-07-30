@@ -41,10 +41,12 @@
          lands. CSS scales it from there. -->
     <h1 class="hero__title"><img class="hero__lockup" src="assets/room-and-board-lockup-dark.svg" alt="Room &amp; Board" width="373" height="96" fetchpriority="high"></h1>
     <p class="hero__lede">A glanceable dashboard for your personal screen: your commute, your weather, your markets, your images.</p>
-    <!-- 33 = every widget a reader of this page can actually add today: the 35
-         ids in config.js less the one that retired (World Cup) and the one
-         still behind the beta gate (Live Video). No group count: the taxonomy
-         moves every few weeks and a number here is a promise to keep it. -->
+    <!-- 33 = every widget a reader of this page can actually add today: the 34
+         ids in config.js less the one still behind the beta gate (Live Video).
+         (It was 35 less a retired World Cup less Live Video until the World Cup
+         code left the tree on 2026-07-29 — same 33 either way.) No group count:
+         the taxonomy moves every few weeks and a number here is a promise to
+         keep it. -->
     <p class="hero__note">Every widget is added and configured right on the board, or from your phone. 33 to choose from &mdash; take the ones you want.</p>
   </div>
   <!-- The hero image is the LCP: eager and high priority. The asset name is
@@ -194,8 +196,8 @@
         <div class="row"><h4 class="row__name">Markets News</h4><p class="row__desc">Business headlines from WSJ, FT, CNBC, MarketWatch, and more.<span class="row__note">Toggle which sources appear in the feed.</span></p></div>
       </div>
     </details>
-    <!-- Sports is its own group in the picker, and no World Cup: it retired on
-         2026-07-20 (RETIRED_AFTER in config.js) and no picker offers it. -->
+    <!-- Sports is its own group in the picker. Four cards: the World Cup card
+         retired on 2026-07-20 and its code left the tree on 2026-07-29. -->
     <details class="fold" id="sports">
       <summary class="fold__sum">
         <h3 class="fold__name">Sports</h3>

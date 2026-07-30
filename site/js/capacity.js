@@ -64,7 +64,6 @@ const MODELS = {
   // (all-3-line rows) overflow-safe with the t-m font compaction below.
   // Shallow rows are compact (no Last line, 32px logo) — 2 teams fit a 3×2.
   sports: listCapacity(74, 55),
-  worldcup: listCapacity(60, 46),
   // Golf: compact 30px rows (flags carry identity, lines stay single).
   golf: listCapacity(38, 34),
   // Tennis: single-line match rows, worldclock-like density.
@@ -142,8 +141,6 @@ export function capacityLabel(id, w, h, cfg = {}) {
       return `${n} events`;
     case 'sports':
       return ofTotal(Math.min(n, cfg.sports?.teams?.length ?? n), cfg.sports?.teams?.length, 'teams');
-    case 'worldcup':
-      return `${n} matches`;
     case 'news':
     case 'marketsnews':
       return `${n} headlines`;

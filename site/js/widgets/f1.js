@@ -1,7 +1,7 @@
 // Formula 1 — next Grand Prix, last-race podium, and driver + constructor
 // standings, from the worker's /f1 digest (Jolpica). Config-less. Team colour
 // dots reuse the app's Subway/TfL bullet idiom; driver country flags are
-// flagcdn images (same image-flag treatment as World Cup — emoji flags were
+// flagcdn images (the same image-flag treatment Golf and Tennis use — emoji flags were
 // the board's one non-image flag dialect, and some Chromium builds render
 // them as bare letter pairs). Balanced/adaptive: standings sit side-by-side
 // when the card is wide, stacked when narrow, measured to fit like the news card.

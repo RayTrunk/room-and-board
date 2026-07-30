@@ -31,6 +31,12 @@
         <h2>Widgets</h2>
         <p class="hint">No pressure: you can add or remove widgets anytime after setup, right on the board (Settings → Widgets).</p>
         <div id="widgets"></div>
+        <!-- Live running total, written by renderWidgets. The picker opens with
+             nothing ticked, so this line carries the ask when the count is 0
+             and the count once picking starts. It sits AFTER the groups: it
+             reports on what you just did, and putting it above would push the
+             whole list down on every tap. -->
+        <p id="widget-count" class="hint" aria-live="polite"></p>
       </section>
 
       <div class="step__nav"><button id="to-step-2" type="button" class="primary">Next →</button></div>
@@ -41,6 +47,12 @@
         <button id="to-step-1" type="button">← Back</button>
         <p class="step__label">Step 2 of 2 · Personalize your data</p>
       </div>
+
+      <!-- Step 2 is nothing but the sections your picks call for, so it has two
+           bare states that mean opposite things: nothing picked at all, and
+           picked-but-nothing-to-configure. applyStepTwo names whichever applies
+           (stepTwoNote) and hides this line otherwise. -->
+      <p id="step-2-note" class="hint" hidden></p>
 
       <!-- Display mode is the one step-2 field that belongs to no widget group:
            it is board-wide and always visible. It used to sit under the Ambient

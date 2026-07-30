@@ -3,6 +3,14 @@
     "date": "July 29",
     "items": [
       {
+        "lead": "Sports",
+        "text": "The World Cup card has retired now that the tournament is over. Boards still showing it get the space back, and everything else on the board stays exactly where it was."
+      },
+      {
+        "lead": "Phone setup",
+        "text": "Setting up from your phone now starts with nothing ticked, so you choose the cards you want instead of unpicking ones you don't. A running count sits under the list, and scanning your board's code still opens with that board's own cards already ticked."
+      },
+      {
         "lead": "Markets",
         "text": "You can now put your tickers in the order you want. Drag a ticker by the arrows on the left of its row, and the list shows a line across it: everything above the line is on the card now, and everything below it is one tap away. Reordering also takes effect straight away instead of waiting a few minutes."
       },

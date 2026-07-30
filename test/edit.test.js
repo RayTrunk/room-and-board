@@ -131,9 +131,10 @@ describe('openEditMode', () => {
 // out of.
 describe('add-tray collapsible groups', () => {
   const idsOf = (label) => WIDGET_GROUPS.find((g) => g.label === label).ids;
-  // OFFERED, not merely un-retired: the tray counts what isAddable lets through
-  // on THIS cfg, which is how Images reads 5 with six ids (Live Video is
-  // nerd-mode gated) and Sports reads 4 with five (worldcup retired).
+  // OFFERED, not merely present: the tray counts what isAddable lets through on
+  // THIS cfg, which is how Images reads 5 with six ids (Live Video is nerd-mode
+  // gated). Sports reads 4 from 4 since the World Cup card was deleted
+  // (2026-07-29); it read 4 from 5 while it was merely retired.
   const offeredIn = (label) => idsOf(label).filter((id) => isAddable(id, CFG));
   const SPORTS_OFFERED = offeredIn('Sports');
   const IMAGES_OFFERED = offeredIn('Images');
@@ -160,8 +161,8 @@ describe('add-tray collapsible groups', () => {
     expect(IMAGES_OFFERED).toHaveLength(5);
     expect(IMAGES_OFFERED).not.toContain('iptv');
     expect(toggle('Daily').textContent).toContain('· 4');
-    // 4, not 5: worldcup retired (RETIRED_AFTER) and has left every add surface.
     expect(toggle('Sports').textContent).toContain(`· ${SPORTS_OFFERED.length}`);
+    expect(SPORTS_OFFERED).toEqual(['sports', 'f1', 'golf', 'tennis']);
     // no other category is behind a tap
     expect(root.querySelector('[data-tray-toggle="Markets"]')).toBeNull();
     expect(root.querySelector('[data-tray-toggle="Ambient"]')).toBeNull(); // retired outright
