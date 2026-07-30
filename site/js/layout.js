@@ -86,10 +86,21 @@ export const DEFAULT_LAYOUT = Object.freeze([
 // and delta — it stays a compact ticker block (the 2-day spark shows at 4).
 // subway + services are single-fact status rows — beyond 3 columns the text
 // just floats in space.
+// World Clock, TfL and Citi Bike render the SAME label-left / value-right
+// status row as subway and services, and were left uncapped this long only
+// because nothing ever generated a wide one — every add surface placed cards at
+// MIN_SIZE, so a 6-wide World Clock only happened if someone dragged it there.
+// The content-aware generator can ask for width, so cap them for the reason the
+// list already documents: at 6 columns a World Clock row is a city, half a
+// metre of nothing, and a time. A strict tightening — clampRect shrinks the one
+// board that could have a hand-dragged wide one.
 export const MAX_SIZE = {
   markets: [4, GRID.rows],
   subway: [3, GRID.rows],
   services: [3, GRID.rows],
+  worldclock: [4, GRID.rows],
+  tfl: [4, GRID.rows],
+  citibike: [4, GRID.rows],
 };
 
 // Content-aware max heights: for widgets whose list is bounded by config, the
@@ -116,11 +127,25 @@ const CONTENT_CAPPED = [
   ['subway', (cfg) => cfg?.subway?.lines?.length, 2],
 ];
 
+// One row of headroom for the widgets whose RENDERER trims. subway and services
+// carry a deliberately optimistic static pitch (capacity.js) because they
+// measure the drawn box and shed trailing rows to the corner badge whenever an
+// alert or incident note wraps — so the height where the static pitch first
+// covers the list is exactly one row too low to show the whole list on a bad
+// day. Since normalizeLayout re-clamps every stored layout through these caps,
+// nothing downstream can hand out that row on its own. This only ever LOOSENS a
+// cap (allows a taller card, never forces one), so no layout that fits today
+// changes size — proven byte-for-byte against DEFAULT_LAYOUT, the quick-start
+// preset and the generator corpus.
+const TRIM_ALLOWANCE = { subway: 1, services: 1 };
+
 export function contentMaxH(cfg) {
   const caps = {};
   const fit = (id, n, fromH) => {
+    const slack = TRIM_ALLOWANCE[id] ?? 0;
     for (let h = fromH; h <= GRID.rows; h++) {
-      if ((itemCapacity(id, MIN_SIZE[id][0], h) ?? Infinity) >= n) return h;
+      const cap = itemCapacity(id, MIN_SIZE[id][0], h);
+      if (cap == null || cap - slack >= n) return h;
     }
     return GRID.rows;
   };
