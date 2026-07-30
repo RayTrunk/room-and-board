@@ -53,9 +53,11 @@
   })();
 </script>
 <script type="module">
-  import { normalizeConfig, DEFAULT_CONFIG } from './js/config.js';
+  import { normalizeConfig, decodeConfig, DEFAULT_CONFIG } from './js/config.js';
   import { MIN_SIZE, DEFAULT_LAYOUT, firstFit } from './js/layout.js';
+  import { itemCapacity } from './js/capacity.js';
   import { DEMO_VMS } from './demo/fixtures.js';
+  import { fullVMs, FULL_CFG } from './demo/fixtures-full.js';
   import * as clock from './js/widgets/clock.js';
   import * as weather from './js/widgets/weather.js';
   import * as subway from './js/widgets/subway.js';
@@ -71,6 +73,7 @@
   import * as art from './js/widgets/art.js';
   import * as photos from './js/widgets/photos.js';
   import * as gdrivephotos from './js/widgets/gdrivephotos.js';
+  import * as landscapes from './js/widgets/landscapes.js';
   import * as apod from './js/widgets/apod.js';
   import * as history from './js/widgets/history.js';
   import * as aqi from './js/widgets/aqi.js';
@@ -91,8 +94,10 @@
   import * as tennis from './js/widgets/tennis.js';
   import * as iptv from './js/widgets/iptv.js';
 
+  // Landscapes was missing here until 2026-07-29, so it was the one widget the
+  // resize audit never looked at. Keep this list a superset of WIDGET_IDS.
   const MODULES = [weather, subway, lirr, mnr, njt, amtrak, pathw, ferry, bus, citibike, tfl,
-    art, photos, gdrivephotos, apod, history, aqi, surf, quote, wotd, markets, marketsnews, worldclock,
+    art, photos, gdrivephotos, landscapes, apod, history, aqi, surf, quote, wotd, markets, marketsnews, worldclock,
     sports, news, substack, bsky, services, chart, f1, golf, tennis, iptv];
   const byId = Object.fromEntries(MODULES.map((m) => [m.meta.id, m]));
 
@@ -109,8 +114,30 @@
   if (q.get('meta') === '0') document.body.classList.add('hidemeta');
   // Single theme since the 2026-07-19 fold — ?theme= is accepted but inert.
   const only = (q.get('ids') ?? '').split(',').filter(Boolean);
+  // ?sizes=id:w:h,id:w:h,… audits an EXPLICIT list of card sizes rather than one
+  // size for every widget. That is what the content-aware generator needs: it
+  // emits sizes no min/rep sweep ever visits (subway 3x5, tfl 3x6, markets 3x8),
+  // and the capacity table is only calibrated where somebody looked. Repeats are
+  // allowed, and the same id may appear at several sizes — the pager below packs
+  // them across as many 12x8 pages as it takes.
+  const sizes = (q.get('sizes') ?? '').split(',').filter(Boolean)
+    .map((s) => { const [id, w, h] = s.split(':'); return { id, w: Number(w), h: Number(h) }; })
+    .filter((s) => s.id in MIN_SIZE && s.w > 0 && s.h > 0);
+  // ?full=1 tops every list up to the maximum the pickers allow. Without it a
+  // tall card runs out of DATA before it runs out of room, so an over-promising
+  // capacity entry cannot be seen (3 tickers never overflow a 3x8 Markets card).
+  const full = q.get('full') === '1';
+  // ?board=<encoded cfg> renders one REAL board: the layout a setup code carries,
+  // at its own x/y, with that board's own lists. Paste what /setup generated and
+  // see the wall it produces — which is how the content-aware generator's output
+  // gets checked end to end without a network.
+  const boardParam = q.get('board');
+  const board = boardParam ? await decodeConfig(boardParam) : null;
 
-  const cfg = normalizeConfig(structuredClone(DEFAULT_CONFIG));
+  const cfg = board
+    ? normalizeConfig(board)
+    : normalizeConfig(structuredClone(full ? { ...DEFAULT_CONFIG, ...FULL_CFG } : DEFAULT_CONFIG));
+  const VMS = board ? fullVMs(cfg) : full ? fullVMs() : DEMO_VMS;
   clock.render(document.getElementById('topbar'), null, cfg);
 
   const repSize = (id) => {
@@ -124,22 +151,31 @@
   const ids = only.length ? only : MODULES.map((m) => m.meta.id);
   const forceW = Number(q.get('w')) || 0;   // explicit size override (single-id runs)
   const forceH = Number(q.get('h')) || 0;
-  const pages = [[]];
-  let layout = [];
-  for (const id of ids) {
+  const wanted = sizes.length ? sizes : ids.map((id) => {
     const [w, h] = (forceW && forceH) ? [forceW, forceH]
       : mode === 'min' ? MIN_SIZE[id] : repSize(id);
-    let rect = firstFit(layout, id, [w, h]);
-    if (!rect) { pages.push([]); layout = []; rect = firstFit(layout, id, [w, h]); }
-    if (!rect) continue; // wider than a page (never happens)
-    layout.push({ id, ...rect, w, h });
-    pages[pages.length - 1].push({ id, ...rect, w, h });
+    return { id, w, h };
+  });
+  const pages = [[]];
+  if (board) {
+    // One page, positions verbatim: the whole point is the arrangement.
+    pages[0] = cfg.layout.map((r) => ({ ...r }));
+  } else {
+    let layout = [];
+    for (const { id, w, h } of wanted) {
+      let rect = firstFit(layout, id, [w, h]);
+      if (!rect) { pages.push([]); layout = []; rect = firstFit(layout, id, [w, h]); }
+      if (!rect) continue; // wider than a page (never happens)
+      layout.push({ id, ...rect, w, h });
+      pages[pages.length - 1].push({ id, ...rect, w, h });
+    }
   }
 
   const grid = document.getElementById('grid');
   const shown = pages[page - 1] ?? [];
   for (const r of shown) {
     const mod = byId[r.id];
+    if (!mod) { console.error('[audit] no renderer module for', r.id); continue; }
     const card = document.createElement('article');
     card.className = `card card--${r.id}`;
     card.setAttribute('data-widget', r.id);
@@ -150,9 +186,23 @@
     card.classList.add(`t-${r.h <= 2 ? 's' : r.h <= 4 ? 'm' : 'l'}`);
     if (r.w <= 4) card.classList.add('t-narrow');
     grid.appendChild(card);
-    try { mod.render(card.querySelector('.card__body'), DEMO_VMS[r.id], cfg); }
+    try { mod.render(card.querySelector('.card__body'), VMS[r.id], cfg); }
     catch (e) { card.querySelector('.card__body').textContent = `RENDER ERROR: ${e.message}`; }
   }
+
+  // Per-widget list-row selector, so the audit can compare what capacity.js
+  // PROMISED against what the renderer actually drew. A shortfall is not an
+  // overflow — the trimming renderers (subway, services, headlines, the .train
+  // boards) shed rows to the corner badge instead of clipping — but it IS an
+  // over-promise, and the generator must not spend the board on one.
+  const ROW_SEL = {
+    markets: '.index', subway: '.linestatus', services: '.svc__row', worldclock: '.wc-row',
+    tfl: '.tfl', citibike: '.cb', sports: '.team', history: '.history__item',
+    news: '.headline', marketsnews: '.headline', substack: '.headline', bsky: '.headline',
+    golf: '.golf-row', tennis: '.tennis-row',
+    lirr: '.train', mnr: '.train', njt: '.train', amtrak: '.train', ferry: '.train', path: '.train',
+    bus: '.stop-group__head, .train', // bus capacity counts headers AND arrivals
+  };
 
   // Deterministic measurements for the audit (read via window.__audit / #audit-meta).
   requestAnimationFrame(() => requestAnimationFrame(() => {
@@ -171,16 +221,39 @@
         // clipped text anywhere inside?
         clipped: [...body.querySelectorAll('*')].filter((el) =>
           el.scrollHeight > el.clientHeight + 1 || el.scrollWidth > el.clientWidth + 1).length,
+        // ...and WHY. A line-clamped headline or an ellipsised status row is
+        // clipped BY DESIGN and shows up in the count above at every size, so the
+        // raw number is a baseline, not a verdict. `clamped` is the subset whose
+        // computed style asks to be cut off; anything in `unclamped` is a real
+        // overflow that happens to be on a descendant rather than the body.
+        clamped: [], unclamped: [],
         // How much of this card the DEVICE cannot show. Must be 0 everywhere:
         // the grid ends at y=996 on the 1080 page, so even the board's 1040
         // screen clears it by 44px. A non-zero value means the safe-bottom
         // reserve stopped covering the difference.
         belowFold: Math.max(0, Math.round(cardR.bottom - vh)),
       };
+      for (const el of body.querySelectorAll('*')) {
+        if (el.scrollHeight <= el.clientHeight + 1 && el.scrollWidth <= el.clientWidth + 1) continue;
+        const cs = getComputedStyle(el);
+        const deliberate = cs.webkitLineClamp !== 'none' || cs.textOverflow === 'ellipsis'
+          || cs.overflow === 'hidden' || cs.overflowY === 'hidden' || cs.overflowX === 'hidden';
+        const over = Math.max(el.scrollHeight - el.clientHeight, el.scrollWidth - el.clientWidth);
+        (deliberate ? rec.clamped : rec.unclamped).push(`${el.className || el.tagName}+${over}`);
+      }
       const rowSel = body.querySelectorAll('.index, .train');
       const rows = rowSel.length ? [...rowSel] : [...body.children].filter((c) => !c.classList.contains('more-hint'));
       rec.rows = rows.map((r) => Math.round(r.getBoundingClientRect().height));
       rec.bodyClientH = body.clientHeight;
+      // Promise vs delivery. `promised` is capacity.js's own number; `drawn` is
+      // how many list rows survived the renderer. badge is the +N the wall shows.
+      const sel = ROW_SEL[rec.id];
+      if (sel) {
+        rec.promised = itemCapacity(rec.id, rec.w, rec.h);
+        rec.drawn = body.querySelectorAll(sel).length;
+      }
+      const more = card.querySelector('.card__more');
+      if (more) rec.badge = more.textContent.trim();
       if (hint) {
         const hr = hint.getBoundingClientRect();
         rec.hint = {
@@ -195,6 +268,10 @@
     const gridR = grid.getBoundingClientRect();
     window.__audit = {
       mode, page, pages: pages.length,
+      // Grid coverage of the page being shown: the "no holes" number.
+      cellsUsed: shown.reduce((s, r) => s + r.w * r.h, 0),
+      blank: 96 - shown.reduce((s, r) => s + r.w * r.h, 0),
+      layout: shown.map((r) => `${r.id} ${r.w}x${r.h}@${r.x},${r.y}`),
       // Page vs device: the first is fixed by main.css, the second is the screen
       // it lands on. Their difference is the whole reason this harness exists.
       deviceH: vh, device: VIEWPORTS[vh] ?? 'UNSUPPORTED',
