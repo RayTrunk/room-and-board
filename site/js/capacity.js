@@ -11,8 +11,15 @@ const bodyPx = (h) => h * 92 + (h - 1) * 20 - 90;
 // s = shallow (h<=2, old single-row), m = medium (3-4), l = tall (5+).
 export const sizeTier = (h) => (h <= 2 ? 's' : h <= 4 ? 'm' : 'l');
 
-const listCapacity = (rowPx, compactRowPx) => (w, h) =>
-  Math.max(1, Math.floor(bodyPx(h) / (sizeTier(h) === 's' ? compactRowPx : rowPx)));
+// rowPx is the medium-tier pitch, compactRowPx the shallow one. tallRowPx is
+// optional and defaults to rowPx: several widgets grow their type at h>=5 (the
+// `l` tier), so one pitch calibrated on the medium tier over-promises by a row
+// on a tall card. Added 2026-07-29 when the content-aware generator started
+// emitting tall cards and the overflow audit caught sports and the headline
+// feeds clipping at h=5 (see the per-widget notes below).
+const listCapacity = (rowPx, compactRowPx, tallRowPx = rowPx) => (w, h) =>
+  Math.max(1, Math.floor(bodyPx(h) / (
+    sizeTier(h) === 's' ? compactRowPx : sizeTier(h) === 'm' ? rowPx : tallRowPx)));
 
 // ---- rail / ferry departure boards ----------------------------------------
 // LIRR, Metro-North, NJ Transit, Amtrak and Ferry all render the same .train
@@ -63,16 +70,24 @@ const MODELS = {
   // t-m rows) makes a 3×3 fit 3 teams instead of 2 — verified worst-case
   // (all-3-line rows) overflow-safe with the t-m font compaction below.
   // Shallow rows are compact (no Last line, 32px logo) — 2 teams fit a 3×2.
-  sports: listCapacity(74, 55),
+  // The tall tier needs 76: measured 2026-07-29, a 5-tall card draws 67px rows
+  // on a 10px minimum gap, so 74 promised 6 teams in space that holds 5 and a
+  // full 6-team card overflowed by 3px at 3x5, 4x5 and 6x5. Fixes the resting
+  // card too — anyone with 6 teams on a 5-tall card was clipping.
+  sports: listCapacity(74, 55, 76),
   // Golf: compact 30px rows (flags carry identity, lines stay single).
   golf: listCapacity(38, 34),
   // Tennis: single-line match rows, worldclock-like density.
   tennis: listCapacity(45, 40),
   // Stacked rows: meta line + up to 2 title lines = 73.6px worst case (+gap);
-  // shallow cards clamp titles to 1 line (47.4px + gap).
-  news: listCapacity(75, 57),
+  // shallow cards clamp titles to 1 line (47.4px + gap). The tall tier needs 80:
+  // measured 2026-07-29 with ten full-length headlines, 75 promised 6 rows at
+  // h=5 and 10 at h=8 where the renderer's own measure-and-trim settled on 5 and
+  // 9. Over-promising here cost nothing visible (newscore trims rather than
+  // clips) but it made the generator buy a row that bought no headline.
+  news: listCapacity(75, 57, 80),
   // Markets News renders the identical stacked-headline rows as news.
-  marketsnews: listCapacity(75, 57),
+  marketsnews: listCapacity(75, 57, 80),
   // Same stacked rows as news, but post texts are long by nature — nearly
   // every row wraps to the full 2 lines, and the +N hint needs headroom too.
   substack: listCapacity(90, 62),
@@ -86,7 +101,14 @@ const MODELS = {
   // and trims when incident notes make rows taller, so an optimistic static
   // estimate is safe; the corner badge covers what gets trimmed.
   services: listCapacity(45, 40),
-  citibike: listCapacity(44, 40),
+  // Citi Bike shared TfL's 44px pitch, and it should not have: a TfL row is one
+  // line (dot, name, status) and measures 35px, while a Citi Bike row carries the
+  // station name AND a bikes/docks line and measures 40px. On a 10px minimum row
+  // gap that is a 50px pitch, so 44 promised 5 stations in a 3-tall card that
+  // holds 4 — measured overflowing by 7px at 3x3 and 4x3 with six stations
+  // (2026-07-29). 51 is the corrected pitch; the resting card stops clipping for
+  // anyone who follows five or six stations.
+  citibike: listCapacity(51, 40),
   tfl: listCapacity(44, 40),
 };
 

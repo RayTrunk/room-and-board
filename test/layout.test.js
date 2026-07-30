@@ -108,7 +108,11 @@ describe('contentMaxH (content-aware height caps)', () => {
     expect(caps.subway).toBe(3);
     expect(caps.services).toBe(3);
     expect(caps.citibike).toBe(3);
-    expect(caps.sports).toBe(5); // 6 teams; the h<=2 tier (no Last line) never caps it
+    // 6 teams need SIX rows, not five: the tall tier draws 67px rows on a 10px
+    // minimum gap, so a 5-tall card holds five of them (capacity.js sports gained
+    // a 76px tall-tier pitch on 2026-07-29 after the overflow audit caught a
+    // 6-team card clipping at 3x5). The h<=2 tier never caps it.
+    expect(caps.sports).toBe(6);
     expect(caps.tfl).toBeGreaterThanOrEqual(5); // 11 lines need a tall card
     expect(contentMaxH({ sports: { teams: [{}] } }).sports).toBe(3); // floor: richer tier stays reachable
   });
