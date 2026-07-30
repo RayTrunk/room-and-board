@@ -2,7 +2,7 @@
 // exchange, show the 6-char code. Reads #cfg= to pre-fill (QR round trip).
 
 import { isAddable, normalizeConfig, encodeConfig, decodeConfig, WIDGET_IDS, WIDGET_GROUPS, ART_CATS, DEFAULT_CONFIG, NJT_LINES } from '../config.js';
-import { firstFitAny } from '../layout.js';
+import { optimizeLayout } from '../layout-optimize.js';
 import { WORKER_URL } from '../env.js';
 import { toggleIn, searchStations, canAddTicker, foldAt } from './pickers.js';
 import { attachReorder, foldHeadHtml, tickerRowsHtml } from './reorder.js';
@@ -116,6 +116,63 @@ let cfg = structuredClone(DEFAULT_CONFIG);
 // is truthy only when a board QR decoded.
 export const startingLayout = (normalized, scanned) => (scanned ? normalized.layout : []);
 
+// The board this wizard arrived from, if it arrived from a board QR at all.
+// Held so the preserve rule below can compare against it. null on a fresh visit.
+let scannedLayout = null;
+
+const sameSet = (a, b) => a.size === b.size && [...a].every((x) => b.has(x));
+
+// Which layout a set of picks should produce.
+//
+// THE SCANNED-BOARD RULE, exactly as implemented: a layout that arrived from a
+// board QR is handed back UNTOUCHED for as long as the picked set is the same set
+// of ids that board already carries. The moment the SET differs — one card added
+// or one removed — the whole board is generated from the picks instead. Untick a
+// card and tick it straight back and you get your own arrangement again, because
+// the rule is a comparison and not a latch.
+//
+// The reason it is a set comparison and not "did anything ever change": that
+// scanned layout is a board somebody ARRANGED BY HAND in edit mode, dragging and
+// resizing cards on the wall. Re-flowing it under them because they retyped a
+// ticker would throw that work away. Changing the card set is the one signal that
+// they want a different board, and it is also the point at which the old
+// arrangement has a hole in it. Editing the LISTS (tickers, teams, lines) never
+// re-arranges a scanned board — it does re-run the generator for a board this
+// wizard generated, which is the whole point of running it again at Get-code time.
+//
+// Pure and exported for tests: `scanned` is the scanned layout or null.
+export function layoutFor(ids, cfg, scanned) {
+  const want = new Set(ids);
+  if (scanned?.length && sameSet(want, new Set(scanned.map((r) => r.id)))) {
+    return { layout: scanned.map((r) => ({ ...r })), dropped: [], crowded: [], scannedKept: true };
+  }
+  const { layout, dropped, crowded } = optimizeLayout([...want], cfg);
+  return { layout, dropped, crowded, scannedKept: false };
+}
+
+// Everything the board shows is derived from the picks, so regenerate in one
+// place. Returns what the generator had to give up, for the notices.
+let lastCrowded = [];
+function syncLayout(ids) {
+  const res = layoutFor(ids, cfg, scannedLayout);
+  cfg.layout = res.layout;
+  cfg.widgets = res.layout.map((r) => r.id);
+  lastCrowded = res.crowded;
+  return res;
+}
+
+// Said out loud on the picker when the pick asks for more than the board holds
+// well. Sean's call, 2026-07-29: the generator refuses to put a data card below
+// the size that shows a worthwhile amount of its data — three departures, three
+// lines, three tickers — so when the picks cannot all clear that bar, the honest
+// move is to say so rather than to ship slivers that technically contain data.
+// Pure; exported for tests.
+export const crowdedNote = (n) =>
+  (n <= 0 ? ''
+    : n === 1
+      ? 'One card will be small. That is a lot for one screen; uncheck something and it gets more room.'
+      : `${n} cards will be small. That is a lot for one screen; uncheck one or two and the rest get more room.`);
+
 async function boot() {
   // Pre-fill from a scanned board QR (#cfg=...). A scan is the one case that
   // DOES arrive pre-checked: it is that board's own current card set, and the
@@ -137,6 +194,9 @@ async function boot() {
   // AFTER normalizing, and getCode/getSignageUrl refuse to encode it.
   cfg.layout = startingLayout(cfg, scanned);
   cfg.widgets = cfg.layout.map((r) => r.id);
+  // A scan is the one arrival that carries a board somebody arranged by hand.
+  // Remember it, so the preserve rule in layoutFor has something to compare to.
+  scannedLayout = scanned ? cfg.layout.map((r) => ({ ...r })) : null;
 
   $('#name').value = cfg.name;
   $('#mode').value = cfg.mode;
@@ -242,6 +302,16 @@ function applyStepTwo() {
 export const canEncode = (layout) => Array.isArray(layout) && layout.length > 0;
 export const EMPTY_PICKS_NOTICE = 'Pick at least one widget first — a board with no cards has nothing to show.';
 
+// Step 2 edits the very lists the generator reads — tickers, teams, subway
+// lines, cities — so the layout that leaves this page has to be generated
+// AFTER those edits, not from the 3-ticker defaults the picker last saw.
+// Cheapest correct place: once, on the way out. A scanned board is untouched
+// here (layoutFor's preserve rule), which is deliberate: retyping a ticker must
+// not re-flow a wall somebody arranged by hand.
+function regenerateForOutput() {
+  syncLayout(new Set(cfg.layout.map((r) => r.id)));
+}
+
 // Returns true when it blocked.
 function blockedOnEmptyPicks() {
   if (canEncode(cfg.layout)) return false;
@@ -302,7 +372,11 @@ export const pickedLabel = (n) =>
 function renderWidgets() {
   const placed = () => new Set(cfg.layout.map((r) => r.id));
   const count = $('#widget-count');
-  const repaintCount = () => { if (count) count.textContent = pickedLabel(cfg.layout.length); };
+  const repaintCount = () => {
+    if (!count) return;
+    count.textContent = [pickedLabel(cfg.layout.length), crowdedNote(lastCrowded.length)]
+      .filter(Boolean).join(' ');
+  };
   repaintWidgets = () => {
     $('#widgets').innerHTML = widgetChecksHtml(WIDGET_LABELS, placed(), cfg);
     repaintCount();
@@ -315,17 +389,18 @@ function renderWidgets() {
     // Acting on the picker makes any standing notice moot (a failed check
     // below re-raises it fresh).
     dismissNotice();
-    if (!e.target.checked) {
-      cfg.layout = cfg.layout.filter((r) => r.id !== id);
-    } else {
-      const rect = firstFitAny(cfg.layout, id);
-      if (rect) cfg.layout = [...cfg.layout, rect];
-      else {
-        e.target.checked = false;
-        // From here the only way to make space is deselecting (the board's
-        // edit mode is where shrinking happens) — say exactly that.
-        notice('No room left on the board for that widget — uncheck another widget to make space.');
-      }
+    // The whole board is re-generated from the picks on every tick. That is what
+    // kills the two failures the old incremental path had: the board no longer
+    // depends on the ORDER the boxes were ticked, and "No room left" no longer
+    // fires because the previous cards happened to be sitting in the way — a
+    // widget is refused only if it cannot fit at its legible minimum in ANY
+    // arrangement, which for a pick of this size does not happen.
+    const want = placed();
+    if (e.target.checked) want.add(id); else want.delete(id);
+    const { dropped } = syncLayout(want);
+    if (e.target.checked && dropped.includes(id)) {
+      e.target.checked = false;
+      notice('No room left on the board for that widget. Uncheck another widget to make space.');
     }
     repaintCount();
   });
@@ -872,6 +947,7 @@ async function copySignageUrl() {
 }
 
 async function getSignageUrl() {
+  regenerateForOutput();
   if (blockedOnEmptyPicks()) return;
   cfg.name = $('#name').value.trim();
   cfg.mode = $('#mode').value;
@@ -883,6 +959,7 @@ async function getSignageUrl() {
 }
 
 async function getCode() {
+  regenerateForOutput();
   if (blockedOnEmptyPicks()) return;
   cfg.name = $('#name').value.trim();
   cfg.mode = $('#mode').value;
