@@ -34,7 +34,7 @@ export function render(el, vm, _cfg) {
   el.innerHTML = renderAlertRows(vm.alerts) + '<div class="trains">' + (rows.length
     ? rows.slice(0, cap).join('')
     : '<div class="empty">No departures</div>') + '</div>';
-  wireTrainExpand(el, { title: meta.title, note: 'Penn Station', rows });
+  wireTrainExpand(el, { title: meta.title, note: 'Penn Station', rows, alerts: vm.alerts ?? [] });
 }
 
 export function mapNjt(payload, nowSec, showAlerts = true) {

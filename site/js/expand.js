@@ -187,17 +187,24 @@ export function closeExpand() {
 // showing when it was tapped. Pass null/undefined when nothing is hidden: the
 // card is then inert, matching the absent "+N" badge.
 //
-// `trigger` narrows the tap target to a selector INSIDE the card (the rail
-// cards' "+N more" pill). Without it the whole card is the target, which is
-// right for cards whose rows are not tappable (markets, weather) — but a rail
-// card's surface must stay free for other affordances, so its taps only count
-// when the gesture lands on the trigger itself.
-export function setExpandSource(el, build, { trigger = null } = {}) {
+// `trigger` narrows the tap target to a selector INSIDE the card. Without it
+// the whole card is the target, which is right for cards whose rows are not
+// tappable (markets, weather, the rail boards).
+//
+// `subviews` are element-scoped views layered OVER the card target: a tap
+// landing on a subview's selector opens that build instead of the card's (the
+// rail alert banners read full screen; the schedule is everything else). The
+// matched element is passed to the subview build so one selector can serve
+// several banners. A card with subviews but no card build is legal — the
+// banner still reads on a card with nothing hidden — and only a card build
+// earns the is-expandable affordance.
+export function setExpandSource(el, build, { trigger = null, subviews = null } = {}) {
   const card = el?.closest?.('.card');
   if (!card) return; // test fakes without closest(): no-op, like setMoreBadge
-  if (typeof build === 'function') {
-    sources.set(card, { build, trigger });
-    card.classList.add('is-expandable');
+  const hasBuild = typeof build === 'function';
+  if (hasBuild || subviews?.length) {
+    sources.set(card, { build: hasBuild ? build : null, trigger, subviews });
+    card.classList.toggle('is-expandable', hasBuild);
   } else {
     sources.delete(card);
     card.classList.remove('is-expandable');
@@ -270,7 +277,11 @@ export function initExpand(host) {
     const card = e.target.closest?.('.card');
     const source = card && sources.get(card);
     if (!source) return; // nothing hidden on this card (or not an expandable one)
-    if (source.trigger && !e.target.closest?.(source.trigger)) return; // tap missed the pill
+    // A subview tap outranks the card view and ignores the trigger narrowing:
+    // the banner IS its own trigger.
+    const sub = source.subviews?.find((s) => e.target.closest?.(s.selector));
+    if (!sub && source.trigger && !e.target.closest?.(source.trigger)) return; // tap missed the trigger
+    if (!sub && !source.build) return; // subviews only: the card surface stays inert
     // Never stack a second full-screen view on a live one. A widget's own
     // handler may have opened its viewer earlier in this very click (the art
     // and chart cards do), so this reads the DOM, not just the press record.
@@ -284,7 +295,7 @@ export function initExpand(host) {
       if (gesture.card !== card) return; // the press began somewhere else entirely
       if (swipeAction(e.clientX - gesture.x, e.clientY - gesture.y) !== 'tap') return; // a drag, not a tap
     }
-    const view = source.build();
+    const view = sub ? sub.build(e.target.closest(sub.selector)) : source.build();
     if (view) openExpand({ ...view, stamp: staleStamp(card) });
   });
 }

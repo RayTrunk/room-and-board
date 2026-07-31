@@ -2,6 +2,8 @@
 // runs ~800 KB), so the Worker reduces them to compact rows and the whole
 // fleet shares one cached digest.
 
+import { htmlToText } from './htmltext.js';
+
 const FEEDS = {
   subway: 'https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/camsys%2Fsubway-alerts.json',
   lirr: 'https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/camsys%2Flirr-alerts.json',
@@ -50,7 +52,14 @@ export function mapMtaAlerts(json, nowSec) {
     // the extension, is service news and stays branch-matched.
     const kind =
       alert['transit_realtime.mercury_alert']?.alert_type === 'Station Notice' ? 'station' : 'service';
-    const row = { routes: [...routes], stops: [...stops], kind, header };
+    // The long description rides along (sanitized, bounded) so a tapped banner
+    // can show the whole story — the card only ever shows the header's first
+    // two lines. Empty string when absent: consumers get a stable shape.
+    const desc =
+      alert.description_text?.translation?.find((t) => t.language === 'en') ??
+      alert.description_text?.translation?.[0];
+    const body = desc?.text ? htmlToText(desc.text).slice(0, 1200) : '';
+    const row = { routes: [...routes], stops: [...stops], kind, header, body };
     byKey.set(key, row);
     out.push(row);
   }

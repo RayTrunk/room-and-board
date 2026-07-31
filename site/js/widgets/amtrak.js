@@ -67,7 +67,7 @@ export function render(el, vm, cfg) {
   el.innerHTML = renderAlertRows(alerts) + '<div class="trains">' +
     (shown.length ? shown.map(row).join('') : '<div class="empty">No departures</div>') + '</div>';
   const note = dest && vm.destName ? `to ${vm.destName}` : '';
-  wireTrainExpand(el, { title: meta.title, note, rows: deps.map(row) });
+  wireTrainExpand(el, { title: meta.title, note, rows: deps.map(row), alerts });
 }
 
 let stationsCache = null;

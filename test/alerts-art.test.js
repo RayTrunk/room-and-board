@@ -54,6 +54,18 @@ describe('mapMtaAlerts', () => {
     const bare = { alert: { informed_entity: [{ route_id: '1' }], header_text: { translation: [{ text: 'Delays on the line here.', language: 'en' }] } } };
     expect(mapMtaAlerts({ entity: [bare] }, 0)[0].kind).toBe('service');
   });
+  it('carries the long description so a tapped banner can show the whole story', () => {
+    const json = { entity: [{ alert: {
+      informed_entity: [{ route_id: '1' }],
+      header_text: { translation: [{ text: 'Riverdale station north end access is restricted.', language: 'en' }] },
+      description_text: { translation: [{ text: 'Use the main entrance at W 254 St &amp; allow extra time.', language: 'en' }] },
+    } }] };
+    const [row] = mapMtaAlerts(json, 0);
+    expect(row.body).toBe('Use the main entrance at W 254 St & allow extra time.');
+    // No description: body is an empty string, not undefined (stable shape).
+    const bare = { entity: [{ alert: { informed_entity: [], header_text: { translation: [{ text: 'Delays everywhere today.', language: 'en' }] } } }] };
+    expect(mapMtaAlerts(bare, 0)[0].body).toBe('');
+  });
   it('unions stops for entities sharing a header, like routes', () => {
     const entity = (stop) => ({ alert: { informed_entity: [{ stop_id: stop }], header_text: { translation: [{ text: 'Elevator outage at this station.', language: 'en' }] } } });
     const out = mapMtaAlerts({ entity: [entity('55'), entity('89'), entity('55')] }, 0);

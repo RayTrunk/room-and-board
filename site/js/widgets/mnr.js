@@ -81,7 +81,7 @@ export function render(el, vm, _cfg) {
     '<div class="trains">' +
     (rows.length ? rows.slice(0, cap).join('') : '<div class="empty">No departures</div>') +
     '</div>';
-  wireTrainExpand(el, { title: meta.title, note, rows });
+  wireTrainExpand(el, { title: meta.title, note, rows, alerts: vm.alerts ?? [] });
 }
 
 const FEED_URL = 'https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/mnr%2Fgtfs-mnr';

@@ -142,6 +142,43 @@ describe('rail +N badge and whole-card expand', () => {
     expect(card.classList.contains('is-expandable-pill')).toBe(false);
   });
 
+  it('tapping an alert banner reads that alert full screen, not the schedule', () => {
+    const vm = { ...lirrVm(5), alerts: [
+      { routes: [], stops: [], header: 'First alert header.', body: 'The long detail of the first alert.' },
+      { routes: [], stops: [], header: 'Second alert header.', body: '' },
+    ] };
+    const { card } = railBoard('lirr', renderLirr, vm);
+    card.querySelectorAll('.talert')[0].click();
+    expect(isExpandOpen()).toBe(true);
+    expect(overlay().querySelector('.expand__note').textContent).toBe('service alert');
+    expect(overlay().textContent).toContain('First alert header.');
+    expect(overlay().textContent).toContain('The long detail of the first alert.');
+    expect(overlay().querySelector('.train')).toBeNull();
+    closeExpand();
+    // The second banner reads the second alert.
+    card.querySelectorAll('.talert')[1].click();
+    expect(overlay().textContent).toContain('Second alert header.');
+    expect(overlay().textContent).not.toContain('First alert header.');
+  });
+
+  it('tapping outside the banner still opens the schedule', () => {
+    const vm = { ...lirrVm(5), alerts: [{ routes: [], stops: [], header: 'Alert here.', body: '' }] };
+    const { card } = railBoard('lirr', renderLirr, vm);
+    card.querySelector('.card__body').click();
+    expect(overlay().querySelectorAll('.train').length).toBe(5);
+  });
+
+  it('a banner reads full screen even when no departures overflow', () => {
+    // No +N, no whole-card expand affordance — but the banner still completes
+    // its own clamped text.
+    const vm = { ...lirrVm(2), alerts: [{ routes: [], stops: [], header: 'Alert on a quiet card.', body: 'Detail.' }] };
+    const { card } = railBoard('lirr', renderLirr, vm);
+    expect(card.classList.contains('is-expandable')).toBe(false);
+    card.querySelector('.talert').click();
+    expect(isExpandOpen()).toBe(true);
+    expect(overlay().textContent).toContain('Alert on a quiet card.');
+  });
+
   it('keeps the snapshot when the source card re-renders underneath it', () => {
     const { card } = railBoard('lirr', renderLirr, lirrVm(5));
     card.querySelector('.card__more').click();

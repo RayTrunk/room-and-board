@@ -1342,6 +1342,15 @@ body.mode-ambient .gear--edit { display: none; }
   grid-auto-flow: column; gap: 24px 80px; justify-content: center; align-content: center;
 }
 .trains--board--split .train__min { min-width: 120px; }
+/* Tap-an-alert reading view (Sean's pick, mockup A): story-view calm — white
+   reading type on the plain canvas, centered, ~70ch measure. The amber stays
+   on the card banner; here the words are the whole point. */
+.expand__body .alert-view {
+  height: 100%; display: flex; flex-direction: column;
+  justify-content: center; align-items: center;
+}
+.alert-view__head { font-size: 44px; font-weight: 600; line-height: 1.25; max-width: 900px; margin: 0 0 28px; text-wrap: balance; }
+.alert-view__body { font-size: 30px; line-height: 1.5; color: var(--ink-mid); max-width: 900px; margin: 0; }
 .trains--board--split .train__min span { font-size: 40px; }
 .trains--board--split .train__min small { font-size: 20px; }
 .trains--board--split .train__dest { font-size: 28px; }

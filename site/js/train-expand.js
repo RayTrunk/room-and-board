@@ -12,17 +12,38 @@
 // invitation; the engine's trigger selector remains available for the news
 // wave, where rows really are tappable.
 
-import { setMoreBadge } from './util.js';
+import { escapeHtml, setMoreBadge } from './util.js';
 import { setExpandSource } from './expand.js';
 import { fitTrainRows } from './capacity.js';
 
 // `rows` is the FULL departure list's markup, built by the caller's own row
 // template — the overlay shows exactly the rows the card would, uncapped. The
 // strings are captured per render, so the tap-time snapshot is this render's.
-export function wireTrainExpand(el, { title, note = '', rows }) {
+// `alerts` are the card's banner alerts: each banner becomes a subview that
+// reads THAT alert full screen (header plus the digest's long description),
+// while every other tap on the card opens the schedule.
+export function wireTrainExpand(el, { title, note = '', rows, alerts = [] }) {
   fitTrainRows(el);
   const hidden = rows.length - (el.querySelectorAll?.('.train').length ?? 0);
   setMoreBadge(el, hidden, { verbose: true });
+  const subviews = alerts.length
+    ? [{
+        selector: '.talert',
+        build: (banner) => {
+          // Banners render in vm.alerts order, so the element's position IS
+          // its alert. The card holds at most two.
+          const idx = [...(el.closest?.('.card') ?? el).querySelectorAll('.talert')].indexOf(banner);
+          const a = alerts[idx] ?? alerts[0];
+          return {
+            title,
+            note: 'service alert',
+            bodyHtml: `<div class="alert-view"><p class="alert-view__head">${escapeHtml(a.header)}</p>${
+              a.body ? `<p class="alert-view__body">${escapeHtml(a.body)}</p>` : ''
+            }</div>`,
+          };
+        },
+      }]
+    : null;
   setExpandSource(
     el,
     hidden > 0
@@ -37,5 +58,6 @@ export function wireTrainExpand(el, { title, note = '', rows }) {
           return { title, note, bodyHtml: `<div class="${cls}"${style}>${rows.join('')}</div>` };
         }
       : null,
+    { subviews },
   );
 }

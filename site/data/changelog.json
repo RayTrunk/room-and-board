@@ -19,6 +19,10 @@
         "text": "Notices about a single station, like an elevator outage or a closed entrance, now show only when that station is one of yours. Line-wide service alerts still reach everyone riding the line."
       },
       {
+        "lead": "Train alerts",
+        "text": "Tap an alert banner to read the whole notice full screen, including details the card cannot fit. Tapping anywhere else on the card still opens the departure board."
+      },
+      {
         "lead": "LIRR",
         "text": "The card now lists trains beyond the next two hours, so a quiet evening shows tonight's later departures instead of stopping short. Cards carrying an alert also fit their trains more honestly, without giving up extra room."
       }
