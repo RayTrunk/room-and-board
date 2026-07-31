@@ -67,6 +67,17 @@ function stripOnce(s) {
 // because the previous one changed something, and each removal shortens the
 // string, but a cap is cheaper than trusting that argument on hostile input.
 const STRIP_SWEEPS = 3;
+
+// The cap is a bound, not a proof. Splice-nesting sheds exactly one layer per
+// sweep, so "<<<<script>script>script>script>" runs the sweeps out and hands
+// back a whole <script> — the same hole the decode/strip ordering had, reached
+// the other way. DELETING the leftover "<" cannot close it (removing one
+// splices the next), so the survivor is ENCODED instead: "&lt;" is no longer a
+// "<" for a tag to open with, and a single global pass settles it because the
+// scan reads the ORIGINAL string, never its own output. Any decode round after
+// this one reveals the same text again and strips it properly.
+const TAG_OPEN = /<(?=\/?[a-z])/gi;
+
 function stripMarkup(s) {
   let out = s;
   for (let i = 0; i < STRIP_SWEEPS; i += 1) {
@@ -74,7 +85,9 @@ function stripMarkup(s) {
     if (next === out) break;
     out = next;
   }
-  return out;
+  // Only text that still holds a WHOLE tag is rewritten, so arithmetic prose
+  // ("a < b") and half-spliced leftovers ("<\n\np>") keep their characters.
+  return TAGISH.test(out) ? out.replace(TAG_OPEN, '&lt;') : out;
 }
 
 // One space between words, at most one blank line between paragraphs, no

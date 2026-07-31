@@ -1042,6 +1042,26 @@ describe('htmlToText (feed markup -> readable text)', () => {
     expect(out).not.toMatch(/<\/?[a-z]/i);
     expect(out).toContain('&lt;b&gt;'); // the surviving layers stayed encoded
   });
+
+  // The encoded twin above was covered; the RAW one was not. Stripping a tag
+  // splices its neighbours into a new one, so "<<<<script>script>script>script>"
+  // sheds one layer per sweep — and the sweep cap is three. The fourth layer
+  // walked out as a whole <script>, which is the same latent hole as the old
+  // decode-last ordering: a renderer that ever trusted "the vm stores plain
+  // text" would be handed executable markup.
+  it('hands back no tag when raw splice-nesting outlasts the sweep cap', () => {
+    for (let depth = 1; depth <= 8; depth += 1) {
+      const out = htmlToText('<'.repeat(depth) + 'script>'.repeat(depth) + 'alert(1)');
+      expect(out, `depth ${depth}`).not.toMatch(/<\/?[a-z][a-z0-9]*[^>]*>/i);
+    }
+  });
+
+  it('leaves a lone "<" that no tag could open with alone', () => {
+    // The neutralizer only fires on text that still holds a WHOLE tag, so
+    // arithmetic prose and the half-spliced leftovers keep their characters.
+    expect(htmlToText('latency a < b')).toBe('latency a < b');
+    expect(htmlToText('&lt;&lt;p&gt;p&gt;')).toBe('<\n\np>');
+  });
 });
 
 // The bug from the board: Slack publishes incident notes as HTML, the widget
