@@ -11,7 +11,7 @@ import { chooseBootConfig } from './boot.js';
 import { parseFragment } from './bridge.js';
 import { stripData, stripHtml } from './ambient.js';
 import { createSlideshow, swipeAction, swipeFadeThrough, loadImage } from './imageshow.js';
-import { startBeacon } from './fleet.js';
+import { startBeacon, reportWidgetHealth } from './fleet.js';
 import { DEMO_VMS, DEMO_NOW_MS } from '../demo/fixtures.js';
 import { initTextViewer } from './textviewer.js';
 import { initExpand } from './expand.js';
@@ -169,7 +169,10 @@ function startWidget(mod, rect) {
       // dim the card and stamp its age instead of clearing the stale mark.
       if (vm?.stale) markStale(card, vm.updatedAt);
       else markFresh(card);
+      // Health vector (fleet.js): worker-served stale counts, fresh clears.
+      reportWidgetHealth(mod.meta.id, vm?.stale ? 'stale' : null);
     } catch (err) {
+      reportWidgetHealth(mod.meta.id, 'error');
       markStale(card, loadCache(mod.meta.id)?.t);
       throw err; // let the scheduler back off
     }

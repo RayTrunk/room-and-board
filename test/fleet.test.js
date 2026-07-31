@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { deviceId, beaconPayload } from '../site/js/fleet.js';
+import { deviceId, beaconPayload, reportWidgetHealth, healthVector, resetWidgetHealth } from '../site/js/fleet.js';
 import { normalizeConfig } from '../site/js/config.js';
 
 const memStorage = (init = {}) => {
@@ -37,5 +37,34 @@ describe('beaconPayload', () => {
   });
   it('falls back to unknown when the version fetch failed', () => {
     expect(beaconPayload(normalizeConfig({}), 'abc-123', null).version).toBe('unknown');
+  });
+});
+
+describe('widget health vector (Tier 2, exceptions only — backlog item 9)', () => {
+  it('collects only unhealthy widgets and clears them on recovery', () => {
+    resetWidgetHealth();
+    expect(healthVector()).toBe('');
+    reportWidgetHealth('lirr', 'stale');
+    reportWidgetHealth('njt', 'error');
+    expect(healthVector()).toBe('lirr=stale,njt=error');
+    reportWidgetHealth('lirr', null); // recovered: drops out entirely
+    expect(healthVector()).toBe('njt=error');
+    resetWidgetHealth();
+    expect(healthVector()).toBe('');
+  });
+  it('caps a pathological vector with a truncation mark', () => {
+    resetWidgetHealth();
+    for (let i = 0; i < 40; i += 1) reportWidgetHealth(`w${String(i).padStart(2, '0')}xxxxxxxxxx`, 'error');
+    const v = healthVector();
+    expect(v.length).toBeLessThanOrEqual(200);
+    expect(v.endsWith('…')).toBe(true);
+    resetWidgetHealth();
+  });
+  it('rides the beacon payload as `health`', () => {
+    resetWidgetHealth();
+    reportWidgetHealth('markets', 'error');
+    expect(beaconPayload(normalizeConfig({}), 'abc-123', 'v1').health).toBe('markets=error');
+    resetWidgetHealth();
+    expect(beaconPayload(normalizeConfig({}), 'abc-123', 'v1').health).toBe('');
   });
 });
