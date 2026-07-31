@@ -7,7 +7,8 @@
 
 import { escapeHtml, fmtMin, fmtTime, setCardNote } from '../util.js';
 import { WORKER_URL } from '../env.js';
-import { itemCapacity, cardSize, fitTrainRows } from '../capacity.js';
+import { itemCapacity, cardSize } from '../capacity.js';
+import { wireTrainExpand } from '../train-expand.js';
 
 export const meta = { id: 'ferry', title: 'NYC Ferry', refreshMs: 60 * 1000 };
 
@@ -38,24 +39,23 @@ export function render(el, vm, _cfg) {
   setCardNote(el, vm.landingName || null);
   const [w, h] = cardSize(el, [4, 4]);
   const cap = itemCapacity('ferry', w, h) ?? 4;
-  const shown = (vm.departures ?? []).slice(0, cap);
-  el.innerHTML = '<div class="trains">' + (shown.length
-    ? shown
-        .map((d) => {
-          const chip = d.route && /^[0-9A-Fa-f]{6}$/.test(d.route.color)
-            ? `<i class="ferryroute" style="background:#${d.route.color}"></i>`
-            : '';
-          return `<div class="train">
+  const row = (d) => {
+    const chip = d.route && /^[0-9A-Fa-f]{6}$/.test(d.route.color)
+      ? `<i class="ferryroute" style="background:#${d.route.color}"></i>`
+      : '';
+    return `<div class="train">
             <div class="train__min"><span>${fmtMin(d.min)}</span><small>min</small></div>
             <div class="train__info">
               <span class="train__dest">${chip}${escapeHtml(d.dest)}</span>
               <span class="train__line">${d.route ? `${escapeHtml(d.route.name)} · ` : ''}${fmtTime(d.t)}</span>
             </div>
           </div>`;
-        })
-        .join('')
+  };
+  const rows = (vm.departures ?? []).map(row);
+  el.innerHTML = '<div class="trains">' + (rows.length
+    ? rows.slice(0, cap).join('')
     : '<div class="empty">No departures</div>') + '</div>';
-  fitTrainRows(el);
+  wireTrainExpand(el, { title: meta.title, note: vm.landingName || '', rows });
 }
 
 let dataCache = null;

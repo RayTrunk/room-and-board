@@ -8,7 +8,8 @@ import { WORKER_URL } from '../env.js';
 import { escapeHtml, fmtMin, fmtTime, setCardNote } from '../util.js';
 import { renderAlertRows } from '../transit-alerts.js';
 import { lineChipPrefix } from '../lines.js';
-import { itemCapacity, cardSize, fitTrainRows } from '../capacity.js';
+import { itemCapacity, cardSize } from '../capacity.js';
+import { wireTrainExpand } from '../train-expand.js';
 
 export const meta = { id: 'njt', title: 'NJ Transit', refreshMs: 2 * 60 * 1000 };
 
@@ -19,22 +20,19 @@ export function render(el, vm, _cfg) {
   el.classList.toggle('has-alerts', Boolean(vm.alerts?.length));
   const [w, h] = cardSize(el, [4, 4]);
   const cap = Math.max(1, itemCapacity('njt', w, h) - (vm.alerts?.length ?? 0));
-  const shown = vm.trains.slice(0, cap);
-  el.innerHTML = renderAlertRows(vm.alerts) + '<div class="trains">' + (shown.length
-    ? shown
-        .map(
-          (t) => `<div class="train">
+  const row = (t) => `<div class="train">
             <div class="train__min"><span>${fmtMin(t.min)}</span><small>min</small></div>
             <div class="train__info">
               <span class="train__dest">${escapeHtml(t.dest)}</span>
               <span class="train__line">${lineChipPrefix(t.line)}${fmtTime(t.time)}${t.status ? ` · ${escapeHtml(t.status)}` : ''}</span>
             </div>
             ${t.track ? `<span class="train__track">Track ${escapeHtml(t.track)}</span>` : ''}
-          </div>`,
-        )
-        .join('')
+          </div>`;
+  const rows = vm.trains.map(row);
+  el.innerHTML = renderAlertRows(vm.alerts) + '<div class="trains">' + (rows.length
+    ? rows.slice(0, cap).join('')
     : '<div class="empty">No departures</div>') + '</div>';
-  fitTrainRows(el);
+  wireTrainExpand(el, { title: meta.title, note: 'Penn Station', rows });
 }
 
 export function mapNjt(payload, nowSec, showAlerts = true) {

@@ -10,7 +10,8 @@ import { escapeHtml, fmtMin, fmtTime, setCardNote, setupPrompt } from '../util.j
 import { lineChipPrefix } from '../lines.js';
 import { WORKER_URL } from '../env.js';
 import { cardAlerts, renderAlertRows } from '../transit-alerts.js';
-import { itemCapacity, cardSize, fitTrainRows } from '../capacity.js';
+import { itemCapacity, cardSize } from '../capacity.js';
+import { wireTrainExpand } from '../train-expand.js';
 
 // Title is just "LIRR" — terminal context lives in settings copy and the
 // short title leaves the corner note room to breathe.
@@ -29,6 +30,7 @@ export function render(el, vm, cfg) {
     setCardNote(el, null);
     el.classList.remove('has-alerts');
     el.innerHTML = setupPrompt('lirr', 'pick a station', 'LIRR');
+    wireTrainExpand(el, { title: meta.title, rows: [] }); // clears any prior pill
     return;
   }
   const note = [vm.destName ? `stops at ${vm.destName}` : null, vm.viaTraintime ? 'via TrainTime' : null]
@@ -38,24 +40,21 @@ export function render(el, vm, cfg) {
   const [w, h] = cardSize(el, [4, 4]);
   // Each alert banner costs roughly one train row of space.
   const cap = Math.max(1, itemCapacity('lirr', w, h) - (vm.alerts?.length ?? 0));
-  const shown = vm.departures.slice(0, cap);
   // Rows disambiguate their terminal only when both are on the board.
   const tagged = cfg?.lirr?.origin === 'both';
-  el.innerHTML = renderAlertRows(vm.alerts?.map((a) => ({ ...a, routes: [] })) ?? []) + '<div class="trains">' + (shown.length
-    ? shown
-        .map(
-          (d) => `<div class="train">
+  const row = (d) => `<div class="train">
             <div class="train__min"><span>${fmtMin(d.min)}</span><small>min</small></div>
             <div class="train__info">
               <span class="train__dest">${escapeHtml(d.dest)}</span>
               <span class="train__line">${tagged && d.origin ? `${escapeHtml(ORIGINS[d.origin]?.label ?? '')} · ` : ''}${lineChipPrefix(d.branch)}${fmtTime(d.t)}</span>
             </div>
             ${d.track ? `<span class="train__track">Track ${escapeHtml(d.track)}</span>` : ''}
-          </div>`,
-        )
-        .join('')
+          </div>`;
+  const rows = vm.departures.map(row);
+  el.innerHTML = renderAlertRows(vm.alerts?.map((a) => ({ ...a, routes: [] })) ?? []) + '<div class="trains">' + (rows.length
+    ? rows.slice(0, cap).join('')
     : '<div class="empty">No departures</div>') + '</div>';
-  fitTrainRows(el);
+  wireTrainExpand(el, { title: meta.title, note, rows });
 }
 
 const FEED_URL = 'https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/lirr%2Fgtfs-lirr';

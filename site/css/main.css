@@ -1312,6 +1312,14 @@ body.mode-ambient .gear--edit { display: none; }
    — so the same rules give the same 41.6px gap on a 1040 board, a 1200 Room
    Navigator and an 1080 desktop preview. */
 .expand__body { flex: 1; min-height: 0; margin-top: 36px; padding-bottom: 100px; }
+/* The rail overlay's departures board: the cards' own .train rows dealt down
+   two columns, soonest first (column flow keeps the list chronological top to
+   bottom). Six 51px rows and five 14px gaps are 376px of the 814px canvas, so
+   the feeds' 12-departure cap can never overflow it. */
+.expand__body .trains--board {
+  display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: repeat(6, min-content);
+  grid-auto-flow: column; gap: 14px 64px; align-content: start; overflow: hidden;
+}
 .expand__hint {
   position: absolute; left: 0; right: 0; bottom: 32px;
   text-align: center; font-size: 22px; line-height: 1.2; color: var(--ink-faint);
@@ -1972,6 +1980,20 @@ body.mode-ambient .gear--edit { display: none; }
 /* Overflow badge: a quiet "+N" pinned at the truncation point (bottom-right)
    instead of costing a list row. Safe at every width; stamp is top-anchored. */
 .card__more { position: absolute; right: 26px; bottom: 12px; font-size: 15px; font-weight: 400; letter-spacing: 0; text-transform: none; color: var(--ink-dim); white-space: nowrap; }
+/* Rail +N (expand wave 2): the badge grows into the tap target itself. A
+   well-backed pill, calm at rest and ignited only while pressed (the
+   calm-affordance rule); the ::after inset stretches its hit area to a 44px
+   target without growing the visual. The is-expandable-pill reserve below
+   keeps the last train row clear of it — fitTrainRows re-measures with the
+   class on, so the rows the reserve evicts are counted into the pill. */
+.card__more--pill { background: var(--bg-card-2); border-radius: 10px; padding: 8px 14px; right: 18px; bottom: 14px; font-size: 17px; color: var(--ink-dim); cursor: pointer; }
+.card__more--pill::after { content: ''; position: absolute; inset: -6px -8px; }
+.card__more--pill:active { background: rgba(255, 255, 255, 0.2); color: var(--ink); }
+/* Pill-triggered cards: the card surface itself is not the target, so the
+   whole-card press tint and pointer cursor stay off. */
+.card.is-expandable-pill { cursor: default; }
+.card.is-expandable-pill:active { background: var(--bg-card); }
+.card.is-expandable-pill .trains { padding-bottom: 46px; }
 /* Wordless "continues" cue: fade the body's last 22px when items are hidden. */
 .card.has-more .card__body {
   -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 22px), transparent);
