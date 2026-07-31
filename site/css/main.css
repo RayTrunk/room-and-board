@@ -608,8 +608,15 @@ body { position: relative; top: max(0px, calc((100dvh - 1080px) / 2)); }
   position: absolute; inset: 0; margin: auto;
   transition: opacity 320ms cubic-bezier(0.22, 1, 0.36, 1), transform 320ms cubic-bezier(0.22, 1, 0.36, 1);
 }
+/* Same idea for the clock backdrop, a lone background div: the ghost carries
+   the outgoing photo (background copied inline; the element is styled by id)
+   while #backdrop swaps beneath it (swipeBackdropSwap in imageshow.js). */
+.swipe-ghost {
+  position: absolute; inset: 0; background-repeat: no-repeat;
+  transition: opacity 320ms cubic-bezier(0.22, 1, 0.36, 1), transform 320ms cubic-bezier(0.22, 1, 0.36, 1);
+}
 @media (prefers-reduced-motion: reduce) {
-  .slide, .slide.slide--swipe, .art-viewer__img--ghost { transition: none; transform: none !important; }
+  .slide, .slide.slide--swipe, .art-viewer__img--ghost, .swipe-ghost { transition: none; transform: none !important; }
 }
 .slide-caption {
   /* Sit just above the info band (which sits at the very bottom). Both are

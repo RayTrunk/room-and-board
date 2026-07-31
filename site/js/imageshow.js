@@ -301,6 +301,43 @@ export function openImageViewer(current, cfg, { list = [], caption = true, strip
 // instantly, the pre-existing behavior.
 const SWIPE_EASE = 'opacity 320ms cubic-bezier(0.22, 1, 0.36, 1), transform 320ms cubic-bezier(0.22, 1, 0.36, 1)';
 
+// Drift distance for a swiped transition. Scaled companion panels (fitViewport
+// zooms narrow Navigators, see util.js) skip the drift: compositing
+// full-viewport transforms under a fractional zoom dropped frames on their
+// weaker SoC (Sean, on-device, 2026-08-01), and the pure 320ms fade keeps the
+// instant-answer feel that matters. Full-size boards keep the 36px drift.
+export function swipeDriftPx() {
+  return document.documentElement.style.zoom ? 0 : 36;
+}
+
+// Swiped swap for a single background-image element (the clock backdrop): the
+// outgoing photo lives on as a ghost overlay fading out while `apply` swaps
+// the element underneath, which drifts in when the device can afford it. The
+// ghost copies its look inline because the element is styled by id.
+export function swipeBackdropSwap(el, dir, apply) {
+  const cs = getComputedStyle(el);
+  const ghost = document.createElement('div');
+  ghost.className = 'swipe-ghost';
+  ghost.style.backgroundImage = el.style.backgroundImage || cs.backgroundImage;
+  ghost.style.backgroundSize = cs.backgroundSize;
+  ghost.style.backgroundPosition = cs.backgroundPosition;
+  el.after(ghost);
+  const drift = swipeDriftPx();
+  if (drift) {
+    el.style.transition = 'none';
+    el.style.transform = `translateX(${dir * drift}px)`;
+  }
+  apply();
+  void ghost.offsetWidth; // flush, so both halves start THIS frame
+  ghost.style.opacity = '0';
+  if (drift) {
+    ghost.style.transform = `translateX(${-dir * drift}px)`;
+    el.style.transition = SWIPE_EASE;
+    el.style.transform = '';
+  }
+  setTimeout(() => { ghost.remove(); el.style.transition = ''; }, 400);
+}
+
 function step(viewer, dir) {
   if (!viewerList?.length) return;
   userStepped = true;
@@ -318,11 +355,12 @@ function step(viewer, dir) {
       // this file and the tests keeps finding the live element first.
       imgEl.after(ghost);
       void ghost.offsetWidth;
-      ghost.style.transform = `translateX(${-dir * 36}px)`;
+      const drift = swipeDriftPx();
+      if (drift) ghost.style.transform = `translateX(${-dir * drift}px)`;
       ghost.style.opacity = '0';
       setTimeout(() => ghost.remove(), 400);
       imgEl.style.transition = 'none';
-      imgEl.style.transform = `translateX(${dir * 36}px)`;
+      if (drift) imgEl.style.transform = `translateX(${dir * drift}px)`;
       imgEl.style.opacity = '0';
     }
     imgEl.src = item.img;
@@ -390,12 +428,13 @@ export function createSlideshow(manifest, host, { intervalMs = 75000, random = M
     // offsets are one-shot inline transforms, cleared on the next show.
     next.classList.toggle('slide--swipe', swipeDir !== 0);
     out.classList.toggle('slide--swipe', swipeDir !== 0);
-    if (swipeDir) {
+    const drift = swipeDir ? swipeDriftPx() : 0;
+    if (drift) {
       next.style.transition = 'none';
-      next.style.transform = `translateX(${swipeDir * 36}px)`;
+      next.style.transform = `translateX(${swipeDir * drift}px)`;
       void next.offsetWidth; // flush, so the drift starts THIS frame
       next.style.transition = '';
-      out.style.transform = `translateX(${-swipeDir * 36}px)`;
+      out.style.transform = `translateX(${-swipeDir * drift}px)`;
     } else {
       next.style.transform = '';
       out.style.transform = '';

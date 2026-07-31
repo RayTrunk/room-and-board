@@ -10,7 +10,7 @@ import { registerWidget, getWidget } from './registry.js';
 import { chooseBootConfig } from './boot.js';
 import { parseFragment } from './bridge.js';
 import { stripData, stripHtml } from './ambient.js';
-import { createSlideshow, swipeAction } from './imageshow.js';
+import { createSlideshow, swipeAction, swipeBackdropSwap } from './imageshow.js';
 import { startBeacon } from './fleet.js';
 import { DEMO_VMS, DEMO_NOW_MS } from '../demo/fixtures.js';
 import { initTextViewer } from './textviewer.js';
@@ -251,8 +251,12 @@ function stepBackdrop(dir) {
   if (backdropList.length < 2 || $('#backdrop').hidden) return;
   backdropIndex = (backdropIndex + dir + backdropList.length) % backdropList.length;
   const img = new Image();
-  img.onload = showBackdrop;
-  img.onerror = showBackdrop; // show anyway; the <div> bg will retry like slides do
+  // Decode first (slideshow pattern), then answer the swipe with the shared
+  // ghost crossfade — the backdrop is a lone div, so without the ghost a swipe
+  // just blinked to the next photo with no acknowledgment at all.
+  const swap = () => swipeBackdropSwap($('#backdrop'), dir, showBackdrop);
+  img.onload = swap;
+  img.onerror = swap; // show anyway; the <div> bg will retry like slides do
   img.src = backdropList[backdropIndex].img;
 }
 

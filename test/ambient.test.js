@@ -2,7 +2,7 @@
  * @vitest-environment happy-dom
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { createSlideshow, swipeAction } from '../site/js/imageshow.js';
+import { createSlideshow, swipeAction, swipeBackdropSwap } from '../site/js/imageshow.js';
 import { stripData, stripHtml } from '../site/js/ambient.js';
 import { ambientSource } from '../site/js/modes.js';
 import { resolvePhotosManifest } from '../site/js/photos-manifest.js';
@@ -52,6 +52,40 @@ describe('createSlideshow', () => {
     expect(layers.every((l) => l.classList.contains('slide--swipe'))).toBe(true);
     await vi.advanceTimersByTimeAsync(1000); // the next AUTO advance restores the slow dissolve
     expect(layers.some((l) => l.classList.contains('slide--swipe'))).toBe(false);
+  });
+
+  it('scaled companion panels swipe with the fast fade but no drift', async () => {
+    // fitViewport zooms narrow panels (Room Navigator); their SoC drops frames
+    // compositing full-viewport transforms, so the drift stays off there while
+    // the 320ms fade keeps the instant answer.
+    document.documentElement.style.zoom = '0.326';
+    try {
+      const host = document.createElement('div');
+      const show = createSlideshow([{ img: 'a.jpg' }, { img: 'b.jpg' }], host, { intervalMs: 1000, random: () => 0.4 });
+      show.start();
+      await vi.advanceTimersByTimeAsync(0);
+      show.step(1);
+      await vi.advanceTimersByTimeAsync(0);
+      const layers = [...host.querySelectorAll('.slide')];
+      expect(layers.every((l) => l.classList.contains('slide--swipe'))).toBe(true);
+      expect(layers.every((l) => !l.style.transform)).toBe(true);
+    } finally {
+      document.documentElement.style.zoom = '';
+    }
+  });
+
+  it('swipeBackdropSwap crossfades a background div through a ghost', async () => {
+    const el = document.createElement('div');
+    el.style.backgroundImage = 'url("old.jpg")';
+    const parent = document.createElement('div');
+    parent.append(el);
+    swipeBackdropSwap(el, 1, () => { el.style.backgroundImage = 'url("new.jpg")'; });
+    const ghost = parent.querySelector('.swipe-ghost');
+    expect(ghost).not.toBeNull();
+    expect(ghost.style.backgroundImage).toContain('old.jpg'); // outgoing photo lives on the ghost
+    expect(el.style.backgroundImage).toContain('new.jpg');
+    await vi.advanceTimersByTimeAsync(500);
+    expect(parent.querySelector('.swipe-ghost')).toBeNull(); // reaped after the fade
   });
 
   it('leaves the caption empty for a titleless photo (no stray grey box)', async () => {
