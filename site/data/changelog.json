@@ -41,7 +41,7 @@
       },
       {
         "lead": "Commute",
-        "text": "A departure more than 99 minutes away now shows 99+, so a wide countdown never pushes its row out of line with the others. The exact time still sits right below."
+        "text": "A departure far in the future no longer pushes its row out of line with the others: the countdown column simply makes room for the wider number."
       },
       {
         "lead": "Cloud services",

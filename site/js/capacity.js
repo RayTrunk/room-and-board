@@ -209,15 +209,15 @@ export function capacityLabel(id, w, h, cfg = {}) {
 export function fitTrainRows(el) {
   const trains = el.querySelector?.('.trains');
   if (!trains) return;
-  // A capped "99+" is one glyph wider than the 76px column's exact "99 min"
-  // fit — the plus is not a tabular digit — so the whole card widens its min
-  // column while (and only while) a capped row is on the board, keeping every
-  // row's destination aligned. Toggled before measuring so the row fit below
-  // sees the final geometry. (PATH and bus skip this pass; their realtime
-  // windows cannot produce a 100-minute countdown.)
+  // Three tabular digits (or the 999+ clamp) run ~95px against the 76px
+  // column's exact two-digit fit, so the whole card widens its min column
+  // while (and only while) such a row is on the board, keeping every row's
+  // destination aligned. Toggled before measuring so the row fit below sees
+  // the final geometry. (PATH and bus skip this pass; their realtime windows
+  // cannot produce a 100-minute countdown.)
   trains.classList.toggle(
     'trains--widemin',
-    [...trains.querySelectorAll('.train__min span')].some((s) => s.textContent.includes('+')),
+    [...trains.querySelectorAll('.train__min span')].some((s) => s.textContent.length > 2),
   );
   if (!trains.clientHeight) return; // no layout engine (unit tests)
   const over = () => trains.scrollHeight > trains.clientHeight;

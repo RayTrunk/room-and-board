@@ -455,9 +455,9 @@ body { position: relative; top: max(0px, calc((100dvh - 1080px) / 2)); }
 
 .train { display: flex; align-items: center; gap: 16px; font-size: 22px; }
 .train__min { display: flex; align-items: baseline; gap: 4px; min-width: 76px; }
-/* A board holding a capped "99+" row: the plus is not covered by tabular-nums,
-   so 76px (an exact "99 min" fit) no longer aligns. fitTrainRows toggles this
-   per card; the expand overlay reserves it always (space to spare there). */
+/* A board holding a 3-digit countdown: 76px is an exact "99 min" fit, and a
+   third tabular digit runs the cell to ~95px. fitTrainRows toggles this per
+   card; the expand overlay reserves its own wider columns always. */
 .trains--widemin .train__min, .trains--board .train__min { min-width: 97px; }
 .train__min span { font-size: 34px; font-weight: 700; font-variant-numeric: tabular-nums; }
 .train__min small { color: var(--ink-faint); font-size: 20px; }

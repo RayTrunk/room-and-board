@@ -59,11 +59,12 @@ export function chaikin(pts, iterations = 2) {
   return p;
 }
 
-// Countdown display for departure rows: 100+ shows as 99+ — three digits
-// would overflow the 76px .train__min column and push that row's destination
-// out of line with its neighbors. The exact time is on the meta line, and a
-// 100-minute countdown is precision nobody acts on.
-export const fmtMin = (min) => (min > 99 ? '99+' : String(min));
+// Countdown display for departure rows. Real minutes, however long the wait:
+// alignment for 3-digit values is trains--widemin's job (fitTrainRows), and
+// with the TrainTime horizon a column of identical capped rows told the rider
+// nothing. 999 stays as a data-sanity clamp only — a four-digit countdown is
+// a feed error, not a train.
+export const fmtMin = (min) => (min > 999 ? '999+' : String(min));
 
 export function fmtTime(epochSec) {
   return new Date(epochSec * 1000).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });

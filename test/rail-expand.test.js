@@ -120,13 +120,14 @@ describe('rail +N badge and whole-card expand', () => {
     expect(card.querySelector('.trains').style.paddingBottom).toBe('');
   });
 
-  it('a capped 99+ row widens the whole card\'s min column so rows stay aligned', () => {
-    // "99+" is a glyph wider than the column's exact "99 min" fit (the plus is
-    // not a tabular digit), so the card carrying one pays a wider column while
-    // it is on the board — and only then.
+  it('a three-digit countdown widens the whole card\'s min column so rows stay aligned', () => {
+    // Three tabular digits need ~95px against the 76px exact two-digit fit,
+    // so the card carrying one pays a wider column while it is on the board —
+    // and only then. (Same mechanism the 99+ cap era used for the plus.)
     const vm = lirrVm(2);
     vm.departures[1].min = 120;
     const { card } = railBoard('lirr', renderLirr, vm);
+    expect(card.querySelectorAll('.train__min span')[1].textContent).toBe('120');
     expect(card.querySelector('.trains').classList.contains('trains--widemin')).toBe(true);
     renderLirr(card.querySelector('.card__body'), lirrVm(2), {});
     expect(card.querySelector('.trains').classList.contains('trains--widemin')).toBe(false);

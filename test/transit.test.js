@@ -43,12 +43,16 @@ describe('mapSubwayStatus', () => {
 });
 
 describe('fmtMin (countdown display)', () => {
-  it('caps the countdown at 99+ so three digits never push a row out of line', () => {
+  it('shows real minutes; alignment is the wide-column class\'s job now', () => {
+    // The 99+ cap existed for column alignment, which trains--widemin solves
+    // properly — and with the TrainTime horizon, a column of identical 99+
+    // rows told the rider nothing. 999 remains as a data-sanity clamp only.
     expect(fmtMin(0)).toBe('0');
     expect(fmtMin(48)).toBe('48');
     expect(fmtMin(99)).toBe('99');
-    expect(fmtMin(100)).toBe('99+');
-    expect(fmtMin(101)).toBe('99+');
+    expect(fmtMin(101)).toBe('101');
+    expect(fmtMin(845)).toBe('845');
+    expect(fmtMin(1000)).toBe('999+');
   });
 });
 
