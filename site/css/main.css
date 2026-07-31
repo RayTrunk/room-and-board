@@ -2132,7 +2132,10 @@ body.has-strip .clockface { bottom: 84px; }
   position: absolute; inset: 0;
   background-color: var(--bg); /* fallback before the image loads / if it fails */
   background-size: cover; background-position: center; background-repeat: no-repeat;
-  animation: backdrop-in 900ms ease-out both; /* calm fade-in on show */
+  /* calm fade-in on show. Fill BACKWARDS, not both: a forwards-filled
+     animation owns opacity forever and outranks the swipe fade's inline
+     styles (swipeBackdropFade), which silently disabled it. */
+  animation: backdrop-in 900ms ease-out backwards;
 }
 .backdrop::after { content: ''; position: absolute; inset: 0; background: var(--ss-scrim); }
 /* Let a touch swipe reach the pointer handlers (step to the next backdrop) instead

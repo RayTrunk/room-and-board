@@ -327,6 +327,13 @@ export function swipeMode() {
 export const BACKDROP_OUT_MS = 350;
 export function swipeBackdropFade(el, ready, apply) {
   if (reducedMotion()) { Promise.resolve(ready).then(apply); return; }
+  // Release the mount animation (backdrop-in) before touching opacity: a
+  // FILLED keyframe animation outranks inline styles in the cascade, which
+  // made the first cut of this fade a silent no-op on every device (the swipe
+  // just swapped instantly — Sean caught it on a Navigator, 2026-08-01). The
+  // CSS fill-mode is also 'backwards' now; this line guards the cascade even
+  // if some future animation lands on the element.
+  el.style.animation = 'none';
   el.style.transition = `opacity ${BACKDROP_OUT_MS}ms ease-out`;
   el.style.opacity = '0';
   const dark = new Promise((r) => setTimeout(r, BACKDROP_OUT_MS + 30));

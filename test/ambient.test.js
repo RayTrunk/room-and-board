@@ -93,6 +93,10 @@ describe('createSlideshow', () => {
         applied = true;
         el.style.backgroundImage = 'url("new.jpg")';
       });
+      // The mount animation (backdrop-in, fill both) would override inline
+      // opacity in the cascade and turn the whole fade into a silent no-op —
+      // it must be released before the fade owns opacity.
+      expect(el.style.animation).toBe('none');
       expect(el.style.opacity).toBe('0'); // the fade-out IS the instant acknowledgment
       expect(applied).toBe(false); // the swap waits for the dark beat
       await vi.advanceTimersByTimeAsync(BACKDROP_OUT_MS + 50);
