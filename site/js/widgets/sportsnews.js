@@ -69,7 +69,14 @@ export const takeoverSummary = (leagues) =>
 export function resolveFeedIds(outlets, sports) {
   const picked = (sports ?? []).filter((s) => s in SPORT_FEEDS);
   if (!picked.length) return [...outlets];
-  return picked.flatMap((sp) => outlets.map((o) => SPORT_FEEDS[sp][o]).filter(Boolean));
+  const pool = picked.flatMap((sp) => outlets.map((o) => SPORT_FEEDS[sp][o]).filter(Boolean));
+  // Never an empty pool: when NO enabled outlet covers any picked sport (an
+  // ESPN-only board — its per-sport feeds are dead upstream), fall back to
+  // the top feeds. Whole-pool only, not per outlet: chips have no downstream
+  // filter, so a per-outlet top-feed fallback would pollute a narrowed card
+  // (the takeover can afford that fallback because its team filter still
+  // applies over whatever the pool carries).
+  return pool.length ? pool : [...outlets];
 }
 
 const SOURCE_BY_ID = Object.fromEntries(SPORTS_SOURCES.map((s) => [s[0], s]));

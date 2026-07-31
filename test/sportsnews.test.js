@@ -171,6 +171,18 @@ describe('sport chips + per-sport sourcing', () => {
     expect(resolveFeedIds(['cbs-sports'], ['cricket', 'golf'])).toEqual(['cbs-sports-golf']);
   });
 
+  it('never resolves to an empty pool: all-dead cells fall back to the top feeds', () => {
+    // An ESPN-only board picking any chip has zero per-sport cells (ESPN's are
+    // all dead upstream). Better an un-narrowed card than a silently empty
+    // one — but ONLY when the whole pool would be empty: while any outlet
+    // covers the picked sports, the chips contract holds and no top feed
+    // pollutes it (that differs from the takeover, whose team filter makes a
+    // top-feed fallback harmless per outlet).
+    expect(resolveFeedIds(['espn'], ['mlb'])).toEqual(['espn']);
+    expect(resolveFeedIds(['espn', 'cbs-sports'], ['mls'])).toEqual(['espn', 'cbs-sports']);
+    expect(resolveFeedIds(['espn', 'guardian-sport'], ['mls'])).toEqual(['guardian-sport-mls']);
+  });
+
   it('summarizes the takeover leagues for the settings note', () => {
     expect(takeoverSummary(['mlb', 'nhl'])).toBe('MLB, NHL');
     expect(takeoverSummary(['epl'])).toBe('Premier League');
