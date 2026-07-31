@@ -486,9 +486,10 @@ describe('settings nav model', () => {
     expect(navGroupForSection('markets')).toBe('Markets'); // now a group with marketsnews
     expect(navGroupForSection('marketsnews')).toBe('Markets'); // grouped under Markets
     // My Teams stopped being a pinned item when Sports News landed, exactly as
-    // Markets did: the card and its feed twin share one collapsible group.
-    expect(navGroupForSection('sports')).toBe('My Teams');
-    expect(navGroupForSection('sportsnews')).toBe('My Teams');
+    // Markets did: the card and its feed twin share one collapsible group,
+    // which Sean named Sports (the group is bigger than the teams card now).
+    expect(navGroupForSection('sports')).toBe('Sports');
+    expect(navGroupForSection('sportsnews')).toBe('Sports');
     expect(navGroupForSection('weather')).toBeNull(); // standalone
     expect(navGroupForSection('worldclock')).toBeNull(); // standalone (pulled out of Images)
     expect(navGroupForSection('diag')).toBeNull();
@@ -497,7 +498,7 @@ describe('settings nav model', () => {
   it('gives My Teams the same two-child group shape Markets has', () => {
     const group = (label) => NAV_MODEL.find((e) => e.type === 'group' && e.label === label);
     expect(group('Markets').items).toEqual([['markets', 'Markets'], ['marketsnews', 'Markets News']]);
-    expect(group('My Teams').items).toEqual([['sports', 'My Teams'], ['sportsnews', 'Sports News']]);
+    expect(group('Sports').items).toEqual([['sports', 'My Teams'], ['sportsnews', 'Sports News']]);
     // ...and the old pinned entry is gone, or the section would appear twice.
     expect(NAV_MODEL.filter((e) => e.type === 'item' && e.id === 'sports')).toEqual([]);
   });

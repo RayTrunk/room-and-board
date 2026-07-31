@@ -46,6 +46,11 @@ describe('sportsnews meta + sources', () => {
     const ids = new Set(SPORTS_SOURCES.map((s) => s[0]));
     expect(DEFAULT_SPORTS_SOURCES.length).toBeGreaterThan(0);
     for (const id of DEFAULT_SPORTS_SOURCES) expect(ids, id).toContain(id);
+    // The Athletic is US coverage and a default (Sean 07-31): it sits with the
+    // US sources, ahead of the international opt-ins.
+    expect(DEFAULT_SPORTS_SOURCES).toContain('the-athletic');
+    const order = SPORTS_SOURCES.map((s) => s[0]);
+    expect(order.indexOf('the-athletic')).toBeLessThan(order.indexOf('bbc-sport'));
   });
 });
 

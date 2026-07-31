@@ -2021,11 +2021,9 @@ body.mode-ambient .gear--edit { display: none; }
    grammar, standard .is-expandable affordances above), and the corner badge
    reads "+N more" as the invitation. The first cut's pill trigger reserved
    46px under .trains and cost exactly one row on exactly-filled cards. */
-/* Wordless "continues" cue: fade the body's last 22px when items are hidden. */
-.card.has-more .card__body {
-  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 22px), transparent);
-  mask-image: linear-gradient(to bottom, #000 calc(100% - 22px), transparent);
-}
+/* (The old has-more bottom fade is gone, 2026-07-31: it predated the badges
+   saying "+N more" in words and read as smudge once they did. The class stays
+   on the card as a hook; the badge alone is the continues cue.) */
 
 /* ---------- my teams ---------- */
 .team { display: flex; align-items: center; gap: 14px; min-height: 64px; }

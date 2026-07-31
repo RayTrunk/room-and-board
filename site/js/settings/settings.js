@@ -204,7 +204,8 @@ export const NAV_MODEL = [
     ['path', 'PATH'], ['ferry', 'NYC Ferry'], ['bus', 'Express Bus'], ['citibike', 'Citi Bike'], ['tfl', 'TfL Status'] ] },
   { type: 'group', label: 'Markets', items: [['markets', 'Markets'], ['marketsnews', 'Markets News']] },
   { type: 'group', label: 'News & Social', items: [['news', 'Headlines'], ['substack', 'Substack'], ['bsky', 'Bluesky']] },
-  { type: 'group', label: 'My Teams', items: [['sports', 'My Teams'], ['sportsnews', 'Sports News']] },
+  // Sean named the group Sports: it holds more than the teams card now.
+  { type: 'group', label: 'Sports', items: [['sports', 'My Teams'], ['sportsnews', 'Sports News']] },
   { type: 'item', id: 'services', label: 'Cloud Services' },
   { type: 'item', id: 'chart', label: 'Chart of the Day' },
   { type: 'item', id: 'iptv', label: 'Live Video' },

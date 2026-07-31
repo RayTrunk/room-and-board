@@ -18,18 +18,18 @@ export const SPORTS_SOURCES = [
   ['espn', 'ESPN', 'proxy', 'espn', 'US'],
   ['cbs-sports', 'CBS Sports', 'proxy', 'cbs-sports', 'US'],
   ['yahoo-sports', 'Yahoo Sports', 'proxy', 'yahoo-sports', 'US'],
-  ['bbc-sport', 'BBC Sport', 'proxy', 'bbc-sport', 'World'],
-  ['guardian-sport', 'Guardian Sport', 'proxy', 'guardian-sport', 'World'],
   // NYT folded its sports desk into The Athletic (which is why the NYT Sports
-  // feed above is absent: it has been an empty shell since April 2025). The
+  // feed is absent: it has been an empty shell since April 2025). The
   // Athletic's feed is served from nytimes.com; theathletic.com redirects
   // there and answers inconsistently when hit directly, so the worker
   // whitelist pins the nytimes.com URL.
   ['the-athletic', 'The Athletic', 'proxy', 'the-athletic', 'US'],
+  ['bbc-sport', 'BBC Sport', 'proxy', 'bbc-sport', 'World'],
+  ['guardian-sport', 'Guardian Sport', 'proxy', 'guardian-sport', 'World'],
 ];
 // The two international feeds start off: both are mostly football and cricket,
 // and a board following US leagues would spend most of its rows on neither.
-export const DEFAULT_SPORTS_SOURCES = ['espn', 'cbs-sports', 'yahoo-sports'];
+export const DEFAULT_SPORTS_SOURCES = ['espn', 'cbs-sports', 'yahoo-sports', 'the-athletic'];
 const SOURCE_BY_ID = Object.fromEntries(SPORTS_SOURCES.map((s) => [s[0], s]));
 
 // The phrases one teams.json entry may be named by in a headline.
