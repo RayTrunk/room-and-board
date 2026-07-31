@@ -5,6 +5,10 @@
       {
         "lead": "Trains and ferries",
         "text": "When a departure card holds more than it can show, a small +N more sits in its corner. Tap it for the full board: every departure the card knows about, in two columns, with lines and tracks. It closes on its own after a minute, like the other full screen views."
+      },
+      {
+        "lead": "LIRR",
+        "text": "The card now lists trains beyond the next two hours, so a quiet evening shows tonight's later departures instead of stopping short. Cards carrying an alert also fit their trains more honestly, without giving up extra room."
       }
     ]
   },

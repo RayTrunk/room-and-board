@@ -82,6 +82,17 @@ describe('rail +N pill', () => {
     expect(isExpandOpen()).toBe(false);
   });
 
+  it('alert banners no longer pre-charge a train row (the fit and the pill absorb them)', () => {
+    // A 3x2 card promises 2 rows. The old pre-deduction charged each banner a
+    // row BEFORE measuring (a 72px banner charged as a 61px row under-filled
+    // the card); now the full promise renders and fitTrainRows sheds what
+    // genuinely does not fit into the pill count.
+    const vm = { ...lirrVm(5), alerts: [{ routes: [], stops: [], header: 'Delays.' }] };
+    const { card } = railBoard('lirr', renderLirr, vm);
+    expect(card.querySelectorAll('.train').length).toBe(2);
+    expect(card.querySelector('.card__more').textContent).toBe('+3 more');
+  });
+
   it('drops the pill and the expansion when a refresh leaves nothing hidden', () => {
     const { card } = railBoard('lirr', renderLirr, lirrVm(5));
     expect(card.classList.contains('is-expandable')).toBe(true);
@@ -111,9 +122,10 @@ describe('rail +N on the other boards', () => {
   });
 
   it('NJT: alert banners stay on the card, never in the overlay', () => {
-    // One banner costs a row: cap is 1 at 3x2, so four of five trains hide.
+    // Banners are not pre-charged a row (the measured fit sheds instead), so
+    // the 3x2 promise of 2 rows holds and three of five trains hide.
     const { card } = railBoard('njt', renderNjt, njtVm(5));
-    expect(card.querySelector('.card__more').textContent).toBe('+4 more');
+    expect(card.querySelector('.card__more').textContent).toBe('+3 more');
     card.querySelector('.card__more').click();
     expect(overlay().querySelectorAll('.train').length).toBe(5);
     expect(overlay().querySelector('.talert')).toBeNull();

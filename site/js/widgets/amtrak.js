@@ -45,7 +45,9 @@ export function render(el, vm, cfg) {
   el.classList.toggle('has-alerts', Boolean(alerts.length));
   const [w, h] = cardSize(el, [4, 4]);
   // Each alert banner costs roughly one train row of space.
-  const cap = Math.max(1, itemCapacity('amtrak', w, h) - alerts.length);
+  // Banners are not pre-charged a row (see the lirr note): the measured fit
+  // sheds what cannot fit, into the pill.
+  const cap = Math.max(1, itemCapacity('amtrak', w, h));
   const shown = deps.slice(0, cap);
 
   const row = (d) => {

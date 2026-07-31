@@ -38,8 +38,10 @@ export function render(el, vm, cfg) {
   setCardNote(el, note || null);
   el.classList.toggle('has-alerts', Boolean(vm.alerts?.length));
   const [w, h] = cardSize(el, [4, 4]);
-  // Each alert banner costs roughly one train row of space.
-  const cap = Math.max(1, itemCapacity('lirr', w, h) - (vm.alerts?.length ?? 0));
+  // Banners are not pre-charged a row: a 72px banner charged as a 61px row
+  // under-filled the card for years (backlog 23b). The full promise renders
+  // and fitTrainRows sheds what measurement says cannot fit, into the pill.
+  const cap = Math.max(1, itemCapacity('lirr', w, h));
   // Rows disambiguate their terminal only when both are on the board.
   const tagged = cfg?.lirr?.origin === 'both';
   const row = (d) => `<div class="train">
@@ -133,6 +135,19 @@ export function mapLirr(decoded, trackJson, cfgLirr, nowSec, stationNames = {}) 
   return { departures: departures.slice(0, 12) };
 }
 
+// The official feed carries only a rolling ~2h window (probed 2026-07-30: the
+// last Penn departure sat +108 min out while service ran past midnight), so a
+// quiet evening card can honestly hold two trains. TrainTime's own board looks
+// further ahead: its rows extend the realtime list, matched by train number so
+// a train both sources know keeps its realtime row, capped at the same 12 the
+// mappers promise.
+export function extendDepartures(primary, extra, cap = 12) {
+  const seen = new Set(primary.map((d) => d.trainNum).filter(Boolean));
+  const merged = [...primary, ...extra.filter((d) => !(d.trainNum && seen.has(d.trainNum)))];
+  merged.sort((a, b) => a.t - b.t);
+  return merged.slice(0, cap);
+}
+
 // Branch name -> GTFS route_id, for alert relevance on TrainTime rows (their
 // payload has no route ids, only branch codes).
 const ROUTE_IDS = Object.fromEntries(Object.entries(ROUTE_NAMES).map(([id, name]) => [name, id]));
@@ -220,6 +235,12 @@ export async function fetchData(cfg, net) {
       vm.stale = true;
       vm.updatedAt = decoded.timestamp;
     }
+  }
+  // A healthy feed still ends at its window edge; TrainTime rows continue the
+  // board past it. Skipped on the fallback path, which is already all-TrainTime.
+  if (!vm.viaTraintime && vm.departures.length < 12) {
+    const tt = mapTrainTime(ttPerOrigin, cfg.lirr, nowSec, stations);
+    vm.departures = extendDepartures(vm.departures, tt.departures);
   }
   if (cfg.lirr.alerts) {
     try {

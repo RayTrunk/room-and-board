@@ -19,7 +19,9 @@ export function render(el, vm, _cfg) {
   setCardNote(el, 'Penn Station');
   el.classList.toggle('has-alerts', Boolean(vm.alerts?.length));
   const [w, h] = cardSize(el, [4, 4]);
-  const cap = Math.max(1, itemCapacity('njt', w, h) - (vm.alerts?.length ?? 0));
+  // Banners are not pre-charged a row (see the lirr note): the measured fit
+  // sheds what cannot fit, into the pill.
+  const cap = Math.max(1, itemCapacity('njt', w, h));
   const row = (t) => `<div class="train">
             <div class="train__min"><span>${fmtMin(t.min)}</span><small>min</small></div>
             <div class="train__info">

@@ -330,6 +330,36 @@ describe('mapSubwayStatus aliases', () => {
   });
 });
 
+describe('extendDepartures (TrainTime beyond the GTFS-RT window)', () => {
+  const gtfs = [
+    { t: 1000, trainNum: '100', dest: 'Babylon' },
+    { t: 2000, trainNum: '102', dest: 'Babylon' },
+  ];
+  const tt = [
+    { t: 1000, trainNum: '100', dest: 'Babylon' }, // in-window duplicate
+    { t: 9000, trainNum: '104', dest: 'Babylon' }, // beyond the window
+    { t: 5000, trainNum: '106', dest: 'Babylon' },
+  ];
+  let extendDepartures;
+  beforeAll(async () => { ({ extendDepartures } = await import('../site/js/widgets/lirr.js')); });
+  it('appends only trains the window does not know, sorted by time', () => {
+    const out = extendDepartures(gtfs, tt);
+    expect(out.map((d) => d.trainNum)).toEqual(['100', '102', '106', '104']);
+  });
+  it('keeps the realtime row when both sources know a train', () => {
+    const out = extendDepartures(gtfs, [{ t: 1001, trainNum: '100', dest: 'Babylon', track: '19' }]);
+    expect(out.find((d) => d.trainNum === '100').t).toBe(1000);
+  });
+  it('caps the merged board at the feeds\' 12-row promise', () => {
+    const many = Array.from({ length: 15 }, (_, i) => ({ t: 3000 + i, trainNum: String(200 + i) }));
+    expect(extendDepartures(gtfs, many)).toHaveLength(12);
+  });
+  it('tolerates rows without train numbers', () => {
+    const out = extendDepartures([{ t: 1000, trainNum: null }], [{ t: 2000, trainNum: null }]);
+    expect(out).toHaveLength(2);
+  });
+});
+
 describe('mapTrainTime (LIRR fallback board)', () => {
   const now = 1000;
   const stations = [
