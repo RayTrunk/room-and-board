@@ -208,7 +208,18 @@ export function capacityLabel(id, w, h, cfg = {}) {
 // worst-case row fits the 121px h=2 box, so the cascade always terminates).
 export function fitTrainRows(el) {
   const trains = el.querySelector?.('.trains');
-  if (!trains || !trains.clientHeight) return; // no layout engine (unit tests)
+  if (!trains) return;
+  // A capped "99+" is one glyph wider than the 76px column's exact "99 min"
+  // fit — the plus is not a tabular digit — so the whole card widens its min
+  // column while (and only while) a capped row is on the board, keeping every
+  // row's destination aligned. Toggled before measuring so the row fit below
+  // sees the final geometry. (PATH and bus skip this pass; their realtime
+  // windows cannot produce a 100-minute countdown.)
+  trains.classList.toggle(
+    'trains--widemin',
+    [...trains.querySelectorAll('.train__min span')].some((s) => s.textContent.includes('+')),
+  );
+  if (!trains.clientHeight) return; // no layout engine (unit tests)
   const over = () => trains.scrollHeight > trains.clientHeight;
   const rows = [...trains.querySelectorAll('.train')];
   while (over() && rows.length > 1) rows.pop().remove();

@@ -93,6 +93,18 @@ describe('rail +N pill', () => {
     expect(card.querySelector('.card__more').textContent).toBe('+3 more');
   });
 
+  it('a capped 99+ row widens the whole card\'s min column so rows stay aligned', () => {
+    // "99+" is a glyph wider than the column's exact "99 min" fit (the plus is
+    // not a tabular digit), so the card carrying one pays a wider column while
+    // it is on the board — and only then.
+    const vm = lirrVm(2);
+    vm.departures[1].min = 120;
+    const { card } = railBoard('lirr', renderLirr, vm);
+    expect(card.querySelector('.trains').classList.contains('trains--widemin')).toBe(true);
+    renderLirr(card.querySelector('.card__body'), lirrVm(2), {});
+    expect(card.querySelector('.trains').classList.contains('trains--widemin')).toBe(false);
+  });
+
   it('drops the pill and the expansion when a refresh leaves nothing hidden', () => {
     const { card } = railBoard('lirr', renderLirr, lirrVm(5));
     expect(card.classList.contains('is-expandable')).toBe(true);
