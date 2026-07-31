@@ -301,13 +301,19 @@ export function openImageViewer(current, cfg, { list = [], caption = true, strip
 // instantly, the pre-existing behavior.
 const SWIPE_EASE = 'opacity 320ms cubic-bezier(0.22, 1, 0.36, 1), transform 320ms cubic-bezier(0.22, 1, 0.36, 1)';
 
-// Drift distance for a swiped transition. Scaled companion panels (fitViewport
-// zooms narrow Navigators, see util.js) skip the drift: compositing
-// full-viewport transforms under a fractional zoom dropped frames on their
-// weaker SoC (Sean, on-device, 2026-08-01), and the pure 320ms fade keeps the
-// instant-answer feel that matters. Full-size boards keep the 36px drift.
-export function swipeDriftPx() {
-  return document.documentElement.style.zoom ? 0 : 36;
+// How a swiped transition behaves on this device. Full-size boards get the
+// 320ms drift-fade ('drift'). Scaled companion panels (fitViewport zooms
+// narrow Navigators, see util.js) get an atomic CUT: their GPU cannot raster
+// a fresh full-viewport texture inside a short fade, so the fade began over
+// blank pixels and the photo popped in mid-flight — Sean saw it as a flash,
+// twice, on-device. A decode-gated single-frame swap creates no new painting
+// work at gesture time, so there is nothing left to race; the instant answer
+// is what prevents double swipes, and the slow AUTO dissolve stays (2.5s has
+// always masked the upload lag). Reduced motion cuts too, as it always did.
+const DRIFT_PX = 36;
+export function swipeMode() {
+  if (typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches) return 'cut';
+  return document.documentElement.style.zoom ? 'cut' : 'drift';
 }
 
 // Swiped swap for a single background-image element (the clock backdrop): the
@@ -315,6 +321,7 @@ export function swipeDriftPx() {
 // the element underneath, which drifts in when the device can afford it. The
 // ghost copies its look inline because the element is styled by id.
 export function swipeBackdropSwap(el, dir, apply) {
+  if (swipeMode() === 'cut') { apply(); return; } // scaled panels: atomic, no ghost to raster
   const cs = getComputedStyle(el);
   const ghost = document.createElement('div');
   ghost.className = 'swipe-ghost';
@@ -322,7 +329,7 @@ export function swipeBackdropSwap(el, dir, apply) {
   ghost.style.backgroundSize = cs.backgroundSize;
   ghost.style.backgroundPosition = cs.backgroundPosition;
   el.after(ghost);
-  const drift = swipeDriftPx();
+  const drift = DRIFT_PX;
   if (drift) {
     el.style.transition = 'none';
     el.style.transform = `translateX(${dir * drift}px)`;
@@ -345,7 +352,7 @@ function step(viewer, dir) {
   const item = viewerList[viewerIndex];
   loadImage(new Image(), item.img).then(() => {
     const imgEl = viewer.querySelector('.art-viewer__img:not(.art-viewer__img--ghost)');
-    const reduce = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const reduce = swipeMode() === 'cut'; // reduced motion AND scaled panels: swap atomically
     if (!reduce) {
       viewer.querySelector('.art-viewer__img--ghost')?.remove(); // a double swipe retargets: one ghost at a time
       const ghost = imgEl.cloneNode();
@@ -355,7 +362,7 @@ function step(viewer, dir) {
       // this file and the tests keeps finding the live element first.
       imgEl.after(ghost);
       void ghost.offsetWidth;
-      const drift = swipeDriftPx();
+      const drift = DRIFT_PX;
       if (drift) ghost.style.transform = `translateX(${-dir * drift}px)`;
       ghost.style.opacity = '0';
       setTimeout(() => ghost.remove(), 400);
@@ -426,9 +433,12 @@ export function createSlideshow(manifest, host, { intervalMs = 75000, random = M
     // crossfade run at 320ms with a 36px drift in the swipe direction, vs the
     // ambient advance's slow dissolve. The class carries the fast timing; the
     // offsets are one-shot inline transforms, cleared on the next show.
-    next.classList.toggle('slide--swipe', swipeDir !== 0);
-    out.classList.toggle('slide--swipe', swipeDir !== 0);
-    const drift = swipeDir ? swipeDriftPx() : 0;
+    const mode = swipeDir ? swipeMode() : 'auto';
+    next.classList.toggle('slide--swipe', mode === 'drift');
+    out.classList.toggle('slide--swipe', mode === 'drift');
+    next.classList.toggle('slide--cut', mode === 'cut');
+    out.classList.toggle('slide--cut', mode === 'cut');
+    const drift = mode === 'drift' ? DRIFT_PX : 0;
     if (drift) {
       next.style.transition = 'none';
       next.style.transform = `translateX(${swipeDir * drift}px)`;

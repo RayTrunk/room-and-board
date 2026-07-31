@@ -602,6 +602,9 @@ body { position: relative; top: max(0px, calc((100dvh - 1080px) / 2)); }
 .slide.slide--swipe {
   transition: opacity 320ms cubic-bezier(0.22, 1, 0.36, 1), transform 320ms cubic-bezier(0.22, 1, 0.36, 1);
 }
+/* Scaled panels swipe with an atomic cut (see swipeMode in imageshow.js):
+   no transition at all, so a late texture upload has nothing to flash into. */
+.slide.slide--cut { transition: none; }
 /* The full-screen viewer's outgoing photo during a swipe: a positioned clone
    drifting out while the live element eases in (see step() in imageshow.js). */
 .art-viewer__img--ghost {

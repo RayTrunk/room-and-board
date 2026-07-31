@@ -54,21 +54,41 @@ describe('createSlideshow', () => {
     expect(layers.some((l) => l.classList.contains('slide--swipe'))).toBe(false);
   });
 
-  it('scaled companion panels swipe with the fast fade but no drift', async () => {
-    // fitViewport zooms narrow panels (Room Navigator); their SoC drops frames
-    // compositing full-viewport transforms, so the drift stays off there while
-    // the 320ms fade keeps the instant answer.
+  it('scaled companion panels swipe with an atomic cut: no fade, no drift, nothing to race', async () => {
+    // fitViewport zooms narrow panels (Room Navigator). Their GPU cannot get a
+    // fresh full-viewport texture ready inside a short fade — the photo popped
+    // in mid-fade as a flash (Sean, on-device, twice) — so a swipe there is a
+    // decode-gated single-frame swap. The auto advance keeps the slow
+    // dissolve, whose 2.5s masks the upload lag as it always has.
     document.documentElement.style.zoom = '0.326';
     try {
       const host = document.createElement('div');
-      const show = createSlideshow([{ img: 'a.jpg' }, { img: 'b.jpg' }], host, { intervalMs: 1000, random: () => 0.4 });
+      const show = createSlideshow([{ img: 'a.jpg' }, { img: 'b.jpg' }, { img: 'c.jpg' }], host, { intervalMs: 1000, random: () => 0.4 });
       show.start();
       await vi.advanceTimersByTimeAsync(0);
       show.step(1);
       await vi.advanceTimersByTimeAsync(0);
       const layers = [...host.querySelectorAll('.slide')];
-      expect(layers.every((l) => l.classList.contains('slide--swipe'))).toBe(true);
+      expect(layers.every((l) => l.classList.contains('slide--cut'))).toBe(true);
+      expect(layers.some((l) => l.classList.contains('slide--swipe'))).toBe(false);
       expect(layers.every((l) => !l.style.transform)).toBe(true);
+      await vi.advanceTimersByTimeAsync(1000); // next AUTO advance restores the dissolve
+      expect(layers.some((l) => l.classList.contains('slide--cut'))).toBe(false);
+    } finally {
+      document.documentElement.style.zoom = '';
+    }
+  });
+
+  it('the backdrop swap also cuts on scaled panels: no ghost is ever created', () => {
+    document.documentElement.style.zoom = '0.326';
+    try {
+      const el = document.createElement('div');
+      el.style.backgroundImage = 'url("old.jpg")';
+      const parent = document.createElement('div');
+      parent.append(el);
+      swipeBackdropSwap(el, 1, () => { el.style.backgroundImage = 'url("new.jpg")'; });
+      expect(parent.querySelector('.swipe-ghost')).toBeNull();
+      expect(el.style.backgroundImage).toContain('new.jpg');
     } finally {
       document.documentElement.style.zoom = '';
     }
