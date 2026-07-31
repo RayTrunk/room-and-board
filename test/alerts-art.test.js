@@ -75,6 +75,18 @@ describe('mapMtaAlerts', () => {
 });
 
 describe('mapNjtMessages', () => {
+  it('repairs NJT\'s mangled dashes: a floating question mark is never punctuation', () => {
+    // NJT's CMS pushes em dashes through a legacy charset and substitutes '?'
+    // ("BTS Concerts ? Saturday", live 2026-07-31). English never puts a space
+    // BEFORE a question mark, so the spaced form is unambiguous damage; a real
+    // question keeps its mark.
+    const out = mapNjtMessages({ STATIONMSGS: [
+      { MSG_TEXT: 'Rail Service for BTS Concerts ? Saturday, August 1, 2026' },
+      { MSG_TEXT: 'Have questions? Visit njtransit.com for details.' },
+    ] });
+    expect(out[0].header).toBe('Rail Service for BTS Concerts – Saturday, August 1, 2026');
+    expect(out[1].header).toBe('Have questions? Visit njtransit.com for details.');
+  });
   it('strips html and empty messages', () => {
     const out = mapNjtMessages({ STATIONMSGS: [
       { MSG_TEXT: '<p>Track work <strong>this weekend</strong>.</p>' },

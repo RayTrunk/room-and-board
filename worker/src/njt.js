@@ -177,7 +177,18 @@ const isAuthError = (err) => /\b401\b/.test(String(err?.message ?? ''));
 export function mapNjtMessages(json) {
   const items = Array.isArray(json) ? json : json?.STATIONMSGS ?? [];
   return items
-    .map((m) => ({ header: String(m?.MSG_TEXT ?? m?.msg_text ?? '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim() }))
+    .map((m) => ({
+      header: String(m?.MSG_TEXT ?? m?.msg_text ?? '')
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/\s+/g, ' ')
+        // NJT's CMS pushes em dashes through a legacy charset and hands us a
+        // literal '?' ("BTS Concerts ? Saturday", live 2026-07-31). English
+        // never spaces BEFORE a question mark, so the spaced form is
+        // unambiguous damage; real questions ("delayed? call ahead") keep
+        // their mark. Repaired to an en dash, the character they meant.
+        .replace(/ \? /g, ' – ')
+        .trim(),
+    }))
     .filter((m) => m.header.length > 0)
     .slice(0, 4);
 }
