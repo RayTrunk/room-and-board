@@ -5,7 +5,7 @@
 import { renderHeadlines, fetchHeadlines } from './newscore.js';
 import { viaSettings } from '../util.js';
 
-export const meta = { id: 'teamsnews', title: 'Teams News', refreshMs: 10 * 60 * 1000 };
+export const meta = { id: 'sportsnews', title: 'Sports News', refreshMs: 10 * 60 * 1000 };
 
 // [id, label, kind, url-or-proxy-id, scope]
 //
@@ -20,6 +20,12 @@ export const SPORTS_SOURCES = [
   ['yahoo-sports', 'Yahoo Sports', 'proxy', 'yahoo-sports', 'US'],
   ['bbc-sport', 'BBC Sport', 'proxy', 'bbc-sport', 'World'],
   ['guardian-sport', 'Guardian Sport', 'proxy', 'guardian-sport', 'World'],
+  // NYT folded its sports desk into The Athletic (which is why the NYT Sports
+  // feed above is absent: it has been an empty shell since April 2025). The
+  // Athletic's feed is served from nytimes.com; theathletic.com redirects
+  // there and answers inconsistently when hit directly, so the worker
+  // whitelist pins the nytimes.com URL.
+  ['the-athletic', 'The Athletic', 'proxy', 'the-athletic', 'US'],
 ];
 // The two international feeds start off: both are mostly football and cricket,
 // and a board following US leagues would spend most of its rows on neither.
@@ -64,9 +70,9 @@ export function render(el, vm, _cfg) {
   // Two different empties, and they want different fixes: a card the filter
   // emptied points at the filter, not at the source picker.
   const emptyHint = vm?.filtered
-    ? `Nothing about your teams right now. Tap here to turn off Only my teams, or ${viaSettings('Teams News')}`
-    : `No sports news yet. Tap here to pick sources or ${viaSettings('Teams News')}`;
-  renderHeadlines(el, vm, { widgetId: 'teamsnews', emptyHint });
+    ? `Nothing about your teams right now. Tap here to turn off Only my teams, or ${viaSettings('Sports News')}`
+    : `No sports news yet. Tap here to pick sources or ${viaSettings('Sports News')}`;
+  renderHeadlines(el, vm, { widgetId: 'sportsnews', emptyHint });
 }
 
 // data/teams.json is a static ~19KB roster and the only place a followed
@@ -88,10 +94,10 @@ async function followedPhrases(cfg, net) {
 }
 
 export async function fetchData(cfg, net) {
-  const ids = cfg?.teamsnews?.sources?.length ? cfg.teamsnews.sources : DEFAULT_SPORTS_SOURCES;
+  const ids = cfg?.sportsnews?.sources?.length ? cfg.sportsnews.sources : DEFAULT_SPORTS_SOURCES;
   // The roster read only happens for a board that both follows teams AND has
   // the switch on, so an unfiltered card costs exactly what Markets News costs.
-  const teams = cfg?.teamsnews?.onlyMyTeams ? await followedPhrases(cfg, net) : [];
+  const teams = cfg?.sportsnews?.onlyMyTeams ? await followedPhrases(cfg, net) : [];
   const vm = await fetchHeadlines(ids, SOURCE_BY_ID, net,
     teams.length ? { filter: (i) => matchesTeams(i, teams) } : {});
   // `filtered` is what the card renders its empty state from: the switch alone

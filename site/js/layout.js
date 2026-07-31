@@ -26,7 +26,7 @@ export const MIN_SIZE = {
   ferry: [3, 2],
   markets: [3, 2],
   marketsnews: [3, 2],
-  teamsnews: [3, 2],
+  sportsnews: [3, 2],
   history: [2, 2],
   quote: [2, 2],
   wotd: [2, 3], // canonical shape; 3x2 also legal via MIN_ALTS

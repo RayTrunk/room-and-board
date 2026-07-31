@@ -673,7 +673,7 @@ describe('/news', () => {
 
   // A hyphenated id has to clear the route pattern as well as the whitelist,
   // which is the half a bare newsFeedUrl() check cannot see.
-  it('proxies the hyphenated sports feed ids the Teams News card asks for', async () => {
+  it('proxies the hyphenated sports feed ids the Sports News card asks for', async () => {
     for (const id of ['espn', 'cbs-sports', 'yahoo-sports', 'bbc-sport', 'guardian-sport']) {
       expect(newsFeedUrl(id), id).toMatch(/^https:\/\//);
     }

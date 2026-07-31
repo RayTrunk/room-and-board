@@ -10,23 +10,23 @@ import {
   matchesTeams,
   render,
   fetchData,
-} from '../site/js/widgets/teamsnews.js';
+} from '../site/js/widgets/sportsnews.js';
 import { newsFeedUrl } from '../worker/src/news.js';
 import { DEMO_VMS } from '../site/demo/fixtures.js';
 
 const el = () => document.createElement('div');
 const story = (title, desc = '') => ({ title, desc, source: 'ESPN', t: 1783000000000 });
 
-describe('teamsnews meta + sources', () => {
-  it('is the Teams News card', () => {
-    expect(meta.id).toBe('teamsnews');
-    expect(meta.title).toBe('Teams News');
+describe('sportsnews meta + sources', () => {
+  it('is the Sports News card', () => {
+    expect(meta.id).toBe('sportsnews');
+    expect(meta.title).toBe('Sports News');
     expect(meta.refreshMs).toBe(10 * 60 * 1000);
   });
 
   it('offers between three and five sources, each id used once', () => {
     expect(SPORTS_SOURCES.length).toBeGreaterThanOrEqual(3);
-    expect(SPORTS_SOURCES.length).toBeLessThanOrEqual(5);
+    expect(SPORTS_SOURCES.length).toBeLessThanOrEqual(6);
     const ids = SPORTS_SOURCES.map((s) => s[0]);
     expect(new Set(ids).size).toBe(ids.length);
   });
@@ -94,7 +94,7 @@ describe('matchesTeams', () => {
   });
 });
 
-describe('teamsnews render', () => {
+describe('sportsnews render', () => {
   const vm = {
     items: [story('Mets rally past Braves'), story('Chiefs sign a tackle')],
     nowMs: 1783000100000,
@@ -122,13 +122,13 @@ describe('teamsnews render', () => {
 
   it('renders its demo fixture', () => {
     const host = el();
-    render(host, DEMO_VMS.teamsnews, {});
+    render(host, DEMO_VMS.sportsnews, {});
     expect(host.textContent.length).toBeGreaterThan(0);
     expect(host.querySelector('.headline')).toBeTruthy();
   });
 });
 
-describe('teamsnews fetchData', () => {
+describe('sportsnews fetchData', () => {
   const item = (t) => `<item><title>${t}</title></item>`;
   const RSS = `<rss><channel>${item('Mets rally past Braves')}</channel></rss>`;
   const ROSTER = { leagues: [{ lg: 'mlb', label: 'MLB', teams: [
@@ -158,13 +158,13 @@ describe('teamsnews fetchData', () => {
   // module of its own or the first success answers for all of them.
   const freshFetchData = async () => {
     vi.resetModules();
-    return (await import('../site/js/widgets/teamsnews.js')).fetchData;
+    return (await import('../site/js/widgets/sportsnews.js')).fetchData;
   };
 
   it('merges the picked sources and resolves the followed teams to match phrases', async () => {
     const { net } = netFor();
     const vm = await (await freshFetchData())(
-      { teamsnews: { sources: ['espn'], onlyMyTeams: true }, ...FOLLOWING_METS },
+      { sportsnews: { sources: ['espn'], onlyMyTeams: true }, ...FOLLOWING_METS },
       net,
     );
     expect(vm.items[0].title).toBe('Mets rally past Braves');
@@ -176,7 +176,7 @@ describe('teamsnews fetchData', () => {
   it('leaves every story in place while the filter is off', async () => {
     const rss = `<rss><channel>${item('Mets rally past Braves')}${item('Chiefs sign a tackle')}</channel></rss>`;
     const { net } = netFor(ROSTER, rss);
-    const vm = await (await freshFetchData())({ teamsnews: { sources: ['espn'] }, ...FOLLOWING_METS }, net);
+    const vm = await (await freshFetchData())({ sportsnews: { sources: ['espn'] }, ...FOLLOWING_METS }, net);
     expect(vm.items.map((i) => i.title)).toContain('Chiefs sign a tackle');
     expect(vm.filtered).toBe(false);
   });
@@ -185,7 +185,7 @@ describe('teamsnews fetchData', () => {
     const rss = `<rss><channel>${item('Mets rally past Braves')}${item('Chiefs sign a tackle')}</channel></rss>`;
     const { net } = netFor(ROSTER, rss);
     const vm = await (await freshFetchData())(
-      { teamsnews: { sources: ['espn'], onlyMyTeams: true }, ...FOLLOWING_METS },
+      { sportsnews: { sources: ['espn'], onlyMyTeams: true }, ...FOLLOWING_METS },
       net,
     );
     expect(vm.items.map((i) => i.title)).toEqual(['Mets rally past Braves']);
@@ -200,7 +200,7 @@ describe('teamsnews fetchData', () => {
     const rss = `<rss><channel>${noise}${item('Mets rally past Braves')}</channel></rss>`;
     const { net } = netFor(ROSTER, rss);
     const vm = await (await freshFetchData())(
-      { teamsnews: { sources: ['espn'], onlyMyTeams: true }, ...FOLLOWING_METS },
+      { sportsnews: { sources: ['espn'], onlyMyTeams: true }, ...FOLLOWING_METS },
       net,
     );
     expect(vm.items.map((i) => i.title)).toEqual(['Mets rally past Braves']);
@@ -211,7 +211,7 @@ describe('teamsnews fetchData', () => {
   it('is inert when the board follows no teams', async () => {
     const { net, urls } = netFor();
     const vm = await (await freshFetchData())(
-      { teamsnews: { sources: ['espn'], onlyMyTeams: true }, sports: { teams: [] } },
+      { sportsnews: { sources: ['espn'], onlyMyTeams: true }, sports: { teams: [] } },
       net,
     );
     expect(vm.items).toHaveLength(1);
@@ -223,7 +223,7 @@ describe('teamsnews fetchData', () => {
   it('still serves headlines when the roster lookup fails', async () => {
     const { net } = netFor(new Error('offline'));
     const vm = await (await freshFetchData())(
-      { teamsnews: { sources: ['espn'], onlyMyTeams: true }, ...FOLLOWING_METS },
+      { sportsnews: { sources: ['espn'], onlyMyTeams: true }, ...FOLLOWING_METS },
       net,
     );
     expect(vm.items).toHaveLength(1);
@@ -234,7 +234,7 @@ describe('teamsnews fetchData', () => {
   it('reads the roster once across refreshes, not once per cycle', async () => {
     const { net, urls } = netFor();
     const fetchDataFresh = await freshFetchData();
-    const cfg = { teamsnews: { sources: ['espn'], onlyMyTeams: true }, ...FOLLOWING_METS };
+    const cfg = { sportsnews: { sources: ['espn'], onlyMyTeams: true }, ...FOLLOWING_METS };
     await fetchDataFresh(cfg, net);
     await fetchDataFresh(cfg, net);
     expect(urls.filter((u) => u.includes('teams.json'))).toHaveLength(1);

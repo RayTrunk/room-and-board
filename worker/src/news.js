@@ -16,6 +16,9 @@ const FEEDS = {
   'yahoo-sports': 'https://sports.yahoo.com/rss/',
   'bbc-sport': 'https://feeds.bbci.co.uk/sport/rss.xml',
   'guardian-sport': 'https://www.theguardian.com/sport/rss',
+  // The Athletic serves its feed from nytimes.com; theathletic.com redirects
+  // there and answers inconsistently when fetched directly (probed 2026-07-31).
+  'the-athletic': 'https://www.nytimes.com/athletic/rss/news/',
 };
 
 export function newsFeedUrl(id) {

@@ -59,7 +59,7 @@ describe('itemCapacity', () => {
   it('gives both headline twins the same capacity as news (never null)', () => {
     // Regression: a missing MODELS entry returned null, which made
     // renderHeadlines treat the whole feed as overflow and show 1 item.
-    for (const id of ['marketsnews', 'teamsnews']) {
+    for (const id of ['marketsnews', 'sportsnews']) {
       for (const [w, h] of [[4, 4], [4, 6], [6, 8]]) {
         expect(itemCapacity(id, w, h), id).toBe(itemCapacity('news', w, h));
       }
@@ -111,7 +111,7 @@ describe('capacityLabel', () => {
   it('describes all three news widgets as headlines', () => {
     expect(capacityLabel('news', 4, 4, cfg)).toBe('4 headlines');
     expect(capacityLabel('marketsnews', 4, 4, cfg)).toBe('4 headlines');
-    expect(capacityLabel('teamsnews', 4, 4, cfg)).toBe('4 headlines');
+    expect(capacityLabel('sportsnews', 4, 4, cfg)).toBe('4 headlines');
   });
   it('describes weather tiers and stays quiet for non-lists', () => {
     expect(capacityLabel('weather', 4, 4, cfg)).toBe('6 hourly · 4-day forecast');

@@ -124,9 +124,9 @@ export function fullVMs(cfg = null) {
 
   vms.news = feed(10);
   vms.marketsnews = feed(10, 600_000);
-  // Unfiltered on purpose: the resting Teams News card is the widest one the
+  // Unfiltered on purpose: the resting Sports News card is the widest one the
   // capacity table has to hold, and Only-my-teams can only ever shorten it.
-  vms.teamsnews = { ...feed(10, 1_200_000), teams: [] };
+  vms.sportsnews = { ...feed(10, 1_200_000), teams: [] };
   vms.substack = posts(6);
   vms.bsky = posts(6);
 

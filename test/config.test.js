@@ -224,12 +224,12 @@ describe('encode/decode round trip', () => {
       .toEqual(['CSCO', 'AAPL', '^DJI', 'MSFT']);
   });
 
-  it('carries the Teams News picks through a setup code, default free', async () => {
+  it('carries the Sports News picks through a setup code, default free', async () => {
     const plain = await encodeConfig(normalizeConfig({}));
-    expect((await encodeConfig(normalizeConfig({ teamsnews: {} }))).length).toBe(plain.length);
-    const custom = normalizeConfig({ teamsnews: { sources: ['espn'], onlyMyTeams: true } });
+    expect((await encodeConfig(normalizeConfig({ sportsnews: {} }))).length).toBe(plain.length);
+    const custom = normalizeConfig({ sportsnews: { sources: ['espn'], onlyMyTeams: true } });
     const dec = await decodeConfig(await encodeConfig(custom));
-    expect(dec.teamsnews).toEqual({ sources: ['espn'], onlyMyTeams: true });
+    expect(dec.sportsnews).toEqual({ sources: ['espn'], onlyMyTeams: true });
   });
 
   it('throws on corrupt input', async () => {
@@ -712,16 +712,16 @@ describe('marketsnews config', () => {
   });
 });
 
-describe('teamsnews config', () => {
+describe('sportsnews config', () => {
   const DEFAULTS = ['espn', 'cbs-sports', 'yahoo-sports'];
   it('defaults to the US sources with the my-teams filter off, and filters junk ids', () => {
-    expect(normalizeConfig({}).teamsnews).toEqual({ sources: DEFAULTS, onlyMyTeams: false });
-    expect(normalizeConfig({ teamsnews: { sources: ['espn', 'bogus'] } }).teamsnews.sources).toEqual(['espn']);
-    expect(normalizeConfig({ teamsnews: { sources: [] } }).teamsnews.sources).toEqual(DEFAULTS);
+    expect(normalizeConfig({}).sportsnews).toEqual({ sources: DEFAULTS, onlyMyTeams: false });
+    expect(normalizeConfig({ sportsnews: { sources: ['espn', 'bogus'] } }).sportsnews.sources).toEqual(['espn']);
+    expect(normalizeConfig({ sportsnews: { sources: [] } }).sportsnews.sources).toEqual(DEFAULTS);
   });
   it('only turns the filter on for an explicit true', () => {
-    expect(normalizeConfig({ teamsnews: { onlyMyTeams: true } }).teamsnews.onlyMyTeams).toBe(true);
-    expect(normalizeConfig({ teamsnews: { onlyMyTeams: 'yes' } }).teamsnews.onlyMyTeams).toBe(false);
+    expect(normalizeConfig({ sportsnews: { onlyMyTeams: true } }).sportsnews.onlyMyTeams).toBe(true);
+    expect(normalizeConfig({ sportsnews: { onlyMyTeams: 'yes' } }).sportsnews.onlyMyTeams).toBe(false);
   });
 });
 

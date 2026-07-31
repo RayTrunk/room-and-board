@@ -21,7 +21,7 @@ const RESIZE_ICON = `<svg width="28" height="28" viewBox="0 0 24 24" fill="none"
 // regrouping: a group collapses iff it offers FOUR OR MORE cards, and the
 // expanders render largest first, ties alphabetical. Order here is that render
 // order — Commute 10 · Images 5 · Sports 5 · Daily 4 (Images is 6 nominal but
-// Live Video is double-gated; Sports reached 5 when Teams News landed and takes
+// Live Video is double-gated; Sports reached 5 when Sports News landed and takes
 // the tie on the alphabet). Below four a drawer costs a tap to save one or two
 // chips, so Weather & Air 3, News & Social 3, Markets 2 and Reference 2 all flow
 // inline. Each label must exist in WIDGET_GROUPS, and the set must match the
@@ -60,7 +60,7 @@ const TITLES = {
   wotd: 'Word',
   worldclock: 'World Clock',
   sports: 'My Teams',
-  teamsnews: 'Teams News',
+  sportsnews: 'Sports News',
   f1: 'Formula 1',
   golf: 'Golf',
   tennis: 'Tennis',

@@ -138,7 +138,7 @@ describe('add-tray collapsible groups', () => {
   const offeredIn = (label) => idsOf(label).filter((id) => isAddable(id, CFG));
   const SPORTS_OFFERED = offeredIn('Sports');
   const IMAGES_OFFERED = offeredIn('Images');
-  // Sports reached five when Teams News landed (2026-07-31), so it ties Images
+  // Sports reached five when Sports News landed (2026-07-31), so it ties Images
   // and takes the alphabetically-earlier slot ahead of the four-card Daily.
   const COLLAPSED = ['Commute', 'Images', 'Sports', 'Daily'];
   const open = (cfg = CFG) => openEditMode(cfg, { root, cellSize: { w: 100, h: 100 } });
@@ -164,7 +164,7 @@ describe('add-tray collapsible groups', () => {
     expect(IMAGES_OFFERED).not.toContain('iptv');
     expect(toggle('Daily').textContent).toContain('· 4');
     expect(toggle('Sports').textContent).toContain(`· ${SPORTS_OFFERED.length}`);
-    expect(SPORTS_OFFERED).toEqual(['sports', 'teamsnews', 'f1', 'golf', 'tennis']);
+    expect(SPORTS_OFFERED).toEqual(['sports', 'sportsnews', 'f1', 'golf', 'tennis']);
     // no other category is behind a tap
     expect(root.querySelector('[data-tray-toggle="Markets"]')).toBeNull();
     expect(root.querySelector('[data-tray-toggle="Ambient"]')).toBeNull(); // retired outright
@@ -245,7 +245,7 @@ describe('add-tray collapsible groups', () => {
 
   it('sorts chips alphabetically by title inside a group', () => {
     open();
-    expect(chipsIn('Sports')).toEqual(['Formula 1', 'Golf', 'My Teams', 'Teams News', 'Tennis']);
+    expect(chipsIn('Sports')).toEqual(['Formula 1', 'Golf', 'My Teams', 'Sports News', 'Tennis']);
     expect(chipsIn('Images')).toEqual(['Art', 'GDrive Photos', 'iCloud Photos', 'Landscapes', 'NASA Daily Photo']);
     expect(chipsIn('Daily')).toEqual(['Chart of the Day', 'History', 'Quote', 'Word']);
     expect(chipsIn('Commute')).toEqual([...chipsIn('Commute')].sort((a, b) => a.localeCompare(b)));

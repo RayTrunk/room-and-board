@@ -18,7 +18,7 @@ for (const [lg, [sport, slug, label]] of Object.entries(LEAGUES)) {
   ).json();
   const teams = (json.sports?.[0]?.leagues?.[0]?.teams ?? [])
     // nick is ESPN's shortDisplayName: the form a headline actually prints
-    // ('Red Sox', 'Spurs', 'Man United'). Teams News matches on it; see
+    // ('Red Sox', 'Spurs', 'Man United'). Sports News matches on it; see
     // teamPhrases for why an MLS nick like 'Seattle' is thrown away again.
     .map(({ team }) => ({ id: String(team.id), abbr: team.abbreviation, name: team.displayName, nick: team.shortDisplayName }))
     .sort((a, b) => a.name.localeCompare(b.name));

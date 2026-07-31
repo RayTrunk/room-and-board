@@ -45,7 +45,7 @@ export const WIDGET_LABELS = {
   citibike: 'Citi Bike',
   tfl: 'TfL Status',
   sports: 'My Teams (sports)',
-  teamsnews: 'Teams News',
+  sportsnews: 'Sports News',
   f1: 'Formula 1',
   golf: 'Golf (PGA)',
   tennis: 'Tennis',
@@ -190,7 +190,7 @@ async function saveAndClose() {
 // at a time). The nav source (replaces the old flat SECTIONS). Single-config
 // categories are pinned items, not one-child groups. Its ids must equal
 // SECTION_IDS (coverage-tested); grouping intentionally diverges from /setup.
-// Markets became a group when Markets News landed, and My Teams when Teams News
+// Markets became a group when Markets News landed, and My Teams when Sports News
 // did (2026-07-31): a card and its feed twin share one collapsible entry.
 export const NAV_MODEL = [
   { type: 'item', id: 'display', label: 'Display' },
@@ -204,7 +204,7 @@ export const NAV_MODEL = [
     ['path', 'PATH'], ['ferry', 'NYC Ferry'], ['bus', 'Express Bus'], ['citibike', 'Citi Bike'], ['tfl', 'TfL Status'] ] },
   { type: 'group', label: 'Markets', items: [['markets', 'Markets'], ['marketsnews', 'Markets News']] },
   { type: 'group', label: 'News & Social', items: [['news', 'Headlines'], ['substack', 'Substack'], ['bsky', 'Bluesky']] },
-  { type: 'group', label: 'My Teams', items: [['sports', 'My Teams'], ['teamsnews', 'Teams News']] },
+  { type: 'group', label: 'My Teams', items: [['sports', 'My Teams'], ['sportsnews', 'Sports News']] },
   { type: 'item', id: 'services', label: 'Cloud Services' },
   { type: 'item', id: 'chart', label: 'Chart of the Day' },
   { type: 'item', id: 'iptv', label: 'Live Video' },
@@ -271,7 +271,7 @@ function pane() {
 
 const SECTION_RENDERERS = {
   widgets: renderWidgets, subway: renderSubway, lirr: renderLirr, mnr: renderMnr, njt: renderNjt, amtrak: renderAmtrak,
-  path: renderPath, ferry: renderFerry, bus: renderBus, citibike: renderCitibike, tfl: renderTfl, markets: renderMarkets, marketsnews: renderMarketsNews, sports: renderSports, teamsnews: renderTeamsNews,
+  path: renderPath, ferry: renderFerry, bus: renderBus, citibike: renderCitibike, tfl: renderTfl, markets: renderMarkets, marketsnews: renderMarketsNews, sports: renderSports, sportsnews: renderSportsNews,
   news: renderNews, substack: renderSubstack, bsky: renderBsky, worldclock: renderWorldclock, services: renderServices, chart: renderChart, iptv: renderIptv, screensaver: renderScreensaver,
   art: renderArt, photos: renderPhotos, gdrivephotos: renderGdrivePhotos, landscapes: renderLandscapes, weather: renderWeather, display: renderDisplay,
   code: renderCode, diag: renderDiag,
@@ -1175,17 +1175,17 @@ async function renderMarketsNews() {
   );
 }
 
-async function renderTeamsNews() {
+async function renderSportsNews() {
   const _nav = navToken;
-  const { SPORTS_SOURCES } = await import('../widgets/teamsnews.js');
+  const { SPORTS_SOURCES } = await import('../widgets/sportsnews.js');
   if (navStale(_nav)) return;
-  const t = state.cfg.teamsnews;
+  const t = state.cfg.sportsnews;
   // The filter has nothing to filter BY until My Teams has a team, so the row
   // says so and stays untappable rather than silently doing nothing.
   const hasTeams = state.cfg.sports.teams.length > 0;
   const on = t.onlyMyTeams && hasTeams;
   pane().innerHTML = `
-    <h2 class="pane__title">Teams News</h2>
+    <h2 class="pane__title">Sports News</h2>
     <p class="pane__hint">Pick your sports sources: newest stories across all of them, merged.</p>
     <div class="rows">${SPORTS_SOURCES.map(([id, label]) => {
       const src = t.sources.includes(id);
@@ -1205,14 +1205,14 @@ async function renderTeamsNews() {
     <p class="pane__hint">On, the card keeps only stories that name one of your teams. Matching is on the words in the headline and its summary, so a story that calls a team by a nickname alone can slip past.</p>`;
   pane().querySelectorAll('[data-src]').forEach((btn) =>
     btn.addEventListener('click', () => {
-      state.cfg.teamsnews.sources = toggleIn(state.cfg.teamsnews.sources, btn.dataset.src);
-      renderTeamsNews();
+      state.cfg.sportsnews.sources = toggleIn(state.cfg.sportsnews.sources, btn.dataset.src);
+      renderSportsNews();
     }),
   );
   pane().querySelector('[data-only-teams]').addEventListener('click', () => {
     if (!hasTeams) return;
-    state.cfg.teamsnews.onlyMyTeams = !state.cfg.teamsnews.onlyMyTeams;
-    renderTeamsNews();
+    state.cfg.sportsnews.onlyMyTeams = !state.cfg.sportsnews.onlyMyTeams;
+    renderSportsNews();
   });
 }
 
