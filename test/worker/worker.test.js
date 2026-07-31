@@ -341,6 +341,33 @@ describe('/njt/departures', () => {
     expect(body.trains).toHaveLength(2); // schedule unaffected
     expect(body.alerts).toEqual([]); // alert fetch failed -> empty, not a stale banner
   });
+
+  // The schedule half of this route backs off (above); the alerts half did not.
+  // njtAlerts cached a SUCCESS for two minutes but let a FAILURE fall straight
+  // through to a bare [], so mid-outage every board request re-opened a
+  // getStationMSG that was already timing out — 10s of AbortSignal apiece, which
+  // is most of the stall the schedule backoff was meant to end. The schedule is
+  // seeded fresh in KV here so nothing but the alerts call can reach upstream.
+  it('attempts the alerts upstream once per window while getStationMSG keeps failing', async () => {
+    await env.CODES.put('njt:schedule', JSON.stringify({
+      date: nyDate(),
+      vm: { ...priorDay.vm, updatedAt: Math.floor(Date.now() / 1000) },
+    }));
+    const calls = stubFetch([
+      { match: /getToken/, body: TOKEN_RESPONSE, times: 8 },
+      { match: /getStationMSG/, body: 'boom', status: 500, times: 8 },
+    ]);
+    const bodies = [];
+    for (let i = 0; i < 4; i += 1) {
+      bodies.push(await (await call('/njt/departures', {}, NJT_ENV)).json());
+    }
+    expect(calls.filter((u) => /getStationMSG/.test(u)).length).toBe(1);
+    expect(calls.filter((u) => /getStationSchedule/.test(u)).length).toBe(0); // served from KV throughout
+    for (const body of bodies) {
+      expect(body.alerts).toEqual([]); // still empty every time, never a stale banner
+      expect(body.trains).toHaveLength(1);
+    }
+  });
 });
 
 describe('njt token persistence (KV)', () => {
