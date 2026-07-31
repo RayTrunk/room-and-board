@@ -1,16 +1,11 @@
 [
   {
-    "date": "August 1",
+    "date": "July 31",
     "items": [
       {
         "lead": "Photos and screensavers",
         "text": "Swiping a photo, in a full screen view or on the screensaver including the clock backdrop, now dims calmly to black the moment you swipe and rises on the next photo, the same way the screensaver first appears. The automatic rotation keeps its slow dissolve, and the next photos load ahead of your swipe so nothing hesitates."
-      }
-    ]
-  },
-  {
-    "date": "July 31",
-    "items": [
+      },
       {
         "lead": "New card: Sports News",
         "text": "Sports headlines on the board, merged newest first from ESPN, CBS Sports, Yahoo Sports and The Athletic, with BBC Sport and Guardian Sport there if you want them. Narrow it to particular sports with the chips in Settings, or flip on Only my teams to read your teams' league sections and see just their stories. Find it under Sports."

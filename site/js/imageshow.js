@@ -308,7 +308,7 @@ export function swipeFadeThrough(el, ready, apply) {
   // Release the mount animation (backdrop-in) before touching opacity: a
   // FILLED keyframe animation outranks inline styles in the cascade, which
   // made the first cut of this fade a silent no-op on every device (the swipe
-  // just swapped instantly — Sean caught it on a Navigator, 2026-08-01). The
+  // just swapped instantly — Sean caught it on a Navigator, 2026-07-31). The
   // CSS fill-mode is also 'backwards' now; this line guards the cascade even
   // if some future animation lands on the element.
   el.style.animation = 'none';
