@@ -596,26 +596,16 @@ body { position: relative; top: max(0px, calc((100dvh - 1080px) / 2)); }
   transition: opacity 2.5s ease-in-out;
 }
 .slide[data-active] { opacity: 1; }
-/* A swiped slide answers the gesture: 320ms ease-out with a 36px drift (the
-   offsets are one-shot inline transforms set by show()). The ambient advance
-   keeps the slow dissolve above. transform+opacity only (gen1-safe). */
-.slide.slide--swipe {
-  transition: opacity 320ms cubic-bezier(0.22, 1, 0.36, 1), transform 320ms cubic-bezier(0.22, 1, 0.36, 1);
-}
-/* Scaled panels swipe with an atomic cut (see swipeMode in imageshow.js):
-   no transition at all, so a late texture upload has nothing to flash into. */
+/* A swiped slide flips with NO transition: the flip happens in the dark, mid
+   swipeFadeThrough (the stage is faded out), where a dissolve would only
+   bleed the old photo into the rise. The ambient advance keeps the slow
+   dissolve above. */
 .slide.slide--cut { transition: none; }
-/* The full-screen viewer's outgoing photo during a swipe: a positioned clone
-   drifting out while the live element eases in (see step() in imageshow.js). */
-.art-viewer__img--ghost {
-  position: absolute; inset: 0; margin: auto;
-  transition: opacity 320ms cubic-bezier(0.22, 1, 0.36, 1), transform 320ms cubic-bezier(0.22, 1, 0.36, 1);
-}
-/* (The clock backdrop's swipe needs no CSS of its own: swipeBackdropFade in
-   imageshow.js fades the #backdrop layer itself with inline transitions —
-   the initial-load grammar, one layer, no ghost.) */
+/* (Swiped photo surfaces need no further CSS: swipeFadeThrough in
+   imageshow.js fades the existing layer itself with inline transitions —
+   the initial-load grammar, one layer, no ghost, every device.) */
 @media (prefers-reduced-motion: reduce) {
-  .slide, .slide.slide--swipe, .art-viewer__img--ghost { transition: none; transform: none !important; }
+  .slide { transition: none; }
 }
 .slide-caption {
   /* Sit just above the info band (which sits at the very bottom). Both are
@@ -2134,7 +2124,7 @@ body.has-strip .clockface { bottom: 84px; }
   background-size: cover; background-position: center; background-repeat: no-repeat;
   /* calm fade-in on show. Fill BACKWARDS, not both: a forwards-filled
      animation owns opacity forever and outranks the swipe fade's inline
-     styles (swipeBackdropFade), which silently disabled it. */
+     styles (swipeFadeThrough), which silently disabled it. */
   animation: backdrop-in 900ms ease-out backwards;
 }
 .backdrop::after { content: ''; position: absolute; inset: 0; background: var(--ss-scrim); }

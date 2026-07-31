@@ -4,7 +4,7 @@
     "items": [
       {
         "lead": "Photos and screensavers",
-        "text": "Swiping a photo, in a full screen view or on the screensaver including the clock backdrop, now answers right away with a quick drift in the direction you swiped. The automatic rotation keeps its slow, calm dissolve, and the next photos load ahead of your swipe so nothing hesitates."
+        "text": "Swiping a photo, in a full screen view or on the screensaver including the clock backdrop, now dims calmly to black the moment you swipe and rises on the next photo, the same way the screensaver first appears. The automatic rotation keeps its slow dissolve, and the next photos load ahead of your swipe so nothing hesitates."
       }
     ]
   },

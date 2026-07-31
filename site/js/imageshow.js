@@ -292,40 +292,18 @@ export function openImageViewer(current, cfg, { list = [], caption = true, strip
   warmNeighbors();
 }
 
-// Swap in place: preload+decode first (slideshow pattern), then update img +
-// caption.  Swapping only a decoded bitmap keeps a swipe from flashing a
-// half-drawn photo across the full screen. The swap itself is a directional
-// crossfade (Sean's pick, mockup D): the outgoing photo lives on as a
-// positioned ghost drifting out while the real element eases in 36px from the
-// swipe side — a dissolve, never a blink through black. Reduced motion swaps
-// instantly, the pre-existing behavior.
-const SWIPE_EASE = 'opacity 320ms cubic-bezier(0.22, 1, 0.36, 1), transform 320ms cubic-bezier(0.22, 1, 0.36, 1)';
-
-// How a swiped transition behaves on this device. Full-size boards get the
-// 320ms drift-fade ('drift'). Scaled companion panels (fitViewport zooms
-// narrow Navigators, see util.js) get an atomic CUT: their GPU cannot raster
-// a fresh full-viewport texture inside a short fade, so the fade began over
-// blank pixels and the photo popped in mid-flight — Sean saw it as a flash,
-// twice, on-device. A decode-gated single-frame swap creates no new painting
-// work at gesture time, so there is nothing left to race; the instant answer
-// is what prevents double swipes, and the slow AUTO dissolve stays (2.5s has
-// always masked the upload lag). Reduced motion cuts too, as it always did.
-const DRIFT_PX = 36;
-export function swipeMode() {
-  if (typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches) return 'cut';
-  return document.documentElement.style.zoom ? 'cut' : 'drift';
-}
-
-// Swiped swap for the clock backdrop, Sean's call after two rounds of
-// Navigator flashes: reuse the initial-load grammar (backdrop-in) on EVERY
-// device. Fade the one existing layer down to the dark base, swap while
-// invisible, fade back up. One opacity animation, no ghost, no new layer —
-// nothing is ever rastered while visible, so the weakest panel cannot flash.
-// The fade-out starting on the gesture IS the acknowledgment; `ready` (the
-// decode) rides inside the dark beat and extends it when the network is slow
-// rather than ever showing a half-ready photo. Reduced motion swaps plainly.
-export const BACKDROP_OUT_MS = 350;
-export function swipeBackdropFade(el, ready, apply) {
+// THE swipe grammar for every photo surface — viewer, photo screensaver,
+// clock backdrop — on every device (Sean's final call, felt on the glass:
+// calm beats directional). Fade the existing layer down to the dark base,
+// swap while invisible, rise like the initial load. One opacity animation, no
+// ghost, no new layer — nothing is ever rastered while visible, so the
+// weakest panel cannot flash. The fade-out starting on the gesture IS the
+// acknowledgment; `ready` (the decode) rides inside the dark beat and extends
+// it when the network is slow rather than ever showing a half-ready photo.
+// Reduced motion swaps plainly. Auto rotations everywhere keep their slow
+// dissolves; this is only ever a gesture's answer.
+export const SWIPE_OUT_MS = 350;
+export function swipeFadeThrough(el, ready, apply) {
   if (reducedMotion()) { Promise.resolve(ready).then(apply); return; }
   // Release the mount animation (backdrop-in) before touching opacity: a
   // FILLED keyframe animation outranks inline styles in the cascade, which
@@ -334,9 +312,9 @@ export function swipeBackdropFade(el, ready, apply) {
   // CSS fill-mode is also 'backwards' now; this line guards the cascade even
   // if some future animation lands on the element.
   el.style.animation = 'none';
-  el.style.transition = `opacity ${BACKDROP_OUT_MS}ms ease-out`;
+  el.style.transition = `opacity ${SWIPE_OUT_MS}ms ease-out`;
   el.style.opacity = '0';
-  const dark = new Promise((r) => setTimeout(r, BACKDROP_OUT_MS + 30));
+  const dark = new Promise((r) => setTimeout(r, SWIPE_OUT_MS + 30));
   Promise.all([ready, dark]).then(() => {
     apply();
     void el.offsetWidth; // flush the dark frame, so the rise starts from 0
@@ -351,34 +329,13 @@ function step(viewer, dir) {
   userStepped = true;
   viewerIndex = (viewerIndex + dir + viewerList.length) % viewerList.length;
   const item = viewerList[viewerIndex];
-  loadImage(new Image(), item.img).then(() => {
-    const imgEl = viewer.querySelector('.art-viewer__img:not(.art-viewer__img--ghost)');
-    const reduce = swipeMode() === 'cut'; // reduced motion AND scaled panels: swap atomically
-    if (!reduce) {
-      viewer.querySelector('.art-viewer__img--ghost')?.remove(); // a double swipe retargets: one ghost at a time
-      const ghost = imgEl.cloneNode();
-      ghost.classList.add('art-viewer__img--ghost');
-      // AFTER the live element: the ghost paints on top while it fades (the
-      // classic crossfade order), and every plain '.art-viewer__img' query in
-      // this file and the tests keeps finding the live element first.
-      imgEl.after(ghost);
-      void ghost.offsetWidth;
-      const drift = DRIFT_PX;
-      if (drift) ghost.style.transform = `translateX(${-dir * drift}px)`;
-      ghost.style.opacity = '0';
-      setTimeout(() => ghost.remove(), 400);
-      imgEl.style.transition = 'none';
-      if (drift) imgEl.style.transform = `translateX(${dir * drift}px)`;
-      imgEl.style.opacity = '0';
-    }
+  const imgEl = viewer.querySelector('.art-viewer__img');
+  // The one swipe grammar (swipeFadeThrough): the photo dims at the gesture,
+  // the src/caption swap happens in the dark, and the new photo rises. The
+  // decode rides the dark beat; neighbors are pre-warmed so it rarely waits.
+  swipeFadeThrough(imgEl, loadImage(new Image(), item.img), () => {
     imgEl.src = item.img;
     imgEl.alt = item.title ?? '';
-    if (!reduce) {
-      void imgEl.offsetWidth;
-      imgEl.style.transition = SWIPE_EASE;
-      imgEl.style.transform = '';
-      imgEl.style.opacity = '';
-    }
     renderViewerCaption(viewer, item);
     warmNeighbors();
   });
@@ -427,29 +384,14 @@ export function createSlideshow(manifest, host, { intervalMs = 75000, random = M
     return manifest[order[pos]];
   }
 
-  function show(item, swipeDir = 0) {
+  function show(item, instant = false) {
     const next = layers[1 - active];
     const out = layers[active];
-    // A swipe answers the gesture (Sean's pick, mockup D): both halves of the
-    // crossfade run at 320ms with a 36px drift in the swipe direction, vs the
-    // ambient advance's slow dissolve. The class carries the fast timing; the
-    // offsets are one-shot inline transforms, cleared on the next show.
-    const mode = swipeDir ? swipeMode() : 'auto';
-    next.classList.toggle('slide--swipe', mode === 'drift');
-    out.classList.toggle('slide--swipe', mode === 'drift');
-    next.classList.toggle('slide--cut', mode === 'cut');
-    out.classList.toggle('slide--cut', mode === 'cut');
-    const drift = mode === 'drift' ? DRIFT_PX : 0;
-    if (drift) {
-      next.style.transition = 'none';
-      next.style.transform = `translateX(${swipeDir * drift}px)`;
-      void next.offsetWidth; // flush, so the drift starts THIS frame
-      next.style.transition = '';
-      out.style.transform = `translateX(${-swipeDir * drift}px)`;
-    } else {
-      next.style.transform = '';
-      out.style.transform = '';
-    }
+    // A swiped change flips INSTANTLY — it happens in the dark, mid
+    // swipeFadeThrough, where a dissolve would only bleed the old photo into
+    // the rise. The auto advance keeps the slow dissolve (no class).
+    next.classList.toggle('slide--cut', instant);
+    out.classList.toggle('slide--cut', instant);
     next.style.backgroundImage = `url("${item.img}")`;
     // Fit mode. 'contain' letterboxes on black — art and personal photos are
     // never cropped and look the same in ambient as when tapped into (the
@@ -473,7 +415,7 @@ export function createSlideshow(manifest, host, { intervalMs = 75000, random = M
     loadImage(new Image(), item.img).then(() => done());
   }
 
-  function advance(swipeDir = 0) {
+  function advance() {
     if (stopped) return;
     const item = itemAt(pos);
     pos += 1;
@@ -481,7 +423,7 @@ export function createSlideshow(manifest, host, { intervalMs = 75000, random = M
       // stop() during an in-flight preload must not resurrect the loop: the
       // pending onload/onerror would otherwise schedule an uncancellable chain.
       if (stopped) return;
-      show(item, swipeDir);
+      show(item);
       timer = setTimeout(() => advance(), intervalMs);
     });
   }
@@ -496,23 +438,27 @@ export function createSlideshow(manifest, host, { intervalMs = 75000, random = M
       stopped = true;
       clearTimeout(timer);
     },
-    // Manual navigation (ambient swipe): next reuses the natural advance,
-    // prev re-shows the previously shown item within the current order. Both
-    // reset the auto-advance cadence so a swipe isn't followed moments later
-    // by a scheduled change.
+    // Manual navigation (ambient swipe): the whole stage fades through dark
+    // (swipeFadeThrough) with the layer flip happening invisibly, next picks
+    // the natural advance's item, prev re-shows the previously shown one.
+    // Both reset the auto-advance cadence so a swipe isn't followed moments
+    // later by a scheduled change.
     step(dir) {
       if (stopped || !manifest.length) return;
       clearTimeout(timer);
+      let item;
       if (dir > 0) {
-        advance(1);
-        return;
+        item = itemAt(pos);
+        pos += 1;
+      } else {
+        pos = (pos - 2 + order.length) % order.length;
+        item = manifest[order[pos]];
+        pos += 1;
       }
-      pos = (pos - 2 + order.length) % order.length;
-      const item = manifest[order[pos]];
-      pos += 1;
-      preload(item, () => {
+      const ready = new Promise((res) => preload(item, res));
+      swipeFadeThrough(host, ready, () => {
         if (stopped) return;
-        show(item, -1);
+        show(item, true);
         timer = setTimeout(() => advance(), intervalMs);
       });
     },

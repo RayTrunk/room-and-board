@@ -10,7 +10,7 @@ import { registerWidget, getWidget } from './registry.js';
 import { chooseBootConfig } from './boot.js';
 import { parseFragment } from './bridge.js';
 import { stripData, stripHtml } from './ambient.js';
-import { createSlideshow, swipeAction, swipeBackdropFade, loadImage } from './imageshow.js';
+import { createSlideshow, swipeAction, swipeFadeThrough, loadImage } from './imageshow.js';
 import { startBeacon } from './fleet.js';
 import { DEMO_VMS, DEMO_NOW_MS } from '../demo/fixtures.js';
 import { initTextViewer } from './textviewer.js';
@@ -251,9 +251,9 @@ function stepBackdrop(dir) {
   if (backdropList.length < 2 || $('#backdrop').hidden) return;
   backdropIndex = (backdropIndex + dir + backdropList.length) % backdropList.length;
   // Fade-to-dark, swap, fade back — the initial-load grammar on every device
-  // (see swipeBackdropFade). The fade-out starts NOW as the acknowledgment;
+  // (see swipeFadeThrough). The fade-out starts NOW as the acknowledgment;
   // the decode (loadImage: decode-gated, never rejects) rides the dark beat.
-  swipeBackdropFade($('#backdrop'), loadImage(new Image(), backdropList[backdropIndex].img), showBackdrop);
+  swipeFadeThrough($('#backdrop'), loadImage(new Image(), backdropList[backdropIndex].img), showBackdrop);
 }
 
 // Shows/hides the daily photo behind a clock face. Async (folder fetch), so a

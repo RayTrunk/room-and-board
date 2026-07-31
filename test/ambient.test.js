@@ -2,7 +2,7 @@
  * @vitest-environment happy-dom
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { createSlideshow, swipeAction, swipeBackdropFade, BACKDROP_OUT_MS } from '../site/js/imageshow.js';
+import { createSlideshow, swipeAction, swipeFadeThrough, SWIPE_OUT_MS } from '../site/js/imageshow.js';
 import { stripData, stripHtml } from '../site/js/ambient.js';
 import { ambientSource } from '../site/js/modes.js';
 import { resolvePhotosManifest } from '../site/js/photos-manifest.js';
@@ -35,7 +35,12 @@ describe('createSlideshow', () => {
     vi.unstubAllGlobals();
   });
 
-  it('a swiped step answers with the fast drift class; the ambient advance never does', async () => {
+  it('a swiped step fades the stage through dark and flips in the dark beat', async () => {
+    // Sean's final call, felt on the glass: fade-through-dark is the swipe
+    // grammar for every photo surface on every device — calm beats
+    // directional. The stage (layers + caption) dims at the gesture, the
+    // layer flip happens instantly while invisible (slide--cut), and the
+    // stage rises on the new photo. The AUTO advance keeps the 2.5s dissolve.
     const host = document.createElement('div');
     const show = createSlideshow(
       [{ img: 'a.jpg' }, { img: 'b.jpg' }, { img: 'c.jpg' }],
@@ -44,39 +49,16 @@ describe('createSlideshow', () => {
     show.start();
     await vi.advanceTimersByTimeAsync(0);
     const layers = [...host.querySelectorAll('.slide')];
-    expect(layers.some((l) => l.classList.contains('slide--swipe'))).toBe(false);
+    const activeBefore = host.querySelector('.slide[data-active]');
     show.step(1);
-    await vi.advanceTimersByTimeAsync(0);
-    // Both halves of the crossfade run at the swipe pace, and the incoming
-    // layer got its drift offset before easing home.
-    expect(layers.every((l) => l.classList.contains('slide--swipe'))).toBe(true);
-    await vi.advanceTimersByTimeAsync(1000); // the next AUTO advance restores the slow dissolve
-    expect(layers.some((l) => l.classList.contains('slide--swipe'))).toBe(false);
-  });
-
-  it('scaled companion panels swipe with an atomic cut: no fade, no drift, nothing to race', async () => {
-    // fitViewport zooms narrow panels (Room Navigator). Their GPU cannot get a
-    // fresh full-viewport texture ready inside a short fade — the photo popped
-    // in mid-fade as a flash (Sean, on-device, twice) — so a swipe there is a
-    // decode-gated single-frame swap. The auto advance keeps the slow
-    // dissolve, whose 2.5s masks the upload lag as it always has.
-    document.documentElement.style.zoom = '0.326';
-    try {
-      const host = document.createElement('div');
-      const show = createSlideshow([{ img: 'a.jpg' }, { img: 'b.jpg' }, { img: 'c.jpg' }], host, { intervalMs: 1000, random: () => 0.4 });
-      show.start();
-      await vi.advanceTimersByTimeAsync(0);
-      show.step(1);
-      await vi.advanceTimersByTimeAsync(0);
-      const layers = [...host.querySelectorAll('.slide')];
-      expect(layers.every((l) => l.classList.contains('slide--cut'))).toBe(true);
-      expect(layers.some((l) => l.classList.contains('slide--swipe'))).toBe(false);
-      expect(layers.every((l) => !l.style.transform)).toBe(true);
-      await vi.advanceTimersByTimeAsync(1000); // next AUTO advance restores the dissolve
-      expect(layers.some((l) => l.classList.contains('slide--cut'))).toBe(false);
-    } finally {
-      document.documentElement.style.zoom = '';
-    }
+    expect(host.style.opacity).toBe('0'); // the dimming IS the instant acknowledgment
+    expect(host.querySelector('.slide[data-active]')).toBe(activeBefore); // flip waits for the dark
+    await vi.advanceTimersByTimeAsync(SWIPE_OUT_MS + 50);
+    expect(host.querySelector('.slide[data-active]')).not.toBe(activeBefore);
+    expect(layers.every((l) => l.classList.contains('slide--cut'))).toBe(true); // invisible flip, no dissolve
+    expect(host.style.opacity).toBe(''); // rising
+    await vi.advanceTimersByTimeAsync(1000); // next AUTO advance restores the dissolve
+    expect(layers.some((l) => l.classList.contains('slide--cut'))).toBe(false);
   });
 
   it('backdrop swipes fade out, swap in the dark, fade back in — same on every device', async () => {
@@ -89,7 +71,7 @@ describe('createSlideshow', () => {
     document.documentElement.style.zoom = '0.326'; // even scaled panels take this path
     try {
       let applied = false;
-      swipeBackdropFade(el, Promise.resolve(), () => {
+      swipeFadeThrough(el, Promise.resolve(), () => {
         applied = true;
         el.style.backgroundImage = 'url("new.jpg")';
       });
@@ -99,7 +81,7 @@ describe('createSlideshow', () => {
       expect(el.style.animation).toBe('none');
       expect(el.style.opacity).toBe('0'); // the fade-out IS the instant acknowledgment
       expect(applied).toBe(false); // the swap waits for the dark beat
-      await vi.advanceTimersByTimeAsync(BACKDROP_OUT_MS + 50);
+      await vi.advanceTimersByTimeAsync(SWIPE_OUT_MS + 50);
       expect(applied).toBe(true);
       expect(el.style.backgroundImage).toContain('new.jpg');
       expect(el.style.opacity).toBe(''); // fading back in
@@ -114,8 +96,8 @@ describe('createSlideshow', () => {
     let ready;
     const decode = new Promise((r) => { ready = r; });
     let applied = false;
-    swipeBackdropFade(el, decode, () => { applied = true; });
-    await vi.advanceTimersByTimeAsync(BACKDROP_OUT_MS + 200); // out finished long ago
+    swipeFadeThrough(el, decode, () => { applied = true; });
+    await vi.advanceTimersByTimeAsync(SWIPE_OUT_MS + 200); // out finished long ago
     expect(applied).toBe(false); // still dark: the bitmap is not ready
     ready();
     await vi.advanceTimersByTimeAsync(0);
@@ -200,10 +182,12 @@ describe('createSlideshow', () => {
 
     show.step(1);
     await vi.advanceTimersByTimeAsync(0);
-    expect(loadedSrcs).toHaveLength(2);
+    expect(loadedSrcs).toHaveLength(2); // the preload starts at the gesture
+    expect(host.querySelector('.slide-caption').textContent).toBe(first); // swap waits for the dark beat
+    await vi.advanceTimersByTimeAsync(SWIPE_OUT_MS + 30);
     expect(host.querySelector('.slide-caption').textContent).not.toBe(first);
 
-    // cadence reset: nothing at +999ms, next auto-advance lands at +1000ms
+    // cadence reset counts from the swap: nothing at +999ms, next at +1000ms
     await vi.advanceTimersByTimeAsync(999);
     expect(loadedSrcs).toHaveLength(2);
     await vi.advanceTimersByTimeAsync(1);
@@ -221,7 +205,7 @@ describe('createSlideshow', () => {
     expect(host.querySelector('.slide-caption').textContent).not.toBe(first);
 
     show.step(-1);
-    await vi.advanceTimersByTimeAsync(0);
+    await vi.advanceTimersByTimeAsync(SWIPE_OUT_MS + 30); // through the dark beat
     expect(host.querySelector('.slide-caption').textContent).toBe(first);
     show.stop();
   });

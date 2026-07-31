@@ -796,7 +796,7 @@ describe('art viewer strip + swipes', () => {
     const swipe = (fromX, toX) => {
       viewer.dispatchEvent(new MouseEvent('pointerdown', { clientX: fromX, clientY: 100 }));
       viewer.dispatchEvent(new MouseEvent('pointerup', { clientX: toX, clientY: 104 }));
-      return new Promise((r) => setTimeout(r, 0)); // preload microtask
+      return new Promise((r) => setTimeout(r, 420)); // preload + the 380ms dark beat (swipeFadeThrough)
     };
     await swipe(600, 400); // left: next
     expect(viewer.querySelector('.art-viewer__img').getAttribute('src')).toBe('https://x.test/two.jpg');
@@ -1139,7 +1139,7 @@ describe('viewer caption on the swipe/swap path', () => {
     const swipe = (fromX, toX) => {
       viewer.dispatchEvent(new MouseEvent('pointerdown', { clientX: fromX, clientY: 100 }));
       viewer.dispatchEvent(new MouseEvent('pointerup', { clientX: toX, clientY: 104 }));
-      return new Promise((r) => setTimeout(r, 0)); // preload microtask
+      return new Promise((r) => setTimeout(r, 420)); // preload + the 380ms dark beat (swipeFadeThrough)
     };
 
     await swipe(600, 400); // next: the untitled photo
@@ -1190,7 +1190,7 @@ describe('art fullscreen swipes via artList', () => {
     const swipe = (fromX, toX) => {
       viewer.dispatchEvent(new MouseEvent('pointerdown', { clientX: fromX, clientY: 100 }));
       viewer.dispatchEvent(new MouseEvent('pointerup', { clientX: toX, clientY: 104 }));
-      return new Promise((r) => setTimeout(r, 0)); // preload microtask
+      return new Promise((r) => setTimeout(r, 420)); // preload + the 380ms dark beat (swipeFadeThrough)
     };
     await swipe(600, 400); // swipe left → next
     expect(viewer.querySelector('.art-viewer__img').getAttribute('src')).toBe('https://x.test/artlist.jpg');

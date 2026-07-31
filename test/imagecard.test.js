@@ -6,7 +6,7 @@
 // undecoded bitmap on the glass and must not rebuild the <img> for a photo that
 // has not changed.
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { renderImageCard, loadImage, CARD_FADE_MS, openImageViewer } from '../site/js/imageshow.js';
+import { renderImageCard, loadImage, CARD_FADE_MS, openImageViewer, SWIPE_OUT_MS } from '../site/js/imageshow.js';
 import * as art from '../site/js/widgets/art.js';
 import * as landscapes from '../site/js/widgets/landscapes.js';
 import * as apod from '../site/js/widgets/apod.js';
@@ -293,7 +293,8 @@ describe('every rotating image card shares the surface', () => {
     expect(el.querySelector('.artwork__artist').textContent).toBe('Vroom (1620)');
   });
 
-  it('a viewer swipe crossfades: new photo in, ghost of the old drifting out, neighbors warmed', async () => {
+  it('a viewer swipe fades through dark: dim at the gesture, swap unseen, neighbors warmed', async () => {
+    vi.useFakeTimers();
     document.querySelector('#art-viewer')?.remove();
     const list = [
       { img: 'https://x.test/s1.jpg', title: 'One' },
@@ -302,17 +303,20 @@ describe('every rotating image card shares the surface', () => {
     ];
     openImageViewer(list[0], CFG, { list });
     const viewer = document.querySelector('#art-viewer');
+    const img = viewer.querySelector('.art-viewer__img');
     viewer.dispatchEvent(new PointerEvent('pointerdown', { clientX: 300, bubbles: true }));
     viewer.dispatchEvent(new PointerEvent('pointerup', { clientX: 100, bubbles: true })); // 200px left = next
-    await settle();
-    const img = viewer.querySelector('.art-viewer__img:not(.art-viewer__img--ghost)');
+    expect(img.style.opacity).toBe('0'); // dimming starts at the gesture
+    expect(img.getAttribute('src')).toBe('https://x.test/s1.jpg'); // swap waits for the dark
+    await settle(); // decode resolves
+    await vi.advanceTimersByTimeAsync(SWIPE_OUT_MS + 50); // dark beat passes
     expect(img.getAttribute('src')).toBe('https://x.test/s2.jpg');
-    // The outgoing photo crossfades out as a positioned ghost, so the swap is
-    // a dissolve rather than a blink through black.
-    expect(viewer.querySelector('.art-viewer__img--ghost')).not.toBeNull();
+    expect(img.style.opacity).toBe(''); // rising on the new photo
+    expect(document.querySelector('.art-viewer__img--ghost')).toBeNull(); // ghost machinery retired
     // Both neighbors were queued to decode, so the next swipe starts instantly.
     expect(pending.length).toBeGreaterThanOrEqual(2);
     document.querySelector('#art-viewer')?.remove();
+    vi.useRealTimers();
   });
 
   it('landscapes/photos dissolve, and a tap opens the photo that is actually showing', async () => {
