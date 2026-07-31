@@ -11,14 +11,17 @@ import { escapeHtml } from './util.js';
 // separately (rich story view), but stay here as the fallback for a link-less,
 // summary-less item so an overflowing title still expands.
 const EXPANDABLE =
-  '.linestatus__text, .talert__text, .headline__title, .quote__text, .history__text, .wc-row__city';
+  '.linestatus__text, .talert__text, .headline__title, .quote__text, .wc-row__city';
 
 // Status/alert copy is the one kind of text a card may ALSO expand as a whole:
 // a subway card's tap opens the full status board, which shows this line's
 // alert in full anyway. On such a card the single-line reader is a redundant
 // intermediate, so these classes step aside and let the card's own expansion
-// take the tap. Story/quote/history/city text never defers — the news wave
-// needs a row tap to stay a story tap even inside an expandable card.
+// take the tap. Story/quote/city text never defers: the news wave needs a row
+// tap to stay a story tap even inside an expandable card. History rows are not
+// listed above at all: they cover nearly the whole card, so a per-row reader
+// swallowed the taps meant for the day view. Leaving the list rather than
+// deferring keeps them out of the reader on any card, expandable or not.
 const DEFER_TO_EXPAND = '.linestatus__text, .talert__text';
 
 const defaultTruncated = (el) =>

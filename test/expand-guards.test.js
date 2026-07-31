@@ -33,6 +33,8 @@ const TALERT =
 const HEADLINE =
   '<div class="headline"><span class="headline__title">A headline long enough that the card has to clamp it</span><span class="headline__src">Reuters</span></div>';
 const WC_ROW = '<div class="wc-row"><span class="wc-row__city">Kuala Lumpur</span></div>';
+const HISTORY_ROW =
+  '<div class="history"><div class="history__item"><span class="history__year">1776</span><span class="history__text">The Continental Congress adopts a resolution long enough that the card clamps it</span></div></div>';
 
 // One card, wired exactly as main.js wires the board: the text viewer first,
 // then the expand engine, both delegated on #grid. `truncated: () => true`
@@ -107,6 +109,23 @@ describe('status text defers to the card it sits on', () => {
     board(WC_ROW);
     document.querySelector('.wc-row__city').click();
     expect(readerOpen()).toBe(true);
+    expect(isExpandOpen()).toBe(false);
+  });
+
+  it('gives history rows no reader at all: the rows ARE the card, so they open the day', () => {
+    // History rows cover nearly the whole card, so a per-row reader swallowed
+    // the taps meant for the day view. The rows left the reader entirely
+    // rather than deferring, which would have restored them on a card that
+    // happens not to expand.
+    board(HISTORY_ROW);
+    document.querySelector('.history__text').click();
+    expect(readerOpen()).toBe(false);
+    expect(isExpandOpen()).toBe(true);
+
+    closeExpand();
+    board(HISTORY_ROW, { expandable: false });
+    document.querySelector('.history__text').click();
+    expect(readerOpen()).toBe(false);
     expect(isExpandOpen()).toBe(false);
   });
 });
