@@ -11,6 +11,7 @@ import {
   setExpandSource,
   EXPAND_IDLE_MS,
 } from '../site/js/expand.js';
+import { render as renderHistory } from '../site/js/widgets/history.js';
 import {
   render as renderMarkets, tileWall, tileCols, shelfCols, shelfFits, wallHeight, WALL_H,
 } from '../site/js/widgets/markets.js';
@@ -1008,5 +1009,46 @@ describe('weather card tap', () => {
     card.click();
     expect([...overlay().querySelectorAll('.wxf__row--hours > span')]
       .map((s) => s.textContent).filter(Boolean).slice(0, 3)).toEqual(['09:00', '11:00', '13:00']);
+  });
+});
+
+describe('history card tap', () => {
+  const histVm = (n) => ({
+    events: Array.from({ length: n }, (_, i) => ({ year: 1800 + i * 20, text: `Event number ${i} happened on this day.` })),
+  });
+  function histBoard(vm, [w, h] = [6, 2]) {
+    document.body.innerHTML = `
+      <div id="grid">
+        <article class="card card--history" data-widget="history" data-w="${w}" data-h="${h}">
+          <h2 class="card__title">This Day in History</h2>
+          <div class="card__body"></div>
+          <div class="card__stamp" hidden></div>
+        </article>
+      </div>
+      <div id="settings-root"></div>
+      <div id="edit-root"></div>`;
+    const grid = document.querySelector('#grid');
+    initExpand(grid);
+    const card = grid.querySelector('.card');
+    renderHistory(card.querySelector('.card__body'), vm, {});
+    return { grid, card };
+  }
+
+  it('taps into the whole day: every event in the grand reading list', () => {
+    const { card } = histBoard(histVm(9)); // a 6x2 card fits two events
+    expect(card.querySelectorAll('.history__item').length).toBeLessThan(9);
+    expect(card.querySelector('.card__more').textContent).toBe('+7 more');
+    card.querySelector('.card__body').click();
+    expect(isExpandOpen()).toBe(true);
+    expect(overlay().querySelector('.history-board')).not.toBeNull();
+    expect(overlay().querySelectorAll('.history__item').length).toBe(9);
+    expect(overlay().querySelector('.expand__title').textContent).toBe('This Day in History');
+  });
+
+  it('stays inert when every event already fits', () => {
+    const { card } = histBoard(histVm(2));
+    expect(card.querySelector('.card__more')).toBeNull();
+    card.click();
+    expect(isExpandOpen()).toBe(false);
   });
 });

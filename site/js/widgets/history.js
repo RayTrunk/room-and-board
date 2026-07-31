@@ -3,28 +3,41 @@
 
 import { escapeHtml, setMoreBadge } from '../util.js';
 import { itemCapacity, cardSize } from '../capacity.js';
+import { setExpandSource } from '../expand.js';
 
 export const meta = { id: 'history', title: 'This Day in History', refreshMs: 24 * 60 * 60 * 1000 };
 
 export function render(el, vm, _cfg) {
   if (!vm.events?.length) {
     el.innerHTML = '<div class="empty">No events for today</div>';
+    setMoreBadge(el, 0);
+    setExpandSource(el, null);
     return;
   }
   const [w, h] = cardSize(el, [6, 2]);
   const cap = itemCapacity('history', w, h);
-  // The overflow count rides the title badge, so it costs no row.
-  const shown = vm.events.slice(0, cap);
-  const hidden = vm.events.length - shown.length;
-  el.innerHTML = `<div class="history">${shown
-    .map(
-      (e) => `<div class="history__item">
+  const row = (e) => `<div class="history__item">
         <span class="history__year">${e.year}</span>
         <span class="history__text">${escapeHtml(e.text)}</span>
-      </div>`,
-    )
-    .join('')}</div>`;
-  setMoreBadge(el, hidden);
+      </div>`;
+  const rows = vm.events.map(row);
+  const hidden = rows.length - Math.min(cap, rows.length);
+  el.innerHTML = `<div class="history">${rows.slice(0, cap).join('')}</div>`;
+  // The overflow count rides the corner badge; with an expansion behind it,
+  // it reads "+N more" as the tap invitation (the rail grammar).
+  setMoreBadge(el, hidden, { verbose: true });
+  // Whole-card tap for the whole day (Sean's pick, mockup A): the grand
+  // centered reading list of every event, the card's own rows at reading size.
+  setExpandSource(
+    el,
+    hidden > 0
+      ? () => ({
+          title: meta.title,
+          note: new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric' }),
+          bodyHtml: `<div class="history history-board">${rows.join('')}</div>`,
+        })
+      : null,
+  );
 }
 
 export function mapHistory(json, count = 9) {

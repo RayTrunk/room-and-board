@@ -3,6 +3,10 @@
     "date": "July 31",
     "items": [
       {
+        "lead": "This Day in History",
+        "text": "Tap the card for the whole day: every event at reading size, oldest first. The corner shows how many more the day holds beyond what the card fits."
+      },
+      {
         "lead": "Photos and screensavers",
         "text": "Swiping a photo, in a full screen view or on the screensaver including the clock backdrop, now dims calmly to black the moment you swipe and rises on the next photo, the same way the screensaver first appears. The automatic rotation keeps its slow dissolve, and the next photos load ahead of your swipe so nothing hesitates."
       },

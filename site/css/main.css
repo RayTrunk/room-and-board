@@ -601,6 +601,19 @@ body { position: relative; top: max(0px, calc((100dvh - 1080px) / 2)); }
    bleed the old photo into the rise. The ambient advance keeps the slow
    dissolve above. */
 .slide.slide--cut { transition: none; }
+/* This Day in History, full screen (Sean's pick, mockup A): the grand
+   centered reading list — every event of the day, year leading each line in
+   the light numeral style, ~70ch measure. Ten events at these sizes use
+   roughly 640px of the 814px body; overflow hidden is the backstop for a
+   feed that some day returns more than the mapper's nine. */
+.expand__body .history-board {
+  height: 100%; display: flex; flex-direction: column; justify-content: center;
+  gap: 24px; max-width: 1280px; margin: 0 auto; overflow: hidden;
+}
+.history-board .history__item { grid-template-columns: 84px 1fr; gap: 20px; font-size: 26px; line-height: 1.4; }
+.history-board .history__year { font-size: 30px; font-weight: 300; color: var(--ink); }
+.history-board .history__text { color: var(--ink-mid); }
+
 /* (Swiped photo surfaces need no further CSS: swipeFadeThrough in
    imageshow.js fades the existing layer itself with inline transitions —
    the initial-load grammar, one layer, no ghost, every device.) */
