@@ -18,6 +18,11 @@ import { fitTrainRows } from './capacity.js';
 // strings are captured per render, so the tap-time snapshot is this render's.
 export function wireTrainExpand(el, { title, note = '', rows }) {
   const card = el.closest?.('.card');
+  // A previous render's reserve must not skew this render's first measure:
+  // card classes outlive innerHTML swaps, and with the reserve still on an
+  // exactly-fitting board reads one row short, so the pill would sustain
+  // itself at the boundary. Clean baseline first, then measure.
+  card?.classList?.remove('is-expandable-pill');
   fitTrainRows(el);
   const count = () => el.querySelectorAll?.('.train').length ?? 0;
   let hidden = rows.length - count();
@@ -38,5 +43,4 @@ export function wireTrainExpand(el, { title, note = '', rows }) {
       : null,
     { trigger: '.card__more' },
   );
-  if (hidden <= 0) card?.classList?.remove('is-expandable-pill');
 }
