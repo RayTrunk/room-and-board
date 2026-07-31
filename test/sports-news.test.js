@@ -119,6 +119,52 @@ describe('news parsing', () => {
     const dupe = merged.find((i) => i.title.startsWith('How the Heat'));
     expect(dupe.source).toBe('NYT New York'); // newest copy wins
   });
+  it('collapses cross-outlet retellings of one story, keeping the newest telling', () => {
+    // The player-trade case Sean hit: four outlets, one event, one card row.
+    const now = Date.parse('2026-07-31T13:00:00Z');
+    const merged = mergeNews([
+      [{ title: 'Twins add A.J. Minter as Mets begin sell-off: MLB Trade Grades', t: now - 600e3, source: 'The Athletic' }],
+      [{ title: 'Mets trade reliever A.J. Minter to Twins for prospects', t: now - 3600e3, source: 'ESPN' }],
+      [{ title: 'A.J. Minter heads to Minnesota as Mets, Twins strike trade', t: now - 7200e3, source: 'CBS Sports' }],
+      [{ title: 'Rangers place goalie on waivers', t: now - 900e3, source: 'ESPN' }],
+    ], now);
+    expect(merged.filter((i) => /Minter/.test(i.title))).toHaveLength(1);
+    expect(merged.find((i) => /Minter/.test(i.title)).source).toBe('The Athletic'); // newest telling
+    expect(merged.some((i) => /Rangers/.test(i.title))).toBe(true);
+  });
+  it('never merges distinct stories that merely share a team', () => {
+    const now = Date.parse('2026-07-31T13:00:00Z');
+    const merged = mergeNews([
+      [{ title: 'Mets trade reliever A.J. Minter to Twins', t: now - 600e3, source: 'A' }],
+      [{ title: 'Mets trade outfielder Alvarez to Mariners', t: now - 900e3, source: 'B' }],
+    ], now);
+    expect(merged).toHaveLength(2);
+  });
+  it('never merges stories a day or more apart (analysis is not its news piece)', () => {
+    const now = Date.parse('2026-07-31T13:00:00Z');
+    const merged = mergeNews([
+      [{ title: 'Mets trade reliever A.J. Minter to Twins for prospects', t: now - 600e3, source: 'A' }],
+      [{ title: 'Mets trade of A.J. Minter to Twins graded by prospects experts', t: now - 26 * 3600e3, source: 'B' }],
+    ], now);
+    expect(merged).toHaveLength(2);
+  });
+  it('never merges on fewer than three shared informative tokens', () => {
+    const now = Date.parse('2026-07-31T13:00:00Z');
+    const merged = mergeNews([
+      [{ title: 'Yankees win big', t: now - 600e3, source: 'A' }],
+      [{ title: 'Yankees win streak reaches nine', t: now - 900e3, source: 'B' }],
+    ], now);
+    expect(merged).toHaveLength(2);
+  });
+  it('leaves undated items alone (fuzzy matching needs a clock)', () => {
+    const now = Date.parse('2026-07-31T13:00:00Z');
+    const merged = mergeNews([
+      [{ title: 'Mets trade reliever A.J. Minter to Twins for prospects', t: 0, source: 'A' }],
+      [{ title: 'Twins land A.J. Minter in trade with Mets for prospects', t: 0, source: 'B' }],
+    ], now);
+    expect(merged).toHaveLength(2);
+  });
+
   it('labels ages compactly', () => {
     const now = 1783000000000;
     expect(ageLabel(now - 5 * 60e3, now)).toBe('5m');

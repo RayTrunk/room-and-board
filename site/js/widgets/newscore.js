@@ -56,11 +56,57 @@ export function parseRss(xml, sourceLabel) {
   return items;
 }
 
+// Words that carry no story identity. Small on purpose: over-stripping makes
+// distinct headlines look alike, and a missed stopword only costs a merge we
+// would otherwise have made.
+const STOPWORDS = new Set([
+  'a', 'an', 'the', 'and', 'or', 'but', 'of', 'in', 'on', 'at', 'to', 'for',
+  'with', 'by', 'from', 'as', 'is', 'are', 'was', 'were', 'be', 'been', 'after',
+  'before', 'over', 'under', 'vs', 'his', 'her', 'their', 'its', 'this', 'that',
+  'what', 'why', 'how', 'who', 'will', 'would', 'could', 'should', 'has',
+  'have', 'had', 'not', 'no', 'up', 'out', 'off', 'into', 'about', 'more',
+  'per', 'amid', 'during', 'between', 'begin', 'begins', 'big', 'new',
+]);
+
+// A headline's identity: its informative tokens. Exported for tests.
+export function storyTokens(title) {
+  return new Set(
+    title.toLowerCase().replace(/[^a-z0-9\s]+/g, ' ').split(/\s+/)
+      .filter((w) => w.length > 1 && !STOPWORDS.has(w)),
+  );
+}
+
+// Cross-outlet near-duplicate: every outlet covers the same trade with a
+// different sentence. Two stories are one when they share >= 3 informative
+// tokens AND those cover >= 0.55 of the SHORTER title's tokens (containment,
+// not Jaccard: one outlet writes 'Mets trade reliever A.J. Minter to Twins',
+// another pads it to 'Twins add A.J. Minter as Mets begin sell-off: MLB Trade
+// Grades', and the long title dilutes a union-based score below any workable
+// floor — the recorded trade trio lands at 0.36-0.44 Jaccard but 0.57+
+// containment). Three shared tokens is what one event produces ('minter',
+// 'twins', 'mets'); 'Mets trade Minter' vs 'Mets trade Alvarez' shares only
+// two. The caller also gates on time proximity, so this stays a
+// same-news-cycle judgment.
+export function sameStory(aTokens, bTokens) {
+  let shared = 0;
+  for (const t of aTokens) if (bTokens.has(t)) shared += 1;
+  if (shared < 3) return false;
+  const smaller = Math.min(aTokens.size, bTokens.size);
+  return smaller > 0 && shared / smaller >= 0.55;
+}
+
+// One news cycle. 18h keeps overnight coverage together (an 11pm US story and
+// its 7am European retelling) while a next-day analysis piece, which lands a
+// full day later, stays its own row. Undated items (t=0) never fuzz-match:
+// fuzzy matching needs a clock.
+const SAME_CYCLE_MS = 18 * 3600e3;
+
 export function mergeNews(perSource, nowMs, max = 30) {
   // Overlapping feeds (e.g. NYT Top Stories + NYT New York) carry the same
   // story; dedupe by normalized title after the newest-first sort so the
   // freshest copy wins and rows are never wasted on repeats.
   const seen = new Set();
+  const kept = []; // {tokens, t} of survivors, for the near-duplicate pass
   return perSource
     .flat()
     .filter((i) => i.t === 0 || i.t <= nowMs + 3600e3) // drop clock-skewed future items
@@ -72,6 +118,15 @@ export function mergeNews(perSource, nowMs, max = 30) {
       if (!key) return true;
       if (seen.has(key)) return false;
       seen.add(key);
+      // Near-duplicate pass (Sean, 2026-07-31): the list is newest-first, so
+      // the survivor of each cluster is the freshest telling and later (older)
+      // retellings collapse into it. Runs before any capacity trim, so freed
+      // rows show other stories.
+      const tokens = storyTokens(i.title);
+      if (i.t > 0 && kept.some((k) => k.t > 0 && Math.abs(k.t - i.t) < SAME_CYCLE_MS && sameStory(k.tokens, tokens))) {
+        return false;
+      }
+      kept.push({ tokens, t: i.t });
       return true;
     })
     .slice(0, max);
