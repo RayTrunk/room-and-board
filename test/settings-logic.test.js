@@ -240,7 +240,9 @@ describe('WIDGET_GROUPS taxonomy', () => {
   it('keeps Markets and Sports as separate groups with the right members', () => {
     const ids = (label) => WIDGET_GROUPS.find((g) => g.label === label)?.ids;
     expect(ids('Markets')).toEqual(['markets', 'marketsnews']);
-    expect(ids('Sports')).toEqual(['sports', 'f1', 'golf', 'tennis']);
+    // Teams News sits next to My Teams the way Markets News sits next to
+    // Markets: the feed twin follows the card it reads for.
+    expect(ids('Sports')).toEqual(['sports', 'teamsnews', 'f1', 'golf', 'tennis']);
     expect(ids('Sports')).not.toContain('worldcup'); // deleted, not merely retired
     expect(WIDGET_GROUPS.map((g) => g.label)).not.toContain('Markets & Sports');
   });
@@ -483,12 +485,23 @@ describe('settings nav model', () => {
     expect(navGroupForSection('widgets')).toBeNull(); // pinned
     expect(navGroupForSection('markets')).toBe('Markets'); // now a group with marketsnews
     expect(navGroupForSection('marketsnews')).toBe('Markets'); // grouped under Markets
-    expect(navGroupForSection('sports')).toBeNull(); // standalone
+    // My Teams stopped being a pinned item when Teams News landed, exactly as
+    // Markets did: the card and its feed twin share one collapsible group.
+    expect(navGroupForSection('sports')).toBe('My Teams');
+    expect(navGroupForSection('teamsnews')).toBe('My Teams');
     expect(navGroupForSection('weather')).toBeNull(); // standalone
     expect(navGroupForSection('worldclock')).toBeNull(); // standalone (pulled out of Images)
     expect(navGroupForSection('diag')).toBeNull();
     expect(navGroupForSection('nope')).toBeNull(); // unknown
   });
+  it('gives My Teams the same two-child group shape Markets has', () => {
+    const group = (label) => NAV_MODEL.find((e) => e.type === 'group' && e.label === label);
+    expect(group('Markets').items).toEqual([['markets', 'Markets'], ['marketsnews', 'Markets News']]);
+    expect(group('My Teams').items).toEqual([['sports', 'My Teams'], ['teamsnews', 'Teams News']]);
+    // ...and the old pinned entry is gone, or the section would appear twice.
+    expect(NAV_MODEL.filter((e) => e.type === 'item' && e.id === 'sports')).toEqual([]);
+  });
+
   it('NAV_MODEL covers exactly the valid section ids (none missing or orphaned)', () => {
     const navIds = NAV_MODEL.flatMap((e) => (e.type === 'group' ? e.items.map(([id]) => id) : [e.id]));
     expect(new Set(navIds).size).toBe(navIds.length); // no dupes

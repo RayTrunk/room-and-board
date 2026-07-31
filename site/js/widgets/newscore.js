@@ -139,7 +139,11 @@ export function renderHeadlines(el, vm, { widgetId, emptyHint }) {
   setMoreBadge(el, vm.items.length - n);
 }
 
-export async function fetchHeadlines(ids, sourceById, net) {
+// `filter`, when given, keeps only the items it accepts. It runs on the WHOLE
+// fetched feed, before mergeNews trims to the newest 30 — a narrow filter over
+// an already-trimmed list would only ever find its subject while that subject
+// happened to be among the freshest stories in the whole feed.
+export async function fetchHeadlines(ids, sourceById, net, { filter } = {}) {
   const settled = await Promise.allSettled(
     ids.map(async (id) => {
       const src = sourceById[id];
@@ -160,5 +164,8 @@ export async function fetchHeadlines(ids, sourceById, net) {
     throw new Error('news: all sources failed');
   }
   const nowMs = Date.now();
-  return { items: mergeNews(perSource, nowMs), nowMs };
+  // Filter AFTER that check: a filter matching nothing is an empty card, not a
+  // dead source, and must not be mistaken for a total upstream failure.
+  const kept = filter ? perSource.map((items) => items.filter(filter)) : perSource;
+  return { items: mergeNews(kept, nowMs), nowMs };
 }

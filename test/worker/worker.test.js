@@ -643,6 +643,19 @@ describe('/news', () => {
     }
     expect(newsFeedUrl('not-a-feed')).toBeNull();
   });
+
+  // A hyphenated id has to clear the route pattern as well as the whitelist,
+  // which is the half a bare newsFeedUrl() check cannot see.
+  it('proxies the hyphenated sports feed ids the Teams News card asks for', async () => {
+    for (const id of ['espn', 'cbs-sports', 'yahoo-sports', 'bbc-sport', 'guardian-sport']) {
+      expect(newsFeedUrl(id), id).toMatch(/^https:\/\//);
+    }
+    await clearCache('news:cbs-sports');
+    stubFetch([{ match: /cbssports\.com/, body: '<rss><channel><item><title>Trade</title></item></channel></rss>' }]);
+    const res = await call('/news/cbs-sports');
+    expect(res.status).toBe(200);
+    expect((await res.json()).xml).toContain('<title>Trade</title>');
+  });
 });
 
 describe('/markets', () => {
