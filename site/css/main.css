@@ -512,7 +512,9 @@ body { position: relative; top: max(0px, calc((100dvh - 1080px) / 2)); }
 /* Year column hugs four tabular digits; right-aligned so short years ("324")
    end where long ones do and the text column starts sooner. */
 .history__item { display: grid; grid-template-columns: 54px 1fr; gap: 10px; font-size: 22px; align-items: baseline; }
-.history__year { font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; text-align: right; }
+/* Weight comes from the Momentum light-numeral block below (Sean, 2026-07-31:
+   the bold years were the last numerals on the board not thinned to 300). */
+.history__year { color: var(--accent); font-variant-numeric: tabular-nums; text-align: right; }
 .history__text { color: var(--ink-dim); }
 
 .quote { display: flex; flex-direction: column; justify-content: center; height: 100%; gap: 12px; }
@@ -611,7 +613,7 @@ body { position: relative; top: max(0px, calc((100dvh - 1080px) / 2)); }
   gap: 24px; max-width: 1280px; margin: 0 auto; overflow: hidden;
 }
 .history-board .history__item { grid-template-columns: 84px 1fr; gap: 20px; font-size: 26px; line-height: 1.4; }
-.history-board .history__year { font-size: 30px; font-weight: 300; color: var(--ink); }
+.history-board .history__year { font-size: 30px; color: var(--ink); } /* weight rides the light-numeral block */
 .history-board .history__text { color: var(--ink-mid); }
 
 /* (Swiped photo surfaces need no further CSS: swipeFadeThrough in
@@ -2315,7 +2317,8 @@ body.ss-backdrop .cf-dial__svg, .ss-preview.ss-backdrop .cf-dial__svg {
 .sky__aqi-value,
 .strip__time,
 .strip__temp,
-.strip__transit b {
+.strip__transit b,
+.history__year {
   /* Deterministic Light: the device exposes 'CiscoSansTT Light' as its own
      family (Diagnostics inventory) — don't rely on the base family
      resolving a 300 request. Absent families fall through harmlessly. */
