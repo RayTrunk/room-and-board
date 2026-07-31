@@ -32,6 +32,31 @@ export function deviceId(storage) {
   return id;
 }
 
+// Widget-level health (Tier 2, backlog item 9): exceptions only. The runtime
+// reports each widget's refresh outcome (error / worker-stale / recovered)
+// and the hourly beacon carries the UNHEALTHY set as compact id=state pairs
+// ("lirr=stale,njt=error"), so a widget silently broken across the fleet
+// shows up in roomboard-stats instead of waiting for a colleague to mention
+// it. Healthy boards send ''. No new cadence, no new endpoint, no PII. The
+// map cannot outlive a layout: boards reload on config and deploy changes.
+const HEALTH_MAX = 200;
+const widgetHealth = new Map();
+
+export function reportWidgetHealth(id, state) {
+  if (!id) return;
+  if (state) widgetHealth.set(id, state);
+  else widgetHealth.delete(id);
+}
+
+export function resetWidgetHealth() {
+  widgetHealth.clear();
+}
+
+export function healthVector() {
+  const s = [...widgetHealth].map(([id, state]) => `${id}=${state}`).join(',');
+  return s.length > HEALTH_MAX ? `${s.slice(0, HEALTH_MAX - 1)}…` : s;
+}
+
 export function beaconPayload(cfg, id, version) {
   return {
     deviceId: id,
@@ -39,6 +64,7 @@ export function beaconPayload(cfg, id, version) {
     mode: cfg.mode,
     version: version || 'unknown',
     tz: Intl.DateTimeFormat().resolvedOptions().timeZone ?? '',
+    health: healthVector(),
   };
 }
 

@@ -18,7 +18,17 @@ const VALID = {
 describe('parseBeacon', () => {
   it('accepts a valid payload and normalizes it', () => {
     const p = parseBeacon(JSON.stringify(VALID));
-    expect(p).toEqual(VALID);
+    expect(p).toEqual({ ...VALID, health: '' }); // absent health normalizes empty (old boards)
+  });
+
+  it('bounds the widget-health field: well-formed passes, junk and oversize empty out', () => {
+    const with_ = (health) => parseBeacon(JSON.stringify({ ...VALID, health }));
+    expect(with_('lirr=stale,njt=error').health).toBe('lirr=stale,njt=error');
+    expect(with_('w00=error,…').health).toBe('w00=error,…'); // the site's truncation mark survives
+    expect(with_('<b>markup</b>').health).toBe('');
+    expect(with_('A=Loud').health).toBe(''); // lowercase-only, like widget ids
+    expect(with_('x='.repeat(150)).health).toBe(''); // over the 200-char bound
+    expect(with_(42).health).toBe('');
   });
   it('lowercases the device id and tolerates missing optional fields', () => {
     const p = parseBeacon(JSON.stringify({ deviceId: 'ABCDEF12-3456', widgets: [] }));
@@ -83,9 +93,18 @@ describe('beaconDataPoint', () => {
     const p = { ...parseBeacon(JSON.stringify(VALID)), country: 'US', model: 'Cisco Board Pro' };
     expect(beaconDataPoint(p)).toEqual({
       indexes: [VALID.deviceId],
-      blobs: [VALID.deviceId, VALID.version, VALID.mode, VALID.tz, 'weather,subway,markets', 'US', 'Cisco Board Pro'],
+      // blob8 (index 7) stays '' — reserved for the channel field (backlog
+      // item 32); widget health rides blob9 (index 8).
+      blobs: [VALID.deviceId, VALID.version, VALID.mode, VALID.tz, 'weather,subway,markets', 'US', 'Cisco Board Pro', '', ''],
       doubles: [3],
     });
+  });
+
+  it('carries the widget-health vector in blob9, leaving blob8 for the channel', () => {
+    const p = { ...parseBeacon(JSON.stringify({ ...VALID, health: 'lirr=stale' })), country: 'US', model: 'x' };
+    const dp = beaconDataPoint(p);
+    expect(dp.blobs[7]).toBe('');
+    expect(dp.blobs[8]).toBe('lirr=stale');
   });
   it('defaults country to XX and model to other when absent (never trusts the payload)', () => {
     const base = parseBeacon(JSON.stringify(VALID));

@@ -32,6 +32,11 @@ export function parseBeacon(text) {
     mode: MODES.has(b.mode) ? b.mode : 'unknown',
     version: typeof b.version === 'string' && /^[\w.-]{1,20}$/.test(b.version) ? b.version : 'unknown',
     tz: typeof b.tz === 'string' && /^[\w/+-]{1,40}$/.test(b.tz) ? b.tz : '',
+    // Widget health (site fleet.js, backlog item 9): compact id=state pairs,
+    // exceptions only, lowercase like widget ids; '…' is the site's
+    // truncation mark. Optional and shape-bounded like version/tz — old
+    // boards send nothing and normalize to ''.
+    health: typeof b.health === 'string' && /^[a-z0-9=,…]{1,200}$/u.test(b.health) ? b.health : '',
   };
 }
 
@@ -55,7 +60,10 @@ export function deviceModel(ua) {
 export function beaconDataPoint(p) {
   return {
     indexes: [p.deviceId],
-    blobs: [p.deviceId, p.version, p.mode, p.tz, p.widgets.join(','), country(p.country), p.model || 'other'],
+    // blob8 (index 7) is deliberately '' — RESERVED for the serving-channel
+    // field (backlog item 32) so its eventual arrival never reshuffles the
+    // stats app's queries. Widget health rides blob9.
+    blobs: [p.deviceId, p.version, p.mode, p.tz, p.widgets.join(','), country(p.country), p.model || 'other', '', p.health || ''],
     doubles: [p.widgets.length],
   };
 }
