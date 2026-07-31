@@ -7,7 +7,8 @@
 import { escapeHtml, fmtMin, fmtTime, fmtClock, setCardNote, setupPrompt } from '../util.js';
 import { WORKER_URL } from '../env.js';
 import { renderAlertRows } from '../transit-alerts.js';
-import { itemCapacity, cardSize, fitTrainRows } from '../capacity.js';
+import { itemCapacity, cardSize } from '../capacity.js';
+import { wireTrainExpand } from '../train-expand.js';
 
 export const meta = { id: 'amtrak', title: 'Amtrak', refreshMs: 60 * 1000 };
 
@@ -21,6 +22,7 @@ export function render(el, vm, cfg) {
     setCardNote(el, null);
     el.classList.remove('has-alerts');
     el.innerHTML = setupPrompt('amtrak', 'pick a destination', 'Amtrak');
+    wireTrainExpand(el, { title: meta.title, rows: [] }); // clears any prior pill
     return;
   }
   const dest = cfg?.amtrak?.dest || '';
@@ -62,7 +64,8 @@ export function render(el, vm, cfg) {
 
   el.innerHTML = renderAlertRows(alerts) + '<div class="trains">' +
     (shown.length ? shown.map(row).join('') : '<div class="empty">No departures</div>') + '</div>';
-  fitTrainRows(el);
+  const note = dest && vm.destName ? `to ${vm.destName}` : '';
+  wireTrainExpand(el, { title: meta.title, note, rows: deps.map(row) });
 }
 
 let stationsCache = null;

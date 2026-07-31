@@ -109,7 +109,10 @@ export function setCardNote(el, text) {
 // imperative lives only in edit mode (capacityLabel). The corner is safe at
 // every card width (a title badge clips beside long titles on 2-wide cards);
 // .card__stamp is top-anchored so nothing collides. hidden <= 0 removes it.
-export function setMoreBadge(el, hidden) {
+// `pill` upgrades the quiet corner text into the rail cards' tappable
+// "+N more" well (the expand trigger) — same element, same anchor, so the two
+// forms can never coexist on one card.
+export function setMoreBadge(el, hidden, { pill = false } = {}) {
   const card = el.closest?.('.card');
   // querySelector may be absent on test fakes (capacity stubs) — no-op then.
   if (!card?.querySelector) return;
@@ -121,10 +124,10 @@ export function setMoreBadge(el, hidden) {
   }
   if (!badge) {
     badge = document.createElement('span');
-    badge.className = 'card__more';
     card.appendChild(badge);
   }
-  badge.textContent = `+${hidden}`;
+  badge.className = pill ? 'card__more card__more--pill' : 'card__more';
+  badge.textContent = pill ? `+${hidden} more` : `+${hidden}`;
   card.classList.add('has-more');
 }
 

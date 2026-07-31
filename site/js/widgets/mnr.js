@@ -7,7 +7,8 @@ import { escapeHtml, fmtMin, fmtTime, setCardNote, setupPrompt } from '../util.j
 import { lineChipPrefix } from '../lines.js';
 import { WORKER_URL } from '../env.js';
 import { cardAlerts, renderAlertRows } from '../transit-alerts.js';
-import { itemCapacity, cardSize, fitTrainRows } from '../capacity.js';
+import { itemCapacity, cardSize } from '../capacity.js';
+import { wireTrainExpand } from '../train-expand.js';
 
 // Title is just "Metro-North" — the card is GCT-only by design (context lives
 // in settings copy) and the short title leaves the corner note room to breathe.
@@ -57,32 +58,29 @@ export function render(el, vm, _cfg) {
     setCardNote(el, null);
     el.classList.remove('has-alerts');
     el.innerHTML = setupPrompt('mnr', 'pick a station', 'Metro-North');
+    wireTrainExpand(el, { title: meta.title, rows: [] }); // clears any prior pill
     return;
   }
-  setCardNote(el, vm.destName ? `stops at ${vm.destName}` : null);
+  const note = vm.destName ? `stops at ${vm.destName}` : '';
+  setCardNote(el, note || null);
   el.classList.toggle('has-alerts', Boolean(vm.alerts?.length));
   const [w, h] = cardSize(el, [4, 4]);
   // Each alert banner costs roughly one train row of space.
   const cap = Math.max(1, itemCapacity('mnr', w, h) - (vm.alerts?.length ?? 0));
-  const shown = vm.departures.slice(0, cap);
-  el.innerHTML =
-    renderAlertRows(vm.alerts?.map((a) => ({ ...a, routes: [] })) ?? []) +
-    '<div class="trains">' +
-    (shown.length
-      ? shown
-          .map(
-            (d) => `<div class="train">
+  const row = (d) => `<div class="train">
               <div class="train__min"><span>${fmtMin(d.min)}</span><small>min</small></div>
               <div class="train__info">
                 <span class="train__dest">${escapeHtml(d.dest)}</span>
                 <span class="train__line">${lineChipPrefix(d.branch)}${fmtTime(d.t)}</span>
               </div>
-            </div>`,
-          )
-          .join('')
-      : '<div class="empty">No departures</div>') +
+            </div>`;
+  const rows = vm.departures.map(row);
+  el.innerHTML =
+    renderAlertRows(vm.alerts?.map((a) => ({ ...a, routes: [] })) ?? []) +
+    '<div class="trains">' +
+    (rows.length ? rows.slice(0, cap).join('') : '<div class="empty">No departures</div>') +
     '</div>';
-  fitTrainRows(el);
+  wireTrainExpand(el, { title: meta.title, note, rows });
 }
 
 const FEED_URL = 'https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/mnr%2Fgtfs-mnr';

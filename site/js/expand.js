@@ -186,11 +186,17 @@ export function closeExpand() {
 // it is called ONCE, at tap time, so the overlay shows the data the card was
 // showing when it was tapped. Pass null/undefined when nothing is hidden: the
 // card is then inert, matching the absent "+N" badge.
-export function setExpandSource(el, build) {
+//
+// `trigger` narrows the tap target to a selector INSIDE the card (the rail
+// cards' "+N more" pill). Without it the whole card is the target, which is
+// right for cards whose rows are not tappable (markets, weather) — but a rail
+// card's surface must stay free for other affordances, so its taps only count
+// when the gesture lands on the trigger itself.
+export function setExpandSource(el, build, { trigger = null } = {}) {
   const card = el?.closest?.('.card');
   if (!card) return; // test fakes without closest(): no-op, like setMoreBadge
   if (typeof build === 'function') {
-    sources.set(card, build);
+    sources.set(card, { build, trigger });
     card.classList.add('is-expandable');
   } else {
     sources.delete(card);
@@ -262,8 +268,9 @@ export function initExpand(host) {
   press = null; // a freshly wired board has no gesture in flight
   host.addEventListener('click', (e) => {
     const card = e.target.closest?.('.card');
-    const build = card && sources.get(card);
-    if (!build) return; // nothing hidden on this card (or not an expandable one)
+    const source = card && sources.get(card);
+    if (!source) return; // nothing hidden on this card (or not an expandable one)
+    if (source.trigger && !e.target.closest?.(source.trigger)) return; // tap missed the pill
     // Never stack a second full-screen view on a live one. A widget's own
     // handler may have opened its viewer earlier in this very click (the art
     // and chart cards do), so this reads the DOM, not just the press record.
@@ -277,7 +284,7 @@ export function initExpand(host) {
       if (gesture.card !== card) return; // the press began somewhere else entirely
       if (swipeAction(e.clientX - gesture.x, e.clientY - gesture.y) !== 'tap') return; // a drag, not a tap
     }
-    const view = build();
+    const view = source.build();
     if (view) openExpand({ ...view, stamp: staleStamp(card) });
   });
 }
