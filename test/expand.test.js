@@ -1045,9 +1045,16 @@ describe('history card tap', () => {
     expect(overlay().querySelector('.expand__title').textContent).toBe('This Day in History');
   });
 
-  it('stays inert when every event already fits', () => {
+  it('opens the same day view when every event already fits, with no badge', () => {
     const { card } = histBoard(histVm(2));
-    expect(card.querySelector('.card__more')).toBeNull();
+    expect(card.querySelector('.card__more')).toBeNull(); // nothing hidden to advertise
+    card.click();
+    expect(isExpandOpen()).toBe(true);
+    expect(overlay().querySelectorAll('.history__item').length).toBe(2);
+  });
+
+  it('stays inert with no events at all', () => {
+    const { card } = histBoard({ events: [] });
     card.click();
     expect(isExpandOpen()).toBe(false);
   });

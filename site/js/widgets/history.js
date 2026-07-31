@@ -28,16 +28,14 @@ export function render(el, vm, _cfg) {
   setMoreBadge(el, hidden, { verbose: true });
   // Whole-card tap for the whole day (Sean's pick, mockup A): the grand
   // centered reading list of every event, the card's own rows at reading size.
-  setExpandSource(
-    el,
-    hidden > 0
-      ? () => ({
-          title: meta.title,
-          note: new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric' }),
-          bodyHtml: `<div class="history history-board">${rows.join('')}</div>`,
-        })
-      : null,
-  );
+  // Unconditional, not only when rows are hidden: the rows cover the card, so
+  // one card has to mean one destination, and a card that fits its events still
+  // owes a tap the bigger reading view. Only the badge tracks `hidden`.
+  setExpandSource(el, () => ({
+    title: meta.title,
+    note: new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric' }),
+    bodyHtml: `<div class="history history-board">${rows.join('')}</div>`,
+  }));
 }
 
 export function mapHistory(json, count = 9) {
