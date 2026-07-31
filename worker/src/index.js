@@ -161,10 +161,10 @@ async function cached(origin, key, ttlS, fetcher) {
   }
 }
 
-// NJT live alerts (getStationMSG): dynamic, so a short colo cache is fine, but a
-// fetch failure returns [] rather than a stale banner — unlike the schedule, a
-// resolved delay must not linger. Not the shared cached() helper, which serves
-// 24h stale on failure.
+// NJT live alerts (getStationMSG): dynamic, so a short colo cache (~2 min) is
+// fine, but a fetch failure returns [] rather than a stale banner — unlike the
+// schedule, a resolved delay must not linger. Not the shared cached() helper,
+// which serves 24h stale on failure.
 const ALERTS_TTL_S = 120;
 
 async function njtAlerts(env, origin) {
@@ -174,10 +174,10 @@ async function njtAlerts(env, origin) {
   // The FAILURE is cached at the same cadence as a success, which is the alerts
   // half of the schedule's backoff (getNjtSchedule's outageMemo). Without it an
   // outage put every board request back on a getStationMSG that was already
-  // timing out — 10s of AbortSignal apiece, stacked with the schedule call and
+  // timing out: 10s of AbortSignal apiece, stacked with the schedule call and
   // past the board's own 15s fetch timeout, so nothing refreshed at all. Caching
-  // the empty answer costs nothing a successful empty response wouldn't: the
-  // banner is at most one window behind either way, and it still EMPTIES on
+  // the empty answer costs nothing a successful empty response would not, since
+  // the banner is at most one window behind either way, and it still EMPTIES on
   // failure rather than lingering.
   const alerts = await fetchNjtAlerts(env).catch(() => []);
   try {

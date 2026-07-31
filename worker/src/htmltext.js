@@ -70,12 +70,12 @@ const STRIP_SWEEPS = 3;
 
 // The cap is a bound, not a proof. Splice-nesting sheds exactly one layer per
 // sweep, so "<<<<script>script>script>script>" runs the sweeps out and hands
-// back a whole <script> — the same hole the decode/strip ordering had, reached
-// the other way. DELETING the leftover "<" cannot close it (removing one
-// splices the next), so the survivor is ENCODED instead: "&lt;" is no longer a
-// "<" for a tag to open with, and a single global pass settles it because the
-// scan reads the ORIGINAL string, never its own output. Any decode round after
-// this one reveals the same text again and strips it properly.
+// back a whole <script>, which is the same hole the decode/strip ordering had
+// reached from the other side. DELETING the leftover "<" cannot close it
+// (removing one splices the next), so the survivor is ENCODED instead: "&lt;"
+// is no longer a "<" for a tag to open with, and a single global pass settles
+// it because the scan reads the ORIGINAL string, never its own output. Any
+// decode round after this one reveals the same text again and strips it.
 const TAG_OPEN = /<(?=\/?[a-z])/gi;
 
 function stripMarkup(s) {

@@ -345,7 +345,7 @@ describe('/njt/departures', () => {
   // The schedule half of this route backs off (above); the alerts half did not.
   // njtAlerts cached a SUCCESS for two minutes but let a FAILURE fall straight
   // through to a bare [], so mid-outage every board request re-opened a
-  // getStationMSG that was already timing out — 10s of AbortSignal apiece, which
+  // getStationMSG that was already timing out: 10s of AbortSignal apiece, which
   // is most of the stall the schedule backoff was meant to end. The schedule is
   // seeded fresh in KV here so nothing but the alerts call can reach upstream.
   it('attempts the alerts upstream once per window while getStationMSG keeps failing', async () => {
@@ -1072,7 +1072,7 @@ describe('htmlToText (feed markup -> readable text)', () => {
 
   // The encoded twin above was covered; the RAW one was not. Stripping a tag
   // splices its neighbours into a new one, so "<<<<script>script>script>script>"
-  // sheds one layer per sweep — and the sweep cap is three. The fourth layer
+  // sheds one layer per sweep, and the sweep cap is three. The fourth layer
   // walked out as a whole <script>, which is the same latent hole as the old
   // decode-last ordering: a renderer that ever trusted "the vm stores plain
   // text" would be handed executable markup.
