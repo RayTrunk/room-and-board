@@ -28,6 +28,23 @@ describe('mapMtaAlerts', () => {
     const entity = (route) => ({ alert: { informed_entity: [{ route_id: route }], header_text: { translation: [{ text: 'Same alert text for both.', language: 'en' }] } } });
     expect(mapMtaAlerts({ entity: [entity('A'), entity('C')] }, 0)).toHaveLength(1);
   });
+  it('carries the informed stations so cards can judge relevance', () => {
+    // Live LIRR shape: "first four cars to exit at Forest Hills" is tagged
+    // route 12 (City Terminal) + stop 55 (Forest Hills).
+    const json = { entity: [{ alert: {
+      informed_entity: [{ route_id: '12' }, { stop_id: '55' }, { stop_id: '55' }, { route_id: '12', stop_id: '56' }],
+      header_text: { translation: [{ text: 'You must be in the first four cars to exit at Forest Hills.', language: 'en' }] },
+    } }] };
+    const [row] = mapMtaAlerts(json, 0);
+    expect(row.routes).toEqual(['12']);
+    expect(row.stops).toEqual(['55', '56']);
+  });
+  it('unions stops for entities sharing a header, like routes', () => {
+    const entity = (stop) => ({ alert: { informed_entity: [{ stop_id: stop }], header_text: { translation: [{ text: 'Elevator outage at this station.', language: 'en' }] } } });
+    const out = mapMtaAlerts({ entity: [entity('55'), entity('89'), entity('55')] }, 0);
+    expect(out).toHaveLength(1);
+    expect(out[0].stops.sort()).toEqual(['55', '89']);
+  });
 });
 
 describe('mapNjtMessages', () => {

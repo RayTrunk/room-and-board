@@ -6,7 +6,7 @@ import { decodeGtfsRt } from '../gtfs.js';
 import { escapeHtml, fmtTime, setCardNote, setupPrompt } from '../util.js';
 import { lineChipPrefix } from '../lines.js';
 import { WORKER_URL } from '../env.js';
-import { renderAlertRows } from '../transit-alerts.js';
+import { cardAlerts, renderAlertRows } from '../transit-alerts.js';
 import { itemCapacity, cardSize, fitTrainRows } from '../capacity.js';
 
 // Title is just "Metro-North" — the card is GCT-only by design (context lives
@@ -44,6 +44,7 @@ export function mapMnr(decoded, cfgMnr, nowSec, stationNames = {}) {
       dest: stationNames[destId] ?? destId,
       destId,
       branch: ROUTE_NAMES[trip.routeId] ?? '',
+      routeId: trip.routeId || null,
       track: null, // MNR GTFS-RT carries no track assignments we decode
     });
   }
@@ -103,7 +104,7 @@ export async function fetchData(cfg, net) {
   if (cfg.mnr.alerts) {
     try {
       const digest = await net.fetchJSON(`${WORKER_URL}/alerts/mnr`);
-      vm.alerts = (digest.alerts ?? []).slice(0, 2);
+      vm.alerts = cardAlerts(digest.alerts, vm.departures, [GCT_STOP_ID, cfg.mnr.dest].filter(Boolean));
     } catch {
       vm.alerts = [];
     }

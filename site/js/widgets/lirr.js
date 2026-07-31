@@ -9,7 +9,7 @@ import { decodeGtfsRt } from '../gtfs.js';
 import { escapeHtml, fmtTime, setCardNote, setupPrompt } from '../util.js';
 import { lineChipPrefix } from '../lines.js';
 import { WORKER_URL } from '../env.js';
-import { renderAlertRows } from '../transit-alerts.js';
+import { cardAlerts, renderAlertRows } from '../transit-alerts.js';
 import { itemCapacity, cardSize, fitTrainRows } from '../capacity.js';
 
 // Title is just "LIRR" — terminal context lives in settings copy and the
@@ -89,9 +89,11 @@ export function mapLirr(decoded, trackJson, cfgLirr, nowSec, stationNames = {}) 
   if (Array.isArray(trackJson)) {
     for (const arr of trackJson) {
       const num = arr?.train_num;
-      // v3 arrivals carry `track` (actual, once assigned) over `sched_track`;
-      // act_track was the pre-v3 name, kept as a fallback.
-      const track = arr?.track ?? arr?.act_track ?? arr?.sched_track;
+      // v3 arrivals carry `track` only once the MTA assigns it (act_track was
+      // the pre-v3 name). sched_track is their internal plan, present hours
+      // early and sometimes wrong (2026-07-30: sched 21, actual 18) — never
+      // shown, matching when the official app posts a track.
+      const track = arr?.track ?? arr?.act_track;
       if (num && track) tracks.set(String(num), String(track));
     }
   }
@@ -123,6 +125,7 @@ export function mapLirr(decoded, trackJson, cfgLirr, nowSec, stationNames = {}) 
       destId,
       origin,
       branch: ROUTE_NAMES[trip.routeId] ?? '',
+      routeId: trip.routeId || null,
       trainNum,
       track: (trainNum && tracks.get(trainNum)) || null,
     });
@@ -130,6 +133,10 @@ export function mapLirr(decoded, trackJson, cfgLirr, nowSec, stationNames = {}) 
   departures.sort((a, b) => a.t - b.t);
   return { departures: departures.slice(0, 12) };
 }
+
+// Branch name -> GTFS route_id, for alert relevance on TrainTime rows (their
+// payload has no route ids, only branch codes).
+const ROUTE_IDS = Object.fromEntries(Object.entries(ROUTE_NAMES).map(([id, name]) => [name, id]));
 
 // TrainTime branch codes → display names (best-effort; the codes are
 // unofficial and undocumented, so unknowns render as an empty branch, which
@@ -168,8 +175,9 @@ export function mapTrainTime(perOrigin, cfgLirr, nowSec, stations = []) {
         destId: last?.id ?? '',
         origin: key,
         branch: TT_BRANCH_NAMES[a.branch] ?? '',
+        routeId: ROUTE_IDS[TT_BRANCH_NAMES[a.branch]] ?? null,
         trainNum: a.train_num ? String(a.train_num) : null,
-        track: a.track != null ? String(a.track) : a.sched_track != null ? String(a.sched_track) : null,
+        track: a.track != null ? String(a.track) : null,
       });
     }
   }
@@ -217,7 +225,8 @@ export async function fetchData(cfg, net) {
   if (cfg.lirr.alerts) {
     try {
       const digest = await net.fetchJSON(`${WORKER_URL}/alerts/lirr`);
-      vm.alerts = (digest.alerts ?? []).slice(0, 2);
+      const myStops = [...activeOrigins(cfg.lirr.origin).map((k) => ORIGINS[k].stopId), cfg.lirr.dest].filter(Boolean);
+      vm.alerts = cardAlerts(digest.alerts, vm.departures, myStops);
     } catch {
       vm.alerts = [];
     }

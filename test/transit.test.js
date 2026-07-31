@@ -8,6 +8,7 @@ import { LINE_COLORS, lineChip, lineChipPrefix } from '../site/js/lines.js';
 import { NJT_LINES } from '../site/js/config.js';
 import { mapPath, PATH_STATIONS } from '../site/js/widgets/path.js';
 import { mapFerry } from '../site/js/widgets/ferry.js';
+import { cardAlerts } from '../site/js/transit-alerts.js';
 
 async function decodedFixture(name) {
   return decodeGtfsRt(new Uint8Array(await readFile(new URL(`./fixtures/${name}`, import.meta.url))));
@@ -37,6 +38,48 @@ describe('mapSubwayStatus', () => {
   it('exposes the pickable line list', () => {
     expect(SUBWAY_LINES).toContain('SI');
     expect(SUBWAY_LINES.length).toBeGreaterThan(20);
+  });
+});
+
+describe('cardAlerts (relevance filter for rail alert banners)', () => {
+  const departures = [{ routeId: '1' }, { routeId: '1' }]; // Babylon trains on the card
+  const myStops = ['237', '183']; // Penn + Rockville Centre
+  it('drops alerts tagged for other branches and stations', () => {
+    // The two live offenders from Sean's board, 2026-07-30.
+    const alerts = [
+      { routes: ['4'], stops: [], header: 'The 9:01pm train to Ronkonkoma is operating 10-15 minutes late.' },
+      { routes: ['12'], stops: ['55'], header: 'You must be in the first four cars to exit at Forest Hills.' },
+    ];
+    expect(cardAlerts(alerts, departures, myStops)).toEqual([]);
+  });
+  it('keeps branch matches, station matches, and untargeted alerts', () => {
+    expect(cardAlerts([{ routes: ['1'], stops: [], header: 'Babylon branch delays.' }], departures, myStops)).toHaveLength(1);
+    // Station match rescues an alert tagged with someone else's branch.
+    expect(cardAlerts([{ routes: ['12'], stops: ['237'], header: 'Penn Station concourse closed.' }], departures, myStops)).toHaveLength(1);
+    // No routes, no stops: systemwide news always shows.
+    expect(cardAlerts([{ routes: [], stops: [], header: 'Expect delays systemwide.' }], departures, myStops)).toHaveLength(1);
+  });
+  it('caps at two after filtering, not before', () => {
+    const alerts = [
+      { routes: ['4'], stops: [], header: 'Other branch.' },
+      { routes: ['4'], stops: [], header: 'Other branch again.' },
+      { routes: ['1'], stops: [], header: 'Mine.' },
+      { routes: ['1'], stops: [], header: 'Also mine.' },
+      { routes: ['1'], stops: [], header: 'Third of mine.' },
+    ];
+    expect(cardAlerts(alerts, departures, myStops).map((a) => a.header)).toEqual(['Mine.', 'Also mine.']);
+  });
+  it('shows alerts unfiltered when the board is empty (a suspension explains it)', () => {
+    const alerts = [{ routes: ['4'], stops: [], header: 'Service suspended.' }];
+    expect(cardAlerts(alerts, [], myStops)).toHaveLength(1);
+    expect(cardAlerts(alerts, undefined, myStops)).toHaveLength(1);
+  });
+  it('tolerates digests without a stops field (mixed rollout)', () => {
+    expect(cardAlerts([{ routes: ['1'], header: 'Route match, old digest.' }], departures, myStops)).toHaveLength(1);
+    expect(cardAlerts([{ routes: ['4'], header: 'Route miss, old digest.' }], departures, myStops)).toHaveLength(0);
+  });
+  it('handles a missing digest', () => {
+    expect(cardAlerts(undefined, departures, myStops)).toEqual([]);
   });
 });
 
@@ -98,7 +141,7 @@ describe('mapLirr (Penn Station departure board)', () => {
   });
 
   it('merges TrainTime track assignments by train number', () => {
-    const trackJson = [{ train_num: '100', sched_track: '19', status: { held: false, canceled: false } }];
+    const trackJson = [{ train_num: '100', track: '19', status: { held: false, canceled: false } }];
     const vm = mapLirr(synthetic, trackJson, { dest: '' }, now, {});
     expect(vm.departures.find((d) => d.trainNum === '100').track).toBe('19');
     expect(vm.departures.find((d) => d.trainNum === '300').track).toBeNull();
@@ -109,6 +152,20 @@ describe('mapLirr (Penn Station departure board)', () => {
     const trackJson = [{ train_num: '100', track: '21', sched_track: '19' }];
     const vm = mapLirr(synthetic, trackJson, { dest: '' }, now, {});
     expect(vm.departures.find((d) => d.trainNum === '100').track).toBe('21');
+  });
+
+  it('carries each train\'s routeId for alert relevance', () => {
+    const vm = mapLirr(synthetic, null, { dest: '' }, now, {});
+    expect(vm.departures.map((d) => d.routeId)).toEqual(['9', '1']);
+  });
+
+  it('never shows a scheduled track as if it were assigned', () => {
+    // The MTA posts tracks minutes before departure; sched_track is their
+    // internal plan and can differ from the eventual assignment (live case
+    // 2026-07-30: sched 21, actual 18). A sched-only row gets no pill.
+    const trackJson = [{ train_num: '100', sched_track: '19' }];
+    const vm = mapLirr(synthetic, trackJson, { dest: '' }, now, {});
+    expect(vm.departures.find((d) => d.trainNum === '100').track).toBeNull();
   });
 
   it('origin gct shows Grand Central departures only, tagged', () => {
@@ -161,7 +218,7 @@ describe('mapMnr (Grand Central departure board)', () => {
   it('lists outbound GCT trains with line names', () => {
     const vm = mapMnr(synthetic, { dest: '' }, now, { 54: 'Southeast' });
     expect(vm.departures).toHaveLength(1);
-    expect(vm.departures[0]).toMatchObject({ dest: 'Southeast', branch: 'Harlem', min: 5 });
+    expect(vm.departures[0]).toMatchObject({ dest: 'Southeast', branch: 'Harlem', min: 5, routeId: '2' });
   });
   it('applies the destination filter', () => {
     expect(mapMnr(synthetic, { dest: '54' }, now, {}).departures).toHaveLength(1);
@@ -281,6 +338,7 @@ describe('mapTrainTime (LIRR fallback board)', () => {
       { time: now + 400, direction: 'E', branch: 'BY', train_num: 6101, stops: ['RVC'], status: { canceled: true } },
     ] },
     { key: 'gct', arrivals: [
+      // sched_track only: no assignment yet, so the row must carry no track
       { time: now + 500, direction: 'E', branch: 'BY', train_num: 6272, sched_track: '203', stops: ['JAM', 'RVC', 'BTA'], status: {} },
     ] },
   ];
@@ -288,8 +346,8 @@ describe('mapTrainTime (LIRR fallback board)', () => {
     const { mapTrainTime } = trainTimeMod;
     const vm = mapTrainTime(perOrigin, { dest: '183' }, now, stations);
     expect(vm.departures.map((d) => d.trainNum)).toEqual(['6190', '6272']);
-    expect(vm.departures[0]).toMatchObject({ dest: 'Babylon', destId: '27', origin: 'penn', branch: 'Babylon', track: '18', min: 5 });
-    expect(vm.departures[1]).toMatchObject({ origin: 'gct', track: '203' });
+    expect(vm.departures[0]).toMatchObject({ dest: 'Babylon', destId: '27', origin: 'penn', branch: 'Babylon', track: '18', min: 5, routeId: '1' });
+    expect(vm.departures[1]).toMatchObject({ origin: 'gct', track: null, routeId: '1' });
   });
   it('drops everything when the chosen station has no tt code (no dishonest unfiltered board)', () => {
     const { mapTrainTime } = trainTimeMod;

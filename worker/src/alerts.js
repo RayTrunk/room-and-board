@@ -23,6 +23,11 @@ export function mapMtaAlerts(json, nowSec) {
     const routes = [
       ...new Set((alert.informed_entity ?? []).map((ie) => ie.route_id).filter(Boolean)),
     ];
+    // Stations too: cards filter to the rider's own stops (uncapped — a
+    // truncated list could silently suppress someone's station alert).
+    const stops = [
+      ...new Set((alert.informed_entity ?? []).map((ie) => ie.stop_id).filter(Boolean)),
+    ];
     const en =
       alert.header_text?.translation?.find((t) => t.language === 'en') ??
       alert.header_text?.translation?.[0];
@@ -35,9 +40,10 @@ export function mapMtaAlerts(json, nowSec) {
     const existing = byKey.get(key);
     if (existing) {
       for (const r of routes) if (!existing.routes.includes(r)) existing.routes.push(r);
+      for (const s of stops) if (!existing.stops.includes(s)) existing.stops.push(s);
       continue;
     }
-    const row = { routes: [...routes], header };
+    const row = { routes: [...routes], stops: [...stops], header };
     byKey.set(key, row);
     out.push(row);
   }

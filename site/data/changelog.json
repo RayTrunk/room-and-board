@@ -1,5 +1,18 @@
 [
   {
+    "date": "July 30",
+    "items": [
+      {
+        "lead": "Train alerts",
+        "text": "LIRR and Metro-North cards now show only the alerts that could affect your ride: your branch, your stations, or the whole railroad. Notices about other lines no longer take up a row your departures could use."
+      },
+      {
+        "lead": "LIRR",
+        "text": "Track numbers now appear the moment the railroad posts them, the same as the boards in the station. The card no longer shows the planned track, which could differ from the one finally assigned."
+      }
+    ]
+  },
+  {
     "date": "July 29",
     "items": [
       {
