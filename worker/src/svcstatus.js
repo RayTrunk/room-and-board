@@ -134,19 +134,37 @@ export const SERVICES = {
   openai: { label: 'OpenAI', adapter: 'statuspage', url: 'https://status.openai.com/api/v2/summary.json' },
 };
 
+// Full browser UA: CloudFront (AWS's status CDN) rejects thin/bot agents
+// from datacenter egress — same lesson as the Yahoo markets fetch.
+const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36';
+
+// A failed fetch gets two quick retries before the row reports unknown:
+// portal.office.com has been alternating 200/404 on back-to-back requests
+// (probed 2026-07-30 — Microsoft unrouting the legacy endpoint from some
+// nodes), and one bad roll otherwise paints "Status unavailable" for a whole
+// cache TTL. Retries run on a shorter timeout so a genuinely dead feed can't
+// hold the digest hostage for 30s.
+async function fetchStatus(url) {
+  let lastErr;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const res = await fetch(url, {
+        signal: AbortSignal.timeout(attempt ? 5000 : 10000),
+        headers: { 'User-Agent': UA },
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res;
+    } catch (e) {
+      lastErr = e;
+    }
+  }
+  throw lastErr;
+}
+
 export async function fetchServiceStatuses(ids) {
   const settled = await Promise.allSettled(ids.map(async (id) => {
     const svc = SERVICES[id];
-    // Full browser UA: CloudFront (AWS's status CDN) rejects thin/bot agents
-    // from datacenter egress — same lesson as the Yahoo markets fetch.
-    const res = await fetch(svc.url, {
-      signal: AbortSignal.timeout(10000),
-      headers: {
-        'User-Agent':
-          'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36',
-      },
-    });
-    if (!res.ok) throw new Error(`svc ${id} ${res.status}`);
+    const res = await fetchStatus(svc.url);
     // AWS is UTF-16-with-BOM (see decodeBomJson); everything else is plain JSON.
     const json = svc.adapter === 'aws' ? decodeBomJson(await res.arrayBuffer()) : await res.json();
     return { id, label: svc.label, ...MAPPERS[svc.adapter](json, Date.now()) };

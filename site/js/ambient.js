@@ -2,7 +2,7 @@
 // assembled from whatever transit widgets the user has enabled, using their
 // latest cached view models.
 
-import { escapeHtml } from './util.js';
+import { escapeHtml, fmtMin } from './util.js';
 
 // Pick the next STILL-UPCOMING departure and recompute its countdown from the
 // absolute departure time.
@@ -62,6 +62,6 @@ export function stripHtml(data, now, { showTime = true } = {}) {
     ${showTime ? `<span class="strip__time">${now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}</span>` : ''}
     ${data.temp !== null ? `<span class="strip__wx"><b>${data.temp}°</b>${data.cond ? ` ${escapeHtml(data.cond)}` : ''}</span>` : ''}
     ${data.transit
-      .map((t) => `<span class="strip__transit">${escapeHtml(t.label)} <b>${t.min} min</b></span>`)
+      .map((t) => `<span class="strip__transit">${escapeHtml(t.label)} <b>${fmtMin(t.min)} min</b></span>`)
       .join('')}`;
 }

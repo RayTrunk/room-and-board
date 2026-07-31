@@ -3,7 +3,7 @@
 // Bus Time's distance ("approaching", "2 stops away").
 
 import { WORKER_URL } from '../env.js';
-import { escapeHtml, setMoreBadge, setupPrompt } from '../util.js';
+import { escapeHtml, fmtMin, setMoreBadge, setupPrompt } from '../util.js';
 import { itemCapacity, cardSize } from '../capacity.js';
 
 export const meta = { id: 'bus', title: 'Express Bus', refreshMs: 60 * 1000 };
@@ -73,7 +73,7 @@ export function render(el, vm, _cfg) {
                   (a) => `<div class="train">
                     <div class="train__min">${
                       a.min !== null
-                        ? `<span>${a.min}</span><small>min</small>`
+                        ? `<span>${fmtMin(a.min)}</span><small>min</small>`
                         : `<small class="train__dist">${escapeHtml(a.distance || 'due')}</small>`
                     }</div>
                     <div class="train__info">

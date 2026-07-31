@@ -3,7 +3,7 @@
 // (two colors = a train serving a joint line, e.g. HOB-33 via JSQ). The
 // direction filter 'both' renders two labeled sections.
 
-import { escapeHtml, fmtTime, setCardNote } from '../util.js';
+import { escapeHtml, fmtMin, fmtTime, setCardNote } from '../util.js';
 import { WORKER_URL } from '../env.js';
 import { itemCapacity, cardSize, sizeTier } from '../capacity.js';
 
@@ -60,7 +60,7 @@ export function render(el, vm, _cfg) {
   const both = sections.length > 1;
   const shallow = sizeTier(h) === 's';
   const row = (r, dirShort) => `<div class="train train--path">
-      <div class="train__min"><span>${r.min}</span><small>min</small></div>
+      <div class="train__min"><span>${fmtMin(r.min)}</span><small>min</small></div>
       <div class="train__info">
         <span class="train__dest">${r.colors
           .map((c) => `<i class="pathdot" style="background:#${c}"></i>`)

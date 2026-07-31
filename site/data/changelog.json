@@ -9,6 +9,14 @@
       {
         "lead": "LIRR",
         "text": "Track numbers now appear the moment the railroad posts them, the same as the boards in the station. The card no longer shows the planned track, which could differ from the one finally assigned."
+      },
+      {
+        "lead": "Commute",
+        "text": "A departure more than 99 minutes away now shows 99+, so a wide countdown never pushes its row out of line with the others. The exact time still sits right below."
+      },
+      {
+        "lead": "Cloud services",
+        "text": "A status source that stumbles now gets a couple of quick retries before the card calls it Unknown, so a brief blip at the provider no longer reads as missing status."
       }
     ]
   },

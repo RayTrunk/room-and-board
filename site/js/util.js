@@ -59,6 +59,12 @@ export function chaikin(pts, iterations = 2) {
   return p;
 }
 
+// Countdown display for departure rows: 100+ shows as 99+ — three digits
+// would overflow the 76px .train__min column and push that row's destination
+// out of line with its neighbors. The exact time is on the meta line, and a
+// 100-minute countdown is precision nobody acts on.
+export const fmtMin = (min) => (min > 99 ? '99+' : String(min));
+
 export function fmtTime(epochSec) {
   return new Date(epochSec * 1000).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
 }

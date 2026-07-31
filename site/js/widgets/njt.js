@@ -5,7 +5,7 @@
 // [] = all lines).
 
 import { WORKER_URL } from '../env.js';
-import { escapeHtml, fmtTime, setCardNote } from '../util.js';
+import { escapeHtml, fmtMin, fmtTime, setCardNote } from '../util.js';
 import { renderAlertRows } from '../transit-alerts.js';
 import { lineChipPrefix } from '../lines.js';
 import { itemCapacity, cardSize, fitTrainRows } from '../capacity.js';
@@ -24,7 +24,7 @@ export function render(el, vm, _cfg) {
     ? shown
         .map(
           (t) => `<div class="train">
-            <div class="train__min"><span>${t.min}</span><small>min</small></div>
+            <div class="train__min"><span>${fmtMin(t.min)}</span><small>min</small></div>
             <div class="train__info">
               <span class="train__dest">${escapeHtml(t.dest)}</span>
               <span class="train__line">${lineChipPrefix(t.line)}${fmtTime(t.time)}${t.status ? ` · ${escapeHtml(t.status)}` : ''}</span>

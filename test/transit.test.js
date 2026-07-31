@@ -9,6 +9,7 @@ import { NJT_LINES } from '../site/js/config.js';
 import { mapPath, PATH_STATIONS } from '../site/js/widgets/path.js';
 import { mapFerry } from '../site/js/widgets/ferry.js';
 import { cardAlerts } from '../site/js/transit-alerts.js';
+import { fmtMin } from '../site/js/util.js';
 
 async function decodedFixture(name) {
   return decodeGtfsRt(new Uint8Array(await readFile(new URL(`./fixtures/${name}`, import.meta.url))));
@@ -38,6 +39,16 @@ describe('mapSubwayStatus', () => {
   it('exposes the pickable line list', () => {
     expect(SUBWAY_LINES).toContain('SI');
     expect(SUBWAY_LINES.length).toBeGreaterThan(20);
+  });
+});
+
+describe('fmtMin (countdown display)', () => {
+  it('caps the countdown at 99+ so three digits never push a row out of line', () => {
+    expect(fmtMin(0)).toBe('0');
+    expect(fmtMin(48)).toBe('48');
+    expect(fmtMin(99)).toBe('99');
+    expect(fmtMin(100)).toBe('99+');
+    expect(fmtMin(101)).toBe('99+');
   });
 });
 

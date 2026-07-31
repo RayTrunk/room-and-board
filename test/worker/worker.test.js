@@ -1195,6 +1195,15 @@ describe('/services/status route', () => {
     expect(digest.services.find((s) => s.id === 'github').state).toBe('unknown');
     expect(digest.services.find((s) => s.id === 'slack').state).toBe('ok');
   });
+  it('retries a flapping source before reporting unknown (portal.office.com alternates 200/404)', async () => {
+    await clearCache('svc:m365');
+    stubFetch([
+      { match: /portal\.office\.com/, body: { Message: 'No HTTP resource was found' }, status: 404, times: 1 },
+      { match: /portal\.office\.com/, body: m365Fx },
+    ]);
+    const digest = await (await call('/services/status?ids=m365')).json();
+    expect(digest.services[0]).toMatchObject({ id: 'm365', state: 'ok' });
+  });
   it('serves Claude and OpenAI (openai: incident.io compat feed, no incidents key)', async () => {
     await clearCache('svc:claude,openai');
     stubFetch([

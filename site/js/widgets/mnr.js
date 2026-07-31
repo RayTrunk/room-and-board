@@ -3,7 +3,7 @@
 // to Grand Central, optional destination filter, branch shown per train.
 
 import { decodeGtfsRt } from '../gtfs.js';
-import { escapeHtml, fmtTime, setCardNote, setupPrompt } from '../util.js';
+import { escapeHtml, fmtMin, fmtTime, setCardNote, setupPrompt } from '../util.js';
 import { lineChipPrefix } from '../lines.js';
 import { WORKER_URL } from '../env.js';
 import { cardAlerts, renderAlertRows } from '../transit-alerts.js';
@@ -72,7 +72,7 @@ export function render(el, vm, _cfg) {
       ? shown
           .map(
             (d) => `<div class="train">
-              <div class="train__min"><span>${d.min}</span><small>min</small></div>
+              <div class="train__min"><span>${fmtMin(d.min)}</span><small>min</small></div>
               <div class="train__info">
                 <span class="train__dest">${escapeHtml(d.dest)}</span>
                 <span class="train__line">${lineChipPrefix(d.branch)}${fmtTime(d.t)}</span>

@@ -5,7 +5,7 @@
 // trip's final stop name and the route chip is omitted — labels degrade,
 // correctness doesn't.
 
-import { escapeHtml, fmtTime, setCardNote } from '../util.js';
+import { escapeHtml, fmtMin, fmtTime, setCardNote } from '../util.js';
 import { WORKER_URL } from '../env.js';
 import { itemCapacity, cardSize, fitTrainRows } from '../capacity.js';
 
@@ -46,7 +46,7 @@ export function render(el, vm, _cfg) {
             ? `<i class="ferryroute" style="background:#${d.route.color}"></i>`
             : '';
           return `<div class="train">
-            <div class="train__min"><span>${d.min}</span><small>min</small></div>
+            <div class="train__min"><span>${fmtMin(d.min)}</span><small>min</small></div>
             <div class="train__info">
               <span class="train__dest">${chip}${escapeHtml(d.dest)}</span>
               <span class="train__line">${d.route ? `${escapeHtml(d.route.name)} · ` : ''}${fmtTime(d.t)}</span>

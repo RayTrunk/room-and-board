@@ -4,7 +4,7 @@
 // stop at the chosen station — matched client-side against each departure's
 // downstream stops, showing the arrival time there; unfiltered rows show the
 // train's terminus.
-import { escapeHtml, fmtTime, fmtClock, setCardNote, setupPrompt } from '../util.js';
+import { escapeHtml, fmtMin, fmtTime, fmtClock, setCardNote, setupPrompt } from '../util.js';
 import { WORKER_URL } from '../env.js';
 import { renderAlertRows } from '../transit-alerts.js';
 import { itemCapacity, cardSize, fitTrainRows } from '../capacity.js';
@@ -51,7 +51,7 @@ export function render(el, vm, cfg) {
     const primary = dest ? `Arrives ${fmtTime(d.arr)}` : escapeHtml(d.dest);
     const line = `${escapeHtml(d.route)} ${escapeHtml(d.num)} · ${fmtTime(d.t)}${d.platform ? ` · Trk ${escapeHtml(d.platform)}` : ''}`;
     return `<div class="train">
-      <div class="train__min"><span>${min}</span><small>min</small></div>
+      <div class="train__min"><span>${fmtMin(min)}</span><small>min</small></div>
       <div class="train__info">
         <span class="train__dest">${primary}</span>
         <span class="train__line">${line}</span>
