@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { CHECKS, runHealthChecks, notify, alertPlan, nextFailingState } from '../../worker/src/health.js';
+import { CHECKS, runHealthChecks, notify, alertPlan, nextFailingState, heartbeat } from '../../worker/src/health.js';
 
 // Valid response bodies keyed by a unique substring of each check's URL, so a
 // mock fetch can answer every probe with a shape its validator accepts.
@@ -60,6 +60,48 @@ describe('health CHECKS validators', () => {
     expect(byName.njt({ station: 'NY', trains: [{ time: now - 600 }] })).toBe(false); // all past = prior day
     expect(byName.njt({ station: 'NY', trains: [] })).toBe(false);
     expect(byName.njt({ trains: [{ time: now + 600 }] })).toBe(false); // no station
+  });
+});
+
+describe('backup domain checks (the failover nobody would notice broken)', () => {
+  const byName = Object.fromEntries(CHECKS.map((c) => [c.name, c]));
+  it('probes both rvc.tech aliases externally (url, not path)', () => {
+    expect(byName['backup-api'].url).toContain('signage-api.rvc.tech');
+    expect(byName['backup-site'].url).toContain('signage.rvc.tech');
+    expect(byName['backup-api'].path).toBeUndefined();
+    expect(byName['backup-site'].path).toBeUndefined();
+  });
+  it('backup-api validates routing, not the upstream (a Yahoo outage must not double-page)', () => {
+    // Empty indices is Yahoo's problem and the markets check owns it; the
+    // backup check only proves the alias serves this worker at all.
+    expect(byName['backup-api'].ok({ indices: [] })).toBe(true);
+    expect(byName['backup-api'].ok({})).toBe(false);
+  });
+  it('a broken alias fails its own check without touching the primary', async () => {
+    const m = mockFetch({ 'signage-api': { throw: 'TypeError' } });
+    const report = await runHealthChecks({}, m, m);
+    expect(report.results.find((r) => r.name === 'backup-api').ok).toBe(false);
+    expect(report.results.find((r) => r.name === 'markets').ok).toBe(true);
+  });
+});
+
+describe('heartbeat (cron dead-man switch)', () => {
+  it('no-ops without HEARTBEAT_URL (nothing delivered)', async () => {
+    const f = vi.fn();
+    expect(await heartbeat({}, f)).toBe(false);
+    expect(f).not.toHaveBeenCalled();
+  });
+  it('pings the check URL and reports delivery', async () => {
+    const f = vi.fn(() => Promise.resolve({ ok: true, status: 200 }));
+    expect(await heartbeat({ HEARTBEAT_URL: 'https://hc-ping.com/uuid' }, f)).toBe(true);
+    expect(f).toHaveBeenCalledOnce();
+    expect(f.mock.calls[0][0]).toBe('https://hc-ping.com/uuid');
+  });
+  it('reports false on non-2xx and on network failure', async () => {
+    const bad = vi.fn(() => Promise.resolve({ ok: false, status: 500 }));
+    expect(await heartbeat({ HEARTBEAT_URL: 'https://hc-ping.com/uuid' }, bad)).toBe(false);
+    const boom = vi.fn(() => Promise.reject(new Error('net')));
+    expect(await heartbeat({ HEARTBEAT_URL: 'https://hc-ping.com/uuid' }, boom)).toBe(false);
   });
 });
 

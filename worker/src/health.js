@@ -47,6 +47,25 @@ export const CHECKS = [
     ok: (j) => typeof j.station === 'string' && Array.isArray(j.departures),
   },
   {
+    // The rvc.tech failover aliases exist precisely for the moment nobody
+    // would notice them silently broken (cert lapse, route removal, zone
+    // config drift). Probed EXTERNALLY on purpose: DNS + TLS + routing are
+    // the failure modes under test, which selfFetch would bypass. Fetching
+    // our own alias is safe because both bindings are custom_domain (see
+    // wrangler.toml) — Cloudflare allows those as same-worker fetch targets;
+    // the probe simply re-enters as a fresh invocation. Validators are
+    // presence-only so an upstream outage (Yahoo down, empty indices) pages
+    // once via the primary checks, not twice.
+    name: 'backup-api',
+    url: 'https://signage-api.rvc.tech/markets',
+    ok: (j) => Array.isArray(j.indices),
+  },
+  {
+    name: 'backup-site',
+    url: 'https://signage.rvc.tech/version.json',
+    ok: (j) => typeof j.version === 'string' && j.version.length > 3,
+  },
+  {
     name: 'njt', // NJTransit — getStationSchedule is a STATIC daily timetable, so
     // "old" is not "wrong": healthy = the schedule still has a future departure.
     // A prior-day timetable (every train already in the past) is the real
@@ -151,6 +170,26 @@ export function alertPlan(report, prevFailing = []) {
 export function nextFailingState(plan, prevFailing, delivered) {
   if (plan.changed && plan.text && !delivered) return prevFailing;
   return plan.failing;
+}
+
+// Dead-man's switch: the monitor cannot watch itself, so every completed
+// scheduled run pings HEARTBEAT_URL (a healthchecks.io-style check that pages
+// when pings STOP arriving). It fires whether or not dependencies are failing:
+// the ping proves the cron RAN, dep health is the webhook's job. If the run
+// throws before reaching this, no ping goes out and the external check pages —
+// which is exactly the point. No-op until the secret is set, so it deploys
+// ahead of the account setup. Returns whether a ping was delivered.
+export async function heartbeat(env, fetchImpl = fetch) {
+  const url = env?.HEARTBEAT_URL;
+  if (!url) return false;
+  try {
+    const res = await fetchImpl(url, { method: 'POST', signal: AbortSignal.timeout(8000) });
+    if (!res.ok) console.error('[health] heartbeat non-2xx', res.status);
+    return res.ok;
+  } catch (err) {
+    console.error('[health] heartbeat failed', err);
+    return false;
+  }
 }
 
 // Posts a prebuilt message to ALERT_WEBHOOK. Understands Slack incoming webhooks

@@ -22,7 +22,7 @@ import { fetchChart, CHART_TOPICS } from './chart.js';
 import { fetchF1 } from './f1.js';
 import { fetchGolf, fetchTennis } from './scores.js';
 import { fetchAmtrak } from './amtrak.js';
-import { runHealthChecks, notify, alertPlan, nextFailingState } from './health.js';
+import { runHealthChecks, notify, alertPlan, nextFailingState, heartbeat } from './health.js';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -499,6 +499,10 @@ const handlers = {
   // from fetch — so it catches route regressions, not just upstream outages.
   async scheduled(event, env, ctx) {
     const report = await runHealthChecks(env, selfFetch(env));
+    // Dead-man ping AFTER the checks complete: it certifies the whole run, so
+    // a cron that stops firing OR a run that hangs/throws both go silent and
+    // trip the external check (see heartbeat in health.js).
+    ctx.waitUntil(heartbeat(env));
     // Alert only when the failing set changes (see alertPlan), so an ongoing
     // outage doesn't page every 20 min.
     const prevFailing = await readHealthFailing();
