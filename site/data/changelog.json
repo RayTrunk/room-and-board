@@ -3,28 +3,12 @@
     "date": "July 29",
     "items": [
       {
-        "lead": "Sports",
-        "text": "The World Cup card has retired now that the tournament is over. Boards still showing it get the space back, and everything else on the board stays exactly where it was."
-      },
-      {
-        "lead": "Phone setup",
-        "text": "New boards now arrange themselves around what you picked: cards start at sizes that show your teams, lines and tickers, and the layout fills the screen instead of leaving gaps. Pick a lot of cards and the page tells you which ones will end up small. Scanning your board's code still leaves that board's own arrangement exactly as you set it up."
-      },
-      {
-        "lead": "Phone setup",
-        "text": "Setting up from your phone now starts with nothing ticked, so you choose the cards you want instead of unpicking ones you don't. A running count sits under the list, and scanning your board's code still opens with that board's own cards already ticked."
-      },
-      {
         "lead": "Markets",
         "text": "You can now put your tickers in the order you want. Drag a ticker by the arrows on the left of its row, and the list shows a line across it: everything above the line is on the card now, and everything below it is one tap away. Reordering also takes effect straight away instead of waiting a few minutes."
       },
       {
         "lead": "Screensaver",
         "text": "The screensaver now fills the whole display. Photos and artwork are no longer trimmed off at the bottom edge, and the title and artist line sits clear of the information band instead of half behind it. On a Room Navigator the black strip under the picture is gone."
-      },
-      {
-        "lead": "Story view",
-        "text": "Long stories now fit the screen, so the headline and the code to open it on your phone are always visible. A summary too long for the display is trimmed at the end rather than pushed off the top and bottom."
       },
       {
         "lead": "Photos",
@@ -147,10 +131,6 @@
       {
         "lead": "Clock screensavers",
         "text": "An optional daily photo backdrop behind the clock faces. Swipe to see the next one."
-      },
-      {
-        "lead": "World Cup",
-        "text": "The tournament card signed off with Congratulations, Spain!"
       }
     ]
   },
