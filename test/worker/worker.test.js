@@ -403,7 +403,7 @@ describe('/alerts', () => {
     const res = await call('/alerts/subway');
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.alerts).toEqual([{ routes: ['4'], stops: [], header: 'Delays at 14 St.' }]);
+    expect(body.alerts).toEqual([{ routes: ['4'], stops: [], kind: 'service', header: 'Delays at 14 St.' }]);
     const before = calls.length;
     await call('/alerts/subway'); // served from the Cache API inside the TTL
     expect(calls.length).toBe(before);

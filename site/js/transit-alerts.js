@@ -19,6 +19,12 @@ export function cardAlerts(alerts, departures, stopIds) {
       const rs = a.routes ?? [];
       const ss = a.stops ?? [];
       if (!rs.length && !ss.length) return true;
+      // Station-local notices (elevator out, access restricted — the digest's
+      // Mercury-derived kind) follow their STATION: a branch tag alone showed
+      // a Poughkeepsie rider Riverdale's stair closure. Service alerts keep
+      // the branch match, so a line-wide delay tagged with its incident
+      // station still reaches every rider on the line.
+      if (a.kind === 'station') return ss.some((s) => stops.has(s));
       return rs.some((r) => routes.has(r)) || ss.some((s) => stops.has(s));
     })
     .slice(0, 2);

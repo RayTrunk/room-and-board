@@ -1984,20 +1984,10 @@ body.mode-ambient .gear--edit { display: none; }
 /* Overflow badge: a quiet "+N" pinned at the truncation point (bottom-right)
    instead of costing a list row. Safe at every width; stamp is top-anchored. */
 .card__more { position: absolute; right: 26px; bottom: 12px; font-size: 15px; font-weight: 400; letter-spacing: 0; text-transform: none; color: var(--ink-dim); white-space: nowrap; }
-/* Rail +N (expand wave 2): the badge grows into the tap target itself. A
-   well-backed pill, calm at rest and ignited only while pressed (the
-   calm-affordance rule); the ::after inset stretches its hit area to a 44px
-   target without growing the visual. The is-expandable-pill reserve below
-   keeps the last train row clear of it — fitTrainRows re-measures with the
-   class on, so the rows the reserve evicts are counted into the pill. */
-.card__more--pill { background: var(--bg-card-2); border-radius: 10px; padding: 8px 14px; right: 18px; bottom: 14px; font-size: 17px; color: var(--ink-dim); cursor: pointer; }
-.card__more--pill::after { content: ''; position: absolute; inset: -6px -8px; }
-.card__more--pill:active { background: rgba(255, 255, 255, 0.2); color: var(--ink); }
-/* Pill-triggered cards: the card surface itself is not the target, so the
-   whole-card press tint and pointer cursor stay off. */
-.card.is-expandable-pill { cursor: default; }
-.card.is-expandable-pill:active { background: var(--bg-card); }
-.card.is-expandable-pill .trains { padding-bottom: 46px; }
+/* Rail +N (expand wave 2): the whole card is the tap target (the markets
+   grammar, standard .is-expandable affordances above), and the corner badge
+   reads "+N more" as the invitation. The first cut's pill trigger reserved
+   46px under .trains and cost exactly one row on exactly-filled cards. */
 /* Wordless "continues" cue: fade the body's last 22px when items are hidden. */
 .card.has-more .card__body {
   -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 22px), transparent);

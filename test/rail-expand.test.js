@@ -43,22 +43,23 @@ beforeEach(() => {
   document.body.innerHTML = '';
 });
 
-describe('rail +N pill', () => {
-  it('shows a tappable "+N more" pill when departures overflow the card', () => {
+describe('rail +N badge and whole-card expand', () => {
+  it('shows the quiet "+N more" badge when departures overflow: no well, no reserve', () => {
+    // Sean 07-31: the tappable pill's reserve cost a visible row, so the
+    // trigger is the whole card (the markets grammar) and the badge went back
+    // to the quiet corner text — with "more" kept as the tap invitation.
     const { card } = railBoard('lirr', renderLirr, lirrVm(5));
-    const pill = card.querySelector('.card__more');
-    expect(pill).not.toBeNull();
-    expect(pill.classList.contains('card__more--pill')).toBe(true);
-    expect(pill.textContent).toBe('+3 more');
+    const badge = card.querySelector('.card__more');
+    expect(badge).not.toBeNull();
+    expect(badge.classList.contains('card__more--pill')).toBe(false);
+    expect(badge.textContent).toBe('+3 more');
     expect(card.classList.contains('is-expandable')).toBe(true);
-    expect(card.classList.contains('is-expandable-pill')).toBe(true);
+    expect(card.classList.contains('is-expandable-pill')).toBe(false);
   });
 
-  it('opens only from the pill: a tap elsewhere on the card stays inert', () => {
+  it('opens from anywhere on the card, like markets', () => {
     const { card } = railBoard('lirr', renderLirr, lirrVm(5));
     card.querySelector('.card__body').click();
-    expect(isExpandOpen()).toBe(false);
-    card.querySelector('.card__more').click();
     expect(isExpandOpen()).toBe(true);
   });
 
@@ -73,7 +74,7 @@ describe('rail +N pill', () => {
     expect(overlay().querySelector('.trains--board')).not.toBeNull(); // two-column grid
   });
 
-  it('is inert when everything fits: no pill, no expansion', () => {
+  it('is inert when everything fits: no badge, no expansion', () => {
     const { card } = railBoard('lirr', renderLirr, lirrVm(2));
     expect(card.querySelector('.card__more')).toBeNull();
     expect(card.classList.contains('is-expandable')).toBe(false);
@@ -82,15 +83,23 @@ describe('rail +N pill', () => {
     expect(isExpandOpen()).toBe(false);
   });
 
-  it('alert banners no longer pre-charge a train row (the fit and the pill absorb them)', () => {
+  it('alert banners no longer pre-charge a train row (the fit and the badge absorb them)', () => {
     // A 3x2 card promises 2 rows. The old pre-deduction charged each banner a
     // row BEFORE measuring (a 72px banner charged as a 61px row under-filled
     // the card); now the full promise renders and fitTrainRows sheds what
-    // genuinely does not fit into the pill count.
+    // genuinely does not fit into the badge count.
     const vm = { ...lirrVm(5), alerts: [{ routes: [], stops: [], header: 'Delays.' }] };
     const { card } = railBoard('lirr', renderLirr, vm);
     expect(card.querySelectorAll('.train').length).toBe(2);
     expect(card.querySelector('.card__more').textContent).toBe('+3 more');
+  });
+
+  it('never reserves space for the badge: the row count matches capacity exactly', () => {
+    // The whole point of retiring the pill: a 3x2 card promises 2 rows and
+    // draws 2 rows even while the badge is up.
+    const { card } = railBoard('lirr', renderLirr, lirrVm(5));
+    expect(card.querySelectorAll('.train').length).toBe(2);
+    expect(card.querySelector('.trains').style.paddingBottom).toBe('');
   });
 
   it('a capped 99+ row widens the whole card\'s min column so rows stay aligned', () => {
@@ -105,7 +114,7 @@ describe('rail +N pill', () => {
     expect(card.querySelector('.trains').classList.contains('trains--widemin')).toBe(false);
   });
 
-  it('drops the pill and the expansion when a refresh leaves nothing hidden', () => {
+  it('drops the badge and the expansion when a refresh leaves nothing hidden', () => {
     const { card } = railBoard('lirr', renderLirr, lirrVm(5));
     expect(card.classList.contains('is-expandable')).toBe(true);
     renderLirr(card.querySelector('.card__body'), lirrVm(2), {});
@@ -143,7 +152,7 @@ describe('rail +N on the other boards', () => {
     expect(overlay().querySelector('.talert')).toBeNull();
   });
 
-  it('Metro-North: pill and full board', () => {
+  it('Metro-North: badge and full board', () => {
     const vm = { departures: Array.from({ length: 5 }, (_, i) => ({
       t: 1000 + i * 600, min: 10 + i * 10, dest: `Stop ${i}`, destId: String(i),
       branch: 'Harlem', routeId: '2', track: null,
@@ -155,7 +164,7 @@ describe('rail +N on the other boards', () => {
     expect(overlay().querySelector('.expand__title').textContent).toBe('Metro-North');
   });
 
-  it('Ferry: pill and full board', () => {
+  it('Ferry: badge and full board', () => {
     const vm = { landingName: 'Wall St/Pier 11', departures: Array.from({ length: 5 }, (_, i) => ({
       t: 1000 + i * 600, min: 10 + i * 10, dest: `Landing ${i}`, route: null,
     })) };

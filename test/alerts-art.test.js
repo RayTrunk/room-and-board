@@ -39,6 +39,21 @@ describe('mapMtaAlerts', () => {
     expect(row.routes).toEqual(['12']);
     expect(row.stops).toEqual(['55', '56']);
   });
+  it('classifies station-local notices by the Mercury alert type', () => {
+    // Live MNR shape 2026-07-31: "Riverdale station north end access is
+    // restricted" is alert_type "Station Notice", tagged route 1 + stop 16 —
+    // branch-relevant by tag, station-local by nature.
+    const mk = (alert_type) => ({ alert: {
+      'transit_realtime.mercury_alert': { alert_type },
+      informed_entity: [{ route_id: '1' }, { stop_id: '16' }],
+      header_text: { translation: [{ text: 'Riverdale station north end access is restricted.', language: 'en' }] },
+    } });
+    expect(mapMtaAlerts({ entity: [mk('Station Notice')] }, 0)[0].kind).toBe('station');
+    expect(mapMtaAlerts({ entity: [mk('Delays')] }, 0)[0].kind).toBe('service');
+    // No Mercury extension at all: default to service, the show-by-branch side.
+    const bare = { alert: { informed_entity: [{ route_id: '1' }], header_text: { translation: [{ text: 'Delays on the line here.', language: 'en' }] } } };
+    expect(mapMtaAlerts({ entity: [bare] }, 0)[0].kind).toBe('service');
+  });
   it('unions stops for entities sharing a header, like routes', () => {
     const entity = (stop) => ({ alert: { informed_entity: [{ stop_id: stop }], header_text: { translation: [{ text: 'Elevator outage at this station.', language: 'en' }] } } });
     const out = mapMtaAlerts({ entity: [entity('55'), entity('89'), entity('55')] }, 0);

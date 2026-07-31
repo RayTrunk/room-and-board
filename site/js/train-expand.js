@@ -2,12 +2,15 @@
 // NJ Transit, Amtrak, Ferry) — wave 2 of the +N rollout, one wiring because
 // they all render the same .train rows and must behave identically. After a
 // renderer has sliced to capacity, this fits the rows the browser can actually
-// hold, counts what the card is NOT showing, pins the tappable "+N more" pill,
-// and registers the full two-column departures overlay.
+// hold, counts what the card is NOT showing, pins the quiet "+N more" corner
+// badge, and registers the full two-column departures overlay.
 //
-// The pill is the ONLY trigger (setExpandSource's trigger selector): rail rows
-// may become tappable in a later wave, and a whole-card target would collide
-// with that the way it would have with headlines' row taps.
+// The whole card is the target, the markets grammar (Sean, 2026-07-31): the
+// first cut used a pill-only trigger whose touch-target reserve cost a
+// visible train row on exactly-filled cards, a worse trade than reserving
+// rail rows for a hypothetical future row tap. The badge's "more" is the tap
+// invitation; the engine's trigger selector remains available for the news
+// wave, where rows really are tappable.
 
 import { setMoreBadge } from './util.js';
 import { setExpandSource } from './expand.js';
@@ -17,30 +20,13 @@ import { fitTrainRows } from './capacity.js';
 // template — the overlay shows exactly the rows the card would, uncapped. The
 // strings are captured per render, so the tap-time snapshot is this render's.
 export function wireTrainExpand(el, { title, note = '', rows }) {
-  const card = el.closest?.('.card');
-  // A previous render's reserve must not skew this render's first measure:
-  // card classes outlive innerHTML swaps, and with the reserve still on an
-  // exactly-fitting board reads one row short, so the pill would sustain
-  // itself at the boundary. Clean baseline first, then measure.
-  card?.classList?.remove('is-expandable-pill');
   fitTrainRows(el);
-  const count = () => el.querySelectorAll?.('.train').length ?? 0;
-  let hidden = rows.length - count();
-  if (hidden > 0 && card?.classList) {
-    // The pill floats over the card's bottom padding plus the reserve the
-    // is-expandable-pill class adds under .trains — never over a train row.
-    // Adding the reserve can itself evict the row now under it, so re-measure
-    // once with the class on (monotonic, never loops).
-    card.classList.add('is-expandable-pill');
-    fitTrainRows(el);
-    hidden = rows.length - count();
-  }
-  setMoreBadge(el, hidden, { pill: true });
+  const hidden = rows.length - (el.querySelectorAll?.('.train').length ?? 0);
+  setMoreBadge(el, hidden, { verbose: true });
   setExpandSource(
     el,
     hidden > 0
       ? () => ({ title, note, bodyHtml: `<div class="trains trains--board">${rows.join('')}</div>` })
       : null,
-    { trigger: '.card__more' },
   );
 }

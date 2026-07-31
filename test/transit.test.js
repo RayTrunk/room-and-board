@@ -85,6 +85,20 @@ describe('cardAlerts (relevance filter for rail alert banners)', () => {
     expect(cardAlerts(alerts, [], myStops)).toHaveLength(1);
     expect(cardAlerts(alerts, undefined, myStops)).toHaveLength(1);
   });
+  it('station notices need one of MY stations, a branch match is not enough', () => {
+    // The live Riverdale case (2026-07-31): access restricted at a Hudson Line
+    // station, tagged with the Hudson route, shown to a Poughkeepsie rider who
+    // never touches Riverdale. Station-local news follows the station.
+    const riverdale = { kind: 'station', routes: ['1'], stops: ['16'], header: 'Riverdale station north end access is restricted.' };
+    const hudsonCard = [{ routeId: '1' }];
+    expect(cardAlerts([riverdale], hudsonCard, ['1', '43'])).toEqual([]); // GCT + Poughkeepsie
+    expect(cardAlerts([riverdale], hudsonCard, ['1', '16'])).toHaveLength(1); // Riverdale IS my stop
+    // Service alerts keep the branch match: a line-wide delay tagged with an
+    // incident station still reaches every rider on the line.
+    const delay = { kind: 'service', routes: ['1'], stops: ['16'], header: 'Hudson Line delays after an incident at Riverdale.' };
+    expect(cardAlerts([delay], hudsonCard, ['1', '43'])).toHaveLength(1);
+  });
+
   it('tolerates digests without a stops field (mixed rollout)', () => {
     expect(cardAlerts([{ routes: ['1'], header: 'Route match, old digest.' }], departures, myStops)).toHaveLength(1);
     expect(cardAlerts([{ routes: ['4'], header: 'Route miss, old digest.' }], departures, myStops)).toHaveLength(0);

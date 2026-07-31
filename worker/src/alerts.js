@@ -43,7 +43,14 @@ export function mapMtaAlerts(json, nowSec) {
       for (const s of stops) if (!existing.stops.includes(s)) existing.stops.push(s);
       continue;
     }
-    const row = { routes: [...routes], stops: [...stops], header };
+    // The MTA's Mercury extension names each alert's nature. "Station Notice"
+    // (elevator outages, access restrictions, temporary platforms) is local to
+    // its tagged stations even though it also carries a route tag — the cards
+    // filter those by station, not branch. Anything else, or a feed without
+    // the extension, is service news and stays branch-matched.
+    const kind =
+      alert['transit_realtime.mercury_alert']?.alert_type === 'Station Notice' ? 'station' : 'service';
+    const row = { routes: [...routes], stops: [...stops], kind, header };
     byKey.set(key, row);
     out.push(row);
   }

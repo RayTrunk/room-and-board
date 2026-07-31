@@ -16,7 +16,11 @@
       },
       {
         "lead": "Trains and ferries",
-        "text": "When a departure card holds more than it can show, a small +N more sits in its corner. Tap it for the full board: every departure the card knows about, in two columns, with lines and tracks. It closes on its own after a minute, like the other full screen views."
+        "text": "When a departure card holds more than it can show, a small +N more sits in its corner. Tap the card for the full board: every departure it knows about, in two columns, with lines and tracks. It closes on its own after a minute, like the other full screen views."
+      },
+      {
+        "lead": "Train alerts",
+        "text": "Notices about a single station, like an elevator outage or a closed entrance, now show only when that station is one of yours. Line-wide service alerts still reach everyone riding the line."
       },
       {
         "lead": "LIRR",
