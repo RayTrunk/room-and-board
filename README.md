@@ -128,14 +128,18 @@ from your phone at `/setup`). Configurable list widgets (markets, sports, world
 clock, headlines, Substack, Bluesky) ship with sensible starter entries you can
 remove like any other.
 
-**Tap to expand.** Four cards hold more than fits: **Markets**, **Subway**,
-**Weather** and **Surf** open a full-screen view of everything they *already
-fetched* — the contents of the quiet "+N" badge — with no extra request. The
-overlay closes itself after 60 seconds without a touch, so a board someone
-walked away from returns to its resting state on its own
-(`site/js/expand.js`). Other long text (a headline, a quote, an incident
-detail) taps into the shared reader instead, which for a news story adds a QR
-code to the article.
+**Tap to expand.** Nine cards hold more than fits: **Markets**, **Subway**,
+**Weather** and **Surf**, plus the five rail boards (**LIRR**, **Metro-North**,
+**NJ Transit**, **Amtrak**, **Ferry**), open a full-screen view of everything
+they *already fetched* — the contents of the quiet "+N more" badge — with no
+extra request. The rail board sizes itself to its list: one grand centered
+column up to six departures, two balanced columns beyond. A service-alert
+banner on a rail card is its own tap target and opens that alert's full text,
+including details the two-line banner clamps away. Every overlay closes itself
+after 60 seconds without a touch, so a board someone walked away from returns
+to its resting state on its own (`site/js/expand.js`). Other long text (a
+headline, a quote, an incident detail) taps into the shared reader instead,
+which for a news story adds a QR code to the article.
 
 ### Commute
 
@@ -224,14 +228,18 @@ One location drives all three cards.
 ### Sports
 
 - **My Teams** — one glanceable row per followed team: live score, final, or
-  next game, with the last result. *Configure:* Settings → My Teams (up to 6,
-  across MLB/NFL/NBA/NHL/MLS/EPL).
+  next game, with the last result. *Configure:* Settings → Sports → My Teams
+  (up to 6, across MLB/NFL/NBA/NHL/MLS/EPL).
 - **Sports News** — newest sports stories merged across the sources you enable
-  (ESPN, CBS Sports and Yahoo Sports on by default; BBC Sport and Guardian
-  Sport opt-in). An optional "Only my teams" switch narrows the card to
-  stories naming a team you follow in My Teams. Matching runs over the whole
-  fetched feed, on the headline and its summary, so a nickname-only mention
-  can still slip past. *Configure:* Settings → My Teams → Sports News.
+  (ESPN, CBS Sports, Yahoo Sports and The Athletic on by default; BBC Sport
+  and Guardian Sport opt-in). Sport chips narrow the card to particular sports
+  (MLB, NFL, NBA, NHL, MLS, F1, Golf, Tennis) by switching to the per-sport
+  feeds of your enabled outlets; ESPN publishes none, so it contributes only
+  in all-sports mode. The "Only my teams" switch takes over instead: the card
+  reads your teams' league sections directly and keeps only stories naming a
+  team you follow (matched on headline and summary, so a nickname-only mention
+  can still slip past; the chips gray out while the switch owns the sports).
+  *Configure:* Settings → Sports → Sports News.
 - **Formula 1** — next Grand Prix, last race's podium, and the driver and
   constructor standings. Team-colour dots and driver country flags; the layout
   adapts to the card size (standings side-by-side when wide, stacked when
@@ -253,7 +261,11 @@ One location drives all three cards.
   Settings → Bluesky (type the handle; a one-tap `.bsky.social` key helps).
 
 All three share one renderer, and a row taps into the story reader: headline,
-summary, and a QR code that hands the article to your phone.
+summary, and a QR code that hands the article to your phone. Headlines,
+Markets News and Sports News also share cross-outlet de-duplication: when
+several outlets cover the same story inside one news cycle, the card keeps the
+freshest telling and drops the rest (Substack and Bluesky are deliberately
+exempt — you follow those authors, not the story).
 
 ### Images
 
@@ -690,6 +702,8 @@ welcome screen; re-enter a setup code to restore.
 | Google Drive API | Worker + free key | `wrangler secret put GDRIVE_KEY` (free Cloud project, Drive API enabled, key restricted to it); the GDrive Photos widget reports unconfigured until set. The same route serves the built-in curated folders (Landscapes, the clock backdrop) — those folder ids are public and link-shared; only the key is secret. Lists images sitting directly in the folder — subfolders aren't traversed |
 | Service status pages | Worker proxy, no keys | Statuspage instances (Zoom/Ubiquiti/Cloudflare/GitHub/Claude) + OpenAI (incident.io compat) + Slack/Microsoft/Google/Webex/AWS public JSON; failures report "Unknown", never fake green. Several deliver incident prose as HTML, so the Worker reduces it to plain text at the data boundary (`worker/src/htmltext.js`) instead of letting the board's escape-on-render print the tags out literally |
 | NASA APOD | Worker + free key | `wrangler secret put NASA_KEY` (free key from api.nasa.gov); falls back to `DEMO_KEY` when unset — viable because the 1h fleet-shared cache stays under DEMO_KEY's daily cap, but the real key is preferred |
+| Health alerts (optional) | Worker webhook | `wrangler secret put ALERT_WEBHOOK` (a Slack incoming-webhook or ntfy.sh URL); the 20-minute health cron posts only state *changes*, so an ongoing outage pages once. Unset, alerts go to Workers Logs |
+| Dead-man heartbeat (optional) | Worker ping | `wrangler secret put HEARTBEAT_URL` (a healthchecks.io-style check, ~20-minute period with grace); the cron pings it after each *completed* run, so a cron that stops firing — or a run that dies — goes silent and the external check pages. The monitor cannot watch itself |
 | Statista Chart of the Day | Worker, keyless | No feed exists — the worker scrapes the listing page (session-cookie SSO bounce walked manually, see `worker/src/chart.js`), cached 1 h; boards hotlink the infographic from `cdn.statcdn.com` (probe-verified: no referer/cookie checks). Scrape breaks if Statista reworks the page markup |
 | ESPN site API (sports) | Worker + browser | live scores join the league scoreboard Worker-side (team feed nulls them mid-game) |
 | Amtraker (Amtrak) | Worker, keyless | unofficial community API (no official public Amtrak feed); worker filters the all-trains feed to NYP departures, caches 60 s fleet-wide, empty/stale-tolerant; destination filter is client-side over each train's downstream stops (`worker/src/amtrak.js`) |
