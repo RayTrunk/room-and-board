@@ -316,33 +316,27 @@ export function swipeMode() {
   return document.documentElement.style.zoom ? 'cut' : 'drift';
 }
 
-// Swiped swap for a single background-image element (the clock backdrop): the
-// outgoing photo lives on as a ghost overlay fading out while `apply` swaps
-// the element underneath, which drifts in when the device can afford it. The
-// ghost copies its look inline because the element is styled by id.
-export function swipeBackdropSwap(el, dir, apply) {
-  if (swipeMode() === 'cut') { apply(); return; } // scaled panels: atomic, no ghost to raster
-  const cs = getComputedStyle(el);
-  const ghost = document.createElement('div');
-  ghost.className = 'swipe-ghost';
-  ghost.style.backgroundImage = el.style.backgroundImage || cs.backgroundImage;
-  ghost.style.backgroundSize = cs.backgroundSize;
-  ghost.style.backgroundPosition = cs.backgroundPosition;
-  el.after(ghost);
-  const drift = DRIFT_PX;
-  if (drift) {
-    el.style.transition = 'none';
-    el.style.transform = `translateX(${dir * drift}px)`;
-  }
-  apply();
-  void ghost.offsetWidth; // flush, so both halves start THIS frame
-  ghost.style.opacity = '0';
-  if (drift) {
-    ghost.style.transform = `translateX(${-dir * drift}px)`;
-    el.style.transition = SWIPE_EASE;
-    el.style.transform = '';
-  }
-  setTimeout(() => { ghost.remove(); el.style.transition = ''; }, 400);
+// Swiped swap for the clock backdrop, Sean's call after two rounds of
+// Navigator flashes: reuse the initial-load grammar (backdrop-in) on EVERY
+// device. Fade the one existing layer down to the dark base, swap while
+// invisible, fade back up. One opacity animation, no ghost, no new layer —
+// nothing is ever rastered while visible, so the weakest panel cannot flash.
+// The fade-out starting on the gesture IS the acknowledgment; `ready` (the
+// decode) rides inside the dark beat and extends it when the network is slow
+// rather than ever showing a half-ready photo. Reduced motion swaps plainly.
+export const BACKDROP_OUT_MS = 350;
+export function swipeBackdropFade(el, ready, apply) {
+  if (reducedMotion()) { Promise.resolve(ready).then(apply); return; }
+  el.style.transition = `opacity ${BACKDROP_OUT_MS}ms ease-out`;
+  el.style.opacity = '0';
+  const dark = new Promise((r) => setTimeout(r, BACKDROP_OUT_MS + 30));
+  Promise.all([ready, dark]).then(() => {
+    apply();
+    void el.offsetWidth; // flush the dark frame, so the rise starts from 0
+    el.style.transition = 'opacity 600ms ease-out'; // the unhurried half, like backdrop-in
+    el.style.opacity = '';
+    setTimeout(() => { el.style.transition = ''; }, 650);
+  });
 }
 
 function step(viewer, dir) {

@@ -10,7 +10,7 @@ import { registerWidget, getWidget } from './registry.js';
 import { chooseBootConfig } from './boot.js';
 import { parseFragment } from './bridge.js';
 import { stripData, stripHtml } from './ambient.js';
-import { createSlideshow, swipeAction, swipeBackdropSwap, loadImage } from './imageshow.js';
+import { createSlideshow, swipeAction, swipeBackdropFade, loadImage } from './imageshow.js';
 import { startBeacon } from './fleet.js';
 import { DEMO_VMS, DEMO_NOW_MS } from '../demo/fixtures.js';
 import { initTextViewer } from './textviewer.js';
@@ -250,15 +250,10 @@ function showBackdrop() {
 function stepBackdrop(dir) {
   if (backdropList.length < 2 || $('#backdrop').hidden) return;
   backdropIndex = (backdropIndex + dir + backdropList.length) % backdropList.length;
-  // loadImage, not bare onload: onload fires when BYTES arrive, decode() when
-  // the BITMAP is ready — and the gap between the two is what a Navigator
-  // painted as a flash of the black fallback (Sean, on-device, 2026-08-01;
-  // the old comment said "decode first" while gating on onload). loadImage
-  // never rejects, so a dead URL still swaps and the div bg retries as slides
-  // do. Then answer the swipe: drift-fade ghost on full boards, atomic cut on
-  // scaled panels (swipeBackdropSwap decides).
-  loadImage(new Image(), backdropList[backdropIndex].img).then(() =>
-    swipeBackdropSwap($('#backdrop'), dir, showBackdrop));
+  // Fade-to-dark, swap, fade back — the initial-load grammar on every device
+  // (see swipeBackdropFade). The fade-out starts NOW as the acknowledgment;
+  // the decode (loadImage: decode-gated, never rejects) rides the dark beat.
+  swipeBackdropFade($('#backdrop'), loadImage(new Image(), backdropList[backdropIndex].img), showBackdrop);
 }
 
 // Shows/hides the daily photo behind a clock face. Async (folder fetch), so a

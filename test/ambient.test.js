@@ -2,7 +2,7 @@
  * @vitest-environment happy-dom
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { createSlideshow, swipeAction, swipeBackdropSwap } from '../site/js/imageshow.js';
+import { createSlideshow, swipeAction, swipeBackdropFade, BACKDROP_OUT_MS } from '../site/js/imageshow.js';
 import { stripData, stripHtml } from '../site/js/ambient.js';
 import { ambientSource } from '../site/js/modes.js';
 import { resolvePhotosManifest } from '../site/js/photos-manifest.js';
@@ -79,33 +79,43 @@ describe('createSlideshow', () => {
     }
   });
 
-  it('the backdrop swap also cuts on scaled panels: no ghost is ever created', () => {
-    document.documentElement.style.zoom = '0.326';
+  it('backdrop swipes fade out, swap in the dark, fade back in — same on every device', async () => {
+    // Sean's call 2026-08-01, after two rounds of Navigator flashes: the
+    // backdrop reuses its initial-load grammar. One opacity animation on one
+    // existing layer; the swap happens while invisible, so nothing new is
+    // ever rastered on screen and there is nothing to flash.
+    const el = document.createElement('div');
+    el.style.backgroundImage = 'url("old.jpg")';
+    document.documentElement.style.zoom = '0.326'; // even scaled panels take this path
     try {
-      const el = document.createElement('div');
-      el.style.backgroundImage = 'url("old.jpg")';
-      const parent = document.createElement('div');
-      parent.append(el);
-      swipeBackdropSwap(el, 1, () => { el.style.backgroundImage = 'url("new.jpg")'; });
-      expect(parent.querySelector('.swipe-ghost')).toBeNull();
+      let applied = false;
+      swipeBackdropFade(el, Promise.resolve(), () => {
+        applied = true;
+        el.style.backgroundImage = 'url("new.jpg")';
+      });
+      expect(el.style.opacity).toBe('0'); // the fade-out IS the instant acknowledgment
+      expect(applied).toBe(false); // the swap waits for the dark beat
+      await vi.advanceTimersByTimeAsync(BACKDROP_OUT_MS + 50);
+      expect(applied).toBe(true);
       expect(el.style.backgroundImage).toContain('new.jpg');
+      expect(el.style.opacity).toBe(''); // fading back in
+      expect(document.querySelector('.swipe-ghost')).toBeNull(); // no ghost, ever
     } finally {
       document.documentElement.style.zoom = '';
     }
   });
 
-  it('swipeBackdropSwap crossfades a background div through a ghost', async () => {
+  it('a slow decode extends the dark beat instead of flashing a half-ready photo', async () => {
     const el = document.createElement('div');
-    el.style.backgroundImage = 'url("old.jpg")';
-    const parent = document.createElement('div');
-    parent.append(el);
-    swipeBackdropSwap(el, 1, () => { el.style.backgroundImage = 'url("new.jpg")'; });
-    const ghost = parent.querySelector('.swipe-ghost');
-    expect(ghost).not.toBeNull();
-    expect(ghost.style.backgroundImage).toContain('old.jpg'); // outgoing photo lives on the ghost
-    expect(el.style.backgroundImage).toContain('new.jpg');
-    await vi.advanceTimersByTimeAsync(500);
-    expect(parent.querySelector('.swipe-ghost')).toBeNull(); // reaped after the fade
+    let ready;
+    const decode = new Promise((r) => { ready = r; });
+    let applied = false;
+    swipeBackdropFade(el, decode, () => { applied = true; });
+    await vi.advanceTimersByTimeAsync(BACKDROP_OUT_MS + 200); // out finished long ago
+    expect(applied).toBe(false); // still dark: the bitmap is not ready
+    ready();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(applied).toBe(true);
   });
 
   it('leaves the caption empty for a titleless photo (no stray grey box)', async () => {
