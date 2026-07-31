@@ -6,7 +6,7 @@
 // undecoded bitmap on the glass and must not rebuild the <img> for a photo that
 // has not changed.
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { renderImageCard, loadImage, CARD_FADE_MS } from '../site/js/imageshow.js';
+import { renderImageCard, loadImage, CARD_FADE_MS, openImageViewer } from '../site/js/imageshow.js';
 import * as art from '../site/js/widgets/art.js';
 import * as landscapes from '../site/js/widgets/landscapes.js';
 import * as apod from '../site/js/widgets/apod.js';
@@ -291,6 +291,28 @@ describe('every rotating image card shares the surface', () => {
     expect(shown(el)).toEqual(['https://x.test/art-a.jpg', 'https://x.test/art-b.jpg']);
     endTransition(imgs(el).at(-1));
     expect(el.querySelector('.artwork__artist').textContent).toBe('Vroom (1620)');
+  });
+
+  it('a viewer swipe crossfades: new photo in, ghost of the old drifting out, neighbors warmed', async () => {
+    document.querySelector('#art-viewer')?.remove();
+    const list = [
+      { img: 'https://x.test/s1.jpg', title: 'One' },
+      { img: 'https://x.test/s2.jpg', title: 'Two' },
+      { img: 'https://x.test/s3.jpg', title: 'Three' },
+    ];
+    openImageViewer(list[0], CFG, { list });
+    const viewer = document.querySelector('#art-viewer');
+    viewer.dispatchEvent(new PointerEvent('pointerdown', { clientX: 300, bubbles: true }));
+    viewer.dispatchEvent(new PointerEvent('pointerup', { clientX: 100, bubbles: true })); // 200px left = next
+    await settle();
+    const img = viewer.querySelector('.art-viewer__img:not(.art-viewer__img--ghost)');
+    expect(img.getAttribute('src')).toBe('https://x.test/s2.jpg');
+    // The outgoing photo crossfades out as a positioned ghost, so the swap is
+    // a dissolve rather than a blink through black.
+    expect(viewer.querySelector('.art-viewer__img--ghost')).not.toBeNull();
+    // Both neighbors were queued to decode, so the next swipe starts instantly.
+    expect(pending.length).toBeGreaterThanOrEqual(2);
+    document.querySelector('#art-viewer')?.remove();
   });
 
   it('landscapes/photos dissolve, and a tap opens the photo that is actually showing', async () => {

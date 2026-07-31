@@ -35,6 +35,25 @@ describe('createSlideshow', () => {
     vi.unstubAllGlobals();
   });
 
+  it('a swiped step answers with the fast drift class; the ambient advance never does', async () => {
+    const host = document.createElement('div');
+    const show = createSlideshow(
+      [{ img: 'a.jpg' }, { img: 'b.jpg' }, { img: 'c.jpg' }],
+      host, { intervalMs: 1000, random: () => 0.4 },
+    );
+    show.start();
+    await vi.advanceTimersByTimeAsync(0);
+    const layers = [...host.querySelectorAll('.slide')];
+    expect(layers.some((l) => l.classList.contains('slide--swipe'))).toBe(false);
+    show.step(1);
+    await vi.advanceTimersByTimeAsync(0);
+    // Both halves of the crossfade run at the swipe pace, and the incoming
+    // layer got its drift offset before easing home.
+    expect(layers.every((l) => l.classList.contains('slide--swipe'))).toBe(true);
+    await vi.advanceTimersByTimeAsync(1000); // the next AUTO advance restores the slow dissolve
+    expect(layers.some((l) => l.classList.contains('slide--swipe'))).toBe(false);
+  });
+
   it('leaves the caption empty for a titleless photo (no stray grey box)', async () => {
     const host = document.createElement('div');
     const show = createSlideshow(

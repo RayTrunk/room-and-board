@@ -289,22 +289,64 @@ export function openImageViewer(current, cfg, { list = [], caption = true, strip
   viewerList = Array.isArray(list) ? list : [];
   viewerIndex = viewerList.findIndex((a) => a.img === current.img);
   viewer.hidden = false;
+  warmNeighbors();
 }
 
 // Swap in place: preload+decode first (slideshow pattern), then update img +
 // caption.  Swapping only a decoded bitmap keeps a swipe from flashing a
-// half-drawn photo across the full screen.
+// half-drawn photo across the full screen. The swap itself is a directional
+// crossfade (Sean's pick, mockup D): the outgoing photo lives on as a
+// positioned ghost drifting out while the real element eases in 36px from the
+// swipe side — a dissolve, never a blink through black. Reduced motion swaps
+// instantly, the pre-existing behavior.
+const SWIPE_EASE = 'opacity 320ms cubic-bezier(0.22, 1, 0.36, 1), transform 320ms cubic-bezier(0.22, 1, 0.36, 1)';
+
 function step(viewer, dir) {
   if (!viewerList?.length) return;
   userStepped = true;
   viewerIndex = (viewerIndex + dir + viewerList.length) % viewerList.length;
   const item = viewerList[viewerIndex];
   loadImage(new Image(), item.img).then(() => {
-    const imgEl = viewer.querySelector('.art-viewer__img');
+    const imgEl = viewer.querySelector('.art-viewer__img:not(.art-viewer__img--ghost)');
+    const reduce = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (!reduce) {
+      viewer.querySelector('.art-viewer__img--ghost')?.remove(); // a double swipe retargets: one ghost at a time
+      const ghost = imgEl.cloneNode();
+      ghost.classList.add('art-viewer__img--ghost');
+      // AFTER the live element: the ghost paints on top while it fades (the
+      // classic crossfade order), and every plain '.art-viewer__img' query in
+      // this file and the tests keeps finding the live element first.
+      imgEl.after(ghost);
+      void ghost.offsetWidth;
+      ghost.style.transform = `translateX(${-dir * 36}px)`;
+      ghost.style.opacity = '0';
+      setTimeout(() => ghost.remove(), 400);
+      imgEl.style.transition = 'none';
+      imgEl.style.transform = `translateX(${dir * 36}px)`;
+      imgEl.style.opacity = '0';
+    }
     imgEl.src = item.img;
     imgEl.alt = item.title ?? '';
+    if (!reduce) {
+      void imgEl.offsetWidth;
+      imgEl.style.transition = SWIPE_EASE;
+      imgEl.style.transform = '';
+      imgEl.style.opacity = '';
+    }
     renderViewerCaption(viewer, item);
+    warmNeighbors();
   });
+}
+
+// Decode the swipe targets ahead of the gesture, so the transition starts the
+// moment the finger lifts instead of after a network round trip — the gap
+// that makes people doubt the swipe registered and swipe again.
+function warmNeighbors() {
+  if (!viewerList?.length || viewerList.length < 2) return;
+  for (const d of [1, -1]) {
+    const n = viewerList[(viewerIndex + d + viewerList.length) % viewerList.length];
+    if (n) loadImage(new Image(), n.img);
+  }
 }
 
 // Ambient slideshow engine: two stacked layers, crossfade via [data-active].
@@ -339,8 +381,25 @@ export function createSlideshow(manifest, host, { intervalMs = 75000, random = M
     return manifest[order[pos]];
   }
 
-  function show(item) {
+  function show(item, swipeDir = 0) {
     const next = layers[1 - active];
+    const out = layers[active];
+    // A swipe answers the gesture (Sean's pick, mockup D): both halves of the
+    // crossfade run at 320ms with a 36px drift in the swipe direction, vs the
+    // ambient advance's slow dissolve. The class carries the fast timing; the
+    // offsets are one-shot inline transforms, cleared on the next show.
+    next.classList.toggle('slide--swipe', swipeDir !== 0);
+    out.classList.toggle('slide--swipe', swipeDir !== 0);
+    if (swipeDir) {
+      next.style.transition = 'none';
+      next.style.transform = `translateX(${swipeDir * 36}px)`;
+      void next.offsetWidth; // flush, so the drift starts THIS frame
+      next.style.transition = '';
+      out.style.transform = `translateX(${-swipeDir * 36}px)`;
+    } else {
+      next.style.transform = '';
+      out.style.transform = '';
+    }
     next.style.backgroundImage = `url("${item.img}")`;
     // Fit mode. 'contain' letterboxes on black — art and personal photos are
     // never cropped and look the same in ambient as when tapped into (the
@@ -364,7 +423,7 @@ export function createSlideshow(manifest, host, { intervalMs = 75000, random = M
     loadImage(new Image(), item.img).then(() => done());
   }
 
-  function advance() {
+  function advance(swipeDir = 0) {
     if (stopped) return;
     const item = itemAt(pos);
     pos += 1;
@@ -372,8 +431,8 @@ export function createSlideshow(manifest, host, { intervalMs = 75000, random = M
       // stop() during an in-flight preload must not resurrect the loop: the
       // pending onload/onerror would otherwise schedule an uncancellable chain.
       if (stopped) return;
-      show(item);
-      timer = setTimeout(advance, intervalMs);
+      show(item, swipeDir);
+      timer = setTimeout(() => advance(), intervalMs);
     });
   }
 
@@ -395,7 +454,7 @@ export function createSlideshow(manifest, host, { intervalMs = 75000, random = M
       if (stopped || !manifest.length) return;
       clearTimeout(timer);
       if (dir > 0) {
-        advance();
+        advance(1);
         return;
       }
       pos = (pos - 2 + order.length) % order.length;
@@ -403,8 +462,8 @@ export function createSlideshow(manifest, host, { intervalMs = 75000, random = M
       pos += 1;
       preload(item, () => {
         if (stopped) return;
-        show(item);
-        timer = setTimeout(advance, intervalMs);
+        show(item, -1);
+        timer = setTimeout(() => advance(), intervalMs);
       });
     },
     current() {
