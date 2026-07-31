@@ -1316,14 +1316,38 @@ body.mode-ambient .gear--edit { display: none; }
    — so the same rules give the same 41.6px gap on a 1040 board, a 1200 Room
    Navigator and an 1080 desktop preview. */
 .expand__body { flex: 1; min-height: 0; margin-top: 36px; padding-bottom: 100px; }
-/* The rail overlay's departures board: the cards' own .train rows dealt down
-   two columns, soonest first (column flow keeps the list chronological top to
-   bottom). Six 51px rows and five 14px gaps are 376px of the 814px canvas, so
-   the feeds' 12-departure cap can never overflow it. */
+/* The rail overlay's departures board sizes to its content (Sean's pick,
+   2026-07-31): up to six trains stand in ONE grand centered column at roughly
+   double the card's row scale; beyond six the same rows deal into two
+   balanced centered columns a step smaller (--board-rows = ceil(n/2), set
+   inline by train-expand.js). Worst cases inside the 814px body: grand, six
+   68px rows on 40px gaps = 608px; split, six 50px rows on 24px gaps = 420px.
+   Widths are fixed per row so left edges align while the block centers. */
 .expand__body .trains--board {
-  display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: repeat(6, min-content);
-  grid-auto-flow: column; gap: 14px 64px; align-content: start; overflow: hidden;
+  height: 100%; display: flex; flex-direction: column;
+  justify-content: center; align-items: center; gap: 40px; overflow: hidden;
 }
+.trains--board .train { gap: 24px; }
+.trains--board--grand .train { width: 760px; }
+.trains--board--grand .train__min { min-width: 165px; }
+.trains--board--grand .train__min span { font-size: 56px; }
+.trains--board--grand .train__min small { font-size: 22px; }
+.trains--board--grand .train__dest { font-size: 34px; }
+.trains--board--grand .train__line { font-size: 26px; }
+.trains--board--grand .train__linechip { font-size: 21px; line-height: 23px; padding: 3px 12px; border-radius: 8px; }
+.trains--board--grand .train__track { font-size: 26px; padding: 8px 14px; }
+.expand__body .trains--board--split {
+  display: grid; grid-template-columns: repeat(2, 660px);
+  grid-template-rows: repeat(var(--board-rows, 6), min-content);
+  grid-auto-flow: column; gap: 24px 80px; justify-content: center; align-content: center;
+}
+.trains--board--split .train__min { min-width: 120px; }
+.trains--board--split .train__min span { font-size: 40px; }
+.trains--board--split .train__min small { font-size: 20px; }
+.trains--board--split .train__dest { font-size: 28px; }
+.trains--board--split .train__line { font-size: 22px; }
+.trains--board--split .train__linechip { font-size: 18px; line-height: 20px; padding: 2px 10px; }
+.trains--board--split .train__track { font-size: 22px; padding: 6px 12px; }
 .expand__hint {
   position: absolute; left: 0; right: 0; bottom: 32px;
   text-align: center; font-size: 22px; line-height: 1.2; color: var(--ink-faint);

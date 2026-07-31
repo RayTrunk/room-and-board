@@ -26,7 +26,16 @@ export function wireTrainExpand(el, { title, note = '', rows }) {
   setExpandSource(
     el,
     hidden > 0
-      ? () => ({ title, note, bodyHtml: `<div class="trains trains--board">${rows.join('')}</div>` })
+      ? () => {
+          // The board sizes to its content (Sean's pick, mockup A): up to six
+          // trains fill one grand centered column; beyond that the same rows
+          // split into two balanced centered columns a step smaller. rows is
+          // snapshot-at-open, so the shape is fixed for the overlay's life.
+          const split = rows.length > 6;
+          const cls = `trains trains--board trains--board--${split ? 'split' : 'grand'}`;
+          const style = split ? ` style="--board-rows:${Math.ceil(rows.length / 2)}"` : '';
+          return { title, note, bodyHtml: `<div class="${cls}"${style}>${rows.join('')}</div>` };
+        }
       : null,
   );
 }

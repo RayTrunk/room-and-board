@@ -71,7 +71,25 @@ describe('rail +N badge and whole-card expand', () => {
     expect(overlay().querySelector('.expand__title').textContent).toBe('LIRR');
     expect(overlay().querySelector('.expand__note').textContent).toBe('stops at Rockville Centre');
     expect(overlay().textContent).toContain('Track 18'); // tracks carried through
-    expect(overlay().querySelector('.trains--board')).not.toBeNull(); // two-column grid
+    expect(overlay().querySelector('.trains--board')).not.toBeNull();
+  });
+
+  it('scales the board to its content: one grand column up to six trains', () => {
+    // Sean 07-31: six small rows huddled on a 1920px canvas read as a bug.
+    const { card } = railBoard('lirr', renderLirr, lirrVm(5));
+    card.querySelector('.card__more').click();
+    const board = overlay().querySelector('.trains--board');
+    expect(board.classList.contains('trains--board--grand')).toBe(true);
+    expect(board.classList.contains('trains--board--split')).toBe(false);
+  });
+
+  it('splits into two balanced columns beyond six trains', () => {
+    const { card } = railBoard('lirr', renderLirr, lirrVm(9));
+    card.querySelector('.card__more').click();
+    const board = overlay().querySelector('.trains--board');
+    expect(board.classList.contains('trains--board--split')).toBe(true);
+    // 9 trains balance as 5 + 4, not 6 + 3.
+    expect(board.style.getPropertyValue('--board-rows')).toBe('5');
   });
 
   it('is inert when everything fits: no badge, no expansion', () => {
