@@ -3,6 +3,18 @@
     "date": "July 31",
     "items": [
       {
+        "lead": "New card: Teams News",
+        "text": "Sports headlines on the board, merged newest first from ESPN, CBS Sports and Yahoo Sports, with BBC Sport and Guardian Sport there if you want them. Add it from the pencil button or Settings, under Sports."
+      },
+      {
+        "lead": "Only my teams",
+        "text": "A switch in Settings under My Teams, Teams News narrows the card to stories that name one of the teams you already follow. It starts off. Matching reads the headline and its summary, so a story that calls a team by a nickname alone can slip past."
+      },
+      {
+        "lead": "Settings",
+        "text": "My Teams is now a group in the settings list holding both the scores card and Teams News, the same way Markets holds Markets and Markets News."
+      },
+      {
         "lead": "Trains and ferries",
         "text": "When a departure card holds more than it can show, a small +N more sits in its corner. Tap it for the full board: every departure the card knows about, in two columns, with lines and tracks. It closes on its own after a minute, like the other full screen views."
       },

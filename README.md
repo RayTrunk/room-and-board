@@ -226,6 +226,12 @@ One location drives all three cards.
 - **My Teams** — one glanceable row per followed team: live score, final, or
   next game, with the last result. *Configure:* Settings → My Teams (up to 6,
   across MLB/NFL/NBA/NHL/MLS/EPL).
+- **Teams News** — newest sports stories merged across the sources you enable
+  (ESPN, CBS Sports and Yahoo Sports on by default; BBC Sport and Guardian
+  Sport opt-in). An optional "Only my teams" switch narrows the card to
+  stories naming a team you follow in My Teams. Matching runs over the whole
+  fetched feed, on the headline and its summary, so a nickname-only mention
+  can still slip past. *Configure:* Settings → My Teams → Teams News.
 - **Formula 1** — next Grand Prix, last race's podium, and the driver and
   constructor standings. Team-colour dots and driver country flags; the layout
   adapts to the card size (standings side-by-side when wide, stacked when

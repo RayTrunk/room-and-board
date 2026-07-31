@@ -9,152 +9,182 @@
     {
      "id": "29",
      "abbr": "ARI",
-     "name": "Arizona Diamondbacks"
+     "name": "Arizona Diamondbacks",
+     "nick": "Diamondbacks"
     },
     {
      "id": "11",
      "abbr": "ATH",
-     "name": "Athletics"
+     "name": "Athletics",
+     "nick": "Athletics"
     },
     {
      "id": "15",
      "abbr": "ATL",
-     "name": "Atlanta Braves"
+     "name": "Atlanta Braves",
+     "nick": "Braves"
     },
     {
      "id": "1",
      "abbr": "BAL",
-     "name": "Baltimore Orioles"
+     "name": "Baltimore Orioles",
+     "nick": "Orioles"
     },
     {
      "id": "2",
      "abbr": "BOS",
-     "name": "Boston Red Sox"
+     "name": "Boston Red Sox",
+     "nick": "Red Sox"
     },
     {
      "id": "16",
      "abbr": "CHC",
-     "name": "Chicago Cubs"
+     "name": "Chicago Cubs",
+     "nick": "Cubs"
     },
     {
      "id": "4",
      "abbr": "CHW",
-     "name": "Chicago White Sox"
+     "name": "Chicago White Sox",
+     "nick": "White Sox"
     },
     {
      "id": "17",
      "abbr": "CIN",
-     "name": "Cincinnati Reds"
+     "name": "Cincinnati Reds",
+     "nick": "Reds"
     },
     {
      "id": "5",
      "abbr": "CLE",
-     "name": "Cleveland Guardians"
+     "name": "Cleveland Guardians",
+     "nick": "Guardians"
     },
     {
      "id": "27",
      "abbr": "COL",
-     "name": "Colorado Rockies"
+     "name": "Colorado Rockies",
+     "nick": "Rockies"
     },
     {
      "id": "6",
      "abbr": "DET",
-     "name": "Detroit Tigers"
+     "name": "Detroit Tigers",
+     "nick": "Tigers"
     },
     {
      "id": "18",
      "abbr": "HOU",
-     "name": "Houston Astros"
+     "name": "Houston Astros",
+     "nick": "Astros"
     },
     {
      "id": "7",
      "abbr": "KC",
-     "name": "Kansas City Royals"
+     "name": "Kansas City Royals",
+     "nick": "Royals"
     },
     {
      "id": "3",
      "abbr": "LAA",
-     "name": "Los Angeles Angels"
+     "name": "Los Angeles Angels",
+     "nick": "Angels"
     },
     {
      "id": "19",
      "abbr": "LAD",
-     "name": "Los Angeles Dodgers"
+     "name": "Los Angeles Dodgers",
+     "nick": "Dodgers"
     },
     {
      "id": "28",
      "abbr": "MIA",
-     "name": "Miami Marlins"
+     "name": "Miami Marlins",
+     "nick": "Marlins"
     },
     {
      "id": "8",
      "abbr": "MIL",
-     "name": "Milwaukee Brewers"
+     "name": "Milwaukee Brewers",
+     "nick": "Brewers"
     },
     {
      "id": "9",
      "abbr": "MIN",
-     "name": "Minnesota Twins"
+     "name": "Minnesota Twins",
+     "nick": "Twins"
     },
     {
      "id": "21",
      "abbr": "NYM",
-     "name": "New York Mets"
+     "name": "New York Mets",
+     "nick": "Mets"
     },
     {
      "id": "10",
      "abbr": "NYY",
-     "name": "New York Yankees"
+     "name": "New York Yankees",
+     "nick": "Yankees"
     },
     {
      "id": "22",
      "abbr": "PHI",
-     "name": "Philadelphia Phillies"
+     "name": "Philadelphia Phillies",
+     "nick": "Phillies"
     },
     {
      "id": "23",
      "abbr": "PIT",
-     "name": "Pittsburgh Pirates"
+     "name": "Pittsburgh Pirates",
+     "nick": "Pirates"
     },
     {
      "id": "25",
      "abbr": "SD",
-     "name": "San Diego Padres"
+     "name": "San Diego Padres",
+     "nick": "Padres"
     },
     {
      "id": "26",
      "abbr": "SF",
-     "name": "San Francisco Giants"
+     "name": "San Francisco Giants",
+     "nick": "Giants"
     },
     {
      "id": "12",
      "abbr": "SEA",
-     "name": "Seattle Mariners"
+     "name": "Seattle Mariners",
+     "nick": "Mariners"
     },
     {
      "id": "24",
      "abbr": "STL",
-     "name": "St. Louis Cardinals"
+     "name": "St. Louis Cardinals",
+     "nick": "Cardinals"
     },
     {
      "id": "30",
      "abbr": "TB",
-     "name": "Tampa Bay Rays"
+     "name": "Tampa Bay Rays",
+     "nick": "Rays"
     },
     {
      "id": "13",
      "abbr": "TEX",
-     "name": "Texas Rangers"
+     "name": "Texas Rangers",
+     "nick": "Rangers"
     },
     {
      "id": "14",
      "abbr": "TOR",
-     "name": "Toronto Blue Jays"
+     "name": "Toronto Blue Jays",
+     "nick": "Blue Jays"
     },
     {
      "id": "20",
      "abbr": "WSH",
-     "name": "Washington Nationals"
+     "name": "Washington Nationals",
+     "nick": "Nationals"
     }
    ]
   },
@@ -167,162 +197,194 @@
     {
      "id": "22",
      "abbr": "ARI",
-     "name": "Arizona Cardinals"
+     "name": "Arizona Cardinals",
+     "nick": "Cardinals"
     },
     {
      "id": "1",
      "abbr": "ATL",
-     "name": "Atlanta Falcons"
+     "name": "Atlanta Falcons",
+     "nick": "Falcons"
     },
     {
      "id": "33",
      "abbr": "BAL",
-     "name": "Baltimore Ravens"
+     "name": "Baltimore Ravens",
+     "nick": "Ravens"
     },
     {
      "id": "2",
      "abbr": "BUF",
-     "name": "Buffalo Bills"
+     "name": "Buffalo Bills",
+     "nick": "Bills"
     },
     {
      "id": "29",
      "abbr": "CAR",
-     "name": "Carolina Panthers"
+     "name": "Carolina Panthers",
+     "nick": "Panthers"
     },
     {
      "id": "3",
      "abbr": "CHI",
-     "name": "Chicago Bears"
+     "name": "Chicago Bears",
+     "nick": "Bears"
     },
     {
      "id": "4",
      "abbr": "CIN",
-     "name": "Cincinnati Bengals"
+     "name": "Cincinnati Bengals",
+     "nick": "Bengals"
     },
     {
      "id": "5",
      "abbr": "CLE",
-     "name": "Cleveland Browns"
+     "name": "Cleveland Browns",
+     "nick": "Browns"
     },
     {
      "id": "6",
      "abbr": "DAL",
-     "name": "Dallas Cowboys"
+     "name": "Dallas Cowboys",
+     "nick": "Cowboys"
     },
     {
      "id": "7",
      "abbr": "DEN",
-     "name": "Denver Broncos"
+     "name": "Denver Broncos",
+     "nick": "Broncos"
     },
     {
      "id": "8",
      "abbr": "DET",
-     "name": "Detroit Lions"
+     "name": "Detroit Lions",
+     "nick": "Lions"
     },
     {
      "id": "9",
      "abbr": "GB",
-     "name": "Green Bay Packers"
+     "name": "Green Bay Packers",
+     "nick": "Packers"
     },
     {
      "id": "34",
      "abbr": "HOU",
-     "name": "Houston Texans"
+     "name": "Houston Texans",
+     "nick": "Texans"
     },
     {
      "id": "11",
      "abbr": "IND",
-     "name": "Indianapolis Colts"
+     "name": "Indianapolis Colts",
+     "nick": "Colts"
     },
     {
      "id": "30",
      "abbr": "JAX",
-     "name": "Jacksonville Jaguars"
+     "name": "Jacksonville Jaguars",
+     "nick": "Jaguars"
     },
     {
      "id": "12",
      "abbr": "KC",
-     "name": "Kansas City Chiefs"
+     "name": "Kansas City Chiefs",
+     "nick": "Chiefs"
     },
     {
      "id": "13",
      "abbr": "LV",
-     "name": "Las Vegas Raiders"
+     "name": "Las Vegas Raiders",
+     "nick": "Raiders"
     },
     {
      "id": "24",
      "abbr": "LAC",
-     "name": "Los Angeles Chargers"
+     "name": "Los Angeles Chargers",
+     "nick": "Chargers"
     },
     {
      "id": "14",
      "abbr": "LAR",
-     "name": "Los Angeles Rams"
+     "name": "Los Angeles Rams",
+     "nick": "Rams"
     },
     {
      "id": "15",
      "abbr": "MIA",
-     "name": "Miami Dolphins"
+     "name": "Miami Dolphins",
+     "nick": "Dolphins"
     },
     {
      "id": "16",
      "abbr": "MIN",
-     "name": "Minnesota Vikings"
+     "name": "Minnesota Vikings",
+     "nick": "Vikings"
     },
     {
      "id": "17",
      "abbr": "NE",
-     "name": "New England Patriots"
+     "name": "New England Patriots",
+     "nick": "Patriots"
     },
     {
      "id": "18",
      "abbr": "NO",
-     "name": "New Orleans Saints"
+     "name": "New Orleans Saints",
+     "nick": "Saints"
     },
     {
      "id": "19",
      "abbr": "NYG",
-     "name": "New York Giants"
+     "name": "New York Giants",
+     "nick": "Giants"
     },
     {
      "id": "20",
      "abbr": "NYJ",
-     "name": "New York Jets"
+     "name": "New York Jets",
+     "nick": "Jets"
     },
     {
      "id": "21",
      "abbr": "PHI",
-     "name": "Philadelphia Eagles"
+     "name": "Philadelphia Eagles",
+     "nick": "Eagles"
     },
     {
      "id": "23",
      "abbr": "PIT",
-     "name": "Pittsburgh Steelers"
+     "name": "Pittsburgh Steelers",
+     "nick": "Steelers"
     },
     {
      "id": "25",
      "abbr": "SF",
-     "name": "San Francisco 49ers"
+     "name": "San Francisco 49ers",
+     "nick": "49ers"
     },
     {
      "id": "26",
      "abbr": "SEA",
-     "name": "Seattle Seahawks"
+     "name": "Seattle Seahawks",
+     "nick": "Seahawks"
     },
     {
      "id": "27",
      "abbr": "TB",
-     "name": "Tampa Bay Buccaneers"
+     "name": "Tampa Bay Buccaneers",
+     "nick": "Buccaneers"
     },
     {
      "id": "10",
      "abbr": "TEN",
-     "name": "Tennessee Titans"
+     "name": "Tennessee Titans",
+     "nick": "Titans"
     },
     {
      "id": "28",
      "abbr": "WSH",
-     "name": "Washington Commanders"
+     "name": "Washington Commanders",
+     "nick": "Commanders"
     }
    ]
   },
@@ -335,152 +397,182 @@
     {
      "id": "1",
      "abbr": "ATL",
-     "name": "Atlanta Hawks"
+     "name": "Atlanta Hawks",
+     "nick": "Hawks"
     },
     {
      "id": "2",
      "abbr": "BOS",
-     "name": "Boston Celtics"
+     "name": "Boston Celtics",
+     "nick": "Celtics"
     },
     {
      "id": "17",
      "abbr": "BKN",
-     "name": "Brooklyn Nets"
+     "name": "Brooklyn Nets",
+     "nick": "Nets"
     },
     {
      "id": "30",
      "abbr": "CHA",
-     "name": "Charlotte Hornets"
+     "name": "Charlotte Hornets",
+     "nick": "Hornets"
     },
     {
      "id": "4",
      "abbr": "CHI",
-     "name": "Chicago Bulls"
+     "name": "Chicago Bulls",
+     "nick": "Bulls"
     },
     {
      "id": "5",
      "abbr": "CLE",
-     "name": "Cleveland Cavaliers"
+     "name": "Cleveland Cavaliers",
+     "nick": "Cavaliers"
     },
     {
      "id": "6",
      "abbr": "DAL",
-     "name": "Dallas Mavericks"
+     "name": "Dallas Mavericks",
+     "nick": "Mavericks"
     },
     {
      "id": "7",
      "abbr": "DEN",
-     "name": "Denver Nuggets"
+     "name": "Denver Nuggets",
+     "nick": "Nuggets"
     },
     {
      "id": "8",
      "abbr": "DET",
-     "name": "Detroit Pistons"
+     "name": "Detroit Pistons",
+     "nick": "Pistons"
     },
     {
      "id": "9",
      "abbr": "GS",
-     "name": "Golden State Warriors"
+     "name": "Golden State Warriors",
+     "nick": "Warriors"
     },
     {
      "id": "10",
      "abbr": "HOU",
-     "name": "Houston Rockets"
+     "name": "Houston Rockets",
+     "nick": "Rockets"
     },
     {
      "id": "11",
      "abbr": "IND",
-     "name": "Indiana Pacers"
+     "name": "Indiana Pacers",
+     "nick": "Pacers"
     },
     {
      "id": "12",
      "abbr": "LAC",
-     "name": "LA Clippers"
+     "name": "LA Clippers",
+     "nick": "Clippers"
     },
     {
      "id": "13",
      "abbr": "LAL",
-     "name": "Los Angeles Lakers"
+     "name": "Los Angeles Lakers",
+     "nick": "Lakers"
     },
     {
      "id": "29",
      "abbr": "MEM",
-     "name": "Memphis Grizzlies"
+     "name": "Memphis Grizzlies",
+     "nick": "Grizzlies"
     },
     {
      "id": "14",
      "abbr": "MIA",
-     "name": "Miami Heat"
+     "name": "Miami Heat",
+     "nick": "Heat"
     },
     {
      "id": "15",
      "abbr": "MIL",
-     "name": "Milwaukee Bucks"
+     "name": "Milwaukee Bucks",
+     "nick": "Bucks"
     },
     {
      "id": "16",
      "abbr": "MIN",
-     "name": "Minnesota Timberwolves"
+     "name": "Minnesota Timberwolves",
+     "nick": "Timberwolves"
     },
     {
      "id": "3",
      "abbr": "NO",
-     "name": "New Orleans Pelicans"
+     "name": "New Orleans Pelicans",
+     "nick": "Pelicans"
     },
     {
      "id": "18",
      "abbr": "NY",
-     "name": "New York Knicks"
+     "name": "New York Knicks",
+     "nick": "Knicks"
     },
     {
      "id": "25",
      "abbr": "OKC",
-     "name": "Oklahoma City Thunder"
+     "name": "Oklahoma City Thunder",
+     "nick": "Thunder"
     },
     {
      "id": "19",
      "abbr": "ORL",
-     "name": "Orlando Magic"
+     "name": "Orlando Magic",
+     "nick": "Magic"
     },
     {
      "id": "20",
      "abbr": "PHI",
-     "name": "Philadelphia 76ers"
+     "name": "Philadelphia 76ers",
+     "nick": "76ers"
     },
     {
      "id": "21",
      "abbr": "PHX",
-     "name": "Phoenix Suns"
+     "name": "Phoenix Suns",
+     "nick": "Suns"
     },
     {
      "id": "22",
      "abbr": "POR",
-     "name": "Portland Trail Blazers"
+     "name": "Portland Trail Blazers",
+     "nick": "Trail Blazers"
     },
     {
      "id": "23",
      "abbr": "SAC",
-     "name": "Sacramento Kings"
+     "name": "Sacramento Kings",
+     "nick": "Kings"
     },
     {
      "id": "24",
      "abbr": "SA",
-     "name": "San Antonio Spurs"
+     "name": "San Antonio Spurs",
+     "nick": "Spurs"
     },
     {
      "id": "28",
      "abbr": "TOR",
-     "name": "Toronto Raptors"
+     "name": "Toronto Raptors",
+     "nick": "Raptors"
     },
     {
      "id": "26",
      "abbr": "UTAH",
-     "name": "Utah Jazz"
+     "name": "Utah Jazz",
+     "nick": "Jazz"
     },
     {
      "id": "27",
      "abbr": "WSH",
-     "name": "Washington Wizards"
+     "name": "Washington Wizards",
+     "nick": "Wizards"
     }
    ]
   },
@@ -493,162 +585,194 @@
     {
      "id": "25",
      "abbr": "ANA",
-     "name": "Anaheim Ducks"
+     "name": "Anaheim Ducks",
+     "nick": "Ducks"
     },
     {
      "id": "1",
      "abbr": "BOS",
-     "name": "Boston Bruins"
+     "name": "Boston Bruins",
+     "nick": "Bruins"
     },
     {
      "id": "2",
      "abbr": "BUF",
-     "name": "Buffalo Sabres"
+     "name": "Buffalo Sabres",
+     "nick": "Sabres"
     },
     {
      "id": "3",
      "abbr": "CGY",
-     "name": "Calgary Flames"
+     "name": "Calgary Flames",
+     "nick": "Flames"
     },
     {
      "id": "7",
      "abbr": "CAR",
-     "name": "Carolina Hurricanes"
+     "name": "Carolina Hurricanes",
+     "nick": "Hurricanes"
     },
     {
      "id": "4",
      "abbr": "CHI",
-     "name": "Chicago Blackhawks"
+     "name": "Chicago Blackhawks",
+     "nick": "Blackhawks"
     },
     {
      "id": "17",
      "abbr": "COL",
-     "name": "Colorado Avalanche"
+     "name": "Colorado Avalanche",
+     "nick": "Avalanche"
     },
     {
      "id": "29",
      "abbr": "CBJ",
-     "name": "Columbus Blue Jackets"
+     "name": "Columbus Blue Jackets",
+     "nick": "Blue Jackets"
     },
     {
      "id": "9",
      "abbr": "DAL",
-     "name": "Dallas Stars"
+     "name": "Dallas Stars",
+     "nick": "Stars"
     },
     {
      "id": "5",
      "abbr": "DET",
-     "name": "Detroit Red Wings"
+     "name": "Detroit Red Wings",
+     "nick": "Red Wings"
     },
     {
      "id": "6",
      "abbr": "EDM",
-     "name": "Edmonton Oilers"
+     "name": "Edmonton Oilers",
+     "nick": "Oilers"
     },
     {
      "id": "26",
      "abbr": "FLA",
-     "name": "Florida Panthers"
+     "name": "Florida Panthers",
+     "nick": "Panthers"
     },
     {
      "id": "8",
      "abbr": "LA",
-     "name": "Los Angeles Kings"
+     "name": "Los Angeles Kings",
+     "nick": "Kings"
     },
     {
      "id": "30",
      "abbr": "MIN",
-     "name": "Minnesota Wild"
+     "name": "Minnesota Wild",
+     "nick": "Wild"
     },
     {
      "id": "10",
      "abbr": "MTL",
-     "name": "Montreal Canadiens"
+     "name": "Montreal Canadiens",
+     "nick": "Canadiens"
     },
     {
      "id": "27",
      "abbr": "NSH",
-     "name": "Nashville Predators"
+     "name": "Nashville Predators",
+     "nick": "Predators"
     },
     {
      "id": "11",
      "abbr": "NJ",
-     "name": "New Jersey Devils"
+     "name": "New Jersey Devils",
+     "nick": "Devils"
     },
     {
      "id": "12",
      "abbr": "NYI",
-     "name": "New York Islanders"
+     "name": "New York Islanders",
+     "nick": "Islanders"
     },
     {
      "id": "13",
      "abbr": "NYR",
-     "name": "New York Rangers"
+     "name": "New York Rangers",
+     "nick": "Rangers"
     },
     {
      "id": "14",
      "abbr": "OTT",
-     "name": "Ottawa Senators"
+     "name": "Ottawa Senators",
+     "nick": "Senators"
     },
     {
      "id": "15",
      "abbr": "PHI",
-     "name": "Philadelphia Flyers"
+     "name": "Philadelphia Flyers",
+     "nick": "Flyers"
     },
     {
      "id": "16",
      "abbr": "PIT",
-     "name": "Pittsburgh Penguins"
+     "name": "Pittsburgh Penguins",
+     "nick": "Penguins"
     },
     {
      "id": "18",
      "abbr": "SJ",
-     "name": "San Jose Sharks"
+     "name": "San Jose Sharks",
+     "nick": "Sharks"
     },
     {
      "id": "124292",
      "abbr": "SEA",
-     "name": "Seattle Kraken"
+     "name": "Seattle Kraken",
+     "nick": "Kraken"
     },
     {
      "id": "19",
      "abbr": "STL",
-     "name": "St. Louis Blues"
+     "name": "St. Louis Blues",
+     "nick": "Blues"
     },
     {
      "id": "20",
      "abbr": "TB",
-     "name": "Tampa Bay Lightning"
+     "name": "Tampa Bay Lightning",
+     "nick": "Lightning"
     },
     {
      "id": "21",
      "abbr": "TOR",
-     "name": "Toronto Maple Leafs"
+     "name": "Toronto Maple Leafs",
+     "nick": "Maple Leafs"
     },
     {
      "id": "129764",
      "abbr": "UTAH",
-     "name": "Utah Mammoth"
+     "name": "Utah Mammoth",
+     "nick": "Mammoth"
     },
     {
      "id": "22",
      "abbr": "VAN",
-     "name": "Vancouver Canucks"
+     "name": "Vancouver Canucks",
+     "nick": "Canucks"
     },
     {
      "id": "37",
      "abbr": "VGK",
-     "name": "Vegas Golden Knights"
+     "name": "Vegas Golden Knights",
+     "nick": "Golden Knights"
     },
     {
      "id": "23",
      "abbr": "WSH",
-     "name": "Washington Capitals"
+     "name": "Washington Capitals",
+     "nick": "Capitals"
     },
     {
      "id": "28",
      "abbr": "WPG",
-     "name": "Winnipeg Jets"
+     "name": "Winnipeg Jets",
+     "nick": "Jets"
     }
    ]
   },
@@ -661,152 +785,182 @@
     {
      "id": "18418",
      "abbr": "ATL",
-     "name": "Atlanta United FC"
+     "name": "Atlanta United FC",
+     "nick": "Atlanta"
     },
     {
      "id": "20906",
      "abbr": "ATX",
-     "name": "Austin FC"
+     "name": "Austin FC",
+     "nick": "Austin"
     },
     {
      "id": "9720",
      "abbr": "MTL",
-     "name": "CF Montréal"
+     "name": "CF Montréal",
+     "nick": "CF Montréal"
     },
     {
      "id": "21300",
      "abbr": "CLT",
-     "name": "Charlotte FC"
+     "name": "Charlotte FC",
+     "nick": "Charlotte"
     },
     {
      "id": "182",
      "abbr": "CHI",
-     "name": "Chicago Fire FC"
+     "name": "Chicago Fire FC",
+     "nick": "Chicago"
     },
     {
      "id": "184",
      "abbr": "COL",
-     "name": "Colorado Rapids"
+     "name": "Colorado Rapids",
+     "nick": "Colorado"
     },
     {
      "id": "183",
      "abbr": "CLB",
-     "name": "Columbus Crew"
+     "name": "Columbus Crew",
+     "nick": "Columbus"
     },
     {
      "id": "193",
      "abbr": "DC",
-     "name": "D.C. United"
+     "name": "D.C. United",
+     "nick": "D.C. United"
     },
     {
      "id": "18267",
      "abbr": "CIN",
-     "name": "FC Cincinnati"
+     "name": "FC Cincinnati",
+     "nick": "Cincinnati"
     },
     {
      "id": "185",
      "abbr": "DAL",
-     "name": "FC Dallas"
+     "name": "FC Dallas",
+     "nick": "Dallas"
     },
     {
      "id": "6077",
      "abbr": "HOU",
-     "name": "Houston Dynamo FC"
+     "name": "Houston Dynamo FC",
+     "nick": "Houston"
     },
     {
      "id": "20232",
      "abbr": "MIA",
-     "name": "Inter Miami CF"
+     "name": "Inter Miami CF",
+     "nick": "Miami"
     },
     {
      "id": "187",
      "abbr": "LA",
-     "name": "LA Galaxy"
+     "name": "LA Galaxy",
+     "nick": "LA Galaxy"
     },
     {
      "id": "18966",
      "abbr": "LAFC",
-     "name": "LAFC"
+     "name": "LAFC",
+     "nick": "LAFC"
     },
     {
      "id": "17362",
      "abbr": "MIN",
-     "name": "Minnesota United FC"
+     "name": "Minnesota United FC",
+     "nick": "Minnesota"
     },
     {
      "id": "18986",
      "abbr": "NSH",
-     "name": "Nashville SC"
+     "name": "Nashville SC",
+     "nick": "Nashville"
     },
     {
      "id": "189",
      "abbr": "NE",
-     "name": "New England Revolution"
+     "name": "New England Revolution",
+     "nick": "New England"
     },
     {
      "id": "17606",
      "abbr": "NYC",
-     "name": "New York City FC"
+     "name": "New York City FC",
+     "nick": "NYCFC"
     },
     {
      "id": "12011",
      "abbr": "ORL",
-     "name": "Orlando City SC"
+     "name": "Orlando City SC",
+     "nick": "Orlando"
     },
     {
      "id": "10739",
      "abbr": "PHI",
-     "name": "Philadelphia Union"
+     "name": "Philadelphia Union",
+     "nick": "Philadelphia"
     },
     {
      "id": "9723",
      "abbr": "POR",
-     "name": "Portland Timbers"
+     "name": "Portland Timbers",
+     "nick": "Portland"
     },
     {
      "id": "4771",
      "abbr": "RSL",
-     "name": "Real Salt Lake"
+     "name": "Real Salt Lake",
+     "nick": "Salt Lake"
     },
     {
      "id": "190",
      "abbr": "RBNY",
-     "name": "Red Bull New York"
+     "name": "Red Bull New York",
+     "nick": "Red Bull NY"
     },
     {
      "id": "22529",
      "abbr": "SD",
-     "name": "San Diego FC"
+     "name": "San Diego FC",
+     "nick": "San Diego"
     },
     {
      "id": "191",
      "abbr": "SJ",
-     "name": "San Jose Earthquakes"
+     "name": "San Jose Earthquakes",
+     "nick": "San Jose"
     },
     {
      "id": "9726",
      "abbr": "SEA",
-     "name": "Seattle Sounders FC"
+     "name": "Seattle Sounders FC",
+     "nick": "Seattle"
     },
     {
      "id": "186",
      "abbr": "SKC",
-     "name": "Sporting Kansas City"
+     "name": "Sporting Kansas City",
+     "nick": "Kansas City"
     },
     {
      "id": "21812",
      "abbr": "STL",
-     "name": "St. Louis CITY SC"
+     "name": "St. Louis CITY SC",
+     "nick": "St. Louis"
     },
     {
      "id": "7318",
      "abbr": "TOR",
-     "name": "Toronto FC"
+     "name": "Toronto FC",
+     "nick": "Toronto"
     },
     {
      "id": "9727",
      "abbr": "VAN",
-     "name": "Vancouver Whitecaps"
+     "name": "Vancouver Whitecaps",
+     "nick": "Vancouver"
     }
    ]
   },
@@ -819,102 +973,122 @@
     {
      "id": "349",
      "abbr": "BOU",
-     "name": "AFC Bournemouth"
+     "name": "AFC Bournemouth",
+     "nick": "Bournemouth"
     },
     {
      "id": "359",
      "abbr": "ARS",
-     "name": "Arsenal"
+     "name": "Arsenal",
+     "nick": "Arsenal"
     },
     {
      "id": "362",
      "abbr": "AVL",
-     "name": "Aston Villa"
+     "name": "Aston Villa",
+     "nick": "Aston Villa"
     },
     {
      "id": "337",
      "abbr": "BRE",
-     "name": "Brentford"
+     "name": "Brentford",
+     "nick": "Brentford"
     },
     {
      "id": "331",
      "abbr": "BHA",
-     "name": "Brighton & Hove Albion"
+     "name": "Brighton & Hove Albion",
+     "nick": "Brighton"
     },
     {
      "id": "363",
      "abbr": "CHE",
-     "name": "Chelsea"
+     "name": "Chelsea",
+     "nick": "Chelsea"
     },
     {
      "id": "388",
      "abbr": "COV",
-     "name": "Coventry City"
+     "name": "Coventry City",
+     "nick": "Coventry"
     },
     {
      "id": "384",
      "abbr": "CRY",
-     "name": "Crystal Palace"
+     "name": "Crystal Palace",
+     "nick": "C Palace"
     },
     {
      "id": "368",
      "abbr": "EVE",
-     "name": "Everton"
+     "name": "Everton",
+     "nick": "Everton"
     },
     {
      "id": "370",
      "abbr": "FUL",
-     "name": "Fulham"
+     "name": "Fulham",
+     "nick": "Fulham"
     },
     {
      "id": "306",
      "abbr": "HUL",
-     "name": "Hull City"
+     "name": "Hull City",
+     "nick": "Hull"
     },
     {
      "id": "373",
      "abbr": "IPS",
-     "name": "Ipswich Town"
+     "name": "Ipswich Town",
+     "nick": "Ipswich"
     },
     {
      "id": "357",
      "abbr": "LEE",
-     "name": "Leeds United"
+     "name": "Leeds United",
+     "nick": "Leeds"
     },
     {
      "id": "364",
      "abbr": "LIV",
-     "name": "Liverpool"
+     "name": "Liverpool",
+     "nick": "Liverpool"
     },
     {
      "id": "382",
      "abbr": "MNC",
-     "name": "Manchester City"
+     "name": "Manchester City",
+     "nick": "Man City"
     },
     {
      "id": "360",
      "abbr": "MAN",
-     "name": "Manchester United"
+     "name": "Manchester United",
+     "nick": "Man United"
     },
     {
      "id": "361",
      "abbr": "NEW",
-     "name": "Newcastle United"
+     "name": "Newcastle United",
+     "nick": "Newcastle"
     },
     {
      "id": "393",
      "abbr": "NFO",
-     "name": "Nottingham Forest"
+     "name": "Nottingham Forest",
+     "nick": "Nottm Forest"
     },
     {
      "id": "366",
      "abbr": "SUN",
-     "name": "Sunderland"
+     "name": "Sunderland",
+     "nick": "Sunderland"
     },
     {
      "id": "367",
      "abbr": "TOT",
-     "name": "Tottenham Hotspur"
+     "name": "Tottenham Hotspur",
+     "nick": "Spurs"
     }
    ]
   }

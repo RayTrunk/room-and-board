@@ -114,6 +114,9 @@ export const DEMAND = {
   path: { kind: 'elastic', target: 4, feed: 12 }, // path.js has no measure-trim
   news: { kind: 'elastic', target: 4, feed: 10 },
   marketsnews: { kind: 'elastic', target: 4, feed: 10 },
+  // Same feed shape, but the Only-my-teams filter can cut the merged list to a
+  // handful, so it is never worth buying rows past the shared target.
+  teamsnews: { kind: 'elastic', target: 4, feed: 10 },
   // Post texts wrap to two lines almost always (capacity.js substack/bsky) and
   // the follow list caps at 6, so 6 is the ceiling worth chasing.
   substack: { kind: 'elastic', target: 3, feed: 6 },
@@ -195,6 +198,7 @@ export const FLOOR = {
   // Headlines at one story is a ticker; three is a front page. h=3.
   news: { items: 3 },
   marketsnews: { items: 3 },
+  teamsnews: { items: 3 },
   // Post rows are two lines each, so a 3x2 card holds one post and a badge.
   // Two posts (h=3) is the floor where the card reads as a feed.
   substack: { items: 2 },

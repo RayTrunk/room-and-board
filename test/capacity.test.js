@@ -56,13 +56,15 @@ describe('itemCapacity', () => {
     expect(itemCapacity('news', 4, 4)).toBe(4);
     expect(itemCapacity('markets', 4, 4)).toBe(5);
   });
-  it('gives marketsnews the same headline capacity as news (never null)', () => {
+  it('gives both headline twins the same capacity as news (never null)', () => {
     // Regression: a missing MODELS entry returned null, which made
     // renderHeadlines treat the whole feed as overflow and show 1 item.
-    for (const [w, h] of [[4, 4], [4, 6], [6, 8]]) {
-      expect(itemCapacity('marketsnews', w, h)).toBe(itemCapacity('news', w, h));
+    for (const id of ['marketsnews', 'teamsnews']) {
+      for (const [w, h] of [[4, 4], [4, 6], [6, 8]]) {
+        expect(itemCapacity(id, w, h), id).toBe(itemCapacity('news', w, h));
+      }
+      expect(itemCapacity(id, 4, 6), id).toBeGreaterThan(1);
     }
-    expect(itemCapacity('marketsnews', 4, 6)).toBeGreaterThan(1);
   });
   it('returns null for widgets without a primary list', () => {
     expect(itemCapacity('art', 2, 2)).toBeNull();
@@ -106,9 +108,10 @@ describe('capacityLabel', () => {
     expect(capacityLabel('lirr', 4, 4, cfg)).toBe('next 5 trains');
     expect(capacityLabel('history', 4, 2, cfg)).toBe('2 events');
   });
-  it('describes both news widgets as headlines', () => {
+  it('describes all three news widgets as headlines', () => {
     expect(capacityLabel('news', 4, 4, cfg)).toBe('4 headlines');
     expect(capacityLabel('marketsnews', 4, 4, cfg)).toBe('4 headlines');
+    expect(capacityLabel('teamsnews', 4, 4, cfg)).toBe('4 headlines');
   });
   it('describes weather tiers and stays quiet for non-lists', () => {
     expect(capacityLabel('weather', 4, 4, cfg)).toBe('6 hourly · 4-day forecast');

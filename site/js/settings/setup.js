@@ -46,6 +46,7 @@ export const WIDGET_LABELS = {
   wotd: 'Word of the Day',
   worldclock: 'World Clock',
   sports: 'My Teams (sports)',
+  teamsnews: 'Teams News',
   f1: 'Formula 1',
   golf: 'Golf (PGA)',
   tennis: 'Tennis',
@@ -76,6 +77,7 @@ export const SETUP_SECTIONS = [
   { id: 'markets-field', group: 'Markets', triggers: ['markets'] },
   { id: 'marketsnews-field', group: 'Markets', triggers: ['marketsnews'] },
   { id: 'sports-field', group: 'Sports', triggers: ['sports'] },
+  { id: 'teamsnews-field', group: 'Sports', triggers: ['teamsnews'] },
   { id: 'news-field', group: 'News & Social', triggers: ['news'] },
   { id: 'substack-field', group: 'News & Social', triggers: ['substack'] },
   { id: 'bsky-field', group: 'News & Social', triggers: ['bsky'] },
@@ -244,6 +246,7 @@ async function boot() {
   await safe(renderMarketsNewsSources);
   await safe(renderWorldclockPrefs);
   await safe(renderTeams);
+  await safe(renderTeamsNewsSources);
   await safe(renderNewsSources);
   await safe(renderPostsAccounts);
   await safe(renderPhotos);
@@ -666,6 +669,22 @@ async function renderMarketsNewsSources() {
     const id = e.target.dataset.mn;
     if (id) cfg.marketsnews.sources = toggleIn(cfg.marketsnews.sources, id);
   });
+}
+
+async function renderTeamsNewsSources() {
+  const { SPORTS_SOURCES } = await import('../widgets/teamsnews.js');
+  $('#teamsnews-sources').innerHTML = SPORTS_SOURCES.map(
+    ([id, label]) => `<label><input type="checkbox" data-tn="${id}" ${cfg.teamsnews.sources.includes(id) ? 'checked' : ''}> ${label}</label>`,
+  ).join('');
+  $('#teamsnews-sources').addEventListener('change', (e) => {
+    const id = e.target.dataset.tn;
+    if (id) cfg.teamsnews.sources = toggleIn(cfg.teamsnews.sources, id);
+  });
+  // The filter needs a team to filter by, and the wizard's own team picker is
+  // the section directly above, so the note points there rather than gating.
+  const only = $('#teamsnews-only');
+  only.checked = cfg.teamsnews.onlyMyTeams;
+  only.addEventListener('change', () => { cfg.teamsnews.onlyMyTeams = only.checked; });
 }
 
 // Live Video: two plain inputs (URL + optional label) bound straight to cfg.

@@ -11,6 +11,11 @@ const FEEDS = {
   'ft-markets': 'https://www.ft.com/markets?format=rss',
   'yahoo-finance': 'https://finance.yahoo.com/news/rssindex',
   seekingalpha: 'https://seekingalpha.com/feed.xml',
+  espn: 'https://www.espn.com/espn/rss/news',
+  'cbs-sports': 'https://www.cbssports.com/rss/headlines/',
+  'yahoo-sports': 'https://sports.yahoo.com/rss/',
+  'bbc-sport': 'https://feeds.bbci.co.uk/sport/rss.xml',
+  'guardian-sport': 'https://www.theguardian.com/sport/rss',
 };
 
 export function newsFeedUrl(id) {

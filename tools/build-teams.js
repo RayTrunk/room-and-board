@@ -17,7 +17,10 @@ for (const [lg, [sport, slug, label]] of Object.entries(LEAGUES)) {
     await fetch(`https://site.api.espn.com/apis/site/v2/sports/${sport}/${slug}/teams?limit=100`)
   ).json();
   const teams = (json.sports?.[0]?.leagues?.[0]?.teams ?? [])
-    .map(({ team }) => ({ id: String(team.id), abbr: team.abbreviation, name: team.displayName }))
+    // nick is ESPN's shortDisplayName: the form a headline actually prints
+    // ('Red Sox', 'Spurs', 'Man United'). Teams News matches on it; see
+    // teamPhrases for why an MLS nick like 'Seattle' is thrown away again.
+    .map(({ team }) => ({ id: String(team.id), abbr: team.abbreviation, name: team.displayName, nick: team.shortDisplayName }))
     .sort((a, b) => a.name.localeCompare(b.name));
   if (teams.length < 10) throw new Error(`suspiciously few teams for ${lg}: ${teams.length}`);
   out.leagues.push({ lg, label, sport, slug, teams });

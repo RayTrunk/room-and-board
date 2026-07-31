@@ -2187,7 +2187,7 @@ body.ss-backdrop .cf-dial__svg, .ss-preview.ss-backdrop .cf-dial__svg {
 .headline__age { font-size: 15px; color: var(--ink-dim); flex: none; }
 /* The headline is the content — weight 600 makes it the salience winner. */
 .headline__title { font-size: 21px; font-weight: 600; line-height: 1.25; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; min-width: 0; }
-.card--news.t-s .headline__title, .card--marketsnews.t-s .headline__title, .card--substack.t-s .headline__title, .card--bsky.t-s .headline__title { -webkit-line-clamp: 1; }
+.card--news.t-s .headline__title, .card--marketsnews.t-s .headline__title, .card--teamsnews.t-s .headline__title, .card--substack.t-s .headline__title, .card--bsky.t-s .headline__title { -webkit-line-clamp: 1; }
 /* Shallow news cards tighten the row gap so a 2nd one-line headline fits the
    121px body (2 rows + 10px gap runs 3.5px over; 6px clears it). */
 .card--news.t-s .card__body, .card--marketsnews.t-s .card__body, .card--substack.t-s .card__body, .card--bsky.t-s .card__body { gap: 6px; }

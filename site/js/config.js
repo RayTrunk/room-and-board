@@ -20,7 +20,7 @@ export const ART_CATS = [
 ];
 
 export const WIDGET_IDS = [
-  'weather', 'subway', 'lirr', 'mnr', 'njt', 'amtrak', 'path', 'ferry', 'bus', 'citibike', 'tfl', 'art', 'photos', 'gdrivephotos', 'landscapes', 'apod', 'history', 'aqi', 'surf', 'quote', 'wotd', 'markets', 'marketsnews', 'worldclock', 'sports', 'news', 'substack', 'bsky', 'services', 'chart', 'f1', 'golf', 'tennis', 'iptv',
+  'weather', 'subway', 'lirr', 'mnr', 'njt', 'amtrak', 'path', 'ferry', 'bus', 'citibike', 'tfl', 'art', 'photos', 'gdrivephotos', 'landscapes', 'apod', 'history', 'aqi', 'surf', 'quote', 'wotd', 'markets', 'marketsnews', 'worldclock', 'sports', 'teamsnews', 'news', 'substack', 'bsky', 'services', 'chart', 'f1', 'golf', 'tennis', 'iptv',
 ];
 
 // Display grouping for the widget pickers (board Settings and phone /setup).
@@ -31,7 +31,7 @@ export const WIDGET_GROUPS = [
   { label: 'Commute', ids: ['subway', 'lirr', 'mnr', 'njt', 'amtrak', 'path', 'ferry', 'bus', 'citibike', 'tfl'] },
   { label: 'Weather & Air', ids: ['weather', 'aqi', 'surf'] },
   { label: 'Markets', ids: ['markets', 'marketsnews'] },
-  { label: 'Sports', ids: ['sports', 'f1', 'golf', 'tennis'] },
+  { label: 'Sports', ids: ['sports', 'teamsnews', 'f1', 'golf', 'tennis'] },
   { label: 'News & Social', ids: ['news', 'substack', 'bsky'] },
   // Images = every card whose content IS the picture: art, photography, apod,
   // and (since Ambient retired, 2026-07-29) the Live Video stream, which is the
@@ -110,6 +110,9 @@ export const DEFAULT_CONFIG = Object.freeze({
     Object.freeze({ id: '1869743938848725856', name: '9 Ave & W 33 St' }),
   ]) }),
   sports: Object.freeze({ teams: Object.freeze([]) }), // [{lg, id}] up to 6
+  // Sports headlines. onlyMyTeams narrows them to the teams `sports` follows;
+  // off by default because a board with no teams picked would show nothing.
+  teamsnews: Object.freeze({ sources: Object.freeze(['espn', 'cbs-sports', 'yahoo-sports']), onlyMyTeams: false }),
   news: Object.freeze({ sources: Object.freeze(['nyt-home', 'nyt-nyregion']) }),
   // Starter accounts (AI/tech/finance, politically neutral, verified active
   // 2026-07-05) — removable entries like the markets tickers.
@@ -370,6 +373,14 @@ export function normalizeConfig(raw) {
         return picked.length ? picked : [...DEFAULT_CONFIG.marketsnews.sources];
       })(),
     },
+    teamsnews: {
+      sources: (() => {
+        const valid = new Set(['espn', 'cbs-sports', 'yahoo-sports', 'bbc-sport', 'guardian-sport']); // SPORTS_SOURCES ids
+        const picked = (Array.isArray(raw.teamsnews?.sources) ? raw.teamsnews.sources : []).filter((s) => valid.has(s));
+        return picked.length ? picked : [...DEFAULT_CONFIG.teamsnews.sources];
+      })(),
+      onlyMyTeams: raw.teamsnews?.onlyMyTeams === true,
+    },
     chart: {
       // Client-side hide-politics filter (on unless explicitly disabled).
       excludePolitics: raw.chart?.excludePolitics !== false,
@@ -519,6 +530,7 @@ export async function encodeConfig(cfg) {
   if (wire.substack && isDefault(wire.substack.pubs, DEFAULT_CONFIG.substack.pubs)) delete wire.substack;
   if (wire.bsky && isDefault(wire.bsky.handles, DEFAULT_CONFIG.bsky.handles)) delete wire.bsky;
   if (wire.marketsnews && isDefault(wire.marketsnews.sources, DEFAULT_CONFIG.marketsnews.sources)) delete wire.marketsnews;
+  if (wire.teamsnews && isDefault(wire.teamsnews, DEFAULT_CONFIG.teamsnews)) delete wire.teamsnews; // sources AND the filter untouched
   if (wire.chart) {
     // Per-key strip: an all-topics selection (in any order) and the default
     // politics filter re-derive on decode; an explicit [] (every topic off →

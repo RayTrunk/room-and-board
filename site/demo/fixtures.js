@@ -398,6 +398,17 @@ export const DEMO_VMS = {
     { img: 'https://images.metmuseum.org/CRDImages/ep/web-large/DP145911.jpg', ar: 1.33, title: 'Harbor', date: '2026-02-25' },
   ] },
   marketsnews: { items: [{ title: 'Fed holds rates', source: 'CNBC', t: 1783000000000 }], nowMs: 1783000100000 },
+  // `teams` carries the resolved match phrases, so the demo board shows the
+  // Only-my-teams filter doing something rather than emptying the card.
+  teamsnews: {
+    items: [
+      { title: 'Mets rally past Braves in the ninth', source: 'ESPN', t: 1783000000000, desc: 'Three runs with two outs turn a one-run deficit around at Citi Field.' },
+      { title: 'Chiefs sign a veteran left tackle', source: 'CBS Sports', t: 1782999400000 },
+      { title: 'Knicks open camp with a healthy roster', source: 'NYT Sports', t: 1782998800000 },
+    ],
+    nowMs: 1783000100000,
+    teams: ['New York Mets', 'Mets'],
+  },
   tfl: { updatedAt: 1783000000, lines: [
     { id: 'central', name: 'Central', mode: 'Tube', ok: true, status: 'Good Service', reason: '' },
     { id: 'victoria', name: 'Victoria', mode: 'Tube', ok: true, status: 'Good Service', reason: '' },

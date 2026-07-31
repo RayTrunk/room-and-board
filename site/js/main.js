@@ -39,6 +39,7 @@ import * as markets from './widgets/markets.js';
 import * as marketsnews from './widgets/marketsnews.js';
 import * as worldclock from './widgets/worldclock.js';
 import * as sports from './widgets/sports.js';
+import * as teamsnews from './widgets/teamsnews.js';
 import * as f1 from './widgets/f1.js';
 import * as golf from './widgets/golf.js';
 import * as tennis from './widgets/tennis.js';
@@ -57,7 +58,7 @@ import * as tfl from './widgets/tfl.js';
 import { resolvePhotosManifest } from './photos-manifest.js';
 import { fetchCuratedManifest, fetchBackdropList, backdropDayIndex, localDayNumber } from './curated.js';
 
-const MODULES = [weather, subway, lirr, mnr, njt, amtrak, pathw, ferry, bus, art, history, aqi, surf, quote, wotd, markets, marketsnews, worldclock, sports, news, substack, bsky, photos, gdrivephotos, landscapes, services, apod, chart, citibike, tfl, f1, golf, tennis, iptv];
+const MODULES = [weather, subway, lirr, mnr, njt, amtrak, pathw, ferry, bus, art, history, aqi, surf, quote, wotd, markets, marketsnews, worldclock, sports, teamsnews, news, substack, bsky, photos, gdrivephotos, landscapes, services, apod, chart, citibike, tfl, f1, golf, tennis, iptv];
 for (const m of MODULES) registerWidget(m);
 
 const net = { fetchJSON, fetchBuffer, fetchText };

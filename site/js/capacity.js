@@ -86,8 +86,10 @@ const MODELS = {
   // 9. Over-promising here cost nothing visible (newscore trims rather than
   // clips) but it made the generator buy a row that bought no headline.
   news: listCapacity(75, 57, 80),
-  // Markets News renders the identical stacked-headline rows as news.
+  // Markets News and Teams News render the identical stacked-headline rows as
+  // news, through the same renderHeadlines measure-and-trim.
   marketsnews: listCapacity(75, 57, 80),
+  teamsnews: listCapacity(75, 57, 80),
   // Same stacked rows as news, but post texts are long by nature — nearly
   // every row wraps to the full 2 lines, and the +N hint needs headroom too.
   substack: listCapacity(90, 62),
@@ -165,6 +167,7 @@ export function capacityLabel(id, w, h, cfg = {}) {
       return ofTotal(Math.min(n, cfg.sports?.teams?.length ?? n), cfg.sports?.teams?.length, 'teams');
     case 'news':
     case 'marketsnews':
+    case 'teamsnews':
       return `${n} headlines`;
     case 'substack':
     case 'bsky':

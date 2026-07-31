@@ -138,16 +138,18 @@ describe('add-tray collapsible groups', () => {
   const offeredIn = (label) => idsOf(label).filter((id) => isAddable(id, CFG));
   const SPORTS_OFFERED = offeredIn('Sports');
   const IMAGES_OFFERED = offeredIn('Images');
-  const COLLAPSED = ['Commute', 'Images', 'Daily', 'Sports'];
+  // Sports reached five when Teams News landed (2026-07-31), so it ties Images
+  // and takes the alphabetically-earlier slot ahead of the four-card Daily.
+  const COLLAPSED = ['Commute', 'Images', 'Sports', 'Daily'];
   const open = (cfg = CFG) => openEditMode(cfg, { root, cellSize: { w: 100, h: 100 } });
   const toggles = () => [...root.querySelectorAll('[data-tray-toggle]')];
   const toggle = (label) => toggles().find((t) => t.dataset.trayToggle === label);
   const group = (label) => [...root.querySelectorAll('[data-tray-group]')].find((g) => g.dataset.trayGroup === label);
   const chipsIn = (label) => [...group(label).querySelectorAll('[data-add]')].map((b) => b.textContent.trim());
 
-  it('collapses exactly Commute, Images, Daily and Sports, all closed, with a caret and a count', () => {
+  it('collapses exactly Commute, Images, Sports and Daily, all closed, with a caret and a count', () => {
     open();
-    // largest-offered-first, ties alphabetical: Commute 10 · Images 5 · Daily 4 · Sports 4
+    // largest-offered-first, ties alphabetical: Commute 10 · Images 5 · Sports 5 · Daily 4
     expect(toggles().map((t) => t.dataset.trayToggle)).toEqual(COLLAPSED);
     for (const label of COLLAPSED) {
       expect(toggle(label).getAttribute('aria-expanded')).toBe('false');
@@ -162,7 +164,7 @@ describe('add-tray collapsible groups', () => {
     expect(IMAGES_OFFERED).not.toContain('iptv');
     expect(toggle('Daily').textContent).toContain('· 4');
     expect(toggle('Sports').textContent).toContain(`· ${SPORTS_OFFERED.length}`);
-    expect(SPORTS_OFFERED).toEqual(['sports', 'f1', 'golf', 'tennis']);
+    expect(SPORTS_OFFERED).toEqual(['sports', 'teamsnews', 'f1', 'golf', 'tennis']);
     // no other category is behind a tap
     expect(root.querySelector('[data-tray-toggle="Markets"]')).toBeNull();
     expect(root.querySelector('[data-tray-toggle="Ambient"]')).toBeNull(); // retired outright
@@ -243,7 +245,7 @@ describe('add-tray collapsible groups', () => {
 
   it('sorts chips alphabetically by title inside a group', () => {
     open();
-    expect(chipsIn('Sports')).toEqual(['Formula 1', 'Golf', 'My Teams', 'Tennis']);
+    expect(chipsIn('Sports')).toEqual(['Formula 1', 'Golf', 'My Teams', 'Teams News', 'Tennis']);
     expect(chipsIn('Images')).toEqual(['Art', 'GDrive Photos', 'iCloud Photos', 'Landscapes', 'NASA Daily Photo']);
     expect(chipsIn('Daily')).toEqual(['Chart of the Day', 'History', 'Quote', 'Word']);
     expect(chipsIn('Commute')).toEqual([...chipsIn('Commute')].sort((a, b) => a.localeCompare(b)));

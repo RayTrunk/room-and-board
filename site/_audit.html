@@ -84,6 +84,7 @@
   import * as marketsnews from './js/widgets/marketsnews.js';
   import * as worldclock from './js/widgets/worldclock.js';
   import * as sports from './js/widgets/sports.js';
+  import * as teamsnews from './js/widgets/teamsnews.js';
   import * as news from './js/widgets/news.js';
   import * as substack from './js/widgets/substack.js';
   import * as bsky from './js/widgets/bsky.js';
@@ -98,7 +99,7 @@
   // resize audit never looked at. Keep this list a superset of WIDGET_IDS.
   const MODULES = [weather, subway, lirr, mnr, njt, amtrak, pathw, ferry, bus, citibike, tfl,
     art, photos, gdrivephotos, landscapes, apod, history, aqi, surf, quote, wotd, markets, marketsnews, worldclock,
-    sports, news, substack, bsky, services, chart, f1, golf, tennis, iptv];
+    sports, teamsnews, news, substack, bsky, services, chart, f1, golf, tennis, iptv];
   const byId = Object.fromEntries(MODULES.map((m) => [m.meta.id, m]));
 
   const q = new URLSearchParams(location.search);
@@ -198,7 +199,7 @@
   const ROW_SEL = {
     markets: '.index', subway: '.linestatus', services: '.svc__row', worldclock: '.wc-row',
     tfl: '.tfl', citibike: '.cb', sports: '.team', history: '.history__item',
-    news: '.headline', marketsnews: '.headline', substack: '.headline', bsky: '.headline',
+    news: '.headline', marketsnews: '.headline', teamsnews: '.headline', substack: '.headline', bsky: '.headline',
     golf: '.golf-row', tennis: '.tennis-row',
     lirr: '.train', mnr: '.train', njt: '.train', amtrak: '.train', ferry: '.train', path: '.train',
     bus: '.stop-group__head, .train', // bus capacity counts headers AND arrivals
