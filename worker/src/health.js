@@ -47,20 +47,15 @@ export const CHECKS = [
     ok: (j) => typeof j.station === 'string' && Array.isArray(j.departures),
   },
   {
-    // The rvc.tech failover aliases exist precisely for the moment nobody
-    // would notice them silently broken (cert lapse, route removal, zone
-    // config drift). Probed EXTERNALLY on purpose: DNS + TLS + routing are
-    // the failure modes under test, which selfFetch would bypass. Fetching
-    // our own alias is safe because both bindings are custom_domain (see
-    // wrangler.toml) — Cloudflare allows those as same-worker fetch targets;
-    // the probe simply re-enters as a fresh invocation. Validators are
-    // presence-only so an upstream outage (Yahoo down, empty indices) pages
-    // once via the primary checks, not twice.
-    name: 'backup-api',
-    url: 'https://signage-api.rvc.tech/markets',
-    ok: (j) => Array.isArray(j.indices),
-  },
-  {
+    // The rvc.tech failover site alias exists precisely for the moment nobody
+    // would notice it silently broken (cert lapse, custom-domain removal).
+    // Probed EXTERNALLY on purpose: DNS + TLS + routing are the failure modes
+    // under test, which selfFetch would bypass. The MATCHING api-alias check
+    // (signage-api.rvc.tech) must never be added: the worker fetching its own
+    // custom domain gets a Cloudflare 522 every time — proven live 2026-07-31
+    // 07:20Z after one night of false paging, custom_domain binding or not —
+    // while the alias serves perfectly from outside. Validator is
+    // presence-only so a site outage pages once via the primary site check.
     name: 'backup-site',
     url: 'https://signage.rvc.tech/version.json',
     ok: (j) => typeof j.version === 'string' && j.version.length > 3,

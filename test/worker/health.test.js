@@ -63,25 +63,25 @@ describe('health CHECKS validators', () => {
   });
 });
 
-describe('backup domain checks (the failover nobody would notice broken)', () => {
+describe('backup domain check (the failover nobody would notice broken)', () => {
   const byName = Object.fromEntries(CHECKS.map((c) => [c.name, c]));
-  it('probes both rvc.tech aliases externally (url, not path)', () => {
-    expect(byName['backup-api'].url).toContain('signage-api.rvc.tech');
+  it('probes the site alias externally (url, not path)', () => {
     expect(byName['backup-site'].url).toContain('signage.rvc.tech');
-    expect(byName['backup-api'].path).toBeUndefined();
     expect(byName['backup-site'].path).toBeUndefined();
   });
-  it('backup-api validates routing, not the upstream (a Yahoo outage must not double-page)', () => {
-    // Empty indices is Yahoo's problem and the markets check owns it; the
-    // backup check only proves the alias serves this worker at all.
-    expect(byName['backup-api'].ok({ indices: [] })).toBe(true);
-    expect(byName['backup-api'].ok({})).toBe(false);
+  it('never probes the worker\'s own api alias: that check cannot exist', () => {
+    // Proven live 2026-07-31 07:20Z: the worker fetching signage-api.rvc.tech
+    // — its own custom domain — gets a Cloudflare 522 every run, custom_domain
+    // binding or not. The alias was healthy from outside the whole time. A
+    // check that can only measure Cloudflare's own-alias restriction is worse
+    // than no check, so it must never come back.
+    expect(byName['backup-api']).toBeUndefined();
   });
-  it('a broken alias fails its own check without touching the primary', async () => {
-    const m = mockFetch({ 'signage-api': { throw: 'TypeError' } });
+  it('a broken site alias fails its own check without touching the primary', async () => {
+    const m = mockFetch({ 'signage.rvc': { throw: 'TypeError' } });
     const report = await runHealthChecks({}, m, m);
-    expect(report.results.find((r) => r.name === 'backup-api').ok).toBe(false);
-    expect(report.results.find((r) => r.name === 'markets').ok).toBe(true);
+    expect(report.results.find((r) => r.name === 'backup-site').ok).toBe(false);
+    expect(report.results.find((r) => r.name === 'site').ok).toBe(true);
   });
 });
 
