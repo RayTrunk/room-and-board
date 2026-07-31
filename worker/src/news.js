@@ -19,6 +19,47 @@ const FEEDS = {
   // The Athletic serves its feed from nytimes.com; theathletic.com redirects
   // there and answers inconsistently when fetched directly (probed 2026-07-31).
   'the-athletic': 'https://www.nytimes.com/athletic/rss/news/',
+  // Per-sport feeds for the Sports News chips and the my-teams takeover.
+  // Every entry live-verified 2026-07-31 (status, item count, final host).
+  // ESPN is deliberately absent: its per-sport feeds answer HTTP 202 with
+  // empty bodies from datacenter egress. BBC names sports, not leagues.
+  'cbs-sports-mlb': 'https://www.cbssports.com/rss/headlines/mlb/',
+  'cbs-sports-nfl': 'https://www.cbssports.com/rss/headlines/nfl/',
+  'cbs-sports-nba': 'https://www.cbssports.com/rss/headlines/nba/',
+  'cbs-sports-nhl': 'https://www.cbssports.com/rss/headlines/nhl/',
+  'cbs-sports-golf': 'https://www.cbssports.com/rss/headlines/golf/',
+  'cbs-sports-tennis': 'https://www.cbssports.com/rss/headlines/tennis/',
+  'yahoo-sports-mlb': 'https://sports.yahoo.com/mlb/rss/',
+  'yahoo-sports-nfl': 'https://sports.yahoo.com/nfl/rss/',
+  'yahoo-sports-nba': 'https://sports.yahoo.com/nba/rss/',
+  'yahoo-sports-nhl': 'https://sports.yahoo.com/nhl/rss/',
+  'yahoo-sports-golf': 'https://sports.yahoo.com/golf/rss/',
+  'yahoo-sports-tennis': 'https://sports.yahoo.com/tennis/rss/',
+  'the-athletic-mlb': 'https://www.nytimes.com/athletic/rss/mlb/',
+  'the-athletic-nfl': 'https://www.nytimes.com/athletic/rss/nfl/',
+  'the-athletic-nba': 'https://www.nytimes.com/athletic/rss/nba/',
+  'the-athletic-nhl': 'https://www.nytimes.com/athletic/rss/nhl/',
+  'the-athletic-mls': 'https://www.nytimes.com/athletic/rss/mls/',
+  'the-athletic-f1': 'https://www.nytimes.com/athletic/rss/formula-1/',
+  'the-athletic-golf': 'https://www.nytimes.com/athletic/rss/golf/',
+  'the-athletic-tennis': 'https://www.nytimes.com/athletic/rss/tennis/',
+  'the-athletic-epl': 'https://www.nytimes.com/athletic/rss/premier-league/',
+  'bbc-sport-mlb': 'https://feeds.bbci.co.uk/sport/baseball/rss.xml',
+  'bbc-sport-nfl': 'https://feeds.bbci.co.uk/sport/american-football/rss.xml',
+  'bbc-sport-nba': 'https://feeds.bbci.co.uk/sport/basketball/rss.xml',
+  'bbc-sport-nhl': 'https://feeds.bbci.co.uk/sport/ice-hockey/rss.xml',
+  'bbc-sport-f1': 'https://feeds.bbci.co.uk/sport/formula1/rss.xml',
+  'bbc-sport-golf': 'https://feeds.bbci.co.uk/sport/golf/rss.xml',
+  'bbc-sport-tennis': 'https://feeds.bbci.co.uk/sport/tennis/rss.xml',
+  'guardian-sport-mlb': 'https://www.theguardian.com/sport/mlb/rss',
+  'guardian-sport-nfl': 'https://www.theguardian.com/sport/nfl/rss',
+  'guardian-sport-nba': 'https://www.theguardian.com/sport/nba/rss',
+  'guardian-sport-nhl': 'https://www.theguardian.com/sport/nhl/rss',
+  'guardian-sport-mls': 'https://www.theguardian.com/football/mls/rss',
+  'guardian-sport-f1': 'https://www.theguardian.com/sport/formulaone/rss',
+  'guardian-sport-golf': 'https://www.theguardian.com/sport/golf/rss',
+  'guardian-sport-tennis': 'https://www.theguardian.com/sport/tennis/rss',
+  'guardian-sport-epl': 'https://www.theguardian.com/football/premierleague/rss',
 };
 
 export function newsFeedUrl(id) {

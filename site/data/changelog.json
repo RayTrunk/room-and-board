@@ -3,6 +3,14 @@
     "date": "July 31",
     "items": [
       {
+        "lead": "Sports News",
+        "text": "Narrow the card to particular sports with the new chips in Settings: MLB, NFL, NBA, NHL, MLS, F1, Golf and Tennis. And with Only my teams on, the card now reads your teams' league sections directly, so it finds more of their stories than the general headlines ever carried."
+      },
+      {
+        "lead": "Headlines everywhere",
+        "text": "When several outlets cover the same story, your cards now show it once, in its freshest telling. This covers Headlines, Markets News and Sports News."
+      },
+      {
         "lead": "New card: Sports News",
         "text": "Sports headlines on the board, merged newest first from ESPN, CBS Sports, Yahoo Sports and The Athletic, with BBC Sport and Guardian Sport there if you want them. Add it from the pencil button or Settings, under Sports."
       },

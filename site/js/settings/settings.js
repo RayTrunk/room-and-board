@@ -1178,13 +1178,19 @@ async function renderMarketsNews() {
 
 async function renderSportsNews() {
   const _nav = navToken;
-  const { SPORTS_SOURCES } = await import('../widgets/sportsnews.js');
+  const { SPORTS_SOURCES, SPORTS, SPORT_FEEDS, takeoverSummary } = await import('../widgets/sportsnews.js');
   if (navStale(_nav)) return;
   const t = state.cfg.sportsnews;
   // The filter has nothing to filter BY until My Teams has a team, so the row
   // says so and stays untappable rather than silently doing nothing.
   const hasTeams = state.cfg.sports.teams.length > 0;
   const on = t.onlyMyTeams && hasTeams;
+  // With the takeover on, the toggle owns the sports dimension: the chips gray
+  // out (disabled, not hidden) and the note says what is choosing for them.
+  const leagues = [...new Set(state.cfg.sports.teams.map((tm) => tm.lg))].filter((l) => l in SPORT_FEEDS);
+  const sportsHint = on
+    ? `Only my teams is picking your sports: ${takeoverSummary(leagues)}.`
+    : 'Narrow the card to particular sports. None picked means all of them.';
   pane().innerHTML = `
     <h2 class="pane__title">Sports News</h2>
     <p class="pane__hint">Pick your sports sources: newest stories across all of them, merged.</p>
@@ -1197,16 +1203,28 @@ async function renderSportsNews() {
         <span class="row__label">${label}</span>
       </div>`;
     }).join('')}</div>
+    <p class="pane__hint">${sportsHint}</p>
+    <div class="chips">${SPORTS.map(([id, label]) => {
+      const picked = t.sports.includes(id);
+      return `<button class="chip ${picked && !on ? 'chip--on' : ''}" data-sport="${id}" ${on ? 'disabled' : ''}>${label}</button>`;
+    }).join('')}</div>
     <div class="row row--control">
       <button class="toggle ${on ? 'is-on' : ''}" data-only-teams role="switch" aria-checked="${on}" ${hasTeams ? '' : 'disabled'}>
         <span class="toggle__knob"></span>
       </button>
       <span class="row__label">Only my teams${hasTeams ? '' : ' <small>(pick teams in My Teams first)</small>'}</span>
     </div>
-    <p class="pane__hint">On, the card keeps only stories that name one of your teams. Matching is on the words in the headline and its summary, so a story that calls a team by a nickname alone can slip past.</p>`;
+    <p class="pane__hint">On, the card fetches your teams' leagues and keeps only stories that name one of your teams. Matching is on the words in the headline and its summary, so a story that calls a team by a nickname alone can slip past.</p>`;
   pane().querySelectorAll('[data-src]').forEach((btn) =>
     btn.addEventListener('click', () => {
       state.cfg.sportsnews.sources = toggleIn(state.cfg.sportsnews.sources, btn.dataset.src);
+      renderSportsNews();
+    }),
+  );
+  pane().querySelectorAll('[data-sport]').forEach((btn) =>
+    btn.addEventListener('click', () => {
+      if (on) return;
+      state.cfg.sportsnews.sports = toggleIn(state.cfg.sportsnews.sports, btn.dataset.sport);
       renderSportsNews();
     }),
   );
