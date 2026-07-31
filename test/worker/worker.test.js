@@ -341,6 +341,33 @@ describe('/njt/departures', () => {
     expect(body.trains).toHaveLength(2); // schedule unaffected
     expect(body.alerts).toEqual([]); // alert fetch failed -> empty, not a stale banner
   });
+
+  // The schedule half of this route backs off (above); the alerts half did not.
+  // njtAlerts cached a SUCCESS for two minutes but let a FAILURE fall straight
+  // through to a bare [], so mid-outage every board request re-opened a
+  // getStationMSG that was already timing out: 10s of AbortSignal apiece, which
+  // is most of the stall the schedule backoff was meant to end. The schedule is
+  // seeded fresh in KV here so nothing but the alerts call can reach upstream.
+  it('attempts the alerts upstream once per window while getStationMSG keeps failing', async () => {
+    await env.CODES.put('njt:schedule', JSON.stringify({
+      date: nyDate(),
+      vm: { ...priorDay.vm, updatedAt: Math.floor(Date.now() / 1000) },
+    }));
+    const calls = stubFetch([
+      { match: /getToken/, body: TOKEN_RESPONSE, times: 8 },
+      { match: /getStationMSG/, body: 'boom', status: 500, times: 8 },
+    ]);
+    const bodies = [];
+    for (let i = 0; i < 4; i += 1) {
+      bodies.push(await (await call('/njt/departures', {}, NJT_ENV)).json());
+    }
+    expect(calls.filter((u) => /getStationMSG/.test(u)).length).toBe(1);
+    expect(calls.filter((u) => /getStationSchedule/.test(u)).length).toBe(0); // served from KV throughout
+    for (const body of bodies) {
+      expect(body.alerts).toEqual([]); // still empty every time, never a stale banner
+      expect(body.trains).toHaveLength(1);
+    }
+  });
 });
 
 describe('njt token persistence (KV)', () => {
@@ -1041,6 +1068,26 @@ describe('htmlToText (feed markup -> readable text)', () => {
     const out = htmlToText(deep);
     expect(out).not.toMatch(/<\/?[a-z]/i);
     expect(out).toContain('&lt;b&gt;'); // the surviving layers stayed encoded
+  });
+
+  // The encoded twin above was covered; the RAW one was not. Stripping a tag
+  // splices its neighbours into a new one, so "<<<<script>script>script>script>"
+  // sheds one layer per sweep, and the sweep cap is three. The fourth layer
+  // walked out as a whole <script>, which is the same latent hole as the old
+  // decode-last ordering: a renderer that ever trusted "the vm stores plain
+  // text" would be handed executable markup.
+  it('hands back no tag when raw splice-nesting outlasts the sweep cap', () => {
+    for (let depth = 1; depth <= 8; depth += 1) {
+      const out = htmlToText('<'.repeat(depth) + 'script>'.repeat(depth) + 'alert(1)');
+      expect(out, `depth ${depth}`).not.toMatch(/<\/?[a-z][a-z0-9]*[^>]*>/i);
+    }
+  });
+
+  it('leaves a lone "<" that no tag could open with alone', () => {
+    // The neutralizer only fires on text that still holds a WHOLE tag, so
+    // arithmetic prose and the half-spliced leftovers keep their characters.
+    expect(htmlToText('latency a < b')).toBe('latency a < b');
+    expect(htmlToText('&lt;&lt;p&gt;p&gt;')).toBe('<\n\np>');
   });
 });
 

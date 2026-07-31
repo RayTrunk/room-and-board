@@ -165,19 +165,29 @@ async function cached(origin, key, ttlS, fetcher) {
 // fine, but a fetch failure returns [] rather than a stale banner — unlike the
 // schedule, a resolved delay must not linger. Not the shared cached() helper,
 // which serves 24h stale on failure.
+const ALERTS_TTL_S = 120;
+
 async function njtAlerts(env, origin) {
   const key = new Request(`${origin}/__cache/njt-alerts`);
   const hit = await caches.default.match(key);
   if (hit) { try { return await hit.json(); } catch { /* refetch */ } }
+  // The FAILURE is cached at the same cadence as a success, which is the alerts
+  // half of the schedule's backoff (getNjtSchedule's outageMemo). Without it an
+  // outage put every board request back on a getStationMSG that was already
+  // timing out: 10s of AbortSignal apiece, stacked with the schedule call and
+  // past the board's own 15s fetch timeout, so nothing refreshed at all. Caching
+  // the empty answer costs nothing a successful empty response would not, since
+  // the banner is at most one window behind either way, and it still EMPTIES on
+  // failure rather than lingering.
+  const alerts = await fetchNjtAlerts(env).catch(() => []);
   try {
-    const alerts = await fetchNjtAlerts(env);
     await caches.default.put(key, new Response(JSON.stringify(alerts), {
-      headers: { 'Content-Type': 'application/json', 'Cache-Control': 'max-age=120' },
+      headers: { 'Content-Type': 'application/json', 'Cache-Control': `max-age=${ALERTS_TTL_S}` },
     }));
-    return alerts;
   } catch {
-    return [];
+    // Best effort: a failed put just means the next request re-fetches.
   }
+  return alerts;
 }
 
 const YAHOO_UA =
