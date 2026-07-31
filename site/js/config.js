@@ -112,7 +112,7 @@ export const DEFAULT_CONFIG = Object.freeze({
   sports: Object.freeze({ teams: Object.freeze([]) }), // [{lg, id}] up to 6
   // Sports headlines. onlyMyTeams narrows them to the teams `sports` follows;
   // off by default because a board with no teams picked would show nothing.
-  sportsnews: Object.freeze({ sources: Object.freeze(['espn', 'cbs-sports', 'yahoo-sports']), onlyMyTeams: false }),
+  sportsnews: Object.freeze({ sources: Object.freeze(['espn', 'cbs-sports', 'yahoo-sports', 'the-athletic']), sports: Object.freeze([]), onlyMyTeams: false }),
   news: Object.freeze({ sources: Object.freeze(['nyt-home', 'nyt-nyregion']) }),
   // Starter accounts (AI/tech/finance, politically neutral, verified active
   // 2026-07-05) — removable entries like the markets tickers.
@@ -375,9 +375,17 @@ export function normalizeConfig(raw) {
     },
     sportsnews: {
       sources: (() => {
-        const valid = new Set(['espn', 'cbs-sports', 'yahoo-sports', 'bbc-sport', 'guardian-sport']); // SPORTS_SOURCES ids
+        // SPORTS_SOURCES ids. the-athletic was missing here at first, which
+        // silently deleted an explicit Athletic pick on every load.
+        const valid = new Set(['espn', 'cbs-sports', 'yahoo-sports', 'the-athletic', 'bbc-sport', 'guardian-sport']);
         const picked = (Array.isArray(raw.sportsnews?.sources) ? raw.sportsnews.sources : []).filter((s) => valid.has(s));
         return picked.length ? picked : [...DEFAULT_CONFIG.sportsnews.sources];
+      })(),
+      // Sport chips (SPORTS ids). Empty means all sports, and IS the default,
+      // so unlike sources an empty array is honored verbatim.
+      sports: (() => {
+        const valid = new Set(['mlb', 'nfl', 'nba', 'nhl', 'mls', 'f1', 'golf', 'tennis']);
+        return (Array.isArray(raw.sportsnews?.sports) ? raw.sportsnews.sports : []).filter((s) => valid.has(s));
       })(),
       onlyMyTeams: raw.sportsnews?.onlyMyTeams === true,
     },

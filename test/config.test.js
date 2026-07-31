@@ -229,7 +229,7 @@ describe('encode/decode round trip', () => {
     expect((await encodeConfig(normalizeConfig({ sportsnews: {} }))).length).toBe(plain.length);
     const custom = normalizeConfig({ sportsnews: { sources: ['espn'], onlyMyTeams: true } });
     const dec = await decodeConfig(await encodeConfig(custom));
-    expect(dec.sportsnews).toEqual({ sources: ['espn'], onlyMyTeams: true });
+    expect(dec.sportsnews).toEqual({ sources: ['espn'], sports: [], onlyMyTeams: true });
   });
 
   it('throws on corrupt input', async () => {
@@ -713,11 +713,23 @@ describe('marketsnews config', () => {
 });
 
 describe('sportsnews config', () => {
-  const DEFAULTS = ['espn', 'cbs-sports', 'yahoo-sports'];
+  // The Athletic joined the defaults 2026-07-31 (the first cut missed BOTH
+  // config touchpoints: it was absent from this default list AND filtered out
+  // of an explicit pick by the stale valid-set, so it could not be enabled
+  // persistently at all).
+  const DEFAULTS = ['espn', 'cbs-sports', 'yahoo-sports', 'the-athletic'];
   it('defaults to the US sources with the my-teams filter off, and filters junk ids', () => {
-    expect(normalizeConfig({}).sportsnews).toEqual({ sources: DEFAULTS, onlyMyTeams: false });
+    expect(normalizeConfig({}).sportsnews).toEqual({ sources: DEFAULTS, sports: [], onlyMyTeams: false });
     expect(normalizeConfig({ sportsnews: { sources: ['espn', 'bogus'] } }).sportsnews.sources).toEqual(['espn']);
     expect(normalizeConfig({ sportsnews: { sources: [] } }).sportsnews.sources).toEqual(DEFAULTS);
+  });
+  it('keeps an explicit The Athletic pick across save and load', () => {
+    expect(normalizeConfig({ sportsnews: { sources: ['the-athletic'] } }).sportsnews.sources).toEqual(['the-athletic']);
+  });
+  it('keeps valid sport chips, drops junk, defaults to all-sports (empty)', () => {
+    expect(normalizeConfig({}).sportsnews.sports).toEqual([]);
+    expect(normalizeConfig({ sportsnews: { sports: ['mlb', 'cricket', 'f1'] } }).sportsnews.sports).toEqual(['mlb', 'f1']);
+    expect(normalizeConfig({ sportsnews: { sports: 'mlb' } }).sportsnews.sports).toEqual([]);
   });
   it('only turns the filter on for an explicit true', () => {
     expect(normalizeConfig({ sportsnews: { onlyMyTeams: true } }).sportsnews.onlyMyTeams).toBe(true);

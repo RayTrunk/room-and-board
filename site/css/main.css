@@ -983,6 +983,9 @@ body.mode-ambient .gear--edit { display: none; }
   border: 1px solid rgba(147, 160, 180, 0.16); border-radius: 12px; cursor: pointer;
   background: transparent; color: var(--ink);
 }
+/* Disabled chips stay visible but quiet: the Sports News takeover grays the
+   sport chips while Only my teams is choosing for them. */
+.chip:disabled { opacity: 0.45; cursor: default; }
 .chip--on { background: var(--accent); border-color: var(--accent); color: #06131f; }
 /* Label/value rows (Batch 2 of the settings unification) replace the old .kv
    gutter rows. row--nav is a full-width tap target ("Trains stopping at —

@@ -6,6 +6,10 @@ import {
   meta,
   SPORTS_SOURCES,
   DEFAULT_SPORTS_SOURCES,
+  SPORTS,
+  SPORT_FEEDS,
+  resolveFeedIds,
+  takeoverSummary,
   teamPhrases,
   matchesTeams,
   render,
@@ -133,6 +137,46 @@ describe('sportsnews render', () => {
   });
 });
 
+describe('sport chips + per-sport sourcing', () => {
+  it('offers the eight chips Sean named, in his order', () => {
+    expect(SPORTS.map((s) => s[0])).toEqual(['mlb', 'nfl', 'nba', 'nhl', 'mls', 'f1', 'golf', 'tennis']);
+  });
+
+  // Same guard as the outlet table: every per-sport proxy id must resolve in
+  // the Worker whitelist or that (outlet, sport) cell 404s forever. The epl
+  // row exists for the my-teams takeover only (no chip), so it is guarded too.
+  it('every per-sport proxy id resolves in the Worker whitelist', () => {
+    const sports = Object.keys(SPORT_FEEDS);
+    expect(sports).toEqual(expect.arrayContaining(['mlb', 'f1', 'epl']));
+    for (const sport of sports) {
+      for (const [outlet, ref] of Object.entries(SPORT_FEEDS[sport])) {
+        expect(newsFeedUrl(ref), `${outlet} x ${sport}`).toMatch(/^https:\/\//);
+      }
+    }
+  });
+
+  it('resolves to the outlet top feeds while no sports are picked', () => {
+    expect(resolveFeedIds(['espn', 'cbs-sports'], [])).toEqual(['espn', 'cbs-sports']);
+  });
+
+  it('resolves picked sports to the per-sport feeds of the enabled outlets only', () => {
+    // ESPN has no live per-sport feeds (probed 2026-07-31: HTTP 202, zero
+    // items) and CBS has no F1 feed; both cells simply contribute nothing.
+    expect(resolveFeedIds(['espn', 'cbs-sports', 'the-athletic'], ['mlb', 'f1'])).toEqual([
+      'cbs-sports-mlb', 'the-athletic-mlb', 'the-athletic-f1',
+    ]);
+  });
+
+  it('ignores sports it does not know', () => {
+    expect(resolveFeedIds(['cbs-sports'], ['cricket', 'golf'])).toEqual(['cbs-sports-golf']);
+  });
+
+  it('summarizes the takeover leagues for the settings note', () => {
+    expect(takeoverSummary(['mlb', 'nhl'])).toBe('MLB, NHL');
+    expect(takeoverSummary(['epl'])).toBe('Premier League');
+  });
+});
+
 describe('sportsnews fetchData', () => {
   const item = (t) => `<item><title>${t}</title></item>`;
   const RSS = `<rss><channel>${item('Mets rally past Braves')}</channel></rss>`;
@@ -249,5 +293,44 @@ describe('sportsnews fetchData', () => {
     const { net, urls } = netFor();
     await fetchData({ sports: { teams: [] } }, net);
     expect(urls.length).toBe(DEFAULT_SPORTS_SOURCES.length);
+  });
+
+  it('chips switch the pool to per-sport feeds of the enabled outlets', async () => {
+    const { net, urls } = netFor();
+    await (await freshFetchData())(
+      { sportsnews: { sources: ['yahoo-sports'], sports: ['golf'] }, sports: { teams: [] } },
+      net,
+    );
+    const feeds = urls.filter((u) => u.includes('/news/'));
+    expect(feeds).toEqual([expect.stringContaining('/news/yahoo-sports-golf')]);
+  });
+
+  // THE TAKEOVER (Sean, 2026-07-31): Only-my-teams owns the sports dimension.
+  // Sourcing switches to the teams' LEAGUE feeds (denser in team stories than
+  // top-news), chips are ignored, and the team filter applies over that pool.
+  // Per outlet: ESPN publishes no per-sport feeds, so it keeps its top feed
+  // (its exact pre-takeover contribution) instead of dropping out of the pool.
+  it('my-teams takeover fetches the league feeds and ignores the chips', async () => {
+    const { net, urls } = netFor();
+    const vm = await (await freshFetchData())(
+      { sportsnews: { sources: ['espn', 'the-athletic'], sports: ['f1'], onlyMyTeams: true }, ...FOLLOWING_METS },
+      net,
+    );
+    const feeds = urls.filter((u) => u.includes('/news/'));
+    expect(feeds).toEqual([
+      expect.stringContaining('/news/espn'),
+      expect.stringContaining('/news/the-athletic-mlb'),
+    ]);
+    expect(vm.filtered).toBe(true);
+    expect(vm.takeoverLeagues).toEqual(['mlb']);
+  });
+
+  it('the takeover with no teams stays inert on the top feeds, as before', async () => {
+    const { net, urls } = netFor();
+    await (await freshFetchData())(
+      { sportsnews: { sources: ['espn'], onlyMyTeams: true }, sports: { teams: [] } },
+      net,
+    );
+    expect(urls.filter((u) => u.includes('/news/'))).toEqual([expect.stringContaining('/news/espn')]);
   });
 });
