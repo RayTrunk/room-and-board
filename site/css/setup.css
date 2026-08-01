@@ -150,9 +150,32 @@ button:disabled { opacity: 0.45; cursor: default; }
 .sched-row { display: flex; align-items: center; gap: 10px; }
 .sched-row input[type="time"] { width: auto; }
 
+/* Required-field affordance. Calm at rest (the page's uppercase micro style, in
+   the same dim as every other label), and it takes the accent only while the
+   field is still empty, which is the one moment it has anything to say. The
+   word, not an asterisk: an asterisk is a legend nobody reads. */
+.req {
+  font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--ink-dim); margin-left: 8px; white-space: nowrap;
+}
+.req--unmet { color: var(--accent); }
+/* The line above a greyed-out output button. It wears the SAME accent as the
+   unmet Required badges, so the sentence and the fields it sends you to read
+   as one thing. */
+.hint--guard { color: var(--accent); margin-bottom: 12px; }
+
 .code-out { margin-top: 18px; background: var(--bg-card); border: 1px solid rgba(255, 255, 255, 0.07); border-radius: 14px; padding: 20px; }
-.code-out output { font-size: 2.6rem; letter-spacing: 0.3em; font-weight: 700; display: block; margin-bottom: 8px; }
+.code-out output { font-size: 2.6rem; letter-spacing: 0.3em; font-weight: 700; display: block; }
 .code-out p { color: var(--ink-dim); }
+/* Code and its Copy button on one line where there is room; on a narrow phone
+   the six tracked characters take the width and the button wraps under them
+   whole, which is why the button is never allowed to shrink. */
+.code-out__row { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px 14px; margin-bottom: 10px; }
+#copy-code { flex: none; padding: 12px 24px; }
+#copy-code.is-copied { border-color: var(--accent); color: var(--accent); }
+#code-summary { margin-top: 10px; }
+#code-summary:empty { display: none; }
+#code-help, #code-error, #code-copied { margin-top: 10px; }
 .alertcheck { display: flex; align-items: center; gap: 10px; margin-top: 10px; font-weight: 400; }
 .alertcheck input { width: 22px; height: 22px; min-height: 0; accent-color: var(--accent); }
 

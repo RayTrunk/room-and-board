@@ -39,7 +39,11 @@
         <p id="widget-count" class="hint" aria-live="polite"></p>
       </section>
 
-      <div class="step__nav"><button id="to-step-2" type="button" class="primary">Next →</button></div>
+      <!-- Disabled in the MARKUP, not just by script: the picker opens with
+           nothing ticked, so zero picks is the first-paint state and Next must
+           be grey before setup.js gets a turn. A scanned board QR arrives with
+           cards and refreshGating switches it on. -->
+      <div class="step__nav"><button id="to-step-2" type="button" class="primary" disabled>Next →</button></div>
     </div>
 
     <div id="step-2" hidden>
@@ -90,14 +94,14 @@
           <option value="gct">Grand Central</option>
           <option value="both">Both stations</option>
         </select>
-        <label for="lirr-dest">Only trains stopping at</label>
+        <label for="lirr-dest">Only trains stopping at <span class="req" data-req="lirr">Required</span></label>
         <select id="lirr-dest"><option value="">Choose a station</option></select>
         <label class="alertcheck"><input type="checkbox" id="lirr-alerts"> Show service alerts</label>
       </section>
 
       <section class="field" id="mnr-field">
         <h2>Metro-North <small>(Grand Central departures)</small></h2>
-        <label for="mnr-dest">Only trains stopping at</label>
+        <label for="mnr-dest">Only trains stopping at <span class="req" data-req="mnr">Required</span></label>
         <select id="mnr-dest"><option value="">Choose a station</option></select>
         <label class="alertcheck"><input type="checkbox" id="mnr-alerts"> Show service alerts</label>
       </section>
@@ -111,7 +115,7 @@
 
       <section class="field" id="amtrak-field">
         <h2>Amtrak <small>(Moynihan / New York Penn departures)</small></h2>
-        <label for="amtrak-dest">Only trains stopping at</label>
+        <label for="amtrak-dest">Only trains stopping at <span class="req" data-req="amtrak">Required</span></label>
         <select id="amtrak-dest"><option value="">Choose a station</option></select>
         <label class="alertcheck"><input type="checkbox" id="amtrak-alerts"> Show service alerts</label>
       </section>
@@ -130,7 +134,12 @@
       </section>
 
       <div id="bus-field" class="field" hidden>
-        <label>Express Bus</label>
+        <!-- This section used to name itself with a <label>, which left it the
+             only step-2 field with no <h2> and no label over its actual
+             control. Title above, field label on the control, like its
+             neighbours. -->
+        <h2>Express Bus</h2>
+        <label>Route and stop <span class="req" data-req="bus">Required</span></label>
         <div id="bus-chips" class="chips"></div>
         <div class="bus-pick">
           <select id="bus-route"></select>
@@ -194,6 +203,7 @@
 
       <section class="field" id="sports-field">
         <h2>My Teams <small>(sports scores, up to 6)</small></h2>
+        <label>Teams <span class="req" data-req="sports">Required</span></label>
         <div id="team-chips" class="chips"></div>
         <div class="pickrow">
           <select id="team-league"></select>
@@ -255,6 +265,7 @@
       <section class="field" id="photos-field">
         <h2>iCloud Photos <small>(a public iCloud Shared Album)</small></h2>
         <p class="hint">Need the steps? Full walkthrough at <b>roomboard.app/photo-setup</b>. Public link: anyone with it can view, so add only office-appropriate photos.</p>
+        <label for="photos-album">Album link <span class="req" data-req="photos">Required</span></label>
         <div class="ziprow">
           <input id="photos-album" type="text" maxlength="200" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="paste the album link">
           <button id="photos-add" type="button">Check &amp; add</button>
@@ -273,6 +284,7 @@
       <section class="field" id="gdrivephotos-field">
         <h2>GDrive Photos <small>(a public Google Drive folder)</small></h2>
         <p class="hint">Need the steps? Full walkthrough at <b>roomboard.app/photo-setup</b>. Public link: anyone with it can view, so add only office-appropriate photos.</p>
+        <label for="gdrivephotos-album">Folder link <span class="req" data-req="gdrivephotos">Required</span></label>
         <div class="ziprow">
           <input id="gdrivephotos-album" type="text" maxlength="300" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="paste the Drive folder link">
           <button id="gdrivephotos-add" type="button">Check &amp; add</button>
@@ -290,7 +302,7 @@
 
       <section class="field" id="iptv-field">
         <h2>Live Video</h2>
-        <label for="iptv-url">HLS stream link (https, usually ends in .m3u8)</label>
+        <label for="iptv-url">HLS stream link (https, usually ends in .m3u8) <span class="req" data-req="iptv">Required</span></label>
         <input type="url" id="iptv-url" inputmode="url" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="https://example.com/live/stream.m3u8">
         <p class="hint" id="iptv-url-warn" hidden>Must be an https link (usually ending in .m3u8) or the card will stay unconfigured.</p>
         <label for="iptv-label">Label shown on the card (optional)</label>
@@ -328,12 +340,28 @@
       </section>
 
       <footer class="setup__foot">
-        <button id="get-code" type="button" class="primary">Get my setup code</button>
+        <!-- Why the button below is grey, said BEFORE it is tapped. The button
+             carries a real `disabled`, so a tap on it does nothing at all
+             (setup.js refreshGating), which would be a dead end without this
+             line naming the card and the field it still owes. -->
+        <p id="code-guard" class="hint hint--guard" aria-live="polite" hidden></p>
+        <button id="get-code" type="button" class="primary" disabled>Get my setup code</button>
         <div id="code-out" class="code-out" hidden>
-          <output id="code"></output>
-          <p>On your board: tap the gear → <b>Setup code</b> → enter this code, then Save. Expires in 1 hour.</p>
+          <div class="code-out__row">
+            <output id="code"></output>
+            <button id="copy-code" type="button">Copy</button>
+          </div>
+          <p id="code-copied" class="hint" hidden></p>
+          <!-- The pick list in one line: the last chance to catch a wrong box
+               before walking to the board. -->
+          <p id="code-summary" class="hint"></p>
+          <p id="code-help">On your board: tap the gear → <b>Setup code</b> → enter this code, then Save. Expires in 1 hour.</p>
+          <!-- Its own element, not a rewrite of the help text: an error used to
+               overwrite that paragraph permanently, so the next SUCCESSFUL code
+               still carried the failure message under it. -->
+          <p id="code-error" hidden></p>
         </div>
-        <button id="get-signage-url" type="button">Get signage URL (non-touch device)</button>
+        <button id="get-signage-url" type="button" disabled>Get signage URL (non-touch device)</button>
         <div id="url-out" class="code-out" hidden>
           <div class="ziprow">
             <input id="signage-url" readonly>
