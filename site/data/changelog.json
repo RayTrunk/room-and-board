@@ -1,5 +1,22 @@
 [
   {
+    "date": "August 1",
+    "items": [
+      {
+        "lead": "Phone setup",
+        "text": "Cards that need a choice before they can show anything, like the station your LIRR or Metro-North board follows, now say Required next to that choice, and the setup code waits until you have made it. No more boards arriving with a blank card on them."
+      },
+      {
+        "lead": "Phone setup",
+        "text": "Next and Get my setup code stay greyed out until they will actually work, so a tap never bounces you back with a warning."
+      },
+      {
+        "lead": "Phone setup",
+        "text": "Your code now scrolls itself into view with a Copy button beside it, and a one line summary of everything you picked, so you can check the board you asked for before you walk to it."
+      }
+    ]
+  },
+  {
     "date": "July 31",
     "items": [
       {

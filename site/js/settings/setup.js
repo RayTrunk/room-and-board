@@ -93,6 +93,56 @@ export const SETUP_SECTIONS = [
   { id: 'services-field', group: 'Reference', triggers: ['services'] },
 ];
 
+// Widgets whose card CANNOT render without a choice this page is the only
+// place to make. The test is not "does the field look important" but "does an
+// empty value reach the board": every entry below is a field normalizeConfig
+// hands through empty (no default substituted) and whose widget then paints
+// `setupPrompt` instead of data. That is the whole quarter-board an unconfigured
+// LIRR arrived as, and it is why these block the code rather than warn about it.
+//
+// Deliberately NOT here, having been checked one by one: subway.lines,
+// tfl.lines, citibike.stations, services.list, markets.symbols, news/marketsnews/
+// sportsnews.sources, substack.pubs, bsky.handles and worldclock.cities all fall
+// back to their defaults in normalizeConfig, so an emptied list never reaches a
+// board empty; njt.lines, art.cats and chart.topics treat [] as "all"; path and
+// ferry are selects that always hold a value.
+//
+// `field` is the on-page label the badge sits on, so the guard sentence and the
+// thing the user is looking for say the same words. Pure data; exported for tests.
+export const REQUIRED_FIELDS = Object.freeze([
+  { id: 'lirr', widget: 'LIRR', field: 'Only trains stopping at', filled: (c) => Boolean(c?.lirr?.dest) },
+  { id: 'mnr', widget: 'Metro-North', field: 'Only trains stopping at', filled: (c) => Boolean(c?.mnr?.dest) },
+  { id: 'amtrak', widget: 'Amtrak', field: 'Only trains stopping at', filled: (c) => Boolean(c?.amtrak?.dest) },
+  { id: 'bus', widget: 'Express Bus', field: 'Route and stop', filled: (c) => (c?.bus?.legs?.length ?? 0) > 0 },
+  { id: 'sports', widget: 'My Teams', field: 'Teams', filled: (c) => (c?.sports?.teams?.length ?? 0) > 0 },
+  // Mirrors normalizeConfig's https-only rule: anything else normalizes to ''
+  // on the way out, so anything else is unconfigured here too.
+  { id: 'iptv', widget: 'Live Video', field: 'HLS stream link', filled: (c) => /^https:\/\/\S+$/i.test(c?.iptv?.url ?? '') },
+  { id: 'photos', widget: 'iCloud Photos', field: 'Album link', filled: (c) => Boolean(c?.photos?.album) },
+  { id: 'gdrivephotos', widget: 'GDrive Photos', field: 'Folder link', filled: (c) => Boolean(c?.gdrivephotos?.album) },
+]);
+
+// The required fields a given pick set still owes. Only PICKED widgets count:
+// an unconfigured LIRR nobody asked for is not a problem. Pure; exported.
+export function missingRequired(cfgLike, placed) {
+  const p = placed instanceof Set ? placed : new Set(placed ?? []);
+  return REQUIRED_FIELDS.filter((f) => p.has(f.id) && !f.filled(cfgLike));
+}
+
+// Why the output buttons are greyed out, in the user's words: which card, which
+// field, and the two ways out (fill it, or drop the card). Pure; exported.
+export function requiredNotice(missing) {
+  if (!missing?.length) return '';
+  const parts = missing.map((f) => `${f.widget} (${f.field})`);
+  const list = parts.length === 1
+    ? parts[0]
+    : `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`;
+  const tail = missing.length === 1
+    ? 'Finish it above, or uncheck that widget in step 1.'
+    : 'Finish them above, or uncheck those widgets in step 1.';
+  return `Still to fill in: ${list}. ${tail}`;
+}
+
 // Which step-2 config sections + category dividers are visible for a set of
 // placed widget ids. Pure — drives the DOM apply step in the wizard.
 export function stepTwoVisibility(placed) {
@@ -209,6 +259,16 @@ async function boot() {
   $('#get-code').addEventListener('click', getCode);
   $('#get-signage-url').addEventListener('click', getSignageUrl);
   $('#copy-signage-url').addEventListener('click', copySignageUrl);
+  $('#copy-code').addEventListener('click', copyCode);
+  // Every field on this page writes straight into `cfg` from its own handler,
+  // so rather than teach twenty handlers to report in, listen once where all
+  // of their events end up. Listeners on an ancestor run AFTER the target's
+  // own in the bubble phase, so cfg is already updated by the time this fires;
+  // the handful of handlers that finish after an await call refreshGating
+  // themselves.
+  for (const type of ['change', 'input', 'click']) {
+    document.addEventListener(type, () => refreshGating());
+  }
   $('#to-step-2').addEventListener('click', () => {
     applyStepTwo();
     $('#step-1').hidden = true;
@@ -220,6 +280,9 @@ async function boot() {
     $('#step-1').hidden = false;
     window.scrollTo(0, 0);
   });
+  // Before the data-loading renders below, so a scanned board's Next button is
+  // live immediately rather than after the slowest station-list fetch.
+  refreshGating();
 
   // Each section renders independently: one failure is logged, not fatal, so a
   // single broken field can't blank the rest of the setup form.
@@ -254,6 +317,9 @@ async function boot() {
   await safe(renderServicesField);
   await safe(renderChartField);
   await safe(renderIptvField);
+  // Last: the sections above are what the gate reads, and a scanned board may
+  // arrive already owing a required field.
+  refreshGating();
 }
 
 // Grouped checkbox HTML for the setup widget picker. `labels` is this page's
@@ -305,6 +371,22 @@ function applyStepTwo() {
 export const canEncode = (layout) => Array.isArray(layout) && layout.length > 0;
 export const EMPTY_PICKS_NOTICE = 'Pick at least one widget first — a board with no cards has nothing to show.';
 
+// The picker labels carry a parenthetical for the picker's sake ("LIRR (Penn
+// Station)"); the summary beside the code is a sanity check read while walking
+// to the board, so it drops them.
+export const shortLabel = (label) => String(label ?? '').replace(/\s*\([^)]*\)\s*$/, '');
+
+// One line beside the generated code: how many cards, and which. Long picks
+// truncate rather than wrap into a paragraph — the count is the check, the
+// names are the reassurance. Pure; exported for tests.
+export function pickSummary(ids, labels = WIDGET_LABELS, max = 5) {
+  const names = [...(ids ?? [])].map((id) => shortLabel(labels[id] ?? id));
+  if (!names.length) return '';
+  const head = names.slice(0, max);
+  const rest = names.length - head.length;
+  return `${names.length} widget${names.length === 1 ? '' : 's'}: ${head.join(', ')}${rest ? `, plus ${rest} more` : ''}`;
+}
+
 // Step 2 edits the very lists the generator reads — tickers, teams, subway
 // lines, cities — so the layout that leaves this page has to be generated
 // AFTER those edits, not from the 3-ticker defaults the picker last saw.
@@ -323,6 +405,50 @@ function blockedOnEmptyPicks() {
   $('#step-1').hidden = false;
   window.scrollTo(0, 0);
   return true;
+}
+
+// Backstop for the same rule the disabled button already enforces. The button
+// is the primary gate — a disabled control cannot be tapped, so nothing bounces
+// — but a keyboard, an autofill, or a future caller can still reach these
+// functions, and a code for a board with a blank card must never leave here.
+// Returns true when it blocked.
+function blockedOnRequired() {
+  const missing = missingRequired(cfg, new Set(cfg.layout.map((r) => r.id)));
+  if (!missing.length) return false;
+  notice(requiredNotice(missing));
+  return true;
+}
+
+// One place that decides what is tappable and what is still owed, re-run after
+// anything that could change either. Buttons carry the real `disabled`
+// attribute rather than a look-alike class, so a tap on a blocked button does
+// nothing at all instead of raising a toast the user has to dismiss; the guard
+// line beside them says why, because a dead control that explains nothing is
+// just a dead end.
+function refreshGating() {
+  const placed = new Set(cfg.layout.map((r) => r.id));
+  const missing = missingRequired(cfg, placed);
+  const unmet = new Set(missing.map((f) => f.id));
+  document.querySelectorAll('[data-req]').forEach((badge) =>
+    badge.classList.toggle('req--unmet', unmet.has(badge.dataset.req)));
+
+  const next = document.getElementById('to-step-2');
+  if (next) next.disabled = placed.size === 0; // the running count under the picker carries the ask
+
+  const blocked = !canEncode(cfg.layout) || missing.length > 0;
+  for (const id of ['get-code', 'get-signage-url']) {
+    const btn = document.getElementById(id);
+    // Never fight getCode's own in-flight disable ("Getting code…").
+    if (btn && !btn.dataset.busy) btn.disabled = blocked;
+  }
+  // Required fields only. The zero-pick case already has its own sentence at
+  // the top of step 2 (stepTwoNote), and with Next disabled it is unreachable
+  // through the UI anyway — blockedOnEmptyPicks remains its backstop.
+  const guard = document.getElementById('code-guard');
+  if (guard) {
+    guard.textContent = requiredNotice(missing);
+    guard.hidden = !guard.textContent;
+  }
 }
 
 // In-app notice replacing browser alert(): the native "…says" chrome broke
@@ -900,6 +1026,7 @@ function renderPhotoField(src) {
       if (!digest.photos?.length) throw new Error('empty');
       cfg[key].album = id;
       status.textContent = `Found ${digest.photos.length} photos.`;
+      refreshGating(); // the album only counts once the check comes back
     } catch {
       status.textContent = gd
         ? "Couldn't open that folder. Make sure it's shared to Anyone with the link."
@@ -949,6 +1076,60 @@ export function signageUrlFor(host, encoded) {
   return `https://${host}/#cfg=${encoded}`;
 }
 
+// Reveal a result block and bring it to the eye. The code used to appear below
+// the fold on a phone with any real pick list, which reads as a button that did
+// nothing. Reduced-motion users get the jump instead of the glide, per DESIGN's
+// crossfades-become-cuts rule.
+function reveal(el) {
+  el.hidden = false;
+  const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches === true;
+  el.scrollIntoView?.({ behavior: reduced ? 'auto' : 'smooth', block: 'center' });
+}
+
+// Clipboard with a hand-copy fallback: the async API needs a secure context and
+// a user gesture, and older phone browsers have neither reliably. Returns
+// whether the text actually made it.
+async function copyText(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      const ok = document.execCommand?.('copy') === true;
+      ta.remove();
+      return ok;
+    } catch {
+      return false;
+    }
+  }
+}
+
+// Brief confirmation ON the button, so the answer is where the finger already
+// is; the label returns on its own. A blocked clipboard says so and points at
+// the six characters, which are on screen and typable either way.
+let copyCodeTimer = null;
+async function copyCode() {
+  const btn = $('#copy-code');
+  const hint = $('#code-copied');
+  const ok = await copyText($('#code').textContent.trim());
+  btn.textContent = ok ? 'Copied' : 'Copy failed';
+  btn.classList.toggle('is-copied', ok);
+  hint.textContent = ok ? '' : 'This browser blocked the copy. Type the code on the board instead.';
+  hint.hidden = ok;
+  clearTimeout(copyCodeTimer);
+  copyCodeTimer = setTimeout(() => {
+    btn.textContent = 'Copy';
+    btn.classList.remove('is-copied');
+  }, 2200);
+}
+
 // Copy the generated URL: clipboard API first, else select the text and try
 // the legacy command so one tap still works on older phone browsers; worst
 // case the URL is left selected for a manual copy.
@@ -967,24 +1148,27 @@ async function copySignageUrl() {
 
 async function getSignageUrl() {
   regenerateForOutput();
-  if (blockedOnEmptyPicks()) return;
+  if (blockedOnEmptyPicks() || blockedOnRequired()) return;
   cfg.name = $('#name').value.trim();
   cfg.mode = $('#mode').value;
   cfg.t = Math.floor(Date.now() / 1000); // fresh t: a re-pasted URL always wins
   const url = signageUrlFor(location.host, await encodeConfig(normalizeConfig(cfg)));
-  $('#url-out').hidden = false;
   $('#signage-url').value = url;
+  reveal($('#url-out'));
   await copySignageUrl();
 }
 
 async function getCode() {
   regenerateForOutput();
-  if (blockedOnEmptyPicks()) return;
+  if (blockedOnEmptyPicks() || blockedOnRequired()) return;
   cfg.name = $('#name').value.trim();
   cfg.mode = $('#mode').value;
   cfg.t = Math.floor(Date.now() / 1000);
   const encoded = await encodeConfig(normalizeConfig(cfg));
   const btn = $('#get-code');
+  // busy outranks the gate: refreshGating must not un-disable a button that is
+  // mid-request just because a stray event fired.
+  btn.dataset.busy = '1';
   btn.disabled = true;
   btn.textContent = 'Getting code…';
   try {
@@ -995,15 +1179,29 @@ async function getCode() {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const { code } = await res.json();
     $('#code').textContent = code;
-    $('#code-out').hidden = false;
+    // What you are about to carry to the board, in one line, so a wrong pick is
+    // caught here rather than on the wall.
+    $('#code-summary').textContent = pickSummary(cfg.layout.map((r) => r.id));
+    $('#code-summary').hidden = false;
+    $('#copy-code').hidden = false;
+    $('#code-help').hidden = false;
+    $('#code-error').hidden = true;
+    reveal($('#code-out'));
   } catch (err) {
-    $('#code-out').hidden = false;
-    $('#code').textContent = '—';
-    $('#code-out').querySelector('p').textContent =
+    // Nothing to copy or check when there is no code: the failure owns the card.
+    $('#copy-code').hidden = true;
+    $('#code-summary').hidden = true;
+    $('#code-copied').hidden = true;
+    $('#code-help').hidden = true;
+    $('#code').textContent = '···';
+    $('#code-error').textContent =
       `Couldn't reach the code service (${err.message}). Check that the Worker is deployed.`;
+    $('#code-error').hidden = false;
+    reveal($('#code-out'));
   } finally {
-    btn.disabled = false;
+    delete btn.dataset.busy;
     btn.textContent = 'Get my setup code';
+    refreshGating();
   }
 }
 

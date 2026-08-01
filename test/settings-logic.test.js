@@ -613,6 +613,144 @@ describe('stepTwoVisibility', () => {
   });
 });
 
+import { REQUIRED_FIELDS, missingRequired, requiredNotice, pickSummary, shortLabel } from '../site/js/settings/setup.js';
+
+// A setup code once left this page with an unconfigured LIRR on it and the
+// board hung a blank quarter of itself on the wall. The gate below is the fix;
+// the suite's job is to keep its INVENTORY honest, because the failure mode is
+// not a broken rule but a field nobody remembered to list.
+describe('required-field gating (setup)', () => {
+  const withIptv = (url) => ({ ...DEFAULT_CONFIG, iptv: { url, label: '' } });
+
+  // The membership test, stated as code: a field belongs here iff
+  // normalizeConfig hands it through EMPTY, because that is the value that
+  // reaches the board and paints setupPrompt instead of data.
+  it('every listed field is one normalizeConfig leaves empty', () => {
+    const normalized = normalizeCfg(DEFAULT_CONFIG);
+    for (const f of REQUIRED_FIELDS) {
+      expect(f.filled(normalized), `${f.id} should arrive empty from the defaults`).toBe(false);
+    }
+  });
+
+  // The other direction, and the one that would make this gate a nuisance: a
+  // list normalizeConfig backfills can never reach a board empty, so gating it
+  // would block a code over a state that cannot happen.
+  it('leaves out the lists normalizeConfig backfills, which can never arrive empty', () => {
+    const emptied = normalizeCfg({
+      ...DEFAULT_CONFIG,
+      subway: { lines: [] }, tfl: { lines: [] }, citibike: { stations: [] },
+      services: { list: [] }, markets: { symbols: [] }, news: { sources: [] },
+      marketsnews: { sources: [] }, sportsnews: { sources: [] }, worldclock: { cities: [] },
+    });
+    expect(emptied.subway.lines.length).toBeGreaterThan(0);
+    expect(emptied.tfl.lines.length).toBeGreaterThan(0);
+    expect(emptied.citibike.stations.length).toBeGreaterThan(0);
+    expect(emptied.services.list.length).toBeGreaterThan(0);
+    expect(emptied.markets.symbols.length).toBeGreaterThan(0);
+    expect(emptied.news.sources.length).toBeGreaterThan(0);
+    expect(emptied.worldclock.cities.length).toBeGreaterThan(0);
+    const gated = new Set(REQUIRED_FIELDS.map((f) => f.id));
+    for (const id of ['subway', 'tfl', 'citibike', 'services', 'markets', 'news', 'marketsnews', 'sportsnews', 'worldclock']) {
+      expect(gated.has(id), `${id} needs no gate`).toBe(false);
+    }
+    // [] is a legal, meaningful value for these three (all lines / all
+    // categories / the global chart listing), so they are not gated either.
+    for (const id of ['njt', 'art', 'chart', 'path', 'ferry']) expect(gated.has(id)).toBe(false);
+  });
+
+  it('is a set of real widget ids, each with a step-2 section to fill it in', () => {
+    const validIds = new Set(ALL_IDS);
+    const configurable = new Set(SETUP_SECTIONS.flatMap((s) => s.triggers));
+    for (const f of REQUIRED_FIELDS) {
+      expect(validIds.has(f.id), f.id).toBe(true);
+      expect(configurable.has(f.id), `${f.id} has no step-2 section`).toBe(true);
+    }
+    expect(new Set(REQUIRED_FIELDS.map((f) => f.id)).size).toBe(REQUIRED_FIELDS.length);
+  });
+
+  it('counts only the widgets actually picked', () => {
+    expect(missingRequired(DEFAULT_CONFIG, [])).toEqual([]);
+    expect(missingRequired(DEFAULT_CONFIG, ['weather', 'quote'])).toEqual([]);
+    expect(missingRequired(DEFAULT_CONFIG, ['lirr']).map((f) => f.id)).toEqual(['lirr']);
+    expect(missingRequired(DEFAULT_CONFIG, new Set(['lirr', 'sports', 'weather'])).map((f) => f.id))
+      .toEqual(['lirr', 'sports']);
+  });
+
+  it('clears the moment the field is filled (the LIRR case that shipped blank)', () => {
+    expect(missingRequired(DEFAULT_CONFIG, ['lirr'])).toHaveLength(1);
+    const picked = { ...DEFAULT_CONFIG, lirr: { ...DEFAULT_CONFIG.lirr, dest: '237' } };
+    expect(missingRequired(picked, ['lirr'])).toEqual([]);
+  });
+
+  it("holds Live Video to normalizeConfig's https rule, not merely to 'not empty'", () => {
+    expect(missingRequired(withIptv('rtmp://example.com/live'), ['iptv'])).toHaveLength(1);
+    expect(missingRequired(withIptv('example.com/live.m3u8'), ['iptv'])).toHaveLength(1);
+    expect(missingRequired(withIptv('https://example.com/live.m3u8'), ['iptv'])).toEqual([]);
+    // and the encoder agrees, which is why the two rules have to match
+    expect(normalizeCfg(withIptv('rtmp://example.com/live')).iptv.url).toBe('');
+  });
+
+  it('names the card and the field, and offers both ways out', () => {
+    expect(requiredNotice([])).toBe('');
+    const one = requiredNotice(missingRequired(DEFAULT_CONFIG, ['lirr']));
+    expect(one).toContain('LIRR (Only trains stopping at)');
+    expect(one).toContain('uncheck that widget in step 1');
+    const many = requiredNotice(missingRequired(DEFAULT_CONFIG, ['lirr', 'sports', 'iptv']));
+    expect(many).toContain('LIRR (Only trains stopping at), My Teams (Teams) and Live Video (HLS stream link)');
+    expect(many).toContain('uncheck those widgets in step 1');
+  });
+
+  it('keeps the page copy rule: no em or en dashes in the guard sentence', () => {
+    const all = requiredNotice(missingRequired(DEFAULT_CONFIG, REQUIRED_FIELDS.map((f) => f.id)));
+    expect(all).not.toMatch(/[—–]/);
+  });
+
+  // The badge and the sentence have to quote the same words, or the guard sends
+  // the user looking for a label that isn't on the page.
+  it('every required field wears a Required badge inside the label it names', async () => {
+    const html = await readFile(resolve(process.cwd(), 'site/setup.html'), 'utf8');
+    for (const f of REQUIRED_FIELDS) {
+      const badgeAt = html.indexOf(`data-req="${f.id}"`);
+      expect(badgeAt, `${f.id} badge`).toBeGreaterThan(-1);
+      const chunk = html.slice(html.lastIndexOf('<label', badgeAt), badgeAt);
+      expect(chunk, `${f.id} badge is inside a label`).not.toContain('</label>');
+      expect(chunk, `${f.id} label names "${f.field}"`).toContain(f.field);
+    }
+    // no orphan badges either: a removed entry must take its markup with it
+    expect((html.match(/data-req="/g) || []).length).toBe(REQUIRED_FIELDS.length);
+  });
+
+  it('ships the output buttons disabled, so the first paint never offers a dead tap', async () => {
+    const html = await readFile(resolve(process.cwd(), 'site/setup.html'), 'utf8');
+    for (const id of ['to-step-2', 'get-code', 'get-signage-url']) {
+      expect(html, id).toMatch(new RegExp(`id="${id}"[^>]*disabled`));
+    }
+    // and the pieces refreshGating / getCode write into all exist
+    for (const id of ['code-guard', 'copy-code', 'code-summary', 'code-copied', 'code-help', 'code-error']) {
+      expect(html, id).toContain(`id="${id}"`);
+    }
+  });
+});
+
+describe('pickSummary (the sanity check beside the code)', () => {
+  it('drops the picker parentheticals', () => {
+    expect(shortLabel('LIRR (Penn Station)')).toBe('LIRR');
+    expect(shortLabel('Weather')).toBe('Weather');
+  });
+  it('counts the picks and names them', () => {
+    expect(pickSummary([])).toBe('');
+    expect(pickSummary(['weather'])).toBe('1 widget: Weather');
+    expect(pickSummary(['weather', 'lirr', 'markets'])).toBe('3 widgets: Weather, LIRR, Markets');
+  });
+  it('truncates a long pick rather than becoming a paragraph', () => {
+    expect(pickSummary(['weather', 'lirr', 'markets', 'news', 'art', 'quote', 'wotd']))
+      .toBe('7 widgets: Weather, LIRR, Markets, Headlines, Art slideshow, plus 2 more');
+  });
+  it('falls back to the raw id for a widget with no label', () => {
+    expect(pickSummary(['nope'])).toBe('1 widget: nope');
+  });
+});
+
 describe('navHtml', () => {
   it('renders pinned items + group headers; children live in a wrapper that is closed until open', () => {
     const html = navHtml('widgets', null);
