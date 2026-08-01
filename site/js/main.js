@@ -162,7 +162,16 @@ function renderWidget(mod, vm, rect) {
   }
 }
 
-function startWidget(mod, rect) {
+// Boot fetch herd: every card used to open its first connection in the same
+// tick — ~20 requests across ~7 hosts at once on gen1's embedded stack, which
+// queues them anyway and delays the cards at the back of the line. Each widget
+// gets its own small slot instead. Cached content still paints immediately
+// (below, before the schedule), and the last card's first fetch starts well
+// inside 2 s, so the board is populated as fast as it ever was.
+const BOOT_STAGGER_STEP_MS = 120;
+const BOOT_STAGGER_MAX_MS = 1800;
+
+function startWidget(mod, rect, startDelayMs = 0) {
   const card = cardFor(mod, rect);
   const cached = loadCache(mod.meta.id);
   if (cached) {
@@ -185,7 +194,7 @@ function startWidget(mod, rect) {
       markStale(card, loadCache(mod.meta.id)?.t);
       throw err; // let the scheduler back off
     }
-  }, mod.meta.refreshMs);
+  }, mod.meta.refreshMs, { startDelayMs });
   cancels.push(cancel);
 }
 
@@ -432,9 +441,10 @@ function startSelfHealing() {
 
 function startRuntime() {
   startClock();
+  let slot = 0;
   for (const rect of cfg.layout) {
     const mod = getWidget(rect.id);
-    if (mod) startWidget(mod, rect);
+    if (mod) startWidget(mod, rect, Math.min(slot++ * BOOT_STAGGER_STEP_MS, BOOT_STAGGER_MAX_MS));
   }
   applyMode();
   cancels.push(schedule(applyMode, 60 * 1000, { jitter: 0 }));

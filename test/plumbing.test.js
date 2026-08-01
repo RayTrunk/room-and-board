@@ -63,6 +63,27 @@ describe('scheduler', () => {
     expect(fn).toHaveBeenCalledTimes(2);
   });
 
+  it('holds the first run for startDelayMs, then keeps the normal cadence', async () => {
+    // Boot stagger (main.js deals each widget a slot): only the FIRST run moves.
+    const fn = vi.fn().mockResolvedValue(undefined);
+    const cancel = schedule(fn, 1000, { jitter: 0, startDelayMs: 600 });
+    await vi.advanceTimersByTimeAsync(599);
+    expect(fn).toHaveBeenCalledTimes(0);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(fn).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(fn).toHaveBeenCalledTimes(2); // interval, not interval + delay
+    cancel();
+  });
+
+  it('defaults to an immediate first run', async () => {
+    const fn = vi.fn().mockResolvedValue(undefined);
+    const cancel = schedule(fn, 1000, { jitter: 0 });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(fn).toHaveBeenCalledTimes(1);
+    cancel();
+  });
+
   it('keeps jitter within bounds', async () => {
     const fn = vi.fn().mockResolvedValue(undefined);
     const delays = [];
