@@ -454,12 +454,27 @@ body { position: relative; top: max(0px, calc((100dvh - 1080px) / 2)); }
 .bullet--SI { background: #0f3d92; }
 /* A bullet set INSIDE a line of prose (transit-alerts.js routeBullets: "no [1]
    between 14 St and South Ferry"). Everything is em-relative to the text it
-   lands in, so one class serves the 20px card row and the expanded wall's
-   larger copy; the box stays inside the line's own ascent, so a substituted
-   token costs the row no height. */
+   lands in, so one class serves the 20px card row, the expanded wall's larger
+   copy and the 42px text reader; the box stays inside the line's own ascent, so
+   a substituted token costs the row no height.
+   Mind the unit: `em` in here is the bullet's OWN 0.7em face, so the 1.5em
+   circle is 1.05em of the surrounding text and any offset written here lands at
+   0.7x what it reads as. That is how the shipped `vertical-align: -0.3em` put
+   the circle most of a line below the words: 0.21em of push under a baseline the
+   inline-flex box was already hanging below.
+   `middle` is geometry rather than a tuned number — the box's own midpoint set
+   on the parent's baseline plus half the parent's x-height, i.e. the optical
+   centre of the line. It depends on nothing that differs between the three
+   consumers: not the inherited line-height (1.25 / 1.34 / 1.45), not the
+   baseline of the glyph inside the circle, and not whether the face is
+   CiscoSansTT or the desktop fallback. And it still costs no height: on the
+   tightest of the three, the card row's 20px/1.25 line, the centred 21px circle
+   reaches ~15.7px above the baseline and ~5.3px below it, both inside the
+   strut's own ~19.5/5.5 — where the -0.3em version hung 11px below and grew
+   every alert line it landed on. */
 .bullet--inline {
   font-size: 0.7em; width: 1.5em; height: 1.5em;
-  vertical-align: -0.3em; margin: 0 0.1em;
+  vertical-align: middle; margin: 0 0.1em;
 }
 
 .train { display: flex; align-items: center; gap: 16px; font-size: 22px; }
@@ -1515,7 +1530,14 @@ body.mode-ambient .gear--edit { display: none; }
   background: var(--bg-card-2); border-radius: 16px;
   gap: var(--well-gap, 30px); padding: var(--well-pad, 20px) var(--well-px, 30px);
 }
-.sbalert .bullet { width: var(--well-bullet, 80px); height: var(--well-bullet, 80px); font-size: var(--well-bfs, 42px); }
+/* The well's OWN bullet, and the child combinator is load-bearing: statusBoard
+   writes it as a direct child and the route bullets inside the copy live a level
+   down in .sbalert__text. As a descendant selector this rule outranked
+   .bullet--inline on specificity alone and blew every mid-sentence token up to
+   the 80px lead size, which is the one bullet on the wall that is NOT part of a
+   sentence. Scoped here, the inline ones keep their em-relative sizing and track
+   whichever rung of the ladder their paragraph is set at. */
+.sbalert > .bullet { width: var(--well-bullet, 80px); height: var(--well-bullet, 80px); font-size: var(--well-bfs, 42px); }
 /* Metric-pinned too, and for the model's sake rather than the copy's: the pill
    below hangs off THIS line box, and whether the pill fits inside it (the claim
    that the pill costs the well no height) otherwise depends on the ascent the OS

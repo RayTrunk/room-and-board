@@ -2,6 +2,9 @@
  * @vitest-environment happy-dom
  */
 import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
 import { DEMO_VMS } from '../site/demo/fixtures.js';
 import * as weather from '../site/js/widgets/weather.js';
 import * as subway from '../site/js/widgets/subway.js';
@@ -235,6 +238,45 @@ describe('widget renderers', () => {
     expect(text.querySelector('b')).toBeNull(); // escaped first, substituted after
     expect(text.textContent).toContain('[LIRR] riders: <b>see</b> the');
     expect(text.querySelectorAll('.bullet--inline').length).toBe(1); // only the E
+  });
+
+  // The three surfaces that render this class set their copy at 20px (the card
+  // row), the wall's rung (30px and down) and 42px (the text reader), and one
+  // em-relative rule has to sit right on all of them. happy-dom has no cascade,
+  // so the contract is pinned in the stylesheet text — the same way the story
+  // view's clamp and the overlay's geometry are.
+  describe('inline route bullets: the stylesheet contract', () => {
+    const css = readFileSync(
+      join(dirname(fileURLToPath(import.meta.url)), '../site/css/main.css'), 'utf8');
+    const rule = (selector) => {
+      const at = css.indexOf(`\n${selector} {`);
+      expect(at, `no rule for "${selector}" in main.css`).toBeGreaterThan(-1);
+      return css.slice(at, css.indexOf('}', at));
+    };
+
+    it('centres the circle on the line optically, with no hand-tuned offset', () => {
+      const body = rule('.bullet--inline');
+      // `em` inside this rule is the bullet's OWN 0.7em face, so a negative
+      // offset here is worth 0.7x what it reads as: the shipped -0.3em pushed
+      // the circle 0.21em BELOW a baseline it was already hanging under.
+      // `middle` is measured off the parent's baseline plus half the parent's
+      // x-height, i.e. the optical centre of the line, at every text size.
+      expect(body).toContain('vertical-align: middle');
+      expect(body, 'a negative offset is the bug this replaced').not.toMatch(/vertical-align:\s*-/);
+      // And it stays sized off the text it lands in, never in px.
+      expect(body).toContain('font-size: 0.7em');
+      expect(body).toContain('width: 1.5em; height: 1.5em');
+      expect(body).not.toMatch(/(width|height|font-size):\s*\d+px/);
+    });
+
+    it('lets the wall size its lead bullet without touching the ones in the copy', () => {
+      // Scoped to the well's direct child. As a descendant selector this was
+      // (0,2,0) against .bullet--inline's (0,1,0), so every token inside a
+      // sentence rendered at the 80px lead size.
+      expect(rule('.sbalert > .bullet')).toContain('var(--well-bullet, 80px)');
+      expect(css, 'a descendant .sbalert .bullet rule reaches the inline ones')
+        .not.toMatch(/\.sbalert\s+\.bullet\s*[,{]/);
+    });
   });
 
 

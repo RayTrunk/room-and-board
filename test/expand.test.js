@@ -632,6 +632,20 @@ describe('subway status board', () => {
     expect(wall.querySelectorAll('.sbalert > .bullet').length).toBe(1);
   });
 
+  it('keeps the tokens in the copy at COPY size, not at the lead bullet size', () => {
+    const wall = wallOf(statusBoard(subwayVm(1, 3, [LONG, SECOND]).lines));
+    // Two bullet populations in one well, and only their DEPTH tells them apart:
+    // the line's own bullet is the direct child that the wall's 80px lead sizing
+    // is scoped to (`.sbalert > .bullet`), and the ones the sentences name sit
+    // inside .sbalert__text, sized in em off the paragraph so they ride whatever
+    // rung of the ladder the wall settled on. As a descendant rule the lead
+    // sizing outranked .bullet--inline and set every mid-sentence token 80px.
+    expect([...wall.querySelectorAll('.sbalert > .bullet')].map((b) => b.textContent)).toEqual(['1']);
+    expect([...wall.querySelectorAll('.sbalert__text .bullet--inline')].map((b) => b.textContent))
+      .toEqual(['Q', 'R', 'F', 'E']);
+    expect(wall.querySelectorAll('.sbalert > .bullet--inline').length).toBe(0);
+  });
+
   it('escapes line ids and alert copy', () => {
     const wall = wallOf(statusBoard([
       { line: '<b>', ok: false, headers: ['<img src=x onerror=1>'] },
