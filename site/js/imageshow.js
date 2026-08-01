@@ -8,7 +8,7 @@
 // the picture band by band as the bytes arrive — the "drawing in from the top"
 // that made a rotating card yank the eye across the room.
 
-import { escapeHtml } from './util.js';
+import { escapeHtml, isOverlayOpen, markExpandable } from './util.js';
 import { stripData, stripHtml } from './ambient.js';
 import { loadCache } from './store.js';
 
@@ -170,24 +170,55 @@ function paintImage(frame, src, alt, state) {
   });
 }
 
+// The card, not the figure, carries the tap handler — one per surface, added
+// the first time the card is painted and never again. A WeakSet rather than a
+// flag on the state object: the state is rebuilt whenever the scaffold is
+// (an empty state, a setup prompt), and a rebuilt state must not buy a second
+// listener on a card element that outlives all of them.
+const tapWired = new WeakSet();
+
 // Paints an image card in place: builds the .artwork scaffold once, then only
 // touches what actually changed.  `caption` is trusted HTML (callers escape),
 // '' means no caption box; `onOpen` is re-read on every tap, so a refreshed
 // photo list or config is always what the full-screen viewer receives.
+//
+// The WHOLE CARD is the tap target (2026-08-01), the same grammar as weather
+// and markets. The figure used to hold role="button" and the click listener,
+// which made the picture tappable but left the title row and the padding
+// around it dead — three tap models on one board, none of them labelled. The
+// button semantics move up with the target; markExpandable puts the expand
+// mark in the corner, so an image card announces its tap like every other
+// card that opens something.
 export function renderImageCard(el, { src, alt = '', caption = '', label = 'View image full screen', contain = false, onOpen } = {}) {
   let state = cardState.get(el);
   let fig = el.querySelector('.artwork');
   if (!fig || !state) {
     // No scaffold yet, or the card was showing something else entirely (an
     // empty/setup state), so any remembered src is void.
-    el.innerHTML = '<figure class="artwork" role="button" tabindex="0"><div class="artwork__frame"></div></figure>';
+    el.innerHTML = '<figure class="artwork"><div class="artwork__frame"></div></figure>';
     fig = el.querySelector('.artwork');
     state = { src: '', caption: null, gen: 0, open: null };
     cardState.set(el, state);
-    fig.addEventListener('click', () => state.open?.());
   }
-  state.open = onOpen;
-  fig.setAttribute('aria-label', label);
+  // No photo means nothing to open, so the card is neither tappable nor marked.
+  // One condition feeds both, so the mark can never promise a view that the tap
+  // would not actually give (an art manifest filtered down to nothing, a photo
+  // album that came back empty).
+  state.open = src ? onOpen ?? null : null;
+  // `el` (the card body) is the stable key; the handler reads the live state
+  // through it rather than closing over the object it was created beside.
+  const target = el.closest?.('.card') ?? el;
+  if (!tapWired.has(target)) {
+    tapWired.add(target);
+    target.addEventListener('click', () => {
+      // One tap, one destination: a tap that lands here while something is
+      // already full screen is that view's dismissal leaking through, never an
+      // invitation to stack a second one.
+      if (isOverlayOpen()) return;
+      cardState.get(el)?.open?.();
+    });
+  }
+  markExpandable(el, Boolean(state.open), { label });
   fig.classList.toggle('artwork--contain', contain);
   if (state.caption !== caption) {
     setFigCaption(fig, caption);
@@ -199,6 +230,19 @@ export function renderImageCard(el, { src, alt = '', caption = '', label = 'View
   if (state.src === src) return;
   state.src = src;
   paintImage(fig.querySelector('.artwork__frame'), src, alt, state);
+}
+
+// This card is not showing a photo any more: an empty state, a setup prompt, a
+// feed that came back with nothing. Both halves of the tap have to go, and this
+// is why they are one call. The card-level listener stays wired (the card
+// outlives every render and re-adding it would only stack duplicates), so
+// nulling the destination is what actually disarms it — without this, a card
+// that fell back to a setup prompt would still open the last photo it held,
+// under a prompt whose own tap opens Settings.
+export function clearImageCard(el) {
+  const state = cardState.get(el);
+  if (state) state.open = null;
+  markExpandable(el, false);
 }
 
 let stripTimer = null;

@@ -2096,9 +2096,39 @@ body.mode-ambient .gear--edit { display: none; }
 .card__title { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; white-space: nowrap; }
 .card__asof { font-size: 17px; font-weight: 400; letter-spacing: 0; text-transform: none; color: var(--ink-dim); white-space: nowrap; min-width: 0; overflow: hidden; text-overflow: ellipsis; } /* AA */
 .card.is-stale .card__asof { visibility: hidden; } /* the amber stale stamp takes over */
-/* Overflow badge: a quiet "+N" pinned at the truncation point (bottom-right)
-   instead of costing a list row. Safe at every width; stamp is top-anchored. */
-.card__more { position: absolute; right: 26px; bottom: 12px; font-size: 15px; font-weight: 400; letter-spacing: 0; text-transform: none; color: var(--ink-dim); white-space: nowrap; }
+/* The corner badge: pinned at the truncation point (bottom-right) instead of
+   costing a list row. Safe at every card width, and .card__stamp is
+   top-anchored, so the badge and the amber "as of" stamp share the right edge
+   without ever meeting. Three forms, one element (see util.js paintMoreBadge):
+   "⤢ N more", a bare "⤢", or a plain "+N" on a card that does not open.
+
+   20px, the board's type floor, up from 15px: a signifier that has to be read
+   from 6 ft cannot be the smallest thing on the card. --ink-dim, never
+   --ink-faint, which fails AA below 18px.
+
+   line-height 1 + bottom 10px is not a free choice: it puts the badge in
+   exactly the vertical band the 15px one occupied (10-30px off the card's
+   bottom edge, sitting in the card's own 22px bottom padding), so no capacity
+   model has to be re-measured for the larger type. */
+.card__more {
+  position: absolute; right: 26px; bottom: 10px;
+  display: inline-flex; align-items: center; gap: 8px;
+  font-size: 20px; line-height: 1; font-weight: 400; letter-spacing: 0;
+  text-transform: none; color: var(--ink-dim); white-space: nowrap;
+}
+/* The mark is optically centred on the words by construction, not by nudging:
+   both children are 1em boxes with line-height 1, align-items centres the
+   boxes, and the glyph's ink is centred in its own viewBox. A font chevron
+   would instead sit on the baseline and ride along the bottom of the text —
+   the thing this replaced. stroke-width 2.2 rather than the set's 1.6: the
+   icons are drawn on a 24px grid and shipped at 28px, so 2.2 at 20px puts the
+   same ~1.9px stroke on the glass as the gear and pencil. */
+.card__more .icon--more { width: 1em; height: 1em; flex: none; stroke-width: 2.2; }
+.card__more-n { line-height: 1; }
+/* An image card's artwork fills its body to the bottom edge, so it (alone)
+   reserves the badge's overlap — the mark always sits on card surface, never on
+   a bright photo or a white infographic where --ink-dim would vanish. */
+.card.is-expandable .artwork { padding-bottom: 10px; }
 /* Rail +N (expand wave 2): the whole card is the tap target (the markets
    grammar, standard .is-expandable affordances above), and the corner badge
    reads "+N more" as the invitation. The first cut's pill trigger reserved

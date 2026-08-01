@@ -31,8 +31,11 @@ import {
   fitStatusBoard,
 } from '../site/js/widgets/subway.js';
 import { render as renderWeather } from '../site/js/widgets/weather.js';
-import { fmtClock } from '../site/js/util.js';
+import { fmtClock, setMoreBadge } from '../site/js/util.js';
 import { DEMO_VMS } from '../site/demo/fixtures.js';
+import { readFileSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 // The freshness stamp every card writes is an EPOCH rendered in the runner's
 // local timezone, so a literal ("as of 9:55 AM") only holds on a New York
@@ -960,9 +963,11 @@ function weatherBoard(vm, cfg = { loc: { label: 'New York 10001', units: 'F' } }
 }
 
 describe('weather card tap', () => {
-  it('always expands, with no badge to signify it', () => {
+  it('always expands, and says so with the bare mark: nothing to count', () => {
     const { card } = weatherBoard(DEMO_VMS.weather);
-    expect(card.querySelector('.card__more')).toBeNull(); // nothing is hidden to count
+    const badge = card.querySelector('.card__more');
+    expect(badge.querySelector('svg.icon--more')).not.toBeNull(); // the mark alone
+    expect(badge.textContent.trim()).toBe(''); // no count: nothing is hidden here
     expect(card.classList.contains('is-expandable')).toBe(true);
 
     card.click();
@@ -1057,7 +1062,7 @@ describe('history card tap', () => {
   it('taps into the whole day: every event in the grand reading list', () => {
     const { card } = histBoard(histVm(9)); // a 6x2 card fits two events
     expect(card.querySelectorAll('.history__item').length).toBeLessThan(9);
-    expect(card.querySelector('.card__more').textContent).toBe('+7 more');
+    expect(card.querySelector('.card__more').textContent).toBe('7 more');
     card.querySelector('.card__body').click();
     expect(isExpandOpen()).toBe(true);
     expect(overlay().querySelector('.history-board')).not.toBeNull();
@@ -1065,9 +1070,11 @@ describe('history card tap', () => {
     expect(overlay().querySelector('.expand__title').textContent).toBe('This Day in History');
   });
 
-  it('opens the same day view when every event already fits, with no badge', () => {
+  it('opens the same day view when every event already fits, with no count', () => {
     const { card } = histBoard(histVm(2));
-    expect(card.querySelector('.card__more')).toBeNull(); // nothing hidden to advertise
+    // The mark stays (the tap still opens something); only the count goes.
+    expect(card.querySelector('.card__more').textContent.trim()).toBe('');
+    expect(card.querySelector('.card__more svg.icon--more')).not.toBeNull();
     card.click();
     expect(isExpandOpen()).toBe(true);
     expect(overlay().querySelectorAll('.history__item').length).toBe(2);
@@ -1077,5 +1084,242 @@ describe('history card tap', () => {
     const { card } = histBoard({ events: [] });
     card.click();
     expect(isExpandOpen()).toBe(false);
+  });
+});
+
+/**
+ * The affordance itself. Before this, an expandable card was marked only by
+ * cursor:pointer and an :active tint, neither of which exists at rest on a
+ * touch panel — the board asked to be tapped in a language nobody standing in
+ * front of it could read. The corner badge is now the signifier, and its whole
+ * contract is that it never promises a tap the card will not honour.
+ */
+describe('the corner badge is the tap affordance', () => {
+  // A bare card, no widget: the badge's two inputs driven directly, which is
+  // the only way to reach the third form (a count with nothing to open).
+  function bareCard(title = 'Headlines') {
+    document.body.innerHTML = `
+      <div id="grid">
+        <article class="card card--news" data-widget="news">
+          <h2 class="card__title">${title}</h2>
+          <div class="card__body"></div>
+          <div class="card__stamp" hidden></div>
+        </article>
+      </div>`;
+    const grid = document.querySelector('#grid');
+    initExpand(grid);
+    const card = grid.querySelector('.card');
+    return { grid, card, body: card.querySelector('.card__body') };
+  }
+
+  const badge = (card) => card.querySelector('.card__more');
+  const mark = (card) => card.querySelector('.card__more svg.icon--more');
+
+  describe('three forms, and the honesty rule that picks between them', () => {
+    it('expands AND hides rows: the mark plus the count, no "+"', () => {
+      const { card, body } = bareCard();
+      setMoreBadge(body, 24);
+      setExpandSource(body, () => ({ title: 'Headlines', bodyHtml: '<p>all of them</p>' }));
+      expect(mark(card)).not.toBeNull();
+      expect(badge(card).textContent).toBe('24 more');
+    });
+
+    it('expands with nothing to count: the bare mark', () => {
+      const { card, body } = bareCard('Weather');
+      setExpandSource(body, () => ({ title: 'Weather', bodyHtml: '<p>the detail board</p>' }));
+      expect(mark(card)).not.toBeNull();
+      expect(badge(card).textContent.trim()).toBe(''); // no number to show
+    });
+
+    it('counts but does not open: the plain "+N", and NO mark', () => {
+      const { card, body } = bareCard();
+      setMoreBadge(body, 18); // news rows open stories; the CARD does not expand
+      expect(badge(card)).not.toBeNull();
+      expect(badge(card).textContent).toBe('+18');
+      expect(mark(card)).toBeNull(); // the mark here would be a lie
+      card.click();
+      expect(isExpandOpen()).toBe(false);
+    });
+
+    it('neither: no badge at all', () => {
+      const { card, body } = bareCard();
+      setMoreBadge(body, 0);
+      expect(badge(card)).toBeNull();
+    });
+
+    it('keeps the verbose wording for a card that counts without opening', () => {
+      const { card, body } = bareCard();
+      setMoreBadge(body, 3, { verbose: true });
+      expect(badge(card).textContent).toBe('+3 more');
+      expect(mark(card)).toBeNull();
+    });
+  });
+
+  describe('the mark is drawn, not typed', () => {
+    it('is an inline SVG from the icon set, never a font character', () => {
+      const { card, body } = bareCard('Weather');
+      setExpandSource(body, () => ({ title: 'Weather', bodyHtml: '<p>x</p>' }));
+      const svg = mark(card);
+      expect(svg).not.toBeNull();
+      expect(svg.tagName.toLowerCase()).toBe('svg');
+      expect(svg.querySelector('path')).not.toBeNull();
+      expect(svg.getAttribute('stroke')).toBe('currentColor'); // inherits --ink-dim
+      expect(svg.getAttribute('aria-hidden')).toBe('true'); // the label carries the meaning
+      // A font glyph sits on baseline metrics and rides along the bottom of the
+      // words beside it, which is exactly the look this replaced. No chevron,
+      // arrow or expand character may appear in the badge's text.
+      expect(badge(card).textContent).not.toMatch(/[⌄⤡⤢⬌⬍▾▼]/u);
+    });
+
+    it('draws the diagonal expand mark, not a downward chevron', () => {
+      const { card, body } = bareCard('Weather');
+      setExpandSource(body, () => ({ title: 'Weather', bodyHtml: '<p>x</p>' }));
+      // Two arrowheads pushing apart along the NE/SW diagonal, ink centred in
+      // the viewBox (3..21 on both axes) so the glyph's optical centre IS its
+      // box centre — which is what lets the badge centre it with align-items.
+      const d = mark(card).querySelector('path').getAttribute('d');
+      expect(d).toBe('M15 3h6v6M21 3l-7 7M9 21H3v-6M3 21l7-7');
+      expect(mark(card).getAttribute('viewBox')).toBe('0 0 24 24');
+    });
+  });
+
+  describe('it survives the board', () => {
+    it('re-arms across a refresh that re-renders the card body', () => {
+      const { card, body } = bareCard();
+      setMoreBadge(body, 5);
+      setExpandSource(body, () => ({ title: 'Headlines', bodyHtml: '<p>x</p>' }));
+      expect(badge(card).textContent).toBe('5 more');
+      body.innerHTML = '<p>a fresh render wiped the body</p>'; // the badge lives on the CARD
+      setMoreBadge(body, 6);
+      setExpandSource(body, () => ({ title: 'Headlines', bodyHtml: '<p>x</p>' }));
+      expect(card.querySelectorAll('.card__more').length).toBe(1); // one badge, not two
+      expect(badge(card).textContent).toBe('6 more');
+      expect(mark(card)).not.toBeNull();
+    });
+
+    it('takes the count and the expansion in either order', () => {
+      // Every renderer paints its count BEFORE it registers its expansion, but
+      // nothing in the contract says it has to.
+      const first = bareCard();
+      setExpandSource(first.body, () => ({ title: 'T', bodyHtml: '<p>x</p>' }));
+      setMoreBadge(first.body, 9);
+      expect(first.card.querySelector('.card__more').textContent).toBe('9 more');
+
+      const second = bareCard();
+      setMoreBadge(second.body, 9);
+      setExpandSource(second.body, () => ({ title: 'T', bodyHtml: '<p>x</p>' }));
+      expect(second.card.querySelector('.card__more').textContent).toBe('9 more');
+    });
+
+    it('drops back to the plain count when the card stops expanding', () => {
+      const { card, body } = bareCard();
+      setMoreBadge(body, 4);
+      setExpandSource(body, () => ({ title: 'T', bodyHtml: '<p>x</p>' }));
+      expect(badge(card).textContent).toBe('4 more');
+      setExpandSource(body, null);
+      expect(mark(card)).toBeNull();
+      expect(badge(card).textContent).toBe('+4');
+    });
+
+    it('removes the badge entirely when the card stops expanding and hides nothing', () => {
+      const { card, body } = bareCard('Weather');
+      setExpandSource(body, () => ({ title: 'T', bodyHtml: '<p>x</p>' }));
+      expect(badge(card)).not.toBeNull();
+      setExpandSource(body, null);
+      expect(badge(card)).toBeNull();
+    });
+
+    it('leaves the amber stale stamp its own corner', () => {
+      const { card, body } = bareCard();
+      setMoreBadge(body, 7);
+      setExpandSource(body, () => ({ title: 'T', bodyHtml: '<p>x</p>' }));
+      // The stamp is top-anchored and the badge bottom-anchored, so the two
+      // share the right edge and can never meet on a card carrying both.
+      expect(card.querySelector('.card__stamp')).not.toBe(badge(card));
+      expect(card.querySelector('.card__stamp').nextElementSibling).toBe(badge(card));
+    });
+  });
+
+  describe('a card that behaves like a button says so', () => {
+    it('carries role, tabindex and a label naming what opens', () => {
+      const { card, body } = bareCard('Weather');
+      setExpandSource(body, () => ({ title: 'Weather', bodyHtml: '<p>x</p>' }));
+      expect(card.getAttribute('role')).toBe('button');
+      expect(card.getAttribute('tabindex')).toBe('0');
+      expect(card.getAttribute('aria-label')).toBe('Expand Weather details');
+    });
+
+    it('reads the widget name past an appended "as of" note', () => {
+      const { card, body } = bareCard('Markets');
+      card.querySelector('.card__title').insertAdjacentHTML('beforeend', '<span class="card__asof">as of 9:55 AM</span>');
+      setExpandSource(body, () => ({ title: 'Markets', bodyHtml: '<p>x</p>' }));
+      expect(card.getAttribute('aria-label')).toBe('Expand Markets details');
+    });
+
+    it('gives the semantics up again when the card goes inert', () => {
+      const { card, body } = bareCard('Weather');
+      setExpandSource(body, () => ({ title: 'Weather', bodyHtml: '<p>x</p>' }));
+      setExpandSource(body, null);
+      expect(card.getAttribute('role')).toBeNull();
+      expect(card.getAttribute('tabindex')).toBeNull();
+      expect(card.getAttribute('aria-label')).toBeNull();
+    });
+
+    it('opens on Enter and on Space, since a non-<button> gets no synthetic click', () => {
+      for (const key of ['Enter', ' ']) {
+        closeExpand();
+        const { card, body } = bareCard('Weather');
+        setExpandSource(body, () => ({ title: 'Weather', bodyHtml: '<p class="wxf">detail</p>' }));
+        card.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true }));
+        expect(isExpandOpen(), key).toBe(true);
+        expect(overlay().querySelector('.wxf'), key).not.toBeNull();
+      }
+    });
+
+    it('ignores keys on a card that does not expand', () => {
+      const { card, body } = bareCard();
+      setMoreBadge(body, 4); // a count, no destination
+      card.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+      expect(isExpandOpen()).toBe(false);
+    });
+  });
+
+  describe('the stylesheet half', () => {
+    const css = readFileSync(
+      join(dirname(fileURLToPath(import.meta.url)), '../site/css/main.css'), 'utf8');
+    const rule = (selector) => {
+      const at = css.indexOf(`\n${selector} {`);
+      expect(at, `no rule for "${selector}" in main.css`).toBeGreaterThan(-1);
+      return css.slice(at, css.indexOf('}', at));
+    };
+
+    it('sets the badge at the board type floor, in the quiet ink', () => {
+      const body = rule('.card__more');
+      expect(body).toMatch(/font-size:\s*20px/); // the 20px floor, up from 15px
+      expect(body).toMatch(/color:\s*var\(--ink-dim\)/);
+      // --ink-faint fails AA below 18px, so it may never appear here.
+      expect(body).not.toMatch(/--ink-faint/);
+    });
+
+    it('centres the mark on the words with flex, not with a baseline nudge', () => {
+      const body = rule('.card__more');
+      expect(body).toMatch(/display:\s*inline-flex/);
+      expect(body).toMatch(/align-items:\s*center/);
+      expect(body).toMatch(/line-height:\s*1\b/); // both children are 1em boxes
+      expect(body).not.toMatch(/vertical-align/); // the rejected baseline idiom
+    });
+
+    it('sizes the mark off the badge text, so the two scale together', () => {
+      const body = rule('.card__more .icon--more');
+      expect(body).toMatch(/width:\s*1em/);
+      expect(body).toMatch(/height:\s*1em/);
+    });
+
+    it('keeps the badge in the vertical band the 15px one held', () => {
+      // 20px of line at bottom:10px spans 10-30px off the card's bottom edge,
+      // exactly what 15px at bottom:12px spanned, so the larger type costs no
+      // capacity model a re-measure.
+      expect(rule('.card__more')).toMatch(/bottom:\s*10px/);
+    });
   });
 });

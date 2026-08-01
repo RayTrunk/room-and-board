@@ -8,7 +8,7 @@
 // Cards register a builder via setExpandSource; a card with nothing hidden
 // registers nothing and its taps stay inert.
 
-import { escapeHtml } from './util.js';
+import { escapeHtml, markExpandable, isOverlayOpen } from './util.js';
 import { swipeAction } from './imageshow.js';
 
 // Mandatory auto-close. Long enough to read a full ticker wall, short enough
@@ -125,15 +125,10 @@ export function isExpandOpen() {
   return Boolean(host) && !host.hidden;
 }
 
-// Every full-screen view that is dismissed by "tap anywhere": this overlay, the
-// text/story reader, and the art viewer. All three toggle the `hidden`
-// property, so the DOM is the live signal (same idiom as isEditing). One
-// invariant to serve: a tap that CLOSES an overlay must never open another.
-const OVERLAYS = '#expand-view, #text-viewer, #art-viewer';
-
-export function isOverlayOpen(doc = document) {
-  return [...doc.querySelectorAll(OVERLAYS)].some((el) => !el.hidden);
-}
+// "Is any full-screen view up?" moved to util.js so the image surface can ask
+// it too (imageshow.js cannot import this module — this module imports it).
+// Re-exported here because this is where every caller already looks for it.
+export { isOverlayOpen };
 
 // Opens the overlay on a content SNAPSHOT: bodyHtml is built by the caller at
 // open time and never re-read, so a widget refresh mid-view cannot yank the DOM
@@ -204,11 +199,13 @@ export function setExpandSource(el, build, { trigger = null, subviews = null } =
   const hasBuild = typeof build === 'function';
   if (hasBuild || subviews?.length) {
     sources.set(card, { build: hasBuild ? build : null, trigger, subviews });
-    card.classList.toggle('is-expandable', hasBuild);
   } else {
     sources.delete(card);
-    card.classList.remove('is-expandable');
   }
+  // The single place a card is marked tappable: the class, the button
+  // semantics, and the corner mark all follow from this one call, so a widget
+  // that registers an expansion never has to know the affordance exists.
+  markExpandable(card, hasBuild);
 }
 
 // The card's amber freshness stamp, when main.js has marked it stale.
@@ -297,5 +294,19 @@ export function initExpand(host) {
     }
     const view = sub ? sub.build(e.target.closest(sub.selector)) : source.build();
     if (view) openExpand({ ...view, stamp: staleStamp(card) });
+  });
+  // An expandable card carries role="button" + tabindex, and a non-<button>
+  // never gets a synthesised click from the keyboard — so Enter/Space become
+  // one here. Cheap because it hands off to the click path above rather than
+  // duplicating any of its guards: the press record is cleared first, since a
+  // keypress has no gesture and must not inherit the last finger's.
+  host.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter' && e.key !== ' ' && e.key !== 'Spacebar') return;
+    const card = e.target?.closest?.('.card.is-expandable');
+    const source = card && sources.get(card);
+    if (!source?.build) return;
+    e.preventDefault(); // Space must not scroll the page under the board
+    press = null;
+    (source.trigger ? card.querySelector(source.trigger) ?? card : card).click();
   });
 }

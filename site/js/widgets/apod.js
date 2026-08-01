@@ -5,7 +5,7 @@
 
 import { escapeHtml } from '../util.js';
 import { WORKER_URL } from '../env.js';
-import { openImageViewer, renderImageCard } from '../imageshow.js';
+import { clearImageCard, openImageViewer, renderImageCard } from '../imageshow.js';
 
 export const meta = { id: 'apod', title: 'NASA Daily Photo', refreshMs: 30 * 60 * 1000 };
 
@@ -13,6 +13,7 @@ export function render(el, vm, cfg) {
   const p = vm.photo;
   if (!p || !p.url) {
     el.innerHTML = '<div class="empty">NASA photo unavailable</div>';
+    clearImageCard(el); // yesterday's tap and mark must not outlive the photo
     return;
   }
   // No date note: APOD's date is the publish date (== today's dashboard clock),

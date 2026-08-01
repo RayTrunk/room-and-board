@@ -103,22 +103,63 @@ export function setCardNote(el, text) {
 }
 
 
-// Quiet "+N" overflow badge pinned to the card's bottom-right corner — the
-// point of truncation — plus a has-more class (CSS fades the body's bottom
-// edge as a wordless "continues" cue). Replaces the old in-flow ".more-hint"
-// row: the count no longer costs a list row, and the "enlarge the card"
-// imperative lives only in edit mode (capacityLabel). The corner is safe at
-// every card width (a title badge clips beside long titles on 2-wide cards);
-// .card__stamp is top-anchored so nothing collides. hidden <= 0 removes it.
-// `verbose` keeps the same quiet corner text but reads "+N more" — the rail
-// cards' tap invitation for their whole-card expand (same element, same
-// anchor, so the two forms can never coexist on one card).
-export function setMoreBadge(el, hidden, { verbose = false } = {}) {
-  const card = el.closest?.('.card');
+// Every full-screen view that is dismissed by "tap anywhere": the expand
+// overlay, the text/story reader, and the art viewer. All three toggle the
+// `hidden` property, so the DOM is the live signal. One invariant to serve: a
+// tap that CLOSES an overlay must never open another.
+//
+// It lives here, not in expand.js where it was written, because the image
+// surface needs the same answer and cannot import the expand engine — expand.js
+// already imports imageshow.js for the gesture classifier. expand.js re-exports
+// it, so every existing importer is unchanged.
+const OVERLAYS = '#expand-view, #text-viewer, #art-viewer';
+
+export function isOverlayOpen(doc = document) {
+  return [...doc.querySelectorAll(OVERLAYS)].some((el) => !el.hidden);
+}
+
+// ---------- the bottom-right corner badge ----------
+//
+// One element, two independent facts, and neither owner may write it alone:
+//
+//   how many rows are hidden   — the renderer's, via setMoreBadge
+//   whether the card OPENS     — the engine's, via markExpandable
+//
+// They arrive in either order (every renderer paints its count BEFORE it
+// registers its expansion) and on different schedules (a card re-renders its
+// body every refresh but only re-registers when its data changes shape), so
+// each records its fact on the card and calls paintMoreBadge, the one place
+// that reads both. That is also what makes the affordance automatic: a widget
+// that never heard of the badge gets it the moment it registers an expansion.
+//
+// The three forms, and the honesty rule that picks between them:
+//
+//   expands + hides N   "⤢ N more"   the mark invites the tap, the count says
+//                                     what is behind it
+//   expands, nothing hidden   "⤢"     weather, the image cards: there is no
+//                                     count, but the tap still opens something
+//   hides N, does not expand   "+N"    news, buses, world clock: the count is
+//                                     honest and the mark would be a lie
+//
+// The corner is safe at every card width (a title badge clips beside long
+// titles on 2-wide cards) and .card__stamp is top-anchored, so the badge and
+// the amber "as of" stamp share the right edge without ever colliding.
+
+// Reads the widget's own name off the card for an aria-label. First text node
+// only: a title may carry an appended .card__asof span (same idiom as the text
+// viewer's title read).
+function cardName(card) {
+  return card.querySelector?.('.card__title')?.childNodes[0]?.textContent?.trim() ?? '';
+}
+
+export function paintMoreBadge(card) {
   // querySelector may be absent on test fakes (capacity stubs) — no-op then.
   if (!card?.querySelector) return;
+  const hidden = Number(card.dataset.more) || 0;
+  const verbose = card.dataset.moreVerbose === '1';
+  const expands = card.classList.contains('is-expandable');
   let badge = card.querySelector('.card__more');
-  if (!hidden || hidden <= 0) {
+  if (!hidden && !expands) {
     badge?.remove();
     card.classList.remove('has-more');
     return;
@@ -128,8 +169,60 @@ export function setMoreBadge(el, hidden, { verbose = false } = {}) {
     card.appendChild(badge);
   }
   badge.className = 'card__more';
-  badge.textContent = verbose ? `+${hidden} more` : `+${hidden}`;
-  card.classList.add('has-more');
+  // The mark is an inline SVG, never a font character: a text chevron sits on
+  // baseline metrics and rides along the bottom of the words beside it, which
+  // is exactly the look Sean rejected. An SVG is a box, and a box centres.
+  const mark = expands ? icon('expand', 'icon--more') : '';
+  const text = hidden ? (expands ? `${hidden} more` : verbose ? `+${hidden} more` : `+${hidden}`) : '';
+  badge.innerHTML = `${mark}${text ? `<span class="card__more-n">${escapeHtml(text)}</span>` : ''}`;
+  card.classList.toggle('has-more', hidden > 0);
+}
+
+// The renderer's half: how many rows the card is NOT showing. Replaces the old
+// in-flow ".more-hint" row — the count costs no list row, and the "enlarge the
+// card" imperative lives only in edit mode (capacityLabel). hidden <= 0 drops
+// the count (and the whole badge, unless the card expands). `verbose` picks the
+// "+N more" wording for a card that does NOT expand; an expandable card always
+// reads "N more" beside its mark, so the two can never coexist on one card.
+export function setMoreBadge(el, hidden, { verbose = false } = {}) {
+  const card = el.closest?.('.card');
+  if (!card?.querySelector) return;
+  const n = hidden > 0 ? Math.round(hidden) : 0;
+  if (n) {
+    card.dataset.more = String(n);
+    card.dataset.moreVerbose = verbose ? '1' : '0';
+  } else {
+    delete card.dataset.more;
+    delete card.dataset.moreVerbose;
+  }
+  paintMoreBadge(card);
+}
+
+// The engine's half: this card opens something when you tap it. Called from
+// setExpandSource (the overlay engine) and from renderImageCard (the image
+// surface, whose full-screen viewer is its own expansion) — the two places a
+// card is MARKED tappable — so no widget wires the affordance itself and every
+// future expandable card gets it for free.
+//
+// role/tabindex/aria-label ride along: a card that behaves like a button says
+// so, and the label names the destination rather than the card ("Expand
+// Weather details"). Image cards pass their own label, which already reads
+// "View image full screen".
+export function markExpandable(el, expands, { label = '' } = {}) {
+  const card = el?.closest?.('.card');
+  if (!card?.querySelector) return;
+  card.classList.toggle('is-expandable', Boolean(expands));
+  if (expands) {
+    const name = cardName(card);
+    card.setAttribute('role', 'button');
+    card.setAttribute('tabindex', '0');
+    card.setAttribute('aria-label', label || (name ? `Expand ${name} details` : 'Expand details'));
+  } else {
+    card.removeAttribute('role');
+    card.removeAttribute('tabindex');
+    card.removeAttribute('aria-label');
+  }
+  paintMoreBadge(card);
 }
 
 // Extract an iCloud shared-album token from a full URL, a #fragment, or a bare

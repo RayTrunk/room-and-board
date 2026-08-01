@@ -3,6 +3,10 @@
     "date": "August 1",
     "items": [
       {
+        "lead": "Finding the taps",
+        "text": "A card that opens into a full screen view now says so: a small expand mark sits in its bottom corner, beside the count of whatever the card could not fit. Weather, the picture cards and Chart of the Day carry the mark on its own, since they have nothing to count. A card showing a count with no mark is simply telling you how much it is holding back. Picture cards also take a tap anywhere on the card now, not only on the picture itself."
+      },
+      {
         "lead": "Settings",
         "text": "Adding, removing and resizing cards all happen in one place now: Edit mode, on the dashboard itself, where you can see what fits as you go. The Widgets page hands you straight there with a single button, and anything you changed elsewhere in Settings is saved on the way."
       },

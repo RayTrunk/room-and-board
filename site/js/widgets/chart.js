@@ -5,7 +5,7 @@
 // CC BY-ND — attribution required, and the branding is baked into the image).
 
 import { WORKER_URL } from '../env.js';
-import { openImageViewer, renderImageCard } from '../imageshow.js';
+import { clearImageCard, openImageViewer, renderImageCard } from '../imageshow.js';
 
 export const meta = { id: 'chart', title: 'Chart of the Day', refreshMs: 30 * 60 * 1000 };
 
@@ -40,19 +40,25 @@ export function render(el, vm, cfg) {
   const c = pickChart(vm.charts, cfg) ?? vm.chart;
   if (!c || !c.url) {
     el.innerHTML = '<div class="empty">Chart unavailable</div>';
+    clearImageCard(el); // yesterday's tap and mark must not outlive the chart
     return;
   }
+  // The shared image surface (2026-08-01), which this card had been hand-rolling
+  // a copy of: it brings the decode-before-swap cross-fade, and — the reason for
+  // the change — the one place that makes the WHOLE CARD the tap target and
+  // stamps the expand mark in the corner, instead of a role="button" figure
+  // whose title row and padding were dead glass.
+  //
   // No card caption: the infographic embeds its own title and the Statista
   // branding — a caption would just repeat both (Sean flagged the duplicate).
   // The tap viewer still shows title/description/credit.
   //
-  // The shared image surface, like every other picture card: the infographic
-  // changes once a day but the card refreshes every 30 minutes, so the
-  // unchanged-src early return is what stops it re-decoding and re-painting the
-  // same chart all day, and the day's new one decodes before it dissolves in.
-  // (The old markup rebuilt a fresh lazy-loading image element on every render,
-  // which left the card black for seconds at boot: lazy loading is for content
-  // below a fold, and a board has none.)
+  // The infographic changes once a day but the card refreshes every 30 minutes,
+  // so the unchanged-src early return is what stops it re-decoding and
+  // re-painting the same chart all day, and the day's new one decodes before it
+  // dissolves in. (The old markup rebuilt a fresh lazy-loading image element on
+  // every render, which left the card black for seconds at boot: lazy loading
+  // is for content below a fold, and a board has none.)
   renderImageCard(el, {
     src: c.url,
     alt: c.title,
