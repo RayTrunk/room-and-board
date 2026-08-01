@@ -30,7 +30,7 @@
 //                      promises -> most content value -> calmest columns
 //
 // SCOPE (v1, 2026-07-29): this drives /setup's layout generation only. The board's
-// own edit-mode tray and the Settings widget toggles keep their firstFitAny
+// own edit-mode tray (as of 2026-08-01 its only add surface) keeps its firstFitAny
 // behaviour on purpose — a user editing a board they arranged by hand should not
 // have it silently reflowed under them. Quick Start keeps its hand-arranged
 // showcase, which already tiles all 96 cells.

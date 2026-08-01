@@ -446,35 +446,8 @@ describe('setup step copy for the empty states', () => {
   });
 });
 
-import { widgetGroupsHtml } from '../site/js/settings/settings.js';
-
-describe('widgetGroupsHtml', () => {
-  it('renders every group header and one toggle per widget with correct on-state', () => {
-    const html = widgetGroupsHtml([{ id: 'weather', x: 0, y: 0, w: 4, h: 4 }], onTheCoast({ nerdMode: true }));
-    for (const { label } of WIDGET_GROUPS) {
-      expect(html).toContain(`<h3 class="wgroup__title">${label}</h3>`);
-    }
-    // one toggle per WIDGET_ID (21)
-    expect((html.match(/data-toggle="/g) || []).length).toBe(LIVE_IDS.length);
-    // weather is placed → its toggle is on
-    expect(html).toMatch(/data-toggle="weather"[^>]*aria-checked="true"/);
-    // subway is not placed → not on
-    expect(html).toMatch(/class="toggle "[^>]*data-toggle="subway"/);
-  });
-
-  it('disables a widget that cannot fit (no room) and labels it', () => {
-    // one widget filling the whole 12x8 grid leaves no room for others
-    const html = widgetGroupsHtml([{ id: 'weather', x: 0, y: 0, w: 12, h: 8 }]);
-    expect(html).toMatch(/data-toggle="subway"[^>]*disabled/);
-    expect(html).toContain('(no room — resize others first)');
-    // the placed, full-size widget is still shown as on
-    expect(html).toMatch(/data-toggle="weather"[^>]*aria-checked="true"/);
-  });
-});
-
 import { NAV_MODEL, navGroupForSection, SECTION_IDS, navHtml } from '../site/js/settings/settings.js';
 import { widgetChecksHtml } from '../site/js/settings/setup.js';
-import { widgetGroupsHtml } from '../site/js/settings/settings.js';
 import { WIDGET_LABELS as SETUP_LABELS } from '../site/js/settings/setup.js';
 
 describe('settings nav model', () => {
@@ -846,12 +819,22 @@ describe('isBridgeHost (fragment IP validation)', () => {
   });
 });
 
+import { openEditMode } from '../site/js/edit.js';
+
 describe('nerd-mode picker gating (every add surface routes through isAddable)', () => {
   // An advanced widget (iptv) must be absent from EVERY add surface unless
   // nerd mode is on — and still manageable once placed. One table so a new
   // surface or a new advanced card can't silently regress a single path.
+  // Settings' own toggle list left this table on 2026-08-01: the pane hands
+  // off to edit mode instead of carrying an add surface of its own, so the
+  // board's add surface IS the edit tray (a placed card is managed as a block
+  // on the grid rather than a chip, hence the two-part selector).
   const hasIptv = {
-    'settings toggles (widgetGroupsHtml)': (cfg) => widgetGroupsHtml(cfg.layout ?? [], cfg).includes('data-toggle="iptv"'),
+    'edit tray + grid (openEditMode)': (cfg) => {
+      const root = document.createElement('div');
+      openEditMode({ layout: [], ...cfg }, { root, cellSize: { w: 100, h: 100 } });
+      return !!root.querySelector('[data-add="iptv"], .edit-block[data-id="iptv"]');
+    },
     'setup checkboxes (widgetChecksHtml)': (cfg) => widgetChecksHtml(SETUP_LABELS, new Set((cfg.layout ?? []).map((r) => r.id)), cfg).includes('data-w="iptv"'),
     'settings nav (navHtml)': (cfg) => navHtml('widgets', null, cfg).includes('Live Video'),
   };
@@ -876,8 +859,10 @@ describe('nerd-mode picker gating (every add surface routes through isAddable)',
   });
 
   it('never hides an ordinary widget', () => {
-    expect(widgetGroupsHtml([], { nerdMode: false }).includes('data-toggle="weather"')).toBe(true);
     expect(widgetChecksHtml(SETUP_LABELS, new Set(), { nerdMode: false }).includes('data-w="weather"')).toBe(true);
+    const root = document.createElement('div');
+    openEditMode({ layout: [], nerdMode: false }, { root, cellSize: { w: 100, h: 100 } });
+    expect(root.querySelector('[data-add="weather"]')).not.toBeNull();
   });
 });
 
@@ -1231,5 +1216,110 @@ describe('the keypad status line has three registers, not one', () => {
     expect(css).toMatch(/\.code__status--busy\s*\{[^}]*var\(--ink-dim\)/);
     expect(css).toMatch(/\.code__status--good\s*\{[^}]*var\(--good\)/);
     expect(css).toMatch(/\.code__status--good\s*\{[^}]*var\(--good-tint\)/); // solid well, never an alpha tint
+  });
+});
+
+/* ---------- Settings → Widgets: a signpost, not a second editor ---------- */
+
+// The pane carried its own add/remove toggle list until 2026-08-01. It was a
+// second, worse editor — minimum size, first hole that fit, and on a full grid
+// up to 31 rows reading "(no room — resize others first)" behind a dead toggle.
+// The rail keeps its Widgets row (that is where people look for widgets); the
+// pane spends it handing off to edit mode, the only surface that can answer
+// what fits.
+import { hasUnsavedChanges } from '../site/js/settings/settings.js';
+import { takePendingEdit } from '../site/js/store.js';
+
+describe('Settings → Widgets (hand-off to edit mode)', () => {
+  const settle = () => new Promise((r) => setTimeout(r, 30));
+  const pane = () => document.querySelector('.settings__pane');
+  const nav = (id) => document.querySelector(`.settings__nav [data-section="${id}"]`).click();
+  // The pencil FAB has to be in the document: the hand-off taps it rather than
+  // importing edit.js, so main.js keeps owning the live cfg and the
+  // save/sync/reload that finishing an edit needs.
+  const open = async (cfg = normalizeConfig({})) => {
+    document.body.innerHTML = '<div id="settings-root"></div><button id="edit"></button>';
+    await openSettings(cfg, { focus: 'widgets' }); // the deep-link an unconfigured card would use
+    await settle();
+  };
+  afterEach(() => {
+    closeSettings();
+    takePendingEdit(); // never leak a parked intent into the next test
+  });
+
+  it('lands on the explainer and offers exactly one action', async () => {
+    await open();
+    expect(pane().querySelector('.pane__title').textContent).toBe('Widgets');
+    expect(pane().querySelector('.wredirect__head').textContent).toBe('Widgets live in Edit mode');
+    expect(pane().querySelector('.wredirect__body').textContent)
+      .toBe('Add, remove, and resize cards right on the dashboard. Edit mode shows every widget’s size and what fits as you go.');
+    // The pencil FAB's own mark, large: the button the copy names is the shape
+    // already on screen.
+    expect(pane().querySelector('.wredirect__glyph svg.icon--xl')).not.toBeNull();
+    const buttons = [...pane().querySelectorAll('button')];
+    expect(buttons).toHaveLength(1);
+    expect(buttons[0].textContent).toBe('Open Edit mode');
+    expect(buttons[0].className).toBe('btn btn--primary');
+  });
+
+  it('carries no add surface of its own, not even on a full board', async () => {
+    // The case that used to print a screen of disabled rows: one card, whole grid.
+    await open(normalizeConfig({ layout: [{ id: 'weather', x: 0, y: 0, w: 12, h: 8 }] }));
+    expect(pane().querySelector('[data-toggle]')).toBeNull();
+    expect(pane().textContent).not.toMatch(/no room/i);
+  });
+
+  it('measures unsaved changes against the config it opened with', async () => {
+    await open();
+    expect(hasUnsavedChanges()).toBe(false);
+    nav('display');
+    await settle();
+    const was = document.querySelector('.seg.is-active').dataset.set;
+    [...document.querySelectorAll('.seg')].find((s) => s.dataset.set !== was).click();
+    await settle();
+    expect(hasUnsavedChanges()).toBe(true);
+    // …and a value put back where it started is not a change to save.
+    document.querySelector(`.seg[data-set="${was}"]`).click();
+    await settle();
+    expect(hasUnsavedChanges()).toBe(false);
+  });
+
+  it('with nothing to save, closes settings FIRST and then taps the pencil', async () => {
+    await open();
+    let overlayWhenTapped = 'never tapped';
+    document.querySelector('#edit').addEventListener('click', () => {
+      overlayWhenTapped = document.querySelector('.settings');
+    });
+    pane().querySelector('[data-open-edit]').click();
+    await settle();
+    // Edit mode runs on the dashboard: the overlay must already be unmounted.
+    expect(overlayWhenTapped).toBeNull();
+    expect(document.querySelector('.settings')).toBeNull();
+    expect(takePendingEdit()).toBe(false); // nothing to save means nothing to reload for
+  });
+
+  it('with unsaved changes, saves them first and parks the edit across the reload', async () => {
+    const reload = vi.spyOn(window.location, 'reload').mockImplementation(() => {});
+    await open();
+    nav('display');
+    await settle();
+    const was = document.querySelector('.seg.is-active').dataset.set;
+    [...document.querySelectorAll('.seg')].find((s) => s.dataset.set !== was).click();
+    await settle();
+    nav('widgets');
+    await settle();
+    let taps = 0;
+    document.querySelector('#edit').addEventListener('click', () => { taps += 1; });
+    pane().querySelector('[data-open-edit]').click();
+    await settle();
+    // The Save path, not a discard and not a silent keep: it saves and reloads,
+    // so the editor opens on the far side of that reload (main.js
+    // takePendingEdit) rather than over an overlay, against a config the
+    // dashboard has not applied yet.
+    expect(taps).toBe(0);
+    expect(reload).toHaveBeenCalled();
+    expect(document.querySelector('.settings')).toBeNull();
+    expect(takePendingEdit()).toBe(true);
+    reload.mockRestore();
   });
 });

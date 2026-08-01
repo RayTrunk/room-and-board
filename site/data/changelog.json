@@ -3,6 +3,10 @@
     "date": "August 1",
     "items": [
       {
+        "lead": "Settings",
+        "text": "Adding, removing and resizing cards all happen in one place now: Edit mode, on the dashboard itself, where you can see what fits as you go. The Widgets page hands you straight there with a single button, and anything you changed elsewhere in Settings is saved on the way."
+      },
+      {
         "lead": "Quote of the Day",
         "text": "The card now chooses a saying that fits it, so a quote is never cut off in the middle of its own point. A small card reads a shorter quote; a wide one still gets the long ones."
       },

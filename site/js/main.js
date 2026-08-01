@@ -1,7 +1,7 @@
 // Boot and runtime orchestration for the signage dashboard.
 
 import { normalizeConfig, decodeConfig, CURATED_SOURCES, imageFit } from './config.js';
-import { loadConfig, saveConfig, loadCache, saveCache } from './store.js';
+import { loadConfig, saveConfig, loadCache, saveCache, takePendingEdit } from './store.js';
 import { fetchJSON, fetchBuffer, fetchText } from './net.js';
 import { fmtClock, fitViewport } from './util.js';
 import { schedule } from './scheduler.js';
@@ -459,6 +459,12 @@ function startRuntime() {
     // widget's own refresh and needs no separate probe.
     if (!cfg.widgets.includes('surf')) ensureOceanProbe(cfg.loc, net);
   }
+  // Settings → Widgets hands off to edit mode. When it had changes to save it
+  // took the Save path, which reloads, so the intent arrives through storage
+  // rather than a call (store.js takePendingEdit). Clicking the FAB rather than
+  // importing edit.js keeps ONE entry path: the handler below owns the live cfg
+  // and the save/sync/reload that Done needs.
+  if (takePendingEdit()) $('#edit').click();
 }
 
 async function boot() {

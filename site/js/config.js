@@ -665,8 +665,8 @@ export const isOceanHidden = (id, cfg) => OCEAN_WIDGETS.includes(id) && !hasOcea
 // not sunset (RETIRED_AFTER), launched on this host (BETA_ONLY), not gated
 // behind nerd mode (ADVANCED_WIDGETS), and — for the place-gated cards —
 // actually available where this board is (OCEAN_WIDGETS). EVERY add surface —
-// the edit-mode tray, the Settings widget toggles, and the /setup checkboxes —
-// routes through this one predicate, so adding a new gate or a new advanced
+// the edit-mode tray (the board's only one since 2026-08-01) and the /setup
+// checkboxes — routes through this one predicate, so a new gate or a new advanced
 // card can't leak through a picker someone forgot to update. (A PLACED card is
 // always shown for removal regardless; callers OR this with `placed.has(id)`.)
 export const isAddable = (id, cfg, host) =>

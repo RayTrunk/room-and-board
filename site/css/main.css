@@ -903,13 +903,16 @@ body.mode-ambient .gear--edit { display: none; }
    as a control over the options rather than one of them. */
 .row--control { background: transparent; padding-left: 0; margin-bottom: 2px; }
 
-.wgroups { columns: 2; column-gap: 48px; max-width: 1200px; }
-.wgroup { break-inside: avoid; margin-bottom: 28px; }
-.wgroup__title {
-  font-size: 18px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
-  color: var(--ink-dim); margin: 0 0 10px;
-}
-.wgroup__rows { display: flex; flex-direction: column; gap: 8px; }
+/* Settings → Widgets is a signpost, not a second editor (see renderWidgets in
+   settings.js): one quiet centred column ending in the only action it has. The
+   glyph is the pencil FAB's own mark at .icon--xl, so the button the copy sends
+   you to is the shape you just looked at. --ink-faint is a tertiary tint, legal
+   at large sizes only — 96px is the largest thing in the pane, and the copy
+   below it carries the meaning in --ink/--ink-dim. */
+.wredirect { max-width: 720px; margin: 140px auto 0; text-align: center; }
+.wredirect__glyph { display: block; color: var(--ink-faint); margin-bottom: 28px; }
+.wredirect__head { font-size: 29px; font-weight: 600; color: var(--ink); margin: 0 0 14px; }
+.wredirect__body { font-size: 23px; line-height: 1.45; color: var(--ink-dim); margin: 0 0 36px; text-wrap: pretty; }
 
 /* 56px tall: the board's touch floor (was 76x44 — under the floor). */
 .toggle {
@@ -2559,9 +2562,10 @@ body.ss-backdrop .cf-dial__svg, .ss-preview.ss-backdrop .cf-dial__svg {
    down the left of a 1,460px row. MULTICOL, not the grid /info uses: at board
    scale the items are three and four lines tall, and a grid aligns its rows —
    so a two-line note beside a six-line note leaves a four-line hole. Multicol
-   balances by height and packs them, and `columns: 2` is already this
-   stylesheet's idiom for exactly this (.wgroups). Reading order becomes
-   column-wise, which is what a two-column list wants anyway.
+   balances by height and packs them. (The Widgets pane's .wgroups ran the same
+   `columns: 2` until that pane became a hand-off to edit mode, 2026-08-01;
+   this is the last multicol left.) Reading order becomes column-wise, which is
+   what a two-column list wants anyway.
    The `width` (not `count`) form degrades to one column if the pane is ever
    narrower, and 520px is ~43ch at 24px so a full pane yields two ~50ch
    columns — inside the 45-75ch band where the eye finds the next line without
