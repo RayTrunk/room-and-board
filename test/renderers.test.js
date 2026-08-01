@@ -215,6 +215,28 @@ describe('widget renderers', () => {
     expect(host.querySelectorAll('.linestatus--alert').length).toBe(2);
   });
 
+  it('subway draws the route tokens inside alert copy as bullets, not brackets', () => {
+    const host = el();
+    subway.render(host, DEMO_VMS.subway, CFG);
+    // The demo alert is real MTA copy: "Downtown [3] trains are rerouted via
+    // the [2] line…" — a reader six feet away gets the line's own bullet.
+    const alertRow = host.querySelector('.linestatus--alert .linestatus__text');
+    expect(alertRow.textContent).not.toContain('[');
+    expect([...alertRow.querySelectorAll('.bullet--inline')].map((b) => b.textContent)).toEqual(['3', '2']);
+    expect(alertRow.textContent).toContain('trains are rerouted via the');
+    // The row's own leading bullet is untouched (and is not an inline one).
+    expect(host.querySelector('.linestatus--alert > .bullet').classList.contains('bullet--inline')).toBe(false);
+  });
+
+  it('subway leaves copy the palette does not know exactly as written, and escapes it', () => {
+    const host = el();
+    subway.render(host, { lines: [{ line: 'E', ok: false, headers: ['[LIRR] riders: <b>see</b> the [E] board.'] }] }, CFG);
+    const text = host.querySelector('.linestatus__text');
+    expect(text.querySelector('b')).toBeNull(); // escaped first, substituted after
+    expect(text.textContent).toContain('[LIRR] riders: <b>see</b> the');
+    expect(text.querySelectorAll('.bullet--inline').length).toBe(1); // only the E
+  });
+
 
 
   it('news and history surface overflow as a title badge, not an in-flow row', () => {

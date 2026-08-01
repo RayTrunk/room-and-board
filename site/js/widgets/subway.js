@@ -4,6 +4,7 @@
 // alert feed — the raw feed runs ~800 KB, the digest ~2 KB.
 
 import { escapeHtml, fmtClock, setMoreBadge, setupPrompt } from '../util.js';
+import { routeBullets } from '../transit-alerts.js';
 import { WORKER_URL } from '../env.js';
 import { itemCapacity, cardSize } from '../capacity.js';
 import { setExpandSource, OVERLAY_BODY_H } from '../expand.js';
@@ -159,7 +160,9 @@ const pillChars = (header) => statusLabel(header).length + PILL_CHARS;
 
 // A well is its frame, or its text when the text is taller — EVERY header the
 // line carries, stacked (the card shows only the first, and clamps it). Only the
-// lead header pays for the pill: one well, one pill.
+// lead header pays for the pill: one well, one pill. Route tokens are counted as
+// the characters they are written as, which is a touch more than the bullet that
+// replaces them draws — erring long here only ever buys a well more room.
 export function wellHeight(headers, step) {
   const lines = headers.reduce(
     (n, h, i) => n + Math.max(1, Math.ceil((String(h).length + (i ? 0 : pillChars(h))) / step.chars)),
@@ -237,7 +240,7 @@ export function statusBoard(lines, rung = null) {
     const pill = (h) => `<span class="sbstatus">${escapeHtml(statusLabel(h))}</span>`;
     const well = (l) => `<div class="sbalert">${bullet(l)}
         <div class="sbalert__text">${l.headers
-          .map((h, i) => `<p>${i ? '' : pill(h)}${escapeHtml(h)}</p>`)
+          .map((h, i) => `<p>${i ? '' : pill(h)}${routeBullets(h)}</p>`)
           .join('')}</div>
       </div>`;
     // One column needs no wrapper; two get one each, so each packs independently.
@@ -307,7 +310,7 @@ export function render(el, vm, cfg) {
   const rowHtml = (row) => `<div class="linestatus ${row.ok ? '' : 'linestatus--alert'}">
         <span class="bullet bullet--${escapeHtml(row.line)}">${escapeHtml(row.line)}</span>
         <span class="linestatus__text">${
-          row.ok ? 'Good Service' : escapeHtml(row.headers[0])
+          row.ok ? 'Good Service' : routeBullets(row.headers[0])
         }</span>
         ${row.ok ? '' : '<span class="linestatus__icon" aria-hidden="true">⚠</span>'}
       </div>`;

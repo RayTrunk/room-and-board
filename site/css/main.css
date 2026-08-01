@@ -452,6 +452,15 @@ body { position: relative; top: max(0px, calc((100dvh - 1080px) / 2)); }
 .bullet--N, .bullet--Q, .bullet--R, .bullet--W { background: #fccc0a; color: #111; }
 .bullet--S, .bullet--GS { background: #808183; }
 .bullet--SI { background: #0f3d92; }
+/* A bullet set INSIDE a line of prose (transit-alerts.js routeBullets: "no [1]
+   between 14 St and South Ferry"). Everything is em-relative to the text it
+   lands in, so one class serves the 20px card row and the expanded wall's
+   larger copy; the box stays inside the line's own ascent, so a substituted
+   token costs the row no height. */
+.bullet--inline {
+  font-size: 0.7em; width: 1.5em; height: 1.5em;
+  vertical-align: -0.3em; margin: 0 0.1em;
+}
 
 .train { display: flex; align-items: center; gap: 16px; font-size: 22px; }
 .train__min { display: flex; align-items: baseline; gap: 4px; min-width: 76px; }

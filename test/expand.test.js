@@ -457,6 +457,9 @@ const SHORT = '[E] trains are running with delays in both directions.';
 const LONG =
   'Southbound [Q] trains are stopping along the [R] line from Canal St to DeKalb Av while we perform track maintenance at the Manhattan Bridge.';
 const SECOND = '[F] trains are rerouted via the [E] line between 21 St-Queensbridge and 47-50 Sts.';
+// The same copy as the board reads it aloud: every [N] token is a route bullet
+// now (transit-alerts.js routeBullets), so the brackets never reach the glass.
+const spoken = (header) => header.replace(/\[([A-Z0-9]{1,3})\]/g, '$1');
 
 const LINE_IDS = ['1', '2', '3', '4', '5', '6', '7', 'A', 'C', 'E', 'B', 'D', 'F', 'M', 'G', 'J', 'Z', 'L', 'N', 'Q', 'R', 'W', 'S', 'SI'];
 
@@ -582,7 +585,9 @@ describe('subway status board', () => {
     const wall = wallOf(statusBoard(subwayVm(2, 5).lines));
     expect([...wall.querySelectorAll('.wall__bullets .bullet')].map((b) => b.textContent))
       .toEqual(['3', '4', '5', '6', '7']);
-    expect([...wall.querySelectorAll('.sbalert .bullet')].map((b) => b.textContent)).toEqual(['1', '2']);
+    // A well's OWN bullet is its direct child; the ones inside the copy are the
+    // route tokens the prose names (routeBullets), which the text tests cover.
+    expect([...wall.querySelectorAll('.sbalert > .bullet')].map((b) => b.textContent)).toEqual(['1', '2']);
     expect(textOf(wall.querySelector('.wall__count'))).toBe('5 of 7 lines');
     expect(wall.querySelector('.wall__rule')).not.toBeNull();
   });
@@ -597,7 +602,7 @@ describe('subway status board', () => {
     ];
     const wall = wallOf(statusBoard(lines));
     expect([...wall.querySelectorAll('.wall__bullets .bullet')].map((b) => b.textContent)).toEqual(['Q', '7', '1']);
-    expect([...wall.querySelectorAll('.sbalert .bullet')].map((b) => b.textContent)).toEqual(['F', 'A']);
+    expect([...wall.querySelectorAll('.sbalert > .bullet')].map((b) => b.textContent)).toEqual(['F', 'A']);
   });
 
   it('suppresses the band entirely when no line is healthy (no empty band, no reserved space)', () => {
@@ -619,11 +624,12 @@ describe('subway status board', () => {
   it('renders EVERY header a line carries, stacked — including the one the card drops', () => {
     const wall = wallOf(statusBoard(subwayVm(1, 3, [LONG, SECOND]).lines));
     const paras = [...wall.querySelectorAll('.sbalert__text p')];
-    // The header copy is the paragraph's last node — the lead one leads with a pill.
-    expect(paras.map((p) => p.lastChild.textContent)).toEqual([LONG, SECOND]);
+    // Whole and in order, with the route tokens drawn as bullets: the reader
+    // sees "[Q] trains" as the Q bullet, so the brackets are gone from the copy.
+    expect(paras.map((p) => p.textContent.replace('Service alert', ''))).toEqual([spoken(LONG), spoken(SECOND)]);
     // Grouped under the one line: two headers, one bullet, one well.
     expect(wall.querySelectorAll('.sbalert').length).toBe(1);
-    expect(wall.querySelectorAll('.sbalert .bullet').length).toBe(1);
+    expect(wall.querySelectorAll('.sbalert > .bullet').length).toBe(1);
   });
 
   it('escapes line ids and alert copy', () => {
@@ -692,7 +698,7 @@ describe('subway adaptive columns', () => {
     // Each column is its own wrapper — the split is structural now, not a grid
     // auto-flow, so the DOM says outright which well sits where.
     const cols = (lines) => [...alertsEl(lines).querySelectorAll('.wall__col')]
-      .map((c) => [...c.querySelectorAll('.sbalert .bullet')].map((b) => b.textContent).join(','));
+      .map((c) => [...c.querySelectorAll('.sbalert > .bullet')].map((b) => b.textContent).join(','));
     expect(cols(subwayVm(6, 6).lines)).toEqual(['1,2,3', '4,5,6']);
     expect(cols(subwayVm(7, 5).lines)).toEqual(['1,2,3,4', '5,6,7']); // 4 + 3, never 6 + 1
     expect(cols(subwayVm(5, 7).lines)).toEqual([]); // one column wraps nothing
@@ -904,7 +910,7 @@ describe('subway status pill', () => {
     // It leads the first paragraph and the alert copy follows it intact.
     const lead = wall.querySelector('.sbalert__text p');
     expect(lead.firstElementChild.className).toBe('sbstatus');
-    expect(lead.textContent).toBe(`Service alert${LONG}`);
+    expect(lead.textContent).toBe(`Service alert${spoken(LONG)}`);
     expect([...wall.querySelectorAll('.sbalert__text p')][1].querySelector('.sbstatus')).toBeNull();
   });
 
