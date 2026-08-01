@@ -909,6 +909,10 @@ body.mode-ambient .gear--edit { display: none; }
 }
 .toggle.is-on { background: var(--accent); }
 .toggle.is-on .toggle__knob { transform: translateX(32px); background: rgba(0, 0, 0, 0.9); }
+/* A toggle the pane has blocked (its precondition is unmet, e.g. Only my teams
+   with no teams picked) reads as dead rather than merely unresponsive — the
+   chips' treatment, so one disabled language runs across the settings. */
+.toggle:disabled { opacity: 0.45; cursor: default; }
 /* RoomOS toggle: grey off-track with a white knob, solid-blue on-track with
    a dark knob — the knob's ink flips to black on the bright fill, same as
    the pill buttons. (Base theme keeps its blue-on-translucent-blue style.) */

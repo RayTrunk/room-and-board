@@ -2013,7 +2013,13 @@ function renderDiag() {
   });
   pane().querySelector('[data-reload]').addEventListener('click', () => location.reload());
   pane().querySelector('[data-displaytest]').addEventListener('click', showDisplayTest);
-  const confirmThen = (btn, action) => {
+  // Two taps for the two destructive buttons, the same arming the photo-album
+  // and stream Remove buttons run: the first tap turns the button red
+  // (.btn--armed) and relabels it, the second fires, and it disarms itself
+  // after 4s if the user walks away. The armed label keeps its own verb and
+  // noun — on a wall a passer-by has to be able to read what is about to
+  // happen, and "Tap again to confirm" says only that something will.
+  const confirmThen = (btn, armedLabel, action) => {
     btn.addEventListener('click', async () => {
       if (btn.dataset.armed) {
         await action();
@@ -2021,18 +2027,20 @@ function renderDiag() {
       }
       btn.dataset.armed = '1';
       const original = btn.textContent;
-      btn.textContent = 'Tap again to confirm';
+      btn.textContent = armedLabel;
+      btn.classList.add('btn--armed');
       setTimeout(() => {
         delete btn.dataset.armed;
         btn.textContent = original;
+        btn.classList.remove('btn--armed');
       }, 4000);
     });
   };
-  confirmThen(pane().querySelector('[data-clear]'), async () => {
+  confirmThen(pane().querySelector('[data-clear]'), 'Tap again to clear web storage', async () => {
     window.localStorage.clear();
     location.reload();
   });
-  confirmThen(pane().querySelector('[data-reset]'), async () => {
+  confirmThen(pane().querySelector('[data-reset]'), 'Tap again to reset', async () => {
     try {
       // Legacy: boards provisioned with the retired SignageManager macro keep a
       // device-side vault; ask it to clear too so the reset really sticks there.
