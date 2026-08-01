@@ -101,7 +101,9 @@ become cuts.
   6 px white scroll thumb (RoomOS idiom); drill-down lists with obvious back.
 - **Full-screen viewers** (art, chart, tapped-headline story view): `fixed inset:0`,
   `rgba(13,17,23,.96)` backdrop, centered panel, "Tap anywhere to close", 20 s idle
-  auto-dismiss. Story view: source/age meta, 46/700 headline, 30 px summary, white
+  auto-dismiss — EXCEPT the image viewer, which is tap-to-close only by design
+  (2026-08-01: a tapped-open photo may be meant to stay up; no idle timer, ever).
+  Story view: source/age meta, 46/700 headline, 30 px summary, white
   QR card (QR must sit on white) to read the article on a phone.
 - **Empty state**: `.empty` — quiet sentence + "via ⚙ → Section" affordance, never
   a blank card.
