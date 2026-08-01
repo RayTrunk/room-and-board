@@ -4,10 +4,10 @@
 // shared module namespace. The board loads the Worker's signed <img> URLs
 // directly (CORS-exempt).
 
-import { escapeHtml, markExpandable, setupPrompt } from '../util.js';
+import { escapeHtml, setupPrompt } from '../util.js';
 import { WORKER_URL } from '../env.js';
 import { imageFit } from '../config.js';
-import { openImageViewer, renderImageCard } from '../imageshow.js';
+import { clearImageCard, openImageViewer, renderImageCard } from '../imageshow.js';
 
 // Worker digest → slideshow-shaped list ({img, ar, title, date}).
 export function mapPhotos(digest) {
@@ -43,7 +43,9 @@ export function createPhotoWidget({ id, cfgKey, endpoint, emptyAction, emptyDest
       el.innerHTML = curated
         ? `<div class="empty">${escapeHtml(curated.title)} unavailable right now.</div>`
         : setupPrompt(id, emptyAction, emptyDest);
-      markExpandable(el, false); // the last photo's mark must not outlive it
+      // The setup prompt's own tap opens Settings; the last photo must not
+      // also open behind it.
+      clearImageCard(el);
       return;
     }
     // Rotate deterministically on the interval bucket, like Art. Curated widgets

@@ -4,9 +4,8 @@
 // viewer with the title, description, and Statista credit (their charts are
 // CC BY-ND — attribution required, and the branding is baked into the image).
 
-import { markExpandable } from '../util.js';
 import { WORKER_URL } from '../env.js';
-import { openImageViewer, renderImageCard } from '../imageshow.js';
+import { clearImageCard, openImageViewer, renderImageCard } from '../imageshow.js';
 
 export const meta = { id: 'chart', title: 'Chart of the Day', refreshMs: 30 * 60 * 1000 };
 
@@ -41,7 +40,7 @@ export function render(el, vm, cfg) {
   const c = pickChart(vm.charts, cfg) ?? vm.chart;
   if (!c || !c.url) {
     el.innerHTML = '<div class="empty">Chart unavailable</div>';
-    markExpandable(el, false); // yesterday's mark must not outlive the chart
+    clearImageCard(el); // yesterday's tap and mark must not outlive the chart
     return;
   }
   // The shared image surface (2026-08-01), which this card had been hand-rolling

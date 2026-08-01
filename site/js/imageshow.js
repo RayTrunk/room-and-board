@@ -232,6 +232,19 @@ export function renderImageCard(el, { src, alt = '', caption = '', label = 'View
   paintImage(fig.querySelector('.artwork__frame'), src, alt, state);
 }
 
+// This card is not showing a photo any more: an empty state, a setup prompt, a
+// feed that came back with nothing. Both halves of the tap have to go, and this
+// is why they are one call. The card-level listener stays wired (the card
+// outlives every render and re-adding it would only stack duplicates), so
+// nulling the destination is what actually disarms it — without this, a card
+// that fell back to a setup prompt would still open the last photo it held,
+// under a prompt whose own tap opens Settings.
+export function clearImageCard(el) {
+  const state = cardState.get(el);
+  if (state) state.open = null;
+  markExpandable(el, false);
+}
+
 let stripTimer = null;
 let viewerList = null; // photo list for the open viewer session
 let viewerCaption = true; // whether this session shows captions at all (chart: false)

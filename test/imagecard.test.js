@@ -6,7 +6,7 @@
 // undecoded bitmap on the glass and must not rebuild the <img> for a photo that
 // has not changed.
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { renderImageCard, loadImage, CARD_FADE_MS, openImageViewer, SWIPE_OUT_MS } from '../site/js/imageshow.js';
+import { renderImageCard, clearImageCard, loadImage, CARD_FADE_MS, openImageViewer, SWIPE_OUT_MS } from '../site/js/imageshow.js';
 import * as art from '../site/js/widgets/art.js';
 import * as landscapes from '../site/js/widgets/landscapes.js';
 import * as apod from '../site/js/widgets/apod.js';
@@ -469,6 +469,21 @@ describe('an image card is one tap target, not a figure inside a card', () => {
     expect(card.getAttribute('role')).toBeNull();
     card.click();
     expect(opened).toBe(0);
+  });
+
+  it('does not open the last photo from under a setup prompt', async () => {
+    // The listener lives on the card now, and the card outlives the render that
+    // replaced the picture with a prompt — so the DESTINATION is what has to go.
+    // Tapping the prompt opens Settings (main.js) and must do nothing else.
+    const el = cardHost('photos', 'Photos');
+    let opened = 0;
+    renderImageCard(el, { src: 'https://x.test/a.jpg', onOpen: () => { opened += 1; } });
+    await settle();
+    el.innerHTML = '<p class="empty" data-setup="photos">Tap here to add an album</p>';
+    clearImageCard(el);
+    el.closest('.card').click();
+    expect(opened).toBe(0);
+    expect(el.closest('.card').querySelector('.card__more')).toBeNull();
   });
 
   it('takes the mark back when the card falls to its empty state', async () => {
