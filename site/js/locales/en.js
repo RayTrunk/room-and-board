@@ -1,0 +1,75 @@
+import { registerLocale } from '../i18n.js';
+
+registerLocale('en', {
+  // Weather
+  'wx.feels_like': 'Feels like',
+  'wx.wind': 'Wind',
+  'wx.humidity': 'Humidity',
+  'wx.uv': 'UV',
+  'wx.sunrise': 'Sunrise',
+  'wx.sunset': 'Sunset',
+  'wx.moon': 'Moon',
+  'wx.high': 'H',
+  'wx.low': 'L',
+  'wx.now': 'Now',
+  // Age labels (news, time relative)
+  'age.just_now': 'just now',
+  'age.min_ago': '{0}m ago',
+  'age.hr_ago': '{0}h ago',
+  'age.day_ago': '{0}d ago',
+  // News
+  'news.empty': 'No headlines yet. Tap to pick sources',
+  'news.no_data': 'No headlines available',
+  // Transit
+  'transit.good_service': 'Good Service',
+  'transit.delays': 'Delays',
+  'transit.suspended': 'Suspended',
+  'transit.platform': 'Platform',
+  'transit.track': 'Track',
+  'transit.on_time': 'On time',
+  'transit.min': 'min',
+  // Markets
+  'markets.change': 'Change',
+  'markets.open': 'Open',
+  'markets.close': 'Close',
+  // Sports
+  'sports.final': 'Final',
+  'sports.live': 'Live',
+  // General UI
+  'ui.loading': 'Loading…',
+  'ui.no_data': 'No data',
+  'ui.tap_to_configure': 'Tap to configure',
+  'ui.retry': 'Retry',
+  'ui.of': 'of',
+  'ui.and': 'and',
+  // Settings
+  'settings.display': 'Display',
+  'settings.theme': 'Theme',
+  'settings.language': 'Language',
+  'settings.mode': 'Mode',
+  'settings.mode_dashboard': 'Always dashboard',
+  'settings.mode_ambient': 'Always screensaver',
+  'settings.mode_scheduled': 'Scheduled',
+  'settings.theme_dark': 'Dark',
+  'settings.theme_midnight': 'Midnight',
+  'settings.theme_slate': 'Slate',
+  'settings.theme_charcoal': 'Charcoal',
+  'settings.theme_light': 'Light',
+  'settings.theme_custom': 'Custom',
+  'settings.accent_color': 'Accent color',
+  'settings.lang_en': 'English',
+  'settings.lang_de': 'Deutsch',
+  'settings.lang_fr': 'Français',
+  'settings.lang_it': 'Italiano',
+  'settings.lang_nl': 'Nederlands',
+  // RSS widget
+  'rss.empty': 'No articles yet',
+  'rss.add_feed': 'Add feed URL',
+  'rss.feed_label': 'Label (optional)',
+  // EU Transit
+  'eutransit.departures': 'Departures',
+  'eutransit.no_departures': 'No departures found',
+  'eutransit.delayed': 'delayed',
+  'eutransit.cancelled': 'cancelled',
+  'eutransit.search_stop': 'Search for a stop…',
+});

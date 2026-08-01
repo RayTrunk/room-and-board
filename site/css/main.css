@@ -43,6 +43,66 @@
   --font-centred: 'RB Centred', var(--font-board);
 }
 
+/* ---- Midnight theme: deep navy blue ---- */
+[data-theme="midnight"] {
+  --bg: #000814;
+  --bg-card: #0f172a;
+  --bg-card-2: rgba(255, 255, 255, 0.09);
+  --accent: #60a5fa;
+  --warn-tint: #3b1a00;
+  --good-tint: #052e16;
+  --bad-tint: #450a0a;
+}
+
+/* ---- Slate theme: dark purple ---- */
+[data-theme="slate"] {
+  --bg: #0f0f1a;
+  --bg-card: #1e1e30;
+  --bg-card-2: rgba(255, 255, 255, 0.09);
+  --accent: #a78bfa;
+  --good: #34d399;
+  --warn-tint: #3b2200;
+  --good-tint: #022c22;
+  --bad-tint: #450a0a;
+}
+
+/* ---- Charcoal theme: warm dark gray ---- */
+[data-theme="charcoal"] {
+  --bg: #111110;
+  --bg-card: #1c1b18;
+  --bg-card-2: rgba(255, 255, 255, 0.09);
+  --accent: #fb923c;
+  --warn: #fbbf24;
+  --warn-tint: #431407;
+  --good-tint: #052e16;
+  --bad-tint: #450a0a;
+}
+
+/* ---- Light theme: bright rooms ---- */
+[data-theme="light"] {
+  --bg: #f1f5f9;
+  --bg-card: #ffffff;
+  --bg-card-2: rgba(0, 0, 0, 0.07);
+  --ink: rgba(0, 0, 0, 0.90);
+  --ink-mid: rgba(0, 0, 0, 0.76);
+  --ink-dim: rgba(0, 0, 0, 0.60);
+  --ink-faint: rgba(0, 0, 0, 0.42);
+  --accent: #1a6fc4;
+  --good: #197a59;
+  --bad: #c4304b;
+  --warn: #b56905;
+  --warn-tint: #fef3c7;
+  --good-tint: #d1fae5;
+  --bad-tint: #fee2e2;
+}
+
+/* ---- Custom theme: accent overridden via JS (--accent set inline on <html>) ---- */
+[data-theme="custom"] {
+  --bg: #000;
+  --bg-card: #121212;
+  --bg-card-2: rgba(255, 255, 255, 0.11);
+}
+
 /* Text centred inside its own box, independent of the rendering font.
    CSS centres the LINE BOX, never the glyphs: whatever the construction —
    line-height == height, symmetric padding, or flex align-items:center — the
@@ -1152,6 +1212,23 @@ body.mode-ambient .gear--edit { display: none; }
 /* Rows directly after a segmented control breathe (Weather's Current row sat
    flush against the °F/°C picker — other panes have a label between). */
 .segmented + .row, .segmented + .rows { margin-top: 14px; }
+
+/* ---- Theme swatches (Settings → Display) ---- */
+.theme-swatches { display: flex; flex-wrap: wrap; gap: 12px; max-width: 860px; }
+.theme-swatch {
+  display: flex; align-items: center; gap: 12px;
+  min-height: 64px; padding: 0 20px;
+  background: var(--bg-card); border: 2px solid transparent;
+  border-radius: 12px; cursor: pointer; color: var(--ink-mid); font-size: 22px;
+}
+.theme-swatch.is-active { border-color: var(--accent); color: var(--ink); font-weight: 600; }
+.theme-swatch__dot { width: 22px; height: 22px; border-radius: 50%; flex: none; }
+.theme-swatch__label { white-space: nowrap; }
+/* Color picker row for Custom theme */
+.pane__row { display: flex; align-items: center; gap: 18px; min-height: 64px; padding: 0 18px; max-width: 860px; margin-top: 12px; }
+.pane__row--color { background: var(--bg-card); border-radius: 12px; }
+.pane__rowlabel { font-size: 23px; flex: 1; }
+.theme-color { width: 54px; height: 44px; border: none; border-radius: 8px; cursor: pointer; background: none; padding: 0; }
 .qr { margin-top: 20px; }
 /* White padding grows the quiet zone so the corner radius rounds into it,
    never into code modules (the board's rendering clipped a corner cell). */

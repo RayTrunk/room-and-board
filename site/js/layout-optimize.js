@@ -113,6 +113,7 @@ export const DEMAND = {
   ferry: { kind: 'elastic', target: 4, feed: 12, trim: 1 }, // no alert banners; fitTrainRows still applies
   path: { kind: 'elastic', target: 4, feed: 12 }, // path.js has no measure-trim
   news: { kind: 'elastic', target: 4, feed: 10 },
+  rss: { kind: 'elastic', target: 4, feed: 40 },
   marketsnews: { kind: 'elastic', target: 4, feed: 10 },
   // Same feed shape, but the Only-my-teams filter can cut the merged list to a
   // handful, so it is never worth buying rows past the shared target.

@@ -7,6 +7,7 @@ import { getNjtSchedule, fetchNjtAlerts } from './njt.js';
 import { fetchMtaAlerts } from './alerts.js';
 import { fetchBusStops, parseLegs } from './bus.js';
 import { fetchNewsFeed, newsFeedUrl } from './news.js';
+import { fetchRss, isSafeRssUrl } from './rss.js';
 import { fetchTeamSummary, LEAGUE_PATHS as SPORTS_LEAGUES } from './sports.js';
 import { fetchPathRealtime } from './path.js';
 import { fetchFerryDepartures } from './ferry.js';
@@ -509,6 +510,21 @@ const handlers = {
       if (!newsFeedUrl(newsMatch[1])) return json({ error: 'unknown_feed' }, 404);
       // 900s ≈ 1.5x the card's 10-minute poll (600s expired on every request).
       return cached(url.origin, `news:${newsMatch[1]}`, 900, () => fetchNewsFeed(newsMatch[1]));
+    }
+
+    // Generic RSS proxy: any http(s) URL, SSRF-protected. Returns raw XML as
+    // text/xml so the client can run its existing parseRss() on it unchanged.
+    if (path === '/rss' && request.method === 'GET') {
+      const feedUrl = url.searchParams.get('url') ?? '';
+      if (!isSafeRssUrl(feedUrl)) return json({ error: 'invalid_url' }, 400);
+      const cacheKey = `rss:${feedUrl}`;
+      const cached15min = await caches.default.match(new Request(`${url.origin}/__rss/${encodeURIComponent(feedUrl)}`));
+      if (cached15min) return new Response(await cached15min.text(), { headers: { 'Content-Type': 'text/xml', ...CORS, 'Cache-Control': 'no-store' } });
+      let xml;
+      try { xml = await fetchRss(feedUrl); } catch (err) { return json({ error: String(err) }, 502); }
+      const stored = new Response(xml, { headers: { 'Content-Type': 'text/xml', 'Cache-Control': 'max-age=900' } });
+      caches.default.put(new Request(`${url.origin}/__rss/${encodeURIComponent(feedUrl)}`), stored.clone());
+      return new Response(xml, { headers: { 'Content-Type': 'text/xml', ...CORS, 'Cache-Control': 'no-store' } });
     }
 
     if (path === '/bus/stops' && request.method === 'GET') {

@@ -54,6 +54,7 @@ export const WIDGET_LABELS = {
   news: 'Headlines',
   substack: 'Substack',
   bsky: 'Bluesky',
+  rss: 'RSS Feeds',
 };
 
 // Ordered config sections for the two-step /setup wizard. A section shows in

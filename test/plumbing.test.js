@@ -39,11 +39,13 @@ describe('store', () => {
   });
 });
 
-describe('theme (retired)', () => {
-  it('legacy theme keys are accepted and dropped — old configs/QRs still decode', () => {
-    expect(normalizeConfig({ theme: 'momentum' }).theme).toBeUndefined();
-    expect(normalizeConfig({ theme: 'dark' }).theme).toBeUndefined();
-    expect(normalizeConfig({}).theme).toBeUndefined();
+describe('theme', () => {
+  it('known themes are preserved; unknown ones fall back to dark', () => {
+    expect(normalizeConfig({ theme: 'dark' }).theme).toBe('dark');
+    expect(normalizeConfig({ theme: 'midnight' }).theme).toBe('midnight');
+    expect(normalizeConfig({ theme: 'light' }).theme).toBe('light');
+    expect(normalizeConfig({ theme: 'momentum' }).theme).toBe('dark'); // unknown → default
+    expect(normalizeConfig({}).theme).toBe('dark'); // absent → default
   });
 });
 

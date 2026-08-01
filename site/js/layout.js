@@ -53,6 +53,7 @@ export const MIN_SIZE = {
   news: [3, 2],
   substack: [3, 2],
   bsky: [3, 2],
+  rss: [3, 2],
   services: [3, 2],
 };
 

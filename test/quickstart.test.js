@@ -34,8 +34,8 @@ describe('quick-start preset', () => {
     expect(cfg.services.list).toEqual(['webex', 'zoom', 'slack', 'm365']);
     expect(cfg.name).toBe('');
   });
-  it('carries no theme key (theme machinery retired)', () => {
-    expect(cfg.theme).toBeUndefined(); // theme machinery retired
+  it('carries a dark theme (default)', () => {
+    expect(cfg.theme).toBe('dark');
   });
 
   // Quick Start is the SECOND default source (DEFAULT_LAYOUT is the other, and

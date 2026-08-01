@@ -1,6 +1,12 @@
 // Boot and runtime orchestration for the signage dashboard.
 
 import { normalizeConfig, decodeConfig, CURATED_SOURCES, imageFit } from './config.js';
+import { setLocale } from './i18n.js';
+import './locales/en.js';
+import './locales/de.js';
+import './locales/fr.js';
+import './locales/it.js';
+import './locales/nl.js';
 import { loadConfig, saveConfig, loadCache, saveCache, takePendingEdit } from './store.js';
 import { fetchJSON, fetchBuffer, fetchText } from './net.js';
 import { fmtClock, fitViewport } from './util.js';
@@ -54,10 +60,11 @@ import * as apod from './widgets/apod.js';
 import * as chart from './widgets/chart.js';
 import * as citibike from './widgets/citibike.js';
 import * as tfl from './widgets/tfl.js';
+import * as rss from './widgets/rss.js';
 import { resolvePhotosManifest } from './photos-manifest.js';
 import { fetchCuratedManifest, fetchBackdropList, backdropDayIndex, localDayNumber } from './curated.js';
 
-const MODULES = [weather, subway, lirr, mnr, njt, amtrak, pathw, ferry, bus, art, history, aqi, surf, quote, wotd, markets, marketsnews, worldclock, sports, sportsnews, news, substack, bsky, photos, gdrivephotos, landscapes, services, apod, chart, citibike, tfl, f1, golf, tennis, iptv];
+const MODULES = [weather, subway, lirr, mnr, njt, amtrak, pathw, ferry, bus, art, history, aqi, surf, quote, wotd, markets, marketsnews, worldclock, sports, sportsnews, news, substack, bsky, photos, gdrivephotos, landscapes, services, apod, chart, citibike, tfl, f1, golf, tennis, iptv, rss];
 for (const m of MODULES) registerWidget(m);
 
 const net = { fetchJSON, fetchBuffer, fetchText };
@@ -94,6 +101,17 @@ let backdropList = []; // full curated backdrop set, for swipe-to-next
 let backdropIndex = 0; // which backdrop is showing (starts at the daily pick)
 let backdropDay = 0; // local day the index was computed for (rollover detection)
 const cancels = [];
+
+function applyTheme(c) {
+  const theme = c?.theme ?? 'dark';
+  document.documentElement.setAttribute('data-theme', theme);
+  if (theme === 'custom' && c?.themeAccent) {
+    document.documentElement.style.setProperty('--accent', c.themeAccent);
+  } else {
+    document.documentElement.style.removeProperty('--accent');
+  }
+  setLocale(c?.lang ?? 'en');
+}
 
 function cardFor(mod, rect) {
   let card = document.querySelector(`[data-widget="${mod.meta.id}"]`);
@@ -524,10 +542,12 @@ async function boot() {
   window.__signage.source = source;
 
   if (!chosen) {
+    applyTheme(null);
     showWelcome();
     return;
   }
   cfg = chosen;
+  applyTheme(cfg);
   // Repair wiped storage from a decodable #fragment — but best-effort: on a
   // storage-blocked board this MUST NOT reject boot() (which reload-loops it).
   // The config is already in memory; a persist failure just re-repairs next boot.

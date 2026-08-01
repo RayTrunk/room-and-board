@@ -1,0 +1,75 @@
+import { registerLocale } from '../i18n.js';
+
+registerLocale('de', {
+  // Wetter
+  'wx.feels_like': 'Gefühlt',
+  'wx.wind': 'Wind',
+  'wx.humidity': 'Luftfeuchte',
+  'wx.uv': 'UV',
+  'wx.sunrise': 'Sonnenaufgang',
+  'wx.sunset': 'Sonnenuntergang',
+  'wx.moon': 'Mond',
+  'wx.high': 'H',
+  'wx.low': 'T',
+  'wx.now': 'Jetzt',
+  // Zeitangaben
+  'age.just_now': 'gerade eben',
+  'age.min_ago': 'vor {0} Min.',
+  'age.hr_ago': 'vor {0} Std.',
+  'age.day_ago': 'vor {0} T.',
+  // Nachrichten
+  'news.empty': 'Noch keine Schlagzeilen. Tippen zum Auswählen.',
+  'news.no_data': 'Keine Schlagzeilen verfügbar',
+  // Verkehr
+  'transit.good_service': 'Normalbetrieb',
+  'transit.delays': 'Verspätungen',
+  'transit.suspended': 'Eingestellt',
+  'transit.platform': 'Gleis',
+  'transit.track': 'Gleis',
+  'transit.on_time': 'Pünktlich',
+  'transit.min': 'Min',
+  // Märkte
+  'markets.change': 'Änderung',
+  'markets.open': 'Eröffnung',
+  'markets.close': 'Schluss',
+  // Sport
+  'sports.final': 'Endstand',
+  'sports.live': 'Live',
+  // Allgemein
+  'ui.loading': 'Lädt…',
+  'ui.no_data': 'Keine Daten',
+  'ui.tap_to_configure': 'Tippen zum Einrichten',
+  'ui.retry': 'Erneut versuchen',
+  'ui.of': 'von',
+  'ui.and': 'und',
+  // Einstellungen
+  'settings.display': 'Anzeige',
+  'settings.theme': 'Design',
+  'settings.language': 'Sprache',
+  'settings.mode': 'Modus',
+  'settings.mode_dashboard': 'Immer Dashboard',
+  'settings.mode_ambient': 'Immer Bildschirmschoner',
+  'settings.mode_scheduled': 'Zeitgesteuert',
+  'settings.theme_dark': 'Dunkel',
+  'settings.theme_midnight': 'Mitternacht',
+  'settings.theme_slate': 'Schiefer',
+  'settings.theme_charcoal': 'Anthrazit',
+  'settings.theme_light': 'Hell',
+  'settings.theme_custom': 'Benutzerdefiniert',
+  'settings.accent_color': 'Akzentfarbe',
+  'settings.lang_en': 'English',
+  'settings.lang_de': 'Deutsch',
+  'settings.lang_fr': 'Français',
+  'settings.lang_it': 'Italiano',
+  'settings.lang_nl': 'Nederlands',
+  // RSS
+  'rss.empty': 'Noch keine Artikel',
+  'rss.add_feed': 'Feed-URL hinzufügen',
+  'rss.feed_label': 'Bezeichnung (optional)',
+  // EU Nahverkehr
+  'eutransit.departures': 'Abfahrten',
+  'eutransit.no_departures': 'Keine Abfahrten gefunden',
+  'eutransit.delayed': 'Verspätung',
+  'eutransit.cancelled': 'Fällt aus',
+  'eutransit.search_stop': 'Haltestelle suchen…',
+});

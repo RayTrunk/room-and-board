@@ -23,10 +23,10 @@ const RESIZE_ICON = `<svg width="28" height="28" viewBox="0 0 24 24" fill="none"
 // order — Commute 10 · Images 5 · Sports 5 · Daily 4 (Images is 6 nominal but
 // Live Video is double-gated; Sports reached 5 when Sports News landed and takes
 // the tie on the alphabet). Below four a drawer costs a tap to save one or two
-// chips, so Weather & Air 3, News & Social 3, Markets 2 and Reference 2 all flow
-// inline. Each label must exist in WIDGET_GROUPS, and the set must match the
-// rule (both asserted in test/edit.test.js).
-const TRAY_COLLAPSIBLE = ['Commute', 'Images', 'Sports', 'Daily'];
+// chips, so Weather & Air 3, Markets 2 and Reference 2 all flow inline. Each
+// label must exist in WIDGET_GROUPS, and the set must match the rule (both
+// asserted in test/edit.test.js).
+const TRAY_COLLAPSIBLE = ['Commute', 'Images', 'Sports', 'Daily', 'News & Social'];
 const TRAY_INLINE_GROUPS = WIDGET_GROUPS.filter((g) => !TRAY_COLLAPSIBLE.includes(g.label));
 const TRAY_COLLAPSIBLE_GROUPS = TRAY_COLLAPSIBLE
   .map((label) => WIDGET_GROUPS.find((g) => g.label === label))
@@ -68,6 +68,7 @@ const TITLES = {
   news: 'Headlines',
   substack: 'Substack',
   bsky: 'Bluesky',
+  rss: 'RSS Feeds',
 };
 
 export function openEditMode(cfg, { root, onDone, onCancel, cellSize } = {}) {

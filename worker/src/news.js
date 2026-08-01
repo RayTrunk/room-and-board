@@ -6,6 +6,26 @@ const FEEDS = {
   npr: 'https://feeds.npr.org/1001/rss.xml',
   bbc: 'https://feeds.bbci.co.uk/news/world/rss.xml',
   cnbc: 'https://www.cnbc.com/id/20910258/device/rss/rss.html',
+  // International
+  guardian: 'https://www.theguardian.com/international/rss',
+  euronews: 'https://www.euronews.com/rss?format=mrss&level=theme&name=news',
+  // Germany
+  spiegel: 'https://www.spiegel.de/schlagzeilen/index.rss',
+  zeit: 'https://newsfeed.zeit.de/all',
+  tagesschau: 'https://www.tagesschau.de/xml/rss2',
+  heise: 'https://www.heise.de/rss/heise-top-atom.xml',
+  // Austria
+  orf: 'https://rss.orf.at/news.xml',
+  derstandard: 'https://www.derstandard.at/rss',
+  // Switzerland
+  nzz: 'https://www.nzz.ch/recent.rss',
+  srfnews: 'https://www.srf.ch/news/bnf/rss/1646',
+  // France
+  lemonde: 'https://www.lemonde.fr/rss/une.xml',
+  franceinfo: 'https://www.francetvinfo.fr/titres.rss',
+  // Tech
+  arstechnica: 'https://feeds.arstechnica.com/arstechnica/index',
+  theverge: 'https://www.theverge.com/rss/index.xml',
   marketwatch: 'https://feeds.content.dowjones.io/public/rss/mw_topstories',
   'wsj-markets': 'https://feeds.content.dowjones.io/public/rss/RSSMarketsMain',
   'ft-markets': 'https://www.ft.com/markets?format=rss',

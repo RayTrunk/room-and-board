@@ -53,6 +53,7 @@ export const WIDGET_LABELS = {
   news: 'Headlines',
   substack: 'Substack',
   bsky: 'Bluesky',
+  rss: 'RSS Feeds',
 };
 
 
@@ -70,6 +71,8 @@ export async function openSettings(cfg, { focus } = {}) {
   if (state) closeSettings();
   state = {
     cfg: structuredClone(cfg),
+    originalTheme: document.documentElement.getAttribute('data-theme') ?? 'dark',
+    originalAccent: document.documentElement.style.getPropertyValue('--accent'),
     root: document.querySelector('#settings-root'),
     // Land on the nav's first entry (Display) unless asked to focus a
     // specific section (setup-code path, or an unconfigured card's tap).
@@ -170,6 +173,10 @@ function attachScrollIndicator(scrollEl, host, right) {
 
 export function closeSettings() {
   if (!state) return;
+  // Revert any live theme preview applied during settings browsing.
+  document.documentElement.setAttribute('data-theme', state.originalTheme);
+  if (state.originalAccent) document.documentElement.style.setProperty('--accent', state.originalAccent);
+  else document.documentElement.style.removeProperty('--accent');
   state.root.innerHTML = '';
   state = null;
 }
@@ -1757,6 +1764,32 @@ function renderDisplay() {
     <div class="namepad" hidden>
       <output class="code__display" aria-live="polite">·</output>
       <div class="namepad__keys"></div>
+    </div>
+    <p class="pane__label">Theme</p>
+    <div class="theme-swatches">
+      ${[
+        { id: 'dark',     label: 'Dark',      accent: '#64b4fa' },
+        { id: 'midnight', label: 'Midnight',  accent: '#60a5fa' },
+        { id: 'slate',    label: 'Slate',     accent: '#a78bfa' },
+        { id: 'charcoal', label: 'Charcoal',  accent: '#fb923c' },
+        { id: 'light',    label: 'Light',     accent: '#1a6fc4' },
+        { id: 'custom',   label: 'Custom',    accent: state.cfg.themeAccent || '#64b4fa' },
+      ].map(({ id, label, accent }) => `
+        <button class="theme-swatch ${state.cfg.theme === id ? 'is-active' : ''}" data-theme-pick="${id}" title="${label}">
+          <span class="theme-swatch__dot" style="background:${escapeHtml(accent)}"></span>
+          <span class="theme-swatch__label">${label}</span>
+        </button>`).join('')}
+    </div>
+    ${state.cfg.theme === 'custom' ? `
+    <div class="pane__row pane__row--color">
+      <span class="pane__rowlabel">Accent color</span>
+      <input type="color" class="theme-color" value="${escapeHtml(state.cfg.themeAccent || '#64b4fa')}">
+    </div>` : ''}
+    <p class="pane__label">Language</p>
+    <div class="segmented" role="group" aria-label="Language">
+      ${[['en','EN'],['de','DE'],['fr','FR'],['it','IT'],['nl','NL']].map(([id, label]) =>
+        `<button class="seg ${state.cfg.lang === id ? 'is-active' : ''}" data-set="lang:${id}">${label}</button>`
+      ).join('')}
     </div>`;
   pane().querySelectorAll('[data-set]').forEach((btn) =>
     btn.addEventListener('click', () => {
@@ -1786,6 +1819,19 @@ function renderDisplay() {
   pane().querySelector('[data-clear-name]')?.addEventListener('click', () => {
     state.cfg.name = '';
     renderDisplay();
+  });
+  pane().querySelectorAll('[data-theme-pick]').forEach((btn) =>
+    btn.addEventListener('click', () => {
+      state.cfg.theme = btn.dataset.themePick;
+      // Live preview: apply immediately so the user sees the result.
+      document.documentElement.setAttribute('data-theme', state.cfg.theme);
+      if (state.cfg.theme !== 'custom') document.documentElement.style.removeProperty('--accent');
+      renderDisplay();
+    }),
+  );
+  pane().querySelector('.theme-color')?.addEventListener('input', (e) => {
+    state.cfg.themeAccent = e.target.value;
+    document.documentElement.style.setProperty('--accent', e.target.value);
   });
   const pad = pane().querySelector('.namepad');
   const display = pad.querySelector('.code__display');

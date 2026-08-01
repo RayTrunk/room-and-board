@@ -140,16 +140,18 @@ describe('add-tray collapsible groups', () => {
   const IMAGES_OFFERED = offeredIn('Images');
   // Sports reached five when Sports News landed (2026-07-31), so it ties Images
   // and takes the alphabetically-earlier slot ahead of the four-card Daily.
-  const COLLAPSED = ['Commute', 'Images', 'Sports', 'Daily'];
+  // News & Social reached four when RSS widget was added (2026-08-01), so it
+  // joins Daily behind a tap, alphabetically after it.
+  const COLLAPSED = ['Commute', 'Images', 'Sports', 'Daily', 'News & Social'];
   const open = (cfg = CFG) => openEditMode(cfg, { root, cellSize: { w: 100, h: 100 } });
   const toggles = () => [...root.querySelectorAll('[data-tray-toggle]')];
   const toggle = (label) => toggles().find((t) => t.dataset.trayToggle === label);
   const group = (label) => [...root.querySelectorAll('[data-tray-group]')].find((g) => g.dataset.trayGroup === label);
   const chipsIn = (label) => [...group(label).querySelectorAll('[data-add]')].map((b) => b.textContent.trim());
 
-  it('collapses exactly Commute, Images, Sports and Daily, all closed, with a caret and a count', () => {
+  it('collapses exactly Commute, Images, Sports, Daily and News & Social, all closed, with a caret and a count', () => {
     open();
-    // largest-offered-first, ties alphabetical: Commute 10 · Images 5 · Sports 5 · Daily 4
+    // largest-offered-first, ties alphabetical: Commute 10 · Images 5 · Sports 5 · Daily 4 · News & Social 4
     expect(toggles().map((t) => t.dataset.trayToggle)).toEqual(COLLAPSED);
     for (const label of COLLAPSED) {
       expect(toggle(label).getAttribute('aria-expanded')).toBe('false');

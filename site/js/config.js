@@ -20,7 +20,7 @@ export const ART_CATS = [
 ];
 
 export const WIDGET_IDS = [
-  'weather', 'subway', 'lirr', 'mnr', 'njt', 'amtrak', 'path', 'ferry', 'bus', 'citibike', 'tfl', 'art', 'photos', 'gdrivephotos', 'landscapes', 'apod', 'history', 'aqi', 'surf', 'quote', 'wotd', 'markets', 'marketsnews', 'worldclock', 'sports', 'sportsnews', 'news', 'substack', 'bsky', 'services', 'chart', 'f1', 'golf', 'tennis', 'iptv',
+  'weather', 'subway', 'lirr', 'mnr', 'njt', 'amtrak', 'path', 'ferry', 'bus', 'citibike', 'tfl', 'art', 'photos', 'gdrivephotos', 'landscapes', 'apod', 'history', 'aqi', 'surf', 'quote', 'wotd', 'markets', 'marketsnews', 'worldclock', 'sports', 'sportsnews', 'news', 'substack', 'bsky', 'rss', 'services', 'chart', 'f1', 'golf', 'tennis', 'iptv',
 ];
 
 // Display grouping for the widget pickers (board Settings and phone /setup).
@@ -32,7 +32,7 @@ export const WIDGET_GROUPS = [
   { label: 'Weather & Air', ids: ['weather', 'aqi', 'surf'] },
   { label: 'Markets', ids: ['markets', 'marketsnews'] },
   { label: 'Sports', ids: ['sports', 'sportsnews', 'f1', 'golf', 'tennis'] },
-  { label: 'News & Social', ids: ['news', 'substack', 'bsky'] },
+  { label: 'News & Social', ids: ['news', 'substack', 'bsky', 'rss'] },
   // Images = every card whose content IS the picture: art, photography, apod,
   // and (since Ambient retired, 2026-07-29) the Live Video stream, which is the
   // same media surface with the pictures moving. It is a superset of the
@@ -114,6 +114,7 @@ export const DEFAULT_CONFIG = Object.freeze({
   // off by default because a board with no teams picked would show nothing.
   sportsnews: Object.freeze({ sources: Object.freeze(['espn', 'cbs-sports', 'yahoo-sports', 'the-athletic']), sports: Object.freeze([]), onlyMyTeams: false }),
   news: Object.freeze({ sources: Object.freeze(['nyt-home', 'nyt-nyregion']) }),
+  rss: Object.freeze({ feeds: Object.freeze([]) }), // [{url, label}] up to 5 user-supplied feeds
   // Starter accounts (AI/tech/finance, politically neutral, verified active
   // 2026-07-05) — removable entries like the markets tickers.
   substack: Object.freeze({ pubs: Object.freeze([
@@ -151,14 +152,17 @@ export const DEFAULT_CONFIG = Object.freeze({
   // weather/transit info band.
   screensaver: Object.freeze({ source: 'art', strip: true, markers: true, backdrop: false }),
   mode: 'dashboard',
+  theme: 'dark',
+  themeAccent: '',
+  lang: 'en',
   schedule: Object.freeze(DEFAULT_SCHEDULE.map((w) => Object.freeze({ ...w }))),
   beacon: true, // anonymous hourly usage ping (see fleet.js); Diagnostics toggle
   clock24: false, // 24-hour time for the topbar Clock, World Clock + Weather's hour labels (departures keep fmtTime's 12h)
 });
 
 const MODES = ['scheduled', 'dashboard', 'ambient'];
-// (Theme machinery retired 2026-07-19: Momentum is baked into :root.
-// Legacy configs may still carry a `theme` key — normalize drops it.)
+export const THEMES = ['dark', 'midnight', 'slate', 'charcoal', 'light', 'custom'];
+export const LANGS = ['en', 'de', 'fr', 'it', 'nl'];
 const MAX_NAME = 24;
 
 const str = (v, fallback, max = 64) =>
@@ -492,8 +496,20 @@ export function normalizeConfig(raw) {
         .slice(0, 4);
       return clean.length ? clean : DEFAULT_CONFIG.schedule.map((w) => ({ ...w }));
     })(),
+    rss: {
+      feeds: (() => {
+        const list = Array.isArray(raw.rss?.feeds) ? raw.rss.feeds : [];
+        return list
+          .filter((f) => typeof f?.url === 'string' && /^https?:\/\//i.test(f.url.trim()))
+          .slice(0, 5)
+          .map((f) => ({ url: f.url.trim().slice(0, 500), label: str(f.label, '', 40) }));
+      })(),
+    },
     beacon: raw.beacon !== false, // absent (older configs) → on
     clock24: raw.clock24 === true, // absent/anything-but-true → 12-hour default
+    theme: THEMES.includes(raw.theme) ? raw.theme : DEFAULT_CONFIG.theme,
+    themeAccent: /^#[0-9a-f]{6}$/i.test(raw.themeAccent ?? '') ? raw.themeAccent : '',
+    lang: LANGS.includes(raw.lang) ? raw.lang : DEFAULT_CONFIG.lang,
   };
 }
 
@@ -561,6 +577,10 @@ export async function encodeConfig(cfg) {
   if (wire.iptv && isDefault(wire.iptv, DEFAULT_CONFIG.iptv)) delete wire.iptv; // unconfigured → off the wire
   if (wire.nerdMode === false) delete wire.nerdMode;
   if (wire.screensaver && isDefault(wire.screensaver, DEFAULT_CONFIG.screensaver)) delete wire.screensaver;
+  if (wire.rss && !wire.rss.feeds?.length) delete wire.rss;
+  if (wire.theme === DEFAULT_CONFIG.theme) delete wire.theme;
+  if (!wire.themeAccent) delete wire.themeAccent;
+  if (wire.lang === DEFAULT_CONFIG.lang) delete wire.lang;
   const bytes = new TextEncoder().encode(JSON.stringify(wire));
   return bytesToBase64url(await pipe(bytes, new CompressionStream('deflate-raw')));
 }
