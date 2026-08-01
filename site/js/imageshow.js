@@ -218,7 +218,7 @@ export function renderImageCard(el, { src, alt = '', caption = '', label = 'View
       cardState.get(el)?.open?.();
     });
   }
-  markExpandable(el, true, { label });
+  markExpandable(el, Boolean(state.open), { label });
   fig.classList.toggle('artwork--contain', contain);
   if (state.caption !== caption) {
     setFigCaption(fig, caption);

@@ -10,6 +10,7 @@ import { renderImageCard, loadImage, CARD_FADE_MS, openImageViewer, SWIPE_OUT_MS
 import * as art from '../site/js/widgets/art.js';
 import * as landscapes from '../site/js/widgets/landscapes.js';
 import * as apod from '../site/js/widgets/apod.js';
+import * as chart from '../site/js/widgets/chart.js';
 
 const CFG = { name: 'Sean' };
 const host = () => document.createElement('div');
@@ -334,6 +335,20 @@ describe('every rotating image card shares the surface', () => {
     document.querySelector('#art-viewer')?.remove();
   });
 
+  it('chart of the day rides the shared surface instead of its own copy of it', async () => {
+    const el = host();
+    const vm = { charts: [{ url: 'https://x.test/cotd.png', title: 'Population Growth', desc: 'why' }] };
+    chart.render(el, vm, CFG);
+    await settle();
+    expect(el.querySelector('.artwork__img').getAttribute('src')).toBe('https://x.test/cotd.png');
+    expect(el.querySelector('.artwork--contain')).not.toBeNull(); // data images never crop
+    expect(el.querySelector('.artwork__caption')).toBeNull(); // the title is baked into the image
+    // The 30 minute refresh must not re-decode the same infographic all day.
+    pending = [];
+    chart.render(el, vm, CFG);
+    expect(pending).toHaveLength(0);
+  });
+
   it('apod holds its one photo across the 30 minute refresh instead of re-decoding it', async () => {
     const el = host();
     const vm = { photo: { url: 'https://x.test/apod.jpg', title: 'Messier 24', credit: 'Chuck Ayoub', explanation: 'A star cloud.' } };
@@ -346,5 +361,139 @@ describe('every rotating image card shares the surface', () => {
     expect(pending).toHaveLength(0);
     expect(el.querySelector('.artwork__img')).toBe(img);
     expect(el.querySelector('.artwork__title').textContent).toBe('Messier 24');
+  });
+});
+
+/**
+ * The whole card is the tap target (2026-08-01), the same grammar weather and
+ * markets already used. The figure used to carry role="button" and the click
+ * listener, which made the picture tappable and left the title row and the
+ * padding around it dead glass — one of several unlabelled tap models sharing
+ * the board.
+ */
+describe('an image card is one tap target, not a figure inside a card', () => {
+  // A real card wrapper, the shape main.js builds.
+  function cardHost(kind = 'art', title = 'Art') {
+    document.body.innerHTML = `
+      <div id="grid">
+        <article class="card card--${kind}" data-widget="${kind}">
+          <h2 class="card__title">${title}</h2>
+          <div class="card__body"></div>
+          <div class="card__stamp" hidden></div>
+        </article>
+      </div>`;
+    return document.querySelector('.card__body');
+  }
+
+  beforeEach(() => {
+    document.querySelector('#art-viewer')?.remove();
+  });
+
+  it('opens from a tap on the card, not only on the picture', async () => {
+    const el = cardHost();
+    let opened = 0;
+    renderImageCard(el, { src: 'https://x.test/a.jpg', onOpen: () => { opened += 1; } });
+    await settle();
+    // The title row: dead glass before this, part of the target now.
+    el.closest('.card').querySelector('.card__title').click();
+    expect(opened).toBe(1);
+    el.querySelector('.artwork').click(); // the picture still works, of course
+    expect(opened).toBe(2);
+  });
+
+  it('moves the button semantics up to the card and marks the corner', async () => {
+    const el = cardHost();
+    renderImageCard(el, { src: 'https://x.test/a.jpg', onOpen: () => {} });
+    await settle();
+    const card = el.closest('.card');
+    expect(el.querySelector('.artwork').getAttribute('role')).toBeNull(); // it left the figure
+    expect(el.querySelector('.artwork').getAttribute('tabindex')).toBeNull();
+    expect(card.getAttribute('role')).toBe('button');
+    expect(card.getAttribute('tabindex')).toBe('0');
+    expect(card.getAttribute('aria-label')).toBe('View image full screen');
+    // Tapping opens something, so the card earns the mark — with no count.
+    expect(card.querySelector('.card__more svg.icon--more')).not.toBeNull();
+    expect(card.querySelector('.card__more').textContent.trim()).toBe('');
+  });
+
+  it('keeps exactly one handler however often the scaffold is rebuilt', async () => {
+    const el = cardHost();
+    let opened = 0;
+    const paintIt = () => renderImageCard(el, { src: 'https://x.test/a.jpg', onOpen: () => { opened += 1; } });
+    paintIt();
+    await settle();
+    el.innerHTML = '<div class="empty">unavailable right now</div>'; // scaffold and state void
+    paintIt();
+    await settle();
+    el.closest('.card').click();
+    expect(opened).toBe(1); // not two listeners on one card
+  });
+
+  it('opens the LATEST photo after a rebuild, not the one the listener was born beside', async () => {
+    const el = cardHost();
+    let opened = '';
+    renderImageCard(el, { src: 'https://x.test/a.jpg', onOpen: () => { opened = 'first'; } });
+    await settle();
+    el.innerHTML = '<div class="empty">gone</div>';
+    renderImageCard(el, { src: 'https://x.test/b.jpg', onOpen: () => { opened = 'latest'; } });
+    await settle();
+    el.closest('.card').click();
+    expect(opened).toBe('latest');
+  });
+
+  it('refuses a tap that is really a full-screen view being dismissed', async () => {
+    const el = cardHost();
+    let opened = 0;
+    renderImageCard(el, { src: 'https://x.test/a.jpg', onOpen: () => { opened += 1; } });
+    await settle();
+    // One tap, one destination: with a view already up, a click reaching the
+    // card is that view's dismissal leaking through, never a second opening.
+    const viewer = document.createElement('div');
+    viewer.id = 'art-viewer';
+    viewer.hidden = false;
+    document.body.appendChild(viewer);
+    el.closest('.card').click();
+    expect(opened).toBe(0);
+
+    viewer.remove();
+    el.closest('.card').click();
+    expect(opened).toBe(1);
+  });
+
+  it('is neither tappable nor marked when there is no photo to open', async () => {
+    const el = cardHost('landscapes', 'Landscapes');
+    let opened = 0;
+    renderImageCard(el, { src: '', onOpen: () => { opened += 1; } });
+    const card = el.closest('.card');
+    expect(card.querySelector('.card__more')).toBeNull(); // no mark, nothing opens
+    expect(card.getAttribute('role')).toBeNull();
+    card.click();
+    expect(opened).toBe(0);
+  });
+
+  it('takes the mark back when the card falls to its empty state', async () => {
+    const el = cardHost('chart', 'Chart of the Day');
+    chart.render(el, { charts: [{ url: 'https://x.test/cotd.png', title: 'Growth' }] }, CFG);
+    await settle();
+    const card = el.closest('.card');
+    expect(card.querySelector('.card__more svg.icon--more')).not.toBeNull();
+    expect(card.getAttribute('aria-label')).toBe('View chart full screen');
+
+    chart.render(el, { charts: [] }, CFG); // the feed came back empty
+    expect(card.querySelector('.card__more')).toBeNull(); // yesterday's mark does not outlive it
+    expect(card.getAttribute('role')).toBeNull();
+    expect(card.classList.contains('is-expandable')).toBe(false);
+  });
+
+  it('opens the chart viewer from anywhere on the chart card', async () => {
+    const el = cardHost('chart', 'Chart of the Day');
+    chart.render(el, { charts: [{ url: 'https://x.test/cotd.png', title: 'Growth', desc: 'why' }] }, CFG);
+    await settle();
+    el.closest('.card').querySelector('.card__title').click();
+    const viewer = document.querySelector('#art-viewer');
+    expect(viewer.hidden).toBe(false);
+    expect(viewer.querySelector('.art-viewer__img').getAttribute('src')).toBe('https://x.test/cotd.png');
+    expect(viewer.querySelector('.strip')).toBeNull(); // no info band over a chart
+    viewer.remove();
   });
 });
