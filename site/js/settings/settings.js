@@ -566,6 +566,23 @@ function renderPhotoPane(src) {
   wirePhotoCodeEntry(src, pane().querySelector('.code__status'));
 }
 
+// One status line, three registers. `.code__status` ships amber, which is the
+// right colour for the only thing it used to say: something went wrong. But it
+// also carries "Checking…" while a code is in flight and "Applied …" when one
+// worked, and a board that answers a correct code in warning amber tells the
+// person standing at it that they got it wrong. So progress goes quiet
+// (--ink-dim) and success takes --good on its own solid well, the badge idiom
+// from DESIGN.md; a problem keeps the amber it always had.
+//   'busy'  work in progress, no verdict yet
+//   'good'  it worked
+//   'warn'  (default) the message is a problem
+function setStatus(el, text, kind = 'warn') {
+  if (!el) return;
+  el.textContent = text;
+  el.classList.toggle('code__status--busy', kind === 'busy');
+  el.classList.toggle('code__status--good', kind === 'good');
+}
+
 // Reveals a 6-char code keypad that redeems a photos-only setup code and merges
 // it into the photo blocks. Shared by both photo panes; src is the pane to
 // re-render on success.
@@ -583,18 +600,17 @@ function wirePhotoCodeEntry(src, status) {
         else if (code.length < 6) code += k;
         paint();
         if (code.length === 6) {
-          status.textContent = 'Checking…';
+          setStatus(status, 'Checking…', 'busy');
           try {
             const { cfg: encoded } = await fetchJSON(`${WORKER_URL}/code/${code}`);
             const decoded = await decodeCode(encoded);
-            if (decoded.scope !== 'photos') { status.textContent = 'That code holds a full board setup; enter it under Settings → Setup code instead.'; code = ''; paint(); return; }
+            if (decoded.scope !== 'photos') { setStatus(status, 'That code holds a full board setup; enter it under Settings → Setup code instead.'); code = ''; paint(); return; }
             const changed = applyPhotosPatch(decoded.patch);
-            if (!changed.length) { status.textContent = "That code didn't carry a usable photo link."; code = ''; paint(); return; }
+            if (!changed.length) { setStatus(status, "That code didn't carry a usable photo link."); code = ''; paint(); return; }
             renderPhotoPane(src);
-            const applied = pane().querySelector('.code__status');
-            if (applied) applied.textContent = `Applied ${changed.join(' + ')} photos. Press Save to finish.`;
+            setStatus(pane().querySelector('.code__status'), `Applied ${changed.join(' + ')} photos. Press Save to finish.`, 'good');
           } catch {
-            status.textContent = 'Code not found (codes expire after an hour).';
+            setStatus(status, 'Code not found (codes expire after an hour).');
             code = '';
             paint();
           }
@@ -625,20 +641,19 @@ function wireVideoCodeEntry(status) {
         else if (code.length < 6) code += k;
         paint();
         if (code.length === 6) {
-          status.textContent = 'Checking\u2026';
+          setStatus(status, 'Checking\u2026', 'busy');
           try {
             const { cfg: encoded } = await fetchJSON(`${WORKER_URL}/code/${code}`);
             const decoded = await decodeCode(encoded);
-            if (decoded.scope !== 'video') { status.textContent = 'That code is not a Live Video code; full setups go under Settings \u2192 Setup code.'; code = ''; paint(); return; }
-            if (!decoded.patch.url) { status.textContent = "That code didn't carry a usable stream link."; code = ''; paint(); return; }
+            if (decoded.scope !== 'video') { setStatus(status, 'That code is not a Live Video code; full setups go under Settings \u2192 Setup code.'); code = ''; paint(); return; }
+            if (!decoded.patch.url) { setStatus(status, "That code didn't carry a usable stream link."); code = ''; paint(); return; }
             state.cfg.iptv = { ...state.cfg.iptv, ...decoded.patch };
             renderIptv();
-            const applied = pane().querySelector('.code__status');
-            if (applied) applied.textContent = 'Applied the stream. Press Save to finish.';
+            setStatus(pane().querySelector('.code__status'), 'Applied the stream. Press Save to finish.', 'good');
           } catch (err) {
-            status.textContent = err?.status === 404
+            setStatus(status, err?.status === 404
               ? 'Code not found (codes expire after an hour).'
-              : "Couldn't reach the code service. Check the network and try again.";
+              : "Couldn't reach the code service. Check the network and try again.");
             code = '';
             paint();
           }
@@ -1062,13 +1077,13 @@ function renderMarkets() {
       if (k === '⌫') ticker = ticker.slice(0, -1);
       else if (k === 'Add') {
         if (!canAddTicker(symbols, ticker)) return;
-        status.textContent = 'Checking…';
+        setStatus(status, 'Checking…', 'busy');
         if (await symbolKnown(ticker)) {
           state.cfg.markets.symbols = [...symbols, ticker];
           renderMarkets();
           return;
         }
-        status.textContent = `${ticker} isn't a known ticker. Check the symbol.${/^[A-Z]{1,6}$/.test(ticker) ? ' Non-US listings need the exchange suffix, e.g. CBG.L for London.' : ''}`;
+        setStatus(status, `${ticker} isn't a known ticker. Check the symbol.${/^[A-Z]{1,6}$/.test(ticker) ? ' Non-US listings need the exchange suffix, e.g. CBG.L for London.' : ''}`);
       } else if (ticker.length < 10) ticker += k;
       display.textContent = ticker;
     }),
@@ -1507,23 +1522,23 @@ function renderFollowPane(opts) {
       { lower: true }); // handles/slugs are lowercase — keys type what they show
     pad.hidden = false;
     display.textContent = '';
-    status.textContent = '';
+    setStatus(status, '');
     keys.querySelectorAll('[data-key]').forEach((k) =>
       k.addEventListener('click', async () => {
         const key = k.dataset.key;
         if (key === '⌫') id = id.slice(0, -1);
         else if (key === 'Check') {
           if (list.length >= 6 || list.some((a) => a.id === id)) {
-            status.textContent = 'Already following that one (or the list is full).';
+            setStatus(status, 'Already following that one (or the list is full).');
             return;
           }
-          status.textContent = 'Checking…';
+          setStatus(status, 'Checking…', 'busy');
           try {
             const label = await opts.validate(id);
             state.cfg[opts.cfgKey][opts.listKey] = [...list, { id, label }];
             opts.rerender();
           } catch {
-            status.textContent = `Couldn't find "${id}" — ${opts.notFoundHint}`;
+            setStatus(status, `Couldn't find "${id}" — ${opts.notFoundHint}`);
           }
           return;
         } else if (id.length < 60) id += key;
@@ -1644,6 +1659,7 @@ function renderWeather() {
   let query = '';
   let results = [];
   let status = '';
+  let searching = false; // the status line is progress, not a warning (setStatus)
   const draw = () => {
     pane().innerHTML = `
       <h2 class="pane__title">Weather</h2>
@@ -1661,7 +1677,7 @@ function renderWeather() {
         .join('')}</div>
       ${qwertyKeypad('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', [' ', '-'],
         '<button class="key osk__key" data-key="⌫">⌫</button><button class="key osk__key osk__key--primary osk__key--wide" data-key="Search">Search</button>')}
-      <p class="code__status">${escapeHtml(status)}</p>`;
+      <p class="code__status${searching ? ' code__status--busy' : ''}">${escapeHtml(status)}</p>`;
     pane().querySelectorAll('[data-units]').forEach((btn) =>
       btn.addEventListener('click', () => {
         state.cfg.loc = { ...state.cfg.loc, units: btn.dataset.units };
@@ -1680,9 +1696,10 @@ function renderWeather() {
         const k = btn.dataset.key;
         if (k === '⌫') query = query.slice(0, -1);
         else if (k === 'Search') {
-          status = 'Searching…'; draw();
+          status = 'Searching…'; searching = true; draw();
           results = await locationSearch(query);
           status = results.length ? '' : 'No matches — try a city name or a 5-digit US ZIP.';
+          searching = false;
           draw();
           return;
         } else if (query.length < 30) query += k;
@@ -1819,7 +1836,7 @@ function renderCode() {
       else if (code.length < 6) code += k;
       display.textContent = code.padEnd(6, '·');
       if (code.length === 6) {
-        status.textContent = 'Checking…';
+        setStatus(status, 'Checking…', 'busy');
         try {
           const { cfg: encoded } = await fetchJSON(`${WORKER_URL}/code/${code}`);
           const decoded = await decodeCode(encoded);
@@ -1827,26 +1844,25 @@ function renderCode() {
             // A photos-only code merges just the photo blocks (Settings → Photos
             // is the home for these, but redeeming here shouldn't dead-end).
             const changed = applyPhotosPatch(decoded.patch);
-            status.textContent = changed.length
-              ? `Applied ${changed.join(' + ')} photos. Press Save to finish.`
-              : "That code didn't carry a usable photo link.";
+            if (changed.length) setStatus(status, `Applied ${changed.join(' + ')} photos. Press Save to finish.`, 'good');
+            else setStatus(status, "That code didn't carry a usable photo link.");
           } else if (decoded.scope === 'video') {
             if (decoded.patch.url) {
               state.cfg.iptv = { ...state.cfg.iptv, ...decoded.patch };
-              status.textContent = 'Applied the Live Video stream. Press Save to finish.';
+              setStatus(status, 'Applied the Live Video stream. Press Save to finish.', 'good');
             } else {
-              status.textContent = "That code didn't carry a usable stream link.";
+              setStatus(status, "That code didn't carry a usable stream link.");
             }
           } else {
             state.cfg = decoded.cfg;
-            status.textContent = 'Applied! Review the other sections, then press Save.';
+            setStatus(status, 'Applied! Review the other sections, then press Save.', 'good');
           }
         } catch (err) {
           // Only a real 404 means the code is wrong; anything else is the
           // network/service, and regenerating the code won't help.
-          status.textContent = err?.status === 404
+          setStatus(status, err?.status === 404
             ? 'Code not found (codes expire after an hour).'
-            : "Couldn't reach the code service. Check the network and try again.";
+            : "Couldn't reach the code service. Check the network and try again.");
           code = '';
           display.textContent = '······';
         }

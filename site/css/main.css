@@ -1083,7 +1083,19 @@ body.mode-ambient .gear--edit { display: none; }
   background: var(--bg-card); color: var(--ink);
 }
 .key:active { background: var(--bg-card-2); }
+/* The default is a problem: amber, because for most of this line's life the
+   only thing it had to say was that the code didn't work. The two other things
+   it says get their own register (settings.js setStatus) — "Checking…" is not a
+   warning, and a code that worked must never answer in the colour of one. */
 .code__status, .zip__status { font-size: 22px; color: var(--warn); margin-top: 14px; min-height: 30px; }
+.code__status--busy { color: var(--ink-dim); }
+/* Success on its own solid well, the badge idiom: bright semantic ink never
+   sits on an alpha tint (it goes muddy on OLED black). Inline-block so the well
+   is the width of the sentence rather than a band across the pane. */
+.code__status--good {
+  color: var(--good); background: var(--good-tint);
+  display: inline-block; padding: 6px 14px; border-radius: 10px;
+}
 /* Solid container (like .row cards) with a clearly-visible outer border and
    internal dividers, sized to match the row height so it reads as a peer of
    the other controls. Shared by the weather °F/°C toggle and the Art/Photos
