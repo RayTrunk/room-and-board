@@ -50,11 +50,18 @@ function show(viewer, html) {
   timer = setTimeout(closeTextViewer, DISMISS_MS);
 }
 
-export function openTextViewer(title, text) {
+// `text` is plain text and is escaped here — that is the contract every caller
+// gets by default, and untrusted feed copy must keep it. `{ html: true }` is the
+// one opt-out, for a caller that has ALREADY escaped its text and substituted
+// markup of its own (transit-alerts.js routeBullets, whose route bullets would
+// otherwise flatten to bare digits in here: "no 1 between 14 St and South
+// Ferry"). Nothing that has not been through an escaping pipeline of ours may
+// take that path.
+export function openTextViewer(title, text, { html = false } = {}) {
   show(viewerEl(), `
     <div class="text-viewer__panel">
       ${title ? `<h2 class="text-viewer__title">${escapeHtml(title)}</h2>` : ''}
-      <p class="text-viewer__body">${escapeHtml(text)}</p>
+      <p class="text-viewer__body">${html ? text : escapeHtml(text)}</p>
       <p class="text-viewer__hint">Tap anywhere to close</p>
     </div>`);
 }
@@ -186,6 +193,14 @@ export function initTextViewer(host, { truncated = defaultTruncated } = {}) {
     if (!truncated(el)) return;
     // First text node only: card titles may carry extra spans (e.g. "as of").
     const title = el.closest('.card')?.querySelector('.card__title')?.childNodes[0]?.textContent?.trim() ?? '';
-    openTextViewer(title, el.textContent.trim());
+    // A row whose prose names a line wears that line's bullet (routeBullets), and
+    // the reader has to show the same sentence the row shows: textContent turns
+    // the span back into a naked numeral. Take the markup path only when such a
+    // bullet is actually in the row — that markup is our own pipeline's output,
+    // escaped before the substitution, and no other expandable text (rail alert
+    // banners, headlines, quotes, city names) carries any. Anything else is
+    // still read as plain text and escaped in the viewer.
+    if (el.querySelector?.('.bullet--inline')) openTextViewer(title, el.innerHTML.trim(), { html: true });
+    else openTextViewer(title, el.textContent.trim());
   });
 }

@@ -37,6 +37,58 @@ describe('text viewer', () => {
     expect(document.querySelector('#text-viewer')?.hidden ?? true).toBe(true);
   });
 
+  // A subway alert row draws the lines its prose names as bullets (routeBullets),
+  // and the reader is the same sentence at reading size — so it has to be the
+  // same sentence, bullets and all. Read as textContent the spans collapse to
+  // bare numerals: "In Manhattan, no 1 between 14 St and South Ferry".
+  const bulletRow = () => {
+    document.body.innerHTML = `<div id="grid">
+      <article class="card card--subway"><h2 class="card__title">Subway Status</h2>
+        <div class="card__body"><div class="linestatus linestatus--alert">
+          <span class="bullet bullet--1">1</span>
+          <span class="linestatus__text">In Manhattan, no <span class="bullet bullet--1 bullet--inline">1</span> between 14 St and South Ferry, and no <span class="bullet bullet--2 bullet--inline">2</span> service.</span>
+        </div></div>
+      </article></div>`;
+    const grid = document.querySelector('#grid');
+    initTextViewer(grid, { truncated: () => true });
+    grid.querySelector('.linestatus__text').click();
+    return document.querySelector('.text-viewer__body');
+  };
+
+  it('carries the route bullets into the reader rather than flattening them', () => {
+    const body = bulletRow();
+    expect([...body.querySelectorAll('.bullet--inline')].map((b) => b.textContent)).toEqual(['1', '2']);
+    // Each keeps its own line colour class, and the sentence is intact around them.
+    expect(body.querySelector('.bullet--1.bullet--inline')).not.toBeNull();
+    expect(body.querySelector('.bullet--2.bullet--inline')).not.toBeNull();
+    expect(body.textContent).toContain('between 14 St and South Ferry');
+    // The ROW's own leading bullet stays on the card: the reader shows the text
+    // that was clamped, not the row around it.
+    expect(body.querySelectorAll('.bullet').length).toBe(2);
+  });
+
+  it('escapes a row with no bullets in it — the markup path is opt-in', () => {
+    // Rail alert banners are plain escaped text (renderAlertRows), so the
+    // reader must keep treating them as text: feed copy that LOOKS like markup
+    // reads as words, exactly as it does on the card.
+    document.body.innerHTML = `<div id="grid"><article class="card"><div class="talert">
+      <span class="talert__text">Delays &lt;b&gt;east&lt;/b&gt; of Babylon</span></div></article></div>`;
+    const grid = document.querySelector('#grid');
+    initTextViewer(grid, { truncated: () => true });
+    grid.querySelector('.talert__text').click();
+    const body = document.querySelector('.text-viewer__body');
+    expect(body.querySelector('b')).toBeNull();
+    expect(body.textContent).toContain('Delays <b>east</b> of Babylon');
+  });
+
+  it('escapes by default on the direct API too, and takes markup only on request', () => {
+    document.body.innerHTML = '';
+    openTextViewer('Cloud Services', 'Sign-in <b>degraded</b>');
+    expect(document.querySelector('.text-viewer__body b')).toBeNull();
+    openTextViewer('Subway Status', 'no <span class="bullet bullet--1 bullet--inline">1</span> service', { html: true });
+    expect(document.querySelector('.text-viewer__body .bullet--inline')?.textContent).toBe('1');
+  });
+
   it('auto-dismisses after 20 seconds so an abandoned board recovers', () => {
     vi.useFakeTimers();
     document.body.innerHTML = '';
