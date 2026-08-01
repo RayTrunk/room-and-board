@@ -19,6 +19,16 @@
   --warn: #f2990a;
   --radius: 24px;
   --gap: 20px;
+  /* The corner the expand mark occupies, owed by any row that runs flush to the
+     card's BOTTOM edge, where the badge cannot simply be stepped around
+     sideways. The badge sits 12px in and the bare mark is 20px wide, so its
+     left edge is 32px off the card's right edge; the row already starts 26px in
+     behind the card's side padding, and 16px of inset carries it past the mark
+     with 10px of air. Spent as padding so flex:1 tiles shrink evenly and keep
+     their own centring, never as a nudge that de-centres the last one. Two rows
+     need it today (weather's day tiles, surf's footer strip); any future
+     bottom-flush row does too. */
+  --more-gutter: 16px;
   /* Solid "wells" under bright semantic text — the native badge idiom
      (Webex Frame: #0a274a well + #64b4fa text) — instead of alpha tints,
      which go muddy on the OLED black. */
@@ -282,7 +292,15 @@ body { position: relative; top: max(0px, calc((100dvh - 1080px) / 2)); }
 .wx-trend__g1 { stop-color: var(--wx-accent); stop-opacity: 0; }
 
 /* daily strip (tiles) */
-.wx-days { display: flex; gap: 8px; margin-top: auto; }
+/* The strip runs flush to the body's bottom edge at every tier (margin-top:auto
+   here, space-between at t-m/t-l), so the last tile is the one thing on this
+   card standing in the expand mark's corner: the mark landed on Sunday's low
+   temperature (Sean, 2026-08-01). It gives the corner back, and --more-gutter is
+   spent on the ROW, so all four or five flex:1 tiles narrow by the same ~4px
+   and each keeps its own centring, rather than the last tile alone going
+   lopsided. It also lands the strip on the same right edge as .wx-now's inset
+   above it, which the hero has carried since long before the badge. */
+.wx-days { display: flex; gap: 8px; margin-top: auto; padding-right: var(--more-gutter); }
 .wx-day { flex: 1; min-width: 0; background: var(--bg-card-2); border-radius: 12px; padding: 10px 4px; display: flex; flex-direction: column; align-items: center; gap: 5px; }
 .wx-day__name { font-size: 16px; color: var(--ink-dim); }
 .wx-day__ico { width: 26px; height: 26px; }
@@ -400,8 +418,13 @@ body { position: relative; top: max(0px, calc((100dvh - 1080px) / 2)); }
 .sf-trend__g0 { stop-color: var(--sf-accent); stop-opacity: 0.30; }
 .sf-trend__g1 { stop-color: var(--sf-accent); stop-opacity: 0; }
 
-/* Footer meta strip: the two supporting readings, then the honesty stamp. */
-.sf-foot { display: flex; align-items: baseline; gap: 18px; margin-top: auto; padding-top: 12px; }
+/* Footer meta strip: the two supporting readings, then the honesty stamp.
+   Weather's day strip is not the only row that lands in the mark's corner;
+   this one does the same thing (margin-top:auto against the body's floor, and
+   .sf-foot__stamp pushed to the right edge by its auto margin), so it pays the
+   same --more-gutter. The two readings on the left do not move; only the stamp
+   steps in, which is exactly the element the mark would have sat on. */
+.sf-foot { display: flex; align-items: baseline; gap: 18px; margin-top: auto; padding-top: 12px; padding-right: var(--more-gutter); }
 .sf-foot__item { display: flex; align-items: baseline; gap: 7px; white-space: nowrap; }
 .sf-foot__k { font-size: 17px; color: var(--ink-dim); }
 .sf-foot__v { font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; }

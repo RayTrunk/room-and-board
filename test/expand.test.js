@@ -1355,5 +1355,23 @@ describe('the corner badge is the tap affordance', () => {
       const pad = px(rule('.card.is-expandable .artwork'), 'padding-bottom');
       expect(CARD_PAD_BOTTOM + pad).toBeGreaterThanOrEqual(inset + BADGE_BOX);
     });
+
+    it('gives a bottom-flush row a gutter wide enough for the bare mark', () => {
+      // Weather's day tiles and surf's footer strip run to the card's bottom
+      // edge, where the mark cannot be stepped around vertically. The mark is
+      // one 1em box wide, and the row already starts behind the card's side
+      // padding, so the gutter has to carry the difference.
+      const gutter = px(rule(':root'), '--more-gutter');
+      const inset = px(rule('.card__more'), 'right');
+      expect(CARD_PAD_SIDE + gutter).toBeGreaterThanOrEqual(inset + BADGE_BOX);
+      // Both rows spend the shared token, so neither can drift off the badge.
+      for (const sel of ['.wx-days', '.sf-foot']) {
+        expect(rule(sel), `${sel} runs flush to the card's bottom edge`)
+          .toMatch(/padding-right:\s*var\(--more-gutter\)/);
+      }
+      // Spent on the ROW: a nudge on the last tile alone would de-centre it.
+      expect(rule('.wx-day'), 'the tiles keep their own centring')
+        .not.toMatch(/padding-right/);
+    });
   });
 });

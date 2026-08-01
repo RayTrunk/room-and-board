@@ -147,7 +147,11 @@ export function isOverlayOpen(doc = document) {
 //
 // It sits at EQUAL 12px insets (main.css .card__more, 2026-08-01) rather than
 // on the content column's 26px edge: a glyph in a corner is a corner mark, not
-// reading matter, and the inherited 26/10 read as misplaced.
+// reading matter, and the inherited 26/10 read as misplaced. The one thing a
+// renderer has to know is the consequence: a row that runs flush to the card's
+// BOTTOM edge stands in the mark's corner and owes it --more-gutter, because
+// there is nowhere sideways for the mark to go. Two rows pay it today
+// (weather's day tiles, surf's footer strip).
 
 // Reads the widget's own name off the card for an aria-label. First text node
 // only: a title may carry an appended .card__asof span (same idiom as the text
