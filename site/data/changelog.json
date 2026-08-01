@@ -1,5 +1,34 @@
 [
   {
+    "date": "August 1",
+    "items": [
+      {
+        "lead": "Quote of the Day",
+        "text": "The card now chooses a saying that fits it, so a quote is never cut off in the middle of its own point. A small card reads a shorter quote; a wide one still gets the long ones."
+      },
+      {
+        "lead": "Chart of the Day",
+        "text": "The chart is on the card as soon as the board starts, instead of leaving a black square for a few seconds, and the day's new chart fades in the way the photo cards do. While the first one loads, the card shows a quiet placeholder."
+      },
+      {
+        "lead": "Subway status",
+        "text": "When an alert names another line partway through a sentence, the card now draws that line's coloured bullet instead of its letter in brackets. Same on the full status board behind a tap."
+      },
+      {
+        "lead": "Settings",
+        "text": "Clear web storage and Reset this display now turn red on the first tap and say exactly what the second tap will do, matching the two tap Remove buttons elsewhere in Settings."
+      },
+      {
+        "lead": "Setup codes",
+        "text": "Checking a code now reads as quiet progress, and a code that worked confirms in green. Amber is kept for the codes that did not."
+      },
+      {
+        "lead": "Settings",
+        "text": "A switch that cannot be turned on yet, like Only my teams before any team is picked, now looks unavailable rather than simply unresponsive."
+      }
+    ]
+  },
+  {
     "date": "July 31",
     "items": [
       {
