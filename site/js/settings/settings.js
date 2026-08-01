@@ -2,20 +2,20 @@
 // sections; every control is a ≥56px touch target; no typing anywhere
 // (setup codes use the on-page keypad, names come from the companion page).
 
-import { isLaunched, isAdvancedHidden, isAddable, normalizeConfig, encodeConfig, decodeCode, WIDGET_IDS, WIDGET_GROUPS, ART_CATS, NJT_LINES, CURATED_SOURCES } from '../config.js';
-import { saveConfig, loadCache } from '../store.js';
+import { isLaunched, isAdvancedHidden, normalizeConfig, encodeConfig, decodeCode, WIDGET_IDS, ART_CATS, NJT_LINES, CURATED_SOURCES } from '../config.js';
+import { saveConfig, loadCache, markPendingEdit } from '../store.js';
 import { fetchJSON } from '../net.js';
 import { fetchDailyBackdrop } from '../curated.js';
 import { TFL_LINES, TFL_MODES } from '../tfl-lines.js';
 import { WORKER_URL } from '../env.js';
 import { escapeHtml } from '../util.js';
+import { icon } from '../icons.js';
 import { locationSearch } from '../geo.js';
 import { stepTime, fmtHM } from '../modes.js';
 import { toggleIn, applyNameKey, nameAutoCap, searchStations, canAddTicker, TICKER_MAX, foldAt, marketsRect } from './pickers.js';
 import { attachReorder, foldHeadHtml, tickerRowsHtml } from './reorder.js';
 import { itemCapacity } from '../capacity.js';
 import { paneHtml as whatsNewHtml, railFootHtml, loadChangelog, fitChangelog, wireChangelog } from './whatsnew.js';
-import { MIN_SIZE, firstFit } from '../layout.js';
 
 export const WIDGET_LABELS = {
   weather: 'Weather',
@@ -76,8 +76,12 @@ export async function openSettings(cfg, { focus } = {}) {
     section: focus && SECTION_IDS.includes(focus) ? focus : NAV_MODEL[0].id,
     openGroup: navGroupForSection(focus && SECTION_IDS.includes(focus) ? focus : NAV_MODEL[0].id),
     stack: [],
-    dirty: false,
   };
+  // Baseline for hasUnsavedChanges(): every pane edits state.cfg in place, so
+  // "is there anything to save" is a comparison against what Settings opened
+  // with. (It replaces a `dirty` flag that was initialised here and never set
+  // again by anything, i.e. it always read false.)
+  state.clean = JSON.stringify(state.cfg);
   state.root.innerHTML = `
     <div class="settings" role="dialog" aria-label="Settings">
       <aside class="settings__rail">
@@ -168,6 +172,14 @@ export function closeSettings() {
   if (!state) return;
   state.root.innerHTML = '';
   state = null;
+}
+
+// Whether Cancel would throw work away. Nothing marks the config dirty as it is
+// edited (see openSettings), and nothing needs to: a value set back to what it
+// was is not a change, and normalizeConfig+saveConfig is what "saving" means,
+// so JSON equality with the opening config IS the question. Exported for tests.
+export function hasUnsavedChanges() {
+  return !!state && JSON.stringify(state.cfg) !== state.clean;
 }
 
 async function saveAndClose() {
@@ -336,48 +348,51 @@ async function openWhatsNew() {
   pane().querySelector('[data-wn-back]').addEventListener('click', renderSection);
 }
 
-/* ---------- widgets ---------- */
+/* ---------- widgets: the pane points at edit mode ---------- */
 
-// Pure HTML for the Widgets picker: one .wgroup section per WIDGET_GROUPS entry,
-// each with a small-caps header and the (unchanged) toggle rows. Exported for tests.
-export function widgetGroupsHtml(layout, cfg = null) {
-  const placed = new Set(layout.map((r) => r.id));
-  return WIDGET_GROUPS.map((g) => `
-    <section class="wgroup">
-      <h3 class="wgroup__title">${g.label}</h3>
-      <div class="wgroup__rows">${g.ids.filter((id) => placed.has(id) || isAddable(id, cfg)).map((id) => {
-        const on = placed.has(id);
-        const canAdd = on || firstFit(layout, id, MIN_SIZE[id]) !== null;
-        return `<div class="row">
-          <button class="toggle ${on ? 'is-on' : ''}" data-toggle="${id}" role="switch"
-            aria-checked="${on}" ${canAdd ? '' : 'disabled'}>
-            <span class="toggle__knob"></span>
-          </button>
-          <span class="row__label">${WIDGET_LABELS[id]}${canAdd ? '' : ' <small>(no room — resize others first)</small>'}</span>
-        </div>`;
-      }).join('')}</div>
-    </section>`).join('');
-}
-
+// This pane used to carry its own add/remove toggle list, which was a second,
+// worse editor: it could only ever place a card at its minimum size in the
+// first hole that fit, it showed nothing about how the board would look, and
+// on a full grid up to 31 rows read "(no room — resize others first)" behind a
+// dead toggle — a list of things you cannot do. Edit mode is the single source
+// of truth for add/remove/resize (and the only surface that can tell you what
+// fits), so the rail keeps its Widgets row — that is where people look for
+// widgets — and the pane spends it teaching the pencil.
 function renderWidgets() {
-  const layout = state.cfg.layout;
-  const placed = new Set(layout.map((r) => r.id));
   pane().innerHTML = `
     <h2 class="pane__title">Widgets</h2>
-    <p class="pane__hint">Toggle what appears on your dashboard. To move or resize widgets, close settings and tap the ✎ pencil button.</p>
-    <div class="wgroups">${widgetGroupsHtml(layout, state.cfg)}</div>`;
-  pane().querySelectorAll('[data-toggle]').forEach((btn) =>
-    btn.addEventListener('click', () => {
-      const id = btn.dataset.toggle;
-      if (placed.has(id)) {
-        state.cfg.layout = layout.filter((r) => r.id !== id);
-      } else {
-        const rect = firstFit(layout, id, MIN_SIZE[id]);
-        if (rect) state.cfg.layout = [...layout, rect];
-      }
-      renderWidgets();
-    }),
-  );
+    <div class="wredirect">
+      <span class="wredirect__glyph">${icon('pencil', 'icon--xl')}</span>
+      <h3 class="wredirect__head">Widgets live in Edit mode</h3>
+      <p class="wredirect__body">Add, remove, and resize cards right on the dashboard. Edit mode shows every widget’s size and what fits as you go.</p>
+      <button class="btn btn--primary" data-open-edit>Open Edit mode</button>
+    </div>`;
+  pane().querySelector('[data-open-edit]').addEventListener('click', enterEditMode);
+}
+
+// The handoff. Edit mode runs on the dashboard, so Settings has to be gone
+// first, and the entry belongs to the pencil FAB: main.js's handler owns the
+// live cfg plus the save, vault sync and reload that finishing an edit needs.
+// Tapping that button is already how a retired card's prompt gets there
+// (main.js cardFor), so this is the same one entry path rather than a second
+// one that would have to re-implement all of it.
+//
+// Unsaved edits from another pane are not discarded and not silently kept:
+// this saves them through the Save button's own path. That path ends in a
+// reload (the only way widget/layout changes get applied), which is exactly
+// what edit mode wants — it operates on the saved config — but it also means
+// the intent to edit cannot live in a variable. store.js parks it for the
+// length of one reload and main.js picks it up once the fresh config is
+// running. With nothing to save there is nothing to reload for, so the common
+// case opens the editor immediately.
+async function enterEditMode() {
+  if (!hasUnsavedChanges()) {
+    closeSettings();
+    document.querySelector('#edit')?.click();
+    return;
+  }
+  markPendingEdit();
+  await saveAndClose();
 }
 
 /* ---------- shared: service-alerts toggle ---------- */

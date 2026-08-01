@@ -55,3 +55,36 @@ export function loadCache(id) {
     return null; // storage unavailable — best-effort, mirroring saveCache
   }
 }
+
+/* ---------- pending edit-mode handoff ---------- */
+
+// Settings → Widgets hands off to edit mode, and when it has changes to save
+// first that save reloads the board (the only way config changes get applied).
+// The intent to open the editor therefore cannot live in a variable, so it is
+// parked here for the length of that one reload. sessionStorage, not local:
+// this belongs to the tab and the moment, never to the board.
+//
+// The timestamp is the safety catch. A save that throws before it reloads would
+// otherwise leave the flag lying there for the NIGHTLY reload to find, and a
+// board that wakes up in edit mode at 4 AM is a genuinely bad morning.
+const EDIT_KEY = 'sgn.editafter';
+const EDIT_WINDOW_MS = 60 * 1000;
+
+export function markPendingEdit() {
+  try {
+    window.sessionStorage.setItem(EDIT_KEY, String(Date.now()));
+  } catch {
+    // Storage-blocked kiosk: the save still lands, the editor just doesn't open.
+  }
+}
+
+// Reads AND clears: the intent is spent whether or not the caller acts on it.
+export function takePendingEdit() {
+  try {
+    const at = Number(window.sessionStorage.getItem(EDIT_KEY));
+    window.sessionStorage.removeItem(EDIT_KEY);
+    return at > 0 && Date.now() - at < EDIT_WINDOW_MS;
+  } catch {
+    return false;
+  }
+}
