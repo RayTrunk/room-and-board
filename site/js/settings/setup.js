@@ -258,7 +258,10 @@ async function boot() {
 
 // Grouped checkbox HTML for the setup widget picker. `labels` is this page's
 // WIDGET_LABELS (phone-length); `placed` is a Set of currently-placed ids.
-// Exported for tests. Mirrors the board's widgetGroupsHtml.
+// Exported for tests. The phone wizard is the LAST grouped picker: the board's
+// own Settings gave up its toggle list on 2026-08-01 (edit mode owns add and
+// remove there), but /setup builds a config for a board that has none yet, so
+// there is no layout to arrange and a checklist is still the right shape.
 export function widgetChecksHtml(labels, placed, cfgRef = null) {
   return WIDGET_GROUPS.map((g) => `
     <section class="wpick__group">

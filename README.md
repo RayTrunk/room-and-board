@@ -108,9 +108,11 @@ a CSS edit cannot silently invalidate them.
 
 ## Widgets
 
-Everything is opt-in. Toggle widgets on/off under **Settings → Widgets** —
-grouped into the eight categories below — then tap the **✎ pencil** to drag,
-resize, and arrange them on the 12×8 grid. Each widget has a minimum size and
+Everything is opt-in. Tap the **✎ pencil** to add, remove, resize and arrange
+widgets on the 12×8 grid; the add tray groups them into the eight categories
+below, and **Settings → Widgets** is a signpost to the same place (it carried
+its own toggle list until 2026-08-01, which was a second, worse editor: minimum
+size only, and no way to say what fits). Each widget has a minimum size and
 shows more content as you make its card bigger (the edit screen tells you how
 many rows fit). The clock/greeting across the top is always on. Every widget
 degrades gracefully: a dead feed dims the card and stamps "as of …" rather than
@@ -565,8 +567,8 @@ cities (defaults: New York, San Francisco, London, Hyderabad, Hong Kong).
 
 ### Add policy and gated cards
 
-Every add surface — the edit-mode tray, the Settings widget toggles, the
-`/setup` checkboxes, and the settings nav — routes its "may I offer this?"
+Every add surface — the edit-mode tray, the `/setup` checkboxes, and the
+settings nav — routes its "may I offer this?"
 decision through the single `isAddable(id, cfg, host)` predicate in
 `site/js/config.js`, which composes four independent gates:
 
