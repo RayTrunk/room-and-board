@@ -12,7 +12,6 @@ import { parseFragment } from './bridge.js';
 import { stripData, stripHtml } from './ambient.js';
 import { createSlideshow, swipeAction, swipeFadeThrough, loadImage } from './imageshow.js';
 import { startBeacon, reportWidgetHealth } from './fleet.js';
-import { DEMO_VMS, DEMO_NOW_MS } from '../demo/fixtures.js';
 import { initTextViewer } from './textviewer.js';
 import { initExpand } from './expand.js';
 import { startClockFace, CLOCK_SOURCES } from './clockfaces.js';
@@ -65,6 +64,16 @@ const net = { fetchJSON, fetchBuffer, fetchText };
 const $ = (sel) => document.querySelector(sel);
 const params = new URLSearchParams(location.search);
 const DEMO = params.get('demo') === '1';
+
+// The demo fixtures are a 33 KB module (the 3rd-largest thing in the boot
+// graph) that only ?demo=1 ever reads. A static import shipped and parsed them
+// on every production board, so they load on demand instead — once per session,
+// awaited before any demo path renders, after which `fixtures` reads
+// synchronously. No top-level await: boot semantics are unchanged.
+let fixtures = null;
+let fixturesPromise = null;
+const loadFixtures = () =>
+  (fixturesPromise ??= import('../demo/fixtures.js').then((m) => (fixtures = m)));
 
 // Scale the fixed 1920x1080 layout down onto smaller RoomOS panels (Cisco Room
 // Navigator). No-op on the Board Pro. See fitViewport in util.js for why.
@@ -187,14 +196,19 @@ function renderStrip() {
   if (cfg?.screensaver?.strip === false) return; // Screensaver page turned the band off
   const caches = {};
   for (const id of ['weather', 'lirr', 'mnr', 'njt']) caches[id] = loadCache(id)?.data;
-  const data = DEMO
+  const data = DEMO && fixtures
     ? stripData(
-        { weather: DEMO_VMS.weather, lirr: DEMO_VMS.lirr, mnr: DEMO_VMS.mnr, njt: DEMO_VMS.njt },
+        {
+          weather: fixtures.DEMO_VMS.weather,
+          lirr: fixtures.DEMO_VMS.lirr,
+          mnr: fixtures.DEMO_VMS.mnr,
+          njt: fixtures.DEMO_VMS.njt,
+        },
         cfg,
         // The fixtures are frozen at DEMO_NOW_MS; stripData derives countdowns
         // from absolute times, so it needs the fixtures' own "now" or every demo
         // departure reads as long past and the strip goes quiet.
-        { nowSec: Math.floor(DEMO_NOW_MS / 1000) },
+        { nowSec: Math.floor(fixtures.DEMO_NOW_MS / 1000) },
       )
     : stripData(caches, cfg);
   // The clock-face screensavers already show the time large; drop it from the
@@ -213,7 +227,7 @@ async function startSlideshow() {
   try {
     const src = ambientSource(cfg);
     let manifest;
-    if (DEMO) manifest = [DEMO_VMS.art];
+    if (DEMO) manifest = [(await loadFixtures()).DEMO_VMS.art];
     else if (src === 'photos') manifest = await resolvePhotosManifest(cfg, net, photos);
     else if (src === 'gdrivephotos') manifest = await resolvePhotosManifest(cfg, net, gdrivephotos);
     else if (CURATED_SOURCES[src]) manifest = await fetchCuratedManifest(src, net);
@@ -454,6 +468,9 @@ async function boot() {
   };
 
   if (DEMO) {
+    // Pull the fixtures in before anything below reads them: renderStrip and
+    // applyMode both run synchronously off this branch.
+    const { DEMO_VMS } = await loadFixtures();
     cfg = normalizeConfig({
       v: 3,
       name: 'User',
