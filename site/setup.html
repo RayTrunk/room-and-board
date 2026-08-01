@@ -7,7 +7,7 @@
 <meta charset="utf-8">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https: data: blob:; connect-src 'self' https: wss:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Room &amp; Board — Setup</title>
+<title>Room &amp; Board Setup</title>
 <link rel="icon" type="image/png" sizes="32x32" href="assets/room-and-board-favicon-32.png">
 <link rel="apple-touch-icon" href="assets/room-and-board-icon-180.png">
 <link rel="stylesheet" href="css/setup.css">
@@ -65,7 +65,7 @@
         <select id="mode">
           <option value="dashboard">Always dashboard</option>
           <option value="ambient">Always screensaver</option>
-          <option value="scheduled">Scheduled — dashboard on a timer, screensaver otherwise</option>
+          <option value="scheduled">Scheduled (dashboard on a timer, screensaver otherwise)</option>
         </select>
         <div id="schedule-editor" hidden>
           <p class="hint">Dashboard shows during these windows; the screensaver shows the rest of the time.</p>
@@ -193,7 +193,7 @@
       <h2 class="setup__group" data-group="Sports">Sports</h2>
 
       <section class="field" id="sports-field">
-        <h2>My Teams <small>(sports scores — up to 6)</small></h2>
+        <h2>My Teams <small>(sports scores, up to 6)</small></h2>
         <div id="team-chips" class="chips"></div>
         <div class="pickrow">
           <select id="team-league"></select>
@@ -217,7 +217,7 @@
       </section>
 
       <section class="field" id="substack-field">
-        <h2>Substack <small>(publications — up to 6)</small></h2>
+        <h2>Substack <small>(publications, up to 6)</small></h2>
         <div id="substack-chips" class="chips"></div>
         <div class="ziprow">
           <input id="substack-id" type="text" maxlength="60" placeholder="publication name (before .substack.com)">
@@ -227,7 +227,7 @@
       </section>
 
       <section class="field" id="bsky-field">
-        <h2>Bluesky <small>(accounts — up to 6)</small></h2>
+        <h2>Bluesky <small>(accounts, up to 6)</small></h2>
         <div id="bsky-chips" class="chips"></div>
         <div class="ziprow">
           <input id="bsky-id" type="text" maxlength="60" placeholder="handle, e.g. name.bsky.social">
@@ -311,7 +311,7 @@
       <h2 class="setup__group" data-group="Reference">Reference</h2>
 
       <section class="field" id="wc-field">
-        <h2>World Clock <small>(shown in order of current time — up to 10)</small></h2>
+        <h2>World Clock <small>(shown in order of current time, up to 10)</small></h2>
         <div id="wc-chips" class="chips"></div>
         <div id="wc-offices" class="checks"></div>
         <div class="pickrow">
