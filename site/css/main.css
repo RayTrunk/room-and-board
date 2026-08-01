@@ -452,6 +452,15 @@ body { position: relative; top: max(0px, calc((100dvh - 1080px) / 2)); }
 .bullet--N, .bullet--Q, .bullet--R, .bullet--W { background: #fccc0a; color: #111; }
 .bullet--S, .bullet--GS { background: #808183; }
 .bullet--SI { background: #0f3d92; }
+/* A bullet set INSIDE a line of prose (transit-alerts.js routeBullets: "no [1]
+   between 14 St and South Ferry"). Everything is em-relative to the text it
+   lands in, so one class serves the 20px card row and the expanded wall's
+   larger copy; the box stays inside the line's own ascent, so a substituted
+   token costs the row no height. */
+.bullet--inline {
+  font-size: 0.7em; width: 1.5em; height: 1.5em;
+  vertical-align: -0.3em; margin: 0 0.1em;
+}
 
 .train { display: flex; align-items: center; gap: 16px; font-size: 22px; }
 .train__min { display: flex; align-items: baseline; gap: 4px; min-width: 76px; }
@@ -900,6 +909,10 @@ body.mode-ambient .gear--edit { display: none; }
 }
 .toggle.is-on { background: var(--accent); }
 .toggle.is-on .toggle__knob { transform: translateX(32px); background: rgba(0, 0, 0, 0.9); }
+/* A toggle the pane has blocked (its precondition is unmet, e.g. Only my teams
+   with no teams picked) reads as dead rather than merely unresponsive — the
+   chips' treatment, so one disabled language runs across the settings. */
+.toggle:disabled { opacity: 0.45; cursor: default; }
 /* RoomOS toggle: grey off-track with a white knob, solid-blue on-track with
    a dark knob — the knob's ink flips to black on the bright fill, same as
    the pill buttons. (Base theme keeps its blue-on-translucent-blue style.) */
@@ -1074,7 +1087,19 @@ body.mode-ambient .gear--edit { display: none; }
   background: var(--bg-card); color: var(--ink);
 }
 .key:active { background: var(--bg-card-2); }
+/* The default is a problem: amber, because for most of this line's life the
+   only thing it had to say was that the code didn't work. The two other things
+   it says get their own register (settings.js setStatus) — "Checking…" is not a
+   warning, and a code that worked must never answer in the colour of one. */
 .code__status, .zip__status { font-size: 22px; color: var(--warn); margin-top: 14px; min-height: 30px; }
+.code__status--busy { color: var(--ink-dim); }
+/* Success on its own solid well, the badge idiom: bright semantic ink never
+   sits on an alpha tint (it goes muddy on OLED black). Inline-block so the well
+   is the width of the sentence rather than a band across the pane. */
+.code__status--good {
+  color: var(--good); background: var(--good-tint);
+  display: inline-block; padding: 6px 14px; border-radius: 10px;
+}
 /* Solid container (like .row cards) with a clearly-visible outer border and
    internal dividers, sized to match the row height so it reads as a peer of
    the other controls. Shared by the weather °F/°C toggle and the Art/Photos
@@ -1775,10 +1800,13 @@ body.mode-ambient .gear--edit { display: none; }
 /* ---------- per-size compact variants (gen1 Chromium lacks container queries;
    cards carry data-w/data-h and the tier classes t-s/t-m/t-l/t-narrow that
    main.js derives from the layout: t-s when h≤2, t-narrow when w≤4) ---------- */
-/* Quote in a shallow card: clamp long quotes */
+/* Quote in a shallow card: smaller type, and a clamp as the backstop. The count
+   comes from quote.js (--quote-lines), which is the same number the day's quote
+   was CHOSEN to fit — a fitting quote never reaches this rule, and the 2 is only
+   what a card renders at before the widget has run. */
 .card--quote.t-s .quote__text {
   font-size: 22px;
-  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  display: -webkit-box; -webkit-line-clamp: var(--quote-lines, 2); -webkit-box-orient: vertical; overflow: hidden;
 }
 /* Markets in a shallow card: single-line rows (name beside price) — stacked
    rows plus the +N hint clip a 2-tall body (measured: 141px into 121px) */
@@ -2457,7 +2485,20 @@ body.ss-backdrop .cf-dial__svg, .ss-preview.ss-backdrop .cf-dial__svg {
    is unchanged; its layers are absolute, which also means a swap can never push
    the caption around. Two layers exist only for the length of one dissolve —
    the outgoing one is removed when the transition ends. */
-.artwork__frame { position: relative; flex: 1; min-height: 0; }
+/* The frame's own surface is the quiet stand-in a card shows while its FIRST
+   bitmap decodes: the tile well, the same surface the empty states sit on,
+   instead of seconds of black card (the chart card's boot, worst on a cold
+   network). It needs no JS and no timer of its own, because the layer above it
+   carries `background: var(--bg-card)` — the picture fading up covers the well
+   exactly as it becomes opaque, and the frame is never seen again (a
+   letterboxed chart keeps its card-tone bars). `:empty` is the guard for a card
+   with no image at all (an art manifest that came back empty): no layer, no
+   well, just the card. */
+.artwork__frame {
+  position: relative; flex: 1; min-height: 0;
+  background: var(--bg-card-2); border-radius: 10px;
+}
+.artwork__frame:empty { background: none; }
 /* Opacity only, no filters, no layout properties: this runs every rotation,
    all day, on a gen1 web engine. object-fit is deliberately NOT set here so
    .artwork--contain keeps deciding crop vs letterbox. 700 ms sits between the

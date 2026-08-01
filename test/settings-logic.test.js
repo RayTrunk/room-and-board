@@ -1148,3 +1148,88 @@ describe('Settings → What’s new', () => {
     expect(document.querySelector('[data-log-more]')).toBeNull();
   });
 });
+
+// The two ways a settings control says where it stands: a destructive button
+// that has to be tapped twice, and the one status line under a keypad. Both
+// were saying the wrong thing — the armed button looked identical to the
+// resting one, and a code that WORKED answered in warning amber.
+const css = await readFile(resolve(process.cwd(), 'site/css/main.css'), 'utf8');
+
+describe('destructive buttons arm visibly', () => {
+  const settle = () => new Promise((r) => setTimeout(r, 30));
+  const btn = (attr) => document.querySelector(`.settings__pane [${attr}]`);
+
+  afterEach(() => {
+    closeSettings();
+    vi.useRealTimers();
+  });
+
+  it('turns red and names the act it is about to commit, on both buttons', async () => {
+    document.body.innerHTML = '<div id="settings-root"></div>';
+    await openSettings(normalizeConfig({}), { focus: 'diag' });
+    await settle();
+    for (const [attr, resting, armed] of [
+      ['data-clear', 'Clear web storage (test recovery)', 'Tap again to clear web storage'],
+      ['data-reset', 'Reset this display', 'Tap again to reset'],
+    ]) {
+      expect(btn(attr).textContent).toBe(resting);
+      expect(btn(attr).classList.contains('btn--armed')).toBe(false);
+      btn(attr).click();
+      expect(btn(attr).textContent).toBe(armed); // the verb and its noun, not "confirm"
+      expect(btn(attr).classList.contains('btn--armed')).toBe(true);
+    }
+  });
+
+  it('disarms itself after four seconds, red and label together', async () => {
+    vi.useFakeTimers();
+    document.body.innerHTML = '<div id="settings-root"></div>';
+    openSettings(normalizeConfig({}), { focus: 'diag' });
+    await vi.advanceTimersByTimeAsync(30);
+    btn('data-reset').click();
+    expect(btn('data-reset').classList.contains('btn--armed')).toBe(true);
+    await vi.advanceTimersByTimeAsync(4000);
+    expect(btn('data-reset').textContent).toBe('Reset this display');
+    expect(btn('data-reset').classList.contains('btn--armed')).toBe(false);
+  });
+
+  it('has an armed style to wear, and a disabled style for a blocked toggle', () => {
+    expect(css).toMatch(/\.btn--armed\s*\{[^}]*var\(--bad\)/);
+    // A toggle the pane blocks (Only my teams with no teams picked) reads as
+    // dead, the same treatment the chips already had.
+    expect(css).toMatch(/\.toggle:disabled\s*\{[^}]*opacity:\s*0?\.45/);
+  });
+});
+
+describe('the keypad status line has three registers, not one', () => {
+  const settle = () => new Promise((r) => setTimeout(r, 30));
+  const status = () => document.querySelector('.settings__pane .code__status');
+  const key = (k) => [...document.querySelectorAll('.settings__pane [data-key]')]
+    .find((b) => b.dataset.key === k);
+
+  afterEach(() => {
+    closeSettings();
+    vi.unstubAllGlobals();
+  });
+
+  it('reads quiet while checking and amber once the code is refused', async () => {
+    // A code service that says no: the board shows progress first, and only
+    // then the warning.
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false, status: 404, json: async () => ({}) })));
+    document.body.innerHTML = '<div id="settings-root"></div>';
+    await openSettings(normalizeConfig({}), { focus: 'code' });
+    await settle();
+    for (const k of ['A', 'B', 'C', 'D', 'E', 'F']) key(k).click();
+    expect(status().textContent).toBe('Checking…');
+    expect(status().classList.contains('code__status--busy')).toBe(true); // ink-dim, not a warning
+    await settle();
+    expect(status().textContent).toContain('Code not found');
+    expect(status().classList.contains('code__status--busy')).toBe(false);
+    expect(status().classList.contains('code__status--good')).toBe(false); // plain amber
+  });
+
+  it('styles the two new registers: quiet progress, good on its own well', () => {
+    expect(css).toMatch(/\.code__status--busy\s*\{[^}]*var\(--ink-dim\)/);
+    expect(css).toMatch(/\.code__status--good\s*\{[^}]*var\(--good\)/);
+    expect(css).toMatch(/\.code__status--good\s*\{[^}]*var\(--good-tint\)/); // solid well, never an alpha tint
+  });
+});

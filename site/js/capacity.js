@@ -5,7 +5,13 @@
 
 // Usable body height in px for h grid rows on the 12x8 canvas (cell ≈ 92px
 // tall after the safe-bottom reserve, minus card chrome: padding + title).
-const bodyPx = (h) => h * 92 + (h - 1) * 20 - 90;
+// Exported for the widgets whose "rows" are not list items (quote.js counts
+// the lines a sentence wraps to) so there is one cell arithmetic, not two.
+export const bodyPx = (h) => h * 92 + (h - 1) * 20 - 90;
+
+// Usable body WIDTH in px for w grid columns: 12 columns of 135px on the 20px
+// gap, less the card's 26px side padding. Same canvas, same reasoning.
+export const bodyWidthPx = (w) => w * 135 + (w - 1) * 20 - 52;
 
 // Height tiers drive both row counts and the compact CSS variants:
 // s = shallow (h<=2, old single-row), m = medium (3-4), l = tall (5+).

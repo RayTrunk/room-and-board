@@ -215,6 +215,28 @@ describe('widget renderers', () => {
     expect(host.querySelectorAll('.linestatus--alert').length).toBe(2);
   });
 
+  it('subway draws the route tokens inside alert copy as bullets, not brackets', () => {
+    const host = el();
+    subway.render(host, DEMO_VMS.subway, CFG);
+    // The demo alert is real MTA copy: "Downtown [3] trains are rerouted via
+    // the [2] line…" — a reader six feet away gets the line's own bullet.
+    const alertRow = host.querySelector('.linestatus--alert .linestatus__text');
+    expect(alertRow.textContent).not.toContain('[');
+    expect([...alertRow.querySelectorAll('.bullet--inline')].map((b) => b.textContent)).toEqual(['3', '2']);
+    expect(alertRow.textContent).toContain('trains are rerouted via the');
+    // The row's own leading bullet is untouched (and is not an inline one).
+    expect(host.querySelector('.linestatus--alert > .bullet').classList.contains('bullet--inline')).toBe(false);
+  });
+
+  it('subway leaves copy the palette does not know exactly as written, and escapes it', () => {
+    const host = el();
+    subway.render(host, { lines: [{ line: 'E', ok: false, headers: ['[LIRR] riders: <b>see</b> the [E] board.'] }] }, CFG);
+    const text = host.querySelector('.linestatus__text');
+    expect(text.querySelector('b')).toBeNull(); // escaped first, substituted after
+    expect(text.textContent).toContain('[LIRR] riders: <b>see</b> the');
+    expect(text.querySelectorAll('.bullet--inline').length).toBe(1); // only the E
+  });
+
 
 
   it('news and history surface overflow as a title badge, not an in-flow row', () => {
@@ -605,6 +627,43 @@ describe('widget renderers', () => {
     card.dataset.h = '4';
     wotd.render(body, DEMO_VMS.wotd, CFG);
     expect(body.textContent).toContain('first storm');
+    card.remove();
+  });
+
+  // Declared BEFORE the pool test on purpose: quote.js keeps the bundled list
+  // once it has been fetched, exactly as a running board does, so this is the
+  // only place in the file where the module has not seen one yet.
+  it('quote still paints the cached saying before the list has loaded', () => {
+    // A board painting from localStorage at boot has no pool yet: it shows the
+    // day's quote from the cache rather than an empty card (this host has no
+    // .card around it, so it also covers the bare-div default size).
+    const host = el();
+    quote.render(host, DEMO_VMS.quote, CFG);
+    expect(host.querySelector('.quote__text').textContent).toContain(DEMO_VMS.quote.text);
+  });
+
+  it('quote picks a saying that fits the card instead of clamping one in half', async () => {
+    const SHORT = { text: 'What we think, we become.', author: 'Buddha' };
+    const LONG = { text: "I have not failed. I've just found 10,000 ways that won't work.", author: 'Thomas Edison' };
+    // Seed the module-side pool the way a board does, then render the Quick
+    // Start card (3x2): only the short saying can be whole on two lines.
+    await quote.fetchData({}, { fetchJSON: async () => [SHORT, LONG] });
+    const card = document.createElement('article');
+    card.className = 'card card--quote t-s t-narrow';
+    card.dataset.w = '3';
+    card.dataset.h = '2';
+    card.innerHTML = '<h2 class="card__title">Quote of the Day</h2><div class="card__body"></div>';
+    document.body.appendChild(card);
+    const body = card.querySelector('.card__body');
+    quote.render(body, LONG, CFG);
+    expect(body.querySelector('.quote__text').textContent).toContain(SHORT.text);
+    expect(body.querySelector('.quote__author').textContent).toContain('Buddha');
+    // The clamp is stamped with the same line count the pick was measured
+    // against, and a deeper card is allowed more of them.
+    expect(body.style.getPropertyValue('--quote-lines')).toBe('2');
+    card.dataset.h = '4';
+    quote.render(body, LONG, CFG);
+    expect(Number(body.style.getPropertyValue('--quote-lines'))).toBeGreaterThan(2);
     card.remove();
   });
 

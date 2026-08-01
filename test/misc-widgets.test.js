@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { readFile } from 'node:fs/promises';
 import { mapNjt } from '../site/js/widgets/njt.js';
 import { mapHistory } from '../site/js/widgets/history.js';
-import { quoteOfDay } from '../site/js/widgets/quote.js';
+import { quoteOfDay, quoteFit, pickQuote } from '../site/js/widgets/quote.js';
 import { mapMarkets } from '../site/js/widgets/markets.js';
 import { mapBus } from '../site/js/widgets/bus.js';
 import { fitViewport } from '../site/js/util.js';
@@ -94,6 +94,63 @@ describe('quoteOfDay', () => {
       expect(q.text.length).toBeGreaterThan(0);
       expect(typeof q.author).toBe('string');
     }
+  });
+});
+
+// A quote that stops mid-sentence is not a quote, so the card's size chooses
+// which quotes are eligible before the calendar chooses between them.
+describe('quote fits the card it is on', () => {
+  const bundled = () => fixture('../../site/data/quotes.json');
+  const EDISON = "I have not failed. I've just found 10,000 ways that won't work.";
+
+  it('prices a shallow card in lines, and a wider one in more characters', () => {
+    // h=2 is the shallow tier main.css clamps: two lines at 22px, whatever the
+    // width. Depth buys lines; width buys characters per line.
+    expect(quoteFit(3, 2).lines).toBe(2);
+    expect(quoteFit(6, 2).lines).toBe(2);
+    expect(quoteFit(6, 2).chars).toBeGreaterThan(quoteFit(3, 2).chars);
+    expect(quoteFit(3, 4).lines).toBeGreaterThan(quoteFit(3, 2).lines);
+    expect(quoteFit(2, 2).lines).toBeGreaterThanOrEqual(1);
+  });
+
+  it('leaves the Edison quote off a Quick Start card and keeps it on the wide one', () => {
+    // The reported defect: the 3x2 card in the Quick Start layout clamped it to
+    // "…10,000 ways that won't" — two lines cannot hold it, so it is simply not
+    // one of that card's quotes. The 6x2 default board still shows it.
+    expect(EDISON.length + 2).toBeGreaterThan(quoteFit(3, 2).chars);
+    expect(EDISON.length + 2).toBeLessThanOrEqual(quoteFit(6, 2).chars);
+  });
+
+  it('picks only quotes that fit, deterministically per day', async () => {
+    const quotes = await bundled();
+    const { chars } = quoteFit(3, 2);
+    const day = new Date('2026-08-01T09:00:00');
+    const pick = pickQuote(quotes, chars, day);
+    expect(pick.text.length + 2).toBeLessThanOrEqual(chars);
+    expect(pickQuote(quotes, chars, new Date('2026-08-01T21:00:00'))).toEqual(pick);
+    // A different size is a different pool, so the same day can read differently
+    // on a bigger card — but it is still one quote per board per day.
+    expect(pickQuote(quotes, quoteFit(6, 4).chars, day).text.length + 2)
+      .toBeLessThanOrEqual(quoteFit(6, 4).chars);
+  });
+
+  it('has a fitting quote at every size the card supports', async () => {
+    const quotes = await bundled();
+    for (let w = 2; w <= 12; w++) {
+      for (let h = 2; h <= 8; h++) {
+        const { chars } = quoteFit(w, h);
+        const pick = pickQuote(quotes, chars, new Date('2026-08-01T09:00:00'));
+        expect(pick, `${w}x${h}`).not.toBeNull();
+        expect(pick.text.length + 2, `${w}x${h}: "${pick.text}"`).toBeLessThanOrEqual(chars);
+      }
+    }
+  });
+
+  it('falls back to the shortest quote rather than nothing when none fit', () => {
+    const list = [{ text: 'A very long saying indeed', author: 'X' }, { text: 'Short', author: 'Y' }];
+    expect(pickQuote(list, 6, new Date()).text).toBe('Short');
+    expect(pickQuote([], 100, new Date())).toBeNull();
+    expect(pickQuote(null, 100, new Date())).toBeNull();
   });
 });
 
