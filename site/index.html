@@ -21,6 +21,15 @@
      main.js fitViewport() covers the case where this meta is ignored. -->
 <meta name="viewport" content="width=1920">
 <title>Room &amp; Board</title>
+<!-- Warm the two hosts every board talks to before the module graph has even
+     parsed: the API worker (transit, markets, news, …) and Open-Meteo, which
+     the Weather card in the default layout fetches browser-direct. Both are
+     CORS fetches, so both hints are `crossorigin` — that is the connection
+     pool the fetches will actually reuse. Third-party per-widget hosts are
+     deliberately NOT listed: a preconnect a board never uses is a wasted
+     socket on a stack that has few to spare. -->
+<link rel="preconnect" href="https://api.roomboard.app" crossorigin>
+<link rel="preconnect" href="https://api.open-meteo.com" crossorigin>
 <link rel="icon" type="image/png" sizes="32x32" href="assets/room-and-board-favicon-32.png">
 <link rel="apple-touch-icon" href="assets/room-and-board-icon-180.png">
 <link rel="stylesheet" href="css/main.css">
