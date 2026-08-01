@@ -1775,10 +1775,13 @@ body.mode-ambient .gear--edit { display: none; }
 /* ---------- per-size compact variants (gen1 Chromium lacks container queries;
    cards carry data-w/data-h and the tier classes t-s/t-m/t-l/t-narrow that
    main.js derives from the layout: t-s when h≤2, t-narrow when w≤4) ---------- */
-/* Quote in a shallow card: clamp long quotes */
+/* Quote in a shallow card: smaller type, and a clamp as the backstop. The count
+   comes from quote.js (--quote-lines), which is the same number the day's quote
+   was CHOSEN to fit — a fitting quote never reaches this rule, and the 2 is only
+   what a card renders at before the widget has run. */
 .card--quote.t-s .quote__text {
   font-size: 22px;
-  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  display: -webkit-box; -webkit-line-clamp: var(--quote-lines, 2); -webkit-box-orient: vertical; overflow: hidden;
 }
 /* Markets in a shallow card: single-line rows (name beside price) — stacked
    rows plus the +N hint clip a 2-tall body (measured: 141px into 121px) */
