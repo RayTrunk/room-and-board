@@ -30,6 +30,9 @@ const CORS = {
   'Access-Control-Allow-Headers': 'Content-Type',
 };
 
+// Anything a board must not hold on to: the stale fallback and every error.
+const NO_STORE = { 'Cache-Control': 'no-store' };
+
 const json = (body, status = 200, extra = {}) =>
   new Response(JSON.stringify(body), {
     status,
@@ -125,18 +128,44 @@ async function ipThrottled(origin, bucket, ip, windowS) {
 // day-long entry survives past ttlS to serve as that stale backup.
 const STALE_TTL_S = 24 * 3600;
 
+// Stamped on every cache entry so a hit can advertise its REMAINING freshness
+// (see below) instead of restarting the clock on the board.
+const FRESH_UNTIL = 'X-Fresh-Until';
+
 async function cached(origin, key, ttlS, fetcher) {
   const cache = caches.default;
   const freshKey = new Request(`${origin}/__cache/fresh/${encodeURIComponent(key)}`);
   const staleKey = new Request(`${origin}/__cache/stale/${encodeURIComponent(key)}`);
   const hit = await cache.match(freshKey);
-  if (hit) return json(await hit.json());
+  if (hit) {
+    // Stream the stored bytes straight through — the old parse-then-restringify
+    // round-trip produced the identical body at the cost of a JSON parse on
+    // every board request. Headers are rebuilt so CORS rides along.
+    //
+    // max-age is what is LEFT of this entry's colo lifetime, not a fresh ttlS:
+    // a board that caches for a full TTL on top of a nearly-expired colo copy
+    // would show data ~2x the intended age, which on a departure board reads as
+    // wrong minutes rather than as stale.
+    const until = Number(hit.headers.get(FRESH_UNTIL));
+    const remaining = until > 0 ? Math.max(0, Math.round((until - Date.now()) / 1000)) : ttlS;
+    return new Response(hit.body, {
+      headers: {
+        'Content-Type': 'application/json',
+        ...CORS,
+        'Cache-Control': `public, max-age=${remaining}`,
+      },
+    });
+  }
   try {
     const fresh = await fetcher();
     const body = JSON.stringify(fresh);
     const entry = (ttl) =>
       new Response(body, {
-        headers: { 'Content-Type': 'application/json', 'Cache-Control': `max-age=${ttl}` },
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': `max-age=${ttl}`,
+          [FRESH_UNTIL]: String(Date.now() + ttl * 1000),
+        },
       });
     try {
       // A `partial` payload (some upstreams failed) is fine to serve fresh, but
@@ -149,15 +178,17 @@ async function cached(origin, key, ttlS, fetcher) {
       // Caching is best-effort — a put failure must not drop the fresh payload
       // we already fetched.
     }
-    return json(fresh);
+    return json(fresh, 200, { 'Cache-Control': `public, max-age=${ttlS}` });
   } catch (err) {
     // Observability: log which upstream failed and why (visible in `wrangler
     // tail` / Workers logs), so a silent stale-serve (e.g. NJT returning 500s)
     // is diagnosable without deploying a one-off debug probe.
     console.warn(`[cached] ${key} upstream failed, serving stale if available: ${String(err?.message ?? err)}`);
+    // Stale and error answers are no-store: the next poll must reach the worker
+    // and get the real thing back the moment upstream recovers.
     const stale = await cache.match(staleKey);
-    if (stale) return json({ ...(await stale.json()), stale: true });
-    return json({ error: 'upstream_failed', detail: String(err) }, 502);
+    if (stale) return json({ ...(await stale.json()), stale: true }, 200, NO_STORE);
+    return json({ error: 'upstream_failed', detail: String(err) }, 502, NO_STORE);
   }
 }
 

@@ -67,6 +67,56 @@ describe('CORS and routing', () => {
   });
 });
 
+// A board fetching these routes gets a Cache-Control it can act on, so the
+// gen1 web engine can skip a round trip it would only have wasted. The rules:
+// fresh answers are cacheable for what is LEFT of the colo entry's TTL; the
+// stale fallback and every error are no-store, so recovery is never one poll
+// late. CORS must survive all of it.
+describe('cached() response headers', () => {
+  const rss = '<rss><channel><item><title>Hi</title></item></channel></rss>';
+
+  it('sends the route TTL on a fresh answer and the REMAINDER on a hit', async () => {
+    await clearCache('news:npr');
+    stubFetch([{ match: /feeds\.npr\.org/, body: rss }]);
+    const fresh = await call('/news/npr');
+    expect(fresh.headers.get('cache-control')).toBe('public, max-age=900');
+    expect(fresh.headers.get('access-control-allow-origin')).toBe('*');
+    const body = await fresh.json();
+
+    // Second call takes the cache path: the stub is exhausted, so reaching
+    // upstream would throw. The body must be byte-identical (it is streamed
+    // through now, not re-serialized) and the TTL must not restart.
+    const hit = await call('/news/npr');
+    expect(hit.status).toBe(200);
+    expect(await hit.json()).toEqual(body);
+    expect(hit.headers.get('access-control-allow-origin')).toBe('*');
+    expect(hit.headers.get('content-type')).toContain('application/json');
+    const maxAge = Number(/max-age=(\d+)/.exec(hit.headers.get('cache-control'))[1]);
+    expect(maxAge).toBeGreaterThan(0);
+    expect(maxAge).toBeLessThanOrEqual(900);
+    await clearCache('news:npr');
+  });
+
+  it('marks the stale fallback and the 502 no-store', async () => {
+    await clearCache('news:npr');
+    stubFetch([{ match: /feeds\.npr\.org/, body: rss }]);
+    await call('/news/npr'); // populates the 24h stale backup
+    await caches.default.delete(cacheKey('fresh', 'news:npr'));
+
+    stubFetch([{ match: /feeds\.npr\.org/, body: 'down', status: 500, times: 2 }]);
+    const stale = await call('/news/npr');
+    expect((await stale.json()).stale).toBe(true);
+    expect(stale.headers.get('cache-control')).toBe('no-store');
+    expect(stale.headers.get('access-control-allow-origin')).toBe('*');
+
+    await clearCache('news:npr'); // no backup left → hard failure
+    const dead = await call('/news/npr');
+    expect(dead.status).toBe(502);
+    expect(dead.headers.get('cache-control')).toBe('no-store');
+    expect(dead.headers.get('access-control-allow-origin')).toBe('*');
+  });
+});
+
 const clearThrottle = (ip = 'anon') =>
   Promise.all([
     caches.default.delete(new Request(`https://api.test/__throttle/code/${encodeURIComponent(ip)}`)),
@@ -426,6 +476,9 @@ describe('/bus/stops', () => {
     stubFetch([{ match: /bustime\.mta\.info/, body: { Siri: { ServiceDelivery: { StopMonitoringDelivery: [{ MonitoredStopVisit: [] }] } } } }]);
     const res = await call('/bus/stops?legs=550685:MTABC_QM24', {}, { MTA_BUS_KEY: 'k' });
     expect(res.status).toBe(200);
+    // ~1.5x the card's 60s poll: at 30s the entry expired just before every
+    // request, so a single board never once hit its own cache.
+    expect(res.headers.get('cache-control')).toBe('public, max-age=90');
     const body = await res.json();
     // Each stop carries its leg's identity (stopId + lineRef) so the page can
     // join results to its own legs by key, not by array position — the cache key
@@ -1237,6 +1290,7 @@ describe('/services/status route', () => {
     ]);
     const res = await call('/services/status?ids=zoom,cloudflare');
     expect(res.status).toBe(200);
+    expect(res.headers.get('cache-control')).toBe('public, max-age=480'); // ~1.5x the 5-min poll
     const digest = await res.json();
     expect(digest.services).toHaveLength(2);
     expect(digest.services[0]).toMatchObject({ id: 'zoom', state: 'ok' });
@@ -1368,6 +1422,7 @@ describe('citibike adapter', () => {
     stubFetch([{ match: /station_status/, body: cbStatus }]);
     const res = await call(`/citibike/status?ids=${CB_IDS.join(',')}`);
     expect(res.status).toBe(200);
+    expect(res.headers.get('cache-control')).toBe('public, max-age=90'); // ~1.5x the 60s poll
     expect((await res.json()).stations).toHaveLength(3);
     await clearCache('citibike:' + [...CB_IDS].sort().join(','));
   });
