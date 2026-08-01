@@ -39,6 +39,12 @@ export const NEWS_SOURCES = [
   // ---- Tech ----
   ['arstechnica',  'Ars Technica',    'proxy',  'arstechnica',    'Tech'],
   ['theverge',     'The Verge',       'proxy',  'theverge',       'Tech'],
+  // ---- Google News (language-aware top stories) ----
+  ['gnews-de',     'Google News DE',  'proxy',  'gnews-de',       'Google News'],
+  ['gnews-en',     'Google News EN',  'proxy',  'gnews-en',       'Google News'],
+  ['gnews-fr',     'Google News FR',  'proxy',  'gnews-fr',       'Google News'],
+  ['gnews-it',     'Google News IT',  'proxy',  'gnews-it',       'Google News'],
+  ['gnews-nl',     'Google News NL',  'proxy',  'gnews-nl',       'Google News'],
 ];
 
 const SOURCE_BY_ID = Object.fromEntries(NEWS_SOURCES.map((s) => [s[0], s]));

@@ -170,6 +170,21 @@ html, body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* FARO DASH splash — position:fixed so it covers the real viewport regardless
+   of the 1920×1080 page zoom. Fades out after 5 s via JS toggling .splash--fade. */
+.splash {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.8s ease;
+}
+.splash--fade { opacity: 0; pointer-events: none; }
+.splash__logo { width: 520px; max-width: 80%; }
+
 /* …and on a viewport TALLER than the page (a Room Navigator's 1200), the
    leftover splits evenly instead of pooling at the bottom as a band. Purely
    cosmetic — the page block keeps its exact 1080px height, so nothing about

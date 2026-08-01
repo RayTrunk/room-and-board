@@ -26,6 +26,12 @@ const FEEDS = {
   // Tech
   arstechnica: 'https://feeds.arstechnica.com/arstechnica/index',
   theverge: 'https://www.theverge.com/rss/index.xml',
+  // Google News top stories per language (language-aware, curated by Google)
+  'gnews-de': 'https://news.google.com/rss?hl=de&gl=DE&ceid=DE:de',
+  'gnews-en': 'https://news.google.com/rss?hl=en-US&gl=US&ceid=US:en',
+  'gnews-fr': 'https://news.google.com/rss?hl=fr&gl=FR&ceid=FR:fr',
+  'gnews-it': 'https://news.google.com/rss?hl=it&gl=IT&ceid=IT:it',
+  'gnews-nl': 'https://news.google.com/rss?hl=nl&gl=NL&ceid=NL:nl',
   marketwatch: 'https://feeds.content.dowjones.io/public/rss/mw_topstories',
   'wsj-markets': 'https://feeds.content.dowjones.io/public/rss/RSSMarketsMain',
   'ft-markets': 'https://www.ft.com/markets?format=rss',

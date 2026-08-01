@@ -13,26 +13,23 @@ export function escapeHtml(s) {
 // it. A transform on an ancestor would instead become the containing block for
 // their fixed positioning and break them.
 //
-// WIDTH ONLY, deliberately, and the 2026-07-28 on-device measurements are why:
-// a Board Pro lays the page out in 1920x1040 and a Room Navigator in 1920x1200,
-// so the page's fixed 1080px height is TALLER than the board's viewport. A
-// height term would read 1040/1080 and shrink the production board to 96% — the
-// one device this must never touch. The page overflowing a board by 40px is
-// deliberate and covered by the 84px --safe-bottom reserve (the grid ends at
-// y=996). Guarded to only ever shrink and to never touch a viewport already
-// >= 1920 wide, so the Board Pro is untouched by construction.
-//
-// `documentElement.clientWidth` is the LAYOUT viewport width. That makes this
-// complementary to index.html's `width=1920` viewport meta rather than
-// redundant: where the meta is honored this reads 1920 and no-ops (the engine
-// already fit the page), and where the meta is ignored it reads the true panel
-// width and does the fitting here. Exactly one half ever applies.
+// WIDTH ONLY on RoomOS devices (Board Pro 1920×1040, Navigator 1920×1200):
+// the meta viewport `width=1920` always reports clientWidth=1920 on those, so
+// scaleW==1 and the w<1920 guard prevents any height adjustment that would
+// shrink production boards. On desktop browsers the meta is often ignored and
+// clientWidth reflects the real window; there we also fit vertically so a
+// narrow/short browser window doesn't clip the bottom rows of the dashboard.
 export function fitViewport(root = document.documentElement) {
   if (!root?.style) return null;
   root.style.zoom = ''; // reset first, so a resize re-measures unscaled (idempotent)
   const w = root.clientWidth;
-  if (!Number.isFinite(w) || w <= 0 || w >= 1920) return null; // Board Pro and larger
-  const scale = Math.round((w / 1920) * 1000) / 1000;
+  if (!Number.isFinite(w) || w <= 0) return null;
+  const scaleW = w / 1920;
+  if (scaleW >= 1) return null; // Board Pro / Navigator: meta makes w==1920, no-op
+  // On desktop browsers also fit height so bottom rows aren't clipped
+  const h = typeof window !== 'undefined' ? window.innerHeight : 0;
+  const scaleH = Number.isFinite(h) && h > 0 ? h / 1080 : 1;
+  const scale = Math.round(Math.min(scaleW, scaleH) * 1000) / 1000;
   if (scale < 0.25) return null; // implausible measurement — leave the page alone
   root.style.zoom = String(scale);
   return scale;
