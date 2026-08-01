@@ -376,8 +376,10 @@ const handlers = {
     if (path === '/services/status' && request.method === 'GET') {
       const ids = [...new Set((url.searchParams.get('ids') ?? '').split(',').filter((id) => Object.hasOwn(SERVICES, id)))].slice(0, 11);
       if (!ids.length) return json({ error: 'bad_ids' }, 400);
-      // Sorted ids in the key so permutations share one cache entry.
-      return cached(url.origin, `svc:${[...ids].sort().join(',')}`, 180, () => fetchServiceStatuses(ids));
+      // Sorted ids in the key so permutations share one cache entry. 480s is
+      // ~1.5x the card's 5-minute poll: a TTL at or under the poll interval
+      // expires just before every request, so a lone board never hit the cache.
+      return cached(url.origin, `svc:${[...ids].sort().join(',')}`, 480, () => fetchServiceStatuses(ids));
     }
 
     if (path === '/golf' && request.method === 'GET') {
@@ -428,8 +430,10 @@ const handlers = {
         (url.searchParams.get('ids') ?? '').split(',').map((s) => s.trim()).filter((s) => /^[\w-]{1,48}$/.test(s)),
       )].slice(0, 6);
       if (!ids.length) return json({ error: 'bad_ids' }, 400);
-      // 60s matches the GBFS feed ttl; sorted ids so permutations share a key.
-      return cached(url.origin, `citibike:${[...ids].sort().join(',')}`, 60, () => fetchCitibike(ids));
+      // GBFS publishes on a 60s ttl; cache 90s (~1.5x the card's 60s poll) so a
+      // single board actually hits the entry instead of expiring it every time.
+      // Sorted ids so permutations share a key.
+      return cached(url.origin, `citibike:${[...ids].sort().join(',')}`, 90, () => fetchCitibike(ids));
     }
 
     if (path === '/tfl/status' && request.method === 'GET') {
@@ -472,7 +476,8 @@ const handlers = {
     const newsMatch = /^\/news\/([a-z0-9-]{1,24})$/.exec(path);
     if (newsMatch && request.method === 'GET') {
       if (!newsFeedUrl(newsMatch[1])) return json({ error: 'unknown_feed' }, 404);
-      return cached(url.origin, `news:${newsMatch[1]}`, 600, () => fetchNewsFeed(newsMatch[1]));
+      // 900s ≈ 1.5x the card's 10-minute poll (600s expired on every request).
+      return cached(url.origin, `news:${newsMatch[1]}`, 900, () => fetchNewsFeed(newsMatch[1]));
     }
 
     if (path === '/bus/stops' && request.method === 'GET') {
@@ -482,7 +487,9 @@ const handlers = {
       // Key on the normalized parsed legs (sorted) so aliased/reordered raw
       // query strings share one entry instead of minting duplicates.
       const busKey = `bus:${legs.map((l) => `${l.stopId}:${l.lineRef}`).sort().join(',')}`;
-      return cached(url.origin, busKey, 30, () => fetchBusStops(env, legs));
+      // 90s ≈ 1.5x the card's 60s poll. Bus rows are absolute arrival times the
+      // card counts down locally, so a slightly older digest still reads right.
+      return cached(url.origin, busKey, 90, () => fetchBusStops(env, legs));
     }
 
     // On-demand health probe (same checks the cron runs). Returns 200 when all
