@@ -940,9 +940,11 @@ function weatherBoard(vm, cfg = { loc: { label: 'New York 10001', units: 'F' } }
 }
 
 describe('weather card tap', () => {
-  it('always expands, with no badge to signify it', () => {
+  it('always expands, and says so with the bare mark: nothing to count', () => {
     const { card } = weatherBoard(DEMO_VMS.weather);
-    expect(card.querySelector('.card__more')).toBeNull(); // nothing is hidden to count
+    const badge = card.querySelector('.card__more');
+    expect(badge.querySelector('svg.icon--more')).not.toBeNull(); // the mark alone
+    expect(badge.textContent.trim()).toBe(''); // no count: nothing is hidden here
     expect(card.classList.contains('is-expandable')).toBe(true);
 
     card.click();
@@ -1037,7 +1039,7 @@ describe('history card tap', () => {
   it('taps into the whole day: every event in the grand reading list', () => {
     const { card } = histBoard(histVm(9)); // a 6x2 card fits two events
     expect(card.querySelectorAll('.history__item').length).toBeLessThan(9);
-    expect(card.querySelector('.card__more').textContent).toBe('+7 more');
+    expect(card.querySelector('.card__more').textContent).toBe('7 more');
     card.querySelector('.card__body').click();
     expect(isExpandOpen()).toBe(true);
     expect(overlay().querySelector('.history-board')).not.toBeNull();
@@ -1045,9 +1047,11 @@ describe('history card tap', () => {
     expect(overlay().querySelector('.expand__title').textContent).toBe('This Day in History');
   });
 
-  it('opens the same day view when every event already fits, with no badge', () => {
+  it('opens the same day view when every event already fits, with no count', () => {
     const { card } = histBoard(histVm(2));
-    expect(card.querySelector('.card__more')).toBeNull(); // nothing hidden to advertise
+    // The mark stays (the tap still opens something); only the count goes.
+    expect(card.querySelector('.card__more').textContent.trim()).toBe('');
+    expect(card.querySelector('.card__more svg.icon--more')).not.toBeNull();
     card.click();
     expect(isExpandOpen()).toBe(true);
     expect(overlay().querySelectorAll('.history__item').length).toBe(2);

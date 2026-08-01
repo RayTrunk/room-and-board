@@ -4,9 +4,9 @@
 // viewer with the title, description, and Statista credit (their charts are
 // CC BY-ND — attribution required, and the branding is baked into the image).
 
-import { escapeHtml } from '../util.js';
+import { markExpandable } from '../util.js';
 import { WORKER_URL } from '../env.js';
-import { openImageViewer } from '../imageshow.js';
+import { openImageViewer, renderImageCard } from '../imageshow.js';
 
 export const meta = { id: 'chart', title: 'Chart of the Day', refreshMs: 30 * 60 * 1000 };
 
@@ -41,21 +41,30 @@ export function render(el, vm, cfg) {
   const c = pickChart(vm.charts, cfg) ?? vm.chart;
   if (!c || !c.url) {
     el.innerHTML = '<div class="empty">Chart unavailable</div>';
+    markExpandable(el, false); // yesterday's mark must not outlive the chart
     return;
   }
+  // The shared image surface (2026-08-01), which this card had been hand-rolling
+  // a copy of: it brings the decode-before-swap cross-fade, and — the reason for
+  // the change — the one place that makes the WHOLE CARD the tap target and
+  // stamps the expand mark in the corner, instead of a role="button" figure
+  // whose title row and padding were dead glass.
+  //
   // No card caption: the infographic embeds its own title and the Statista
   // branding — a caption would just repeat both (Sean flagged the duplicate).
   // The tap viewer still shows title/description/credit.
-  el.innerHTML = `
-    <figure class="artwork artwork--contain" role="button" tabindex="0" aria-label="View chart full screen">
-      <img class="artwork__img" src="${escapeHtml(c.url)}" alt="${escapeHtml(c.title)}" loading="lazy">
-    </figure>`;
-  el.querySelector('.artwork').addEventListener('click', () =>
+  renderImageCard(el, {
+    src: c.url,
+    alt: c.title,
+    contain: true, // data images never crop
+    label: 'View chart full screen',
     // No caption: Statista bakes the title/source into the infographic, so the
     // overlay would just repeat it and cover part of the image.  No info strip
     // either: there's no room to place it without covering chart content, and a
     // full-screen chart is a quick glance, not a lingering screensaver.
-    openImageViewer({ img: c.url, title: c.title, artist: 'Statista', desc: c.desc }, cfg, { list: [], caption: false, strip: false }));
+    onOpen: () =>
+      openImageViewer({ img: c.url, title: c.title, artist: 'Statista', desc: c.desc }, cfg, { list: [], caption: false, strip: false }),
+  });
 }
 
 // Deterministic rotation slot: which of the selected topics to show right now.

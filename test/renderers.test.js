@@ -234,8 +234,10 @@ describe('widget renderers', () => {
     nc.remove();
     const hc = mkCard('history');
     history.render(hc.querySelector('.card__body'), { events: Array.from({ length: 20 }, (_, i) => ({ year: 1900 + i, text: `Event ${i}` })) }, CFG);
-    // History expands now, so its badge is the verbose tap invitation.
-    expect(hc.querySelector('.card__more')?.textContent).toBe('+18 more');
+    // History expands now, so its badge is the mark plus the tap invitation:
+    // "18 more" without the "+", which the un-tappable news badge keeps.
+    expect(hc.querySelector('.card__more')?.textContent).toBe('18 more');
+    expect(hc.querySelector('.card__more svg.icon--more')).not.toBeNull();
     expect(hc.classList.contains('has-more')).toBe(true);
     hc.remove();
   });

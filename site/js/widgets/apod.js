@@ -3,7 +3,7 @@
 // per day from the worker's /apod digest; tap opens the viewer with the
 // title, credit, and explanation.
 
-import { escapeHtml } from '../util.js';
+import { escapeHtml, markExpandable } from '../util.js';
 import { WORKER_URL } from '../env.js';
 import { openImageViewer, renderImageCard } from '../imageshow.js';
 
@@ -13,6 +13,7 @@ export function render(el, vm, cfg) {
   const p = vm.photo;
   if (!p || !p.url) {
     el.innerHTML = '<div class="empty">NASA photo unavailable</div>';
+    markExpandable(el, false); // yesterday's mark must not outlive the photo
     return;
   }
   // No date note: APOD's date is the publish date (== today's dashboard clock),
