@@ -143,7 +143,11 @@ export function isOverlayOpen(doc = document) {
 //
 // The corner is safe at every card width (a title badge clips beside long
 // titles on 2-wide cards) and .card__stamp is top-anchored, so the badge and
-// the amber "as of" stamp share the right edge without ever colliding.
+// the amber "as of" stamp can never collide.
+//
+// It sits at EQUAL 12px insets (main.css .card__more, 2026-08-01) rather than
+// on the content column's 26px edge: a glyph in a corner is a corner mark, not
+// reading matter, and the inherited 26/10 read as misplaced.
 
 // Reads the widget's own name off the card for an aria-label. First text node
 // only: a title may carry an appended .card__asof span (same idiom as the text

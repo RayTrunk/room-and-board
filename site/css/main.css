@@ -2098,20 +2098,39 @@ body.mode-ambient .gear--edit { display: none; }
 .card.is-stale .card__asof { visibility: hidden; } /* the amber stale stamp takes over */
 /* The corner badge: pinned at the truncation point (bottom-right) instead of
    costing a list row. Safe at every card width, and .card__stamp is
-   top-anchored, so the badge and the amber "as of" stamp share the right edge
-   without ever meeting. Three forms, one element (see util.js paintMoreBadge):
-   "⤢ N more", a bare "⤢", or a plain "+N" on a card that does not open.
+   top-anchored, so the badge and the amber "as of" stamp never meet. Three
+   forms, one element (see util.js paintMoreBadge): "⤢ N more", a bare "⤢", or
+   a plain "+N" on a card that does not open.
 
    20px, the board's type floor, up from 15px: a signifier that has to be read
    from 6 ft cannot be the smallest thing on the card. --ink-dim, never
    --ink-faint, which fails AA below 18px.
 
-   line-height 1 + bottom 10px is not a free choice: it puts the badge in
-   exactly the vertical band the 15px one occupied (10-30px off the card's
-   bottom edge, sitting in the card's own 22px bottom padding), so no capacity
-   model has to be re-measured for the larger type. */
+   EQUAL insets, 12px on both axes (2026-08-01). The badge inherited right:26px
+   from the text-only "+N", which aligned it with the card's 26px side padding
+   because it was reading matter that belonged to the list above it. A visible
+   glyph is not reading matter, it is a corner mark, and 26/10 read as dropped
+   in the wrong place, the defect Sean shot. What a corner mark owes is the
+   corner: the card's 24px radius meets the 45-degree diagonal 7px in, so 12px
+   is the smallest equal inset that clears the curve, and it clears it by
+   another 7px. It also lands the bare mark's optical centre at 22,22, within
+   2px of the arc's own centre (24,24), so the glyph reads as concentric with
+   the curve it sits in.
+
+   Why 12 and not the 14 that would hit 24,24 exactly: the badge only ever
+   appears on a card that is FULL, and its 20px line box already reaches 10px
+   past the card's 22px bottom padding into the last row. Every further pixel of
+   rise is spent against the ~7px of air a centred last-row element (a track
+   pill, a service state) keeps below itself. 12 spends 2 of those and grazes
+   nothing new; 14 spends 4 and puts the mark's stroke on a departure card's
+   track pill. The 14px the badge moved RIGHT is free in the other direction:
+   it pulls the badge OFF the content column, which ends at 26px, so every list
+   card's last row gained 14px of horizontal clearance today.
+
+   A row that runs flush to the card's BOTTOM edge cannot be cleared this way
+   and reserves the corner itself: see --more-gutter. */
 .card__more {
-  position: absolute; right: 26px; bottom: 10px;
+  position: absolute; right: 12px; bottom: 12px;
   display: inline-flex; align-items: center; gap: 8px;
   font-size: 20px; line-height: 1; font-weight: 400; letter-spacing: 0;
   text-transform: none; color: var(--ink-dim); white-space: nowrap;
@@ -2125,10 +2144,14 @@ body.mode-ambient .gear--edit { display: none; }
    same ~1.9px stroke on the glass as the gear and pencil. */
 .card__more .icon--more { width: 1em; height: 1em; flex: none; stroke-width: 2.2; }
 .card__more-n { line-height: 1; }
-/* An image card's artwork fills its body to the bottom edge, so it (alone)
-   reserves the badge's overlap — the mark always sits on card surface, never on
-   a bright photo or a white infographic where --ink-dim would vanish. */
-.card.is-expandable .artwork { padding-bottom: 10px; }
+/* An image card's artwork fills its body to the bottom edge, so it reserves the
+   badge's overlap: the mark always sits on card surface, never on a bright
+   photo or a white infographic where --ink-dim would vanish. Priced off the
+   badge, not guessed: the 20px line box at a 12px inset tops out 32px above the
+   card's bottom edge, the body's own floor is the card's 22px padding, so 12px
+   here puts the artwork (and its caption, which moves with it) 2px clear. It
+   tracks .card__more's inset by construction, so change one and change both. */
+.card.is-expandable .artwork { padding-bottom: 12px; }
 /* Rail +N (expand wave 2): the whole card is the tap target (the markets
    grammar, standard .is-expandable affordances above), and the corner badge
    reads "+N more" as the invitation. The first cut's pill trigger reserved

@@ -1315,11 +1315,45 @@ describe('the corner badge is the tap affordance', () => {
       expect(body).toMatch(/height:\s*1em/);
     });
 
-    it('keeps the badge in the vertical band the 15px one held', () => {
-      // 20px of line at bottom:10px spans 10-30px off the card's bottom edge,
-      // exactly what 15px at bottom:12px spanned, so the larger type costs no
-      // capacity model a re-measure.
-      expect(rule('.card__more')).toMatch(/bottom:\s*10px/);
+    // The corner the mark sits in, and the two consequences that follow from
+    // it, as arithmetic rather than as three unrelated magic numbers. Every
+    // assertion below reads the badge's own inset out of the stylesheet and
+    // derives the rest from the card's geometry, so moving the badge fails
+    // whichever reserve stopped covering it instead of quietly landing the
+    // mark back on somebody's data.
+    const px = (body, prop) => {
+      const m = body.match(new RegExp(`${prop}:\\s*(-?\\d+)px`));
+      expect(m, `no ${prop} in "${body.slice(0, 60)}…"`).not.toBeNull();
+      return Number(m[1]);
+    };
+    const CARD_PAD_BOTTOM = 22; // .card padding: 22px 26px
+    const CARD_PAD_SIDE = 26;
+    const CARD_RADIUS = 24; // --radius
+    const BADGE_BOX = 20; // font-size 20px at line-height 1, and a 1em mark
+
+    it('sits at equal insets, one clear step inside the corner curve', () => {
+      // The defect this replaced: right:26px (the content column's edge, right
+      // for a text-only "+N") against bottom:10px read as a glyph dropped in
+      // the wrong place once it became a visible mark.
+      const body = rule('.card__more');
+      const right = px(body, 'right');
+      const bottom = px(body, 'bottom');
+      expect(right, 'a corner mark is inset equally on both axes').toBe(bottom);
+      // A 24px radius meets the 45-degree diagonal 24 - 24/sqrt(2) ~ 7px in, so
+      // anything at or under that is ON the curve.
+      const onCurve = CARD_RADIUS - CARD_RADIUS / Math.SQRT2;
+      expect(bottom).toBeGreaterThan(onCurve);
+      // And it stays a corner mark rather than drifting back onto the column.
+      expect(right).toBeLessThan(CARD_PAD_SIDE);
+    });
+
+    it('reserves the whole badge under an image card, not a guessed 10px', () => {
+      // An artwork fills its body to the floor, so it is the one surface that
+      // buys the overlap back. The mark must land on card surface: --ink-dim
+      // vanishes on a bright photo or a white infographic.
+      const inset = px(rule('.card__more'), 'bottom');
+      const pad = px(rule('.card.is-expandable .artwork'), 'padding-bottom');
+      expect(CARD_PAD_BOTTOM + pad).toBeGreaterThanOrEqual(inset + BADGE_BOX);
     });
   });
 });
