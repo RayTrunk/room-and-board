@@ -4,9 +4,8 @@
 // viewer with the title, description, and Statista credit (their charts are
 // CC BY-ND — attribution required, and the branding is baked into the image).
 
-import { escapeHtml } from '../util.js';
 import { WORKER_URL } from '../env.js';
-import { openImageViewer } from '../imageshow.js';
+import { openImageViewer, renderImageCard } from '../imageshow.js';
 
 export const meta = { id: 'chart', title: 'Chart of the Day', refreshMs: 30 * 60 * 1000 };
 
@@ -46,16 +45,29 @@ export function render(el, vm, cfg) {
   // No card caption: the infographic embeds its own title and the Statista
   // branding — a caption would just repeat both (Sean flagged the duplicate).
   // The tap viewer still shows title/description/credit.
-  el.innerHTML = `
-    <figure class="artwork artwork--contain" role="button" tabindex="0" aria-label="View chart full screen">
-      <img class="artwork__img" src="${escapeHtml(c.url)}" alt="${escapeHtml(c.title)}" loading="lazy">
-    </figure>`;
-  el.querySelector('.artwork').addEventListener('click', () =>
+  //
+  // The shared image surface, like every other picture card: the infographic
+  // changes once a day but the card refreshes every 30 minutes, so the
+  // unchanged-src early return is what stops it re-decoding and re-painting the
+  // same chart all day, and the day's new one decodes before it dissolves in.
+  // (The old markup rebuilt a fresh lazy-loading image element on every render,
+  // which left the card black for seconds at boot: lazy loading is for content
+  // below a fold, and a board has none.)
+  renderImageCard(el, {
+    src: c.url,
+    alt: c.title,
+    label: 'View chart full screen',
+    contain: true, // a data image is never cropped
     // No caption: Statista bakes the title/source into the infographic, so the
     // overlay would just repeat it and cover part of the image.  No info strip
     // either: there's no room to place it without covering chart content, and a
     // full-screen chart is a quick glance, not a lingering screensaver.
-    openImageViewer({ img: c.url, title: c.title, artist: 'Statista', desc: c.desc }, cfg, { list: [], caption: false, strip: false }));
+    onOpen: () => openImageViewer(
+      { img: c.url, title: c.title, artist: 'Statista', desc: c.desc },
+      cfg,
+      { list: [], caption: false, strip: false },
+    ),
+  });
 }
 
 // Deterministic rotation slot: which of the selected topics to show right now.

@@ -10,6 +10,7 @@ import { renderImageCard, loadImage, CARD_FADE_MS, openImageViewer, SWIPE_OUT_MS
 import * as art from '../site/js/widgets/art.js';
 import * as landscapes from '../site/js/widgets/landscapes.js';
 import * as apod from '../site/js/widgets/apod.js';
+import * as chart from '../site/js/widgets/chart.js';
 
 const CFG = { name: 'Sean' };
 const host = () => document.createElement('div');
@@ -332,6 +333,45 @@ describe('every rotating image card shares the surface', () => {
     el.querySelector('.artwork').click();
     expect(document.querySelector('#art-viewer .art-viewer__img').getAttribute('src')).toBe('https://x.test/l2.jpg');
     document.querySelector('#art-viewer')?.remove();
+  });
+
+  it('chart holds its infographic across the 30 minute refresh, and never loads it lazily', async () => {
+    const el = host();
+    const vm = { charts: [{ url: 'https://x.test/chart.png', title: 'Population Growth', desc: 'why' }] };
+    chart.render(el, vm, CFG);
+    const img = el.querySelector('.artwork__img');
+    // A board has no fold: the picture starts loading with the card, not when
+    // something scrolls it into view (a lazy chart left the card black at boot).
+    expect(img.getAttribute('loading')).toBeNull();
+    expect(img.classList.contains('is-entering')).toBe(true);
+    await settle();
+    expect(img.classList.contains('is-entering')).toBe(false);
+    expect(el.querySelector('.artwork--contain')).not.toBeNull(); // data images never crop
+    pending = [];
+    chart.render(el, vm, CFG);
+    chart.render(el, { charts: [{ ...vm.charts[0] }] }, CFG);
+    expect(pending).toHaveLength(0); // same chart, no re-decode, no re-paint
+    expect(el.querySelector('.artwork__img')).toBe(img);
+    // The day's new chart still dissolves in behind the old one.
+    chart.render(el, { charts: [{ url: 'https://x.test/chart-2.png', title: 'Next', desc: '' }] }, CFG);
+    expect(shown(el)).toEqual(['https://x.test/chart.png']); // nothing before decode
+    await settle();
+    expect(shown(el)).toEqual(['https://x.test/chart.png', 'https://x.test/chart-2.png']);
+    endTransition(imgs(el).at(-1));
+    expect(shown(el)).toEqual(['https://x.test/chart-2.png']);
+  });
+
+  it('chart still opens the full-screen viewer on a tap', async () => {
+    document.querySelector('#art-viewer')?.remove();
+    const el = host();
+    chart.render(el, { charts: [{ url: 'https://x.test/chart.png', title: 'Population Growth', desc: 'why' }] }, CFG);
+    await settle();
+    el.querySelector('.artwork').click();
+    const viewer = document.querySelector('#art-viewer');
+    expect(viewer.querySelector('.art-viewer__img').getAttribute('src')).toBe('https://x.test/chart.png');
+    expect(viewer.querySelector('.slide-caption')).toBeNull(); // caption:false — it is in the image
+    expect(viewer.querySelector('.strip')).toBeNull(); // strip:false — it would cover the chart
+    viewer.remove();
   });
 
   it('apod holds its one photo across the 30 minute refresh instead of re-decoding it', async () => {

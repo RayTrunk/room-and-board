@@ -2457,7 +2457,20 @@ body.ss-backdrop .cf-dial__svg, .ss-preview.ss-backdrop .cf-dial__svg {
    is unchanged; its layers are absolute, which also means a swap can never push
    the caption around. Two layers exist only for the length of one dissolve —
    the outgoing one is removed when the transition ends. */
-.artwork__frame { position: relative; flex: 1; min-height: 0; }
+/* The frame's own surface is the quiet stand-in a card shows while its FIRST
+   bitmap decodes: the tile well, the same surface the empty states sit on,
+   instead of seconds of black card (the chart card's boot, worst on a cold
+   network). It needs no JS and no timer of its own, because the layer above it
+   carries `background: var(--bg-card)` — the picture fading up covers the well
+   exactly as it becomes opaque, and the frame is never seen again (a
+   letterboxed chart keeps its card-tone bars). `:empty` is the guard for a card
+   with no image at all (an art manifest that came back empty): no layer, no
+   well, just the card. */
+.artwork__frame {
+  position: relative; flex: 1; min-height: 0;
+  background: var(--bg-card-2); border-radius: 10px;
+}
+.artwork__frame:empty { background: none; }
 /* Opacity only, no filters, no layout properties: this runs every rotation,
    all day, on a gen1 web engine. object-fit is deliberately NOT set here so
    .artwork--contain keeps deciding crop vs letterbox. 700 ms sits between the
