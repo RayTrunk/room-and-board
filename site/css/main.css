@@ -443,6 +443,41 @@ body { position: relative; top: max(0px, calc((100dvh - 1080px) / 2)); }
 .arrival__min { font-weight: 700; font-variant-numeric: tabular-nums; }
 .arrival__unit { color: var(--ink-faint); font-size: 21px; }
 
+/* The full-screen Express Bus board (Sean's pick): the rail overlay's grammar
+   grouped by stop — a quiet uppercase stop name over big tabular countdowns,
+   route then destination. Bespoke rather than .trains--board because that board
+   is ONE flat centered list on a single rhythm and has nowhere to put a header:
+   dropped in as another flex child, a stop name would sit exactly as far from
+   its own arrivals as from the next stop's. Here the gap INSIDE a group is
+   small and the gap BETWEEN groups is large, which is the whole point of the
+   view. The rows themselves are the shared .train markup at the split board's
+   type scale. Worst case inside the 814px body, on PINNED line-heights (the
+   .expand__head idiom, so the fit is arithmetic rather than a measurement in
+   whatever face this was modelled in): two stops x (a 27.5px header, three 60px
+   rows, 18 + 40px of gaps) plus the 56px between them = 587px, and /bus/stops
+   serves at most two legs of at most three arrivals each. */
+.expand__body .bus-board {
+  height: 100%; display: flex; flex-direction: column;
+  justify-content: center; align-items: center; gap: 56px; overflow: hidden;
+  line-height: 1.25;
+}
+.bus-board__group { width: 820px; display: flex; flex-direction: column; gap: 18px; }
+.bus-board__stop {
+  font-size: 22px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.08em; color: var(--ink-dim);
+}
+.bus-board__rows { display: flex; flex-direction: column; gap: 20px; }
+.bus-board__none { font-size: 24px; color: var(--ink-dim); }
+.bus-board .train { gap: 24px; }
+.bus-board .train__min { min-width: 110px; }
+.bus-board .train__min span { font-size: 40px; }
+.bus-board .train__min small { font-size: 20px; }
+/* The route takes the prominent slot the rail rows give a destination, and the
+   destination takes the quiet one: on a bus the route number IS the identity,
+   and "to Wall St" is the qualifier. */
+.bus-board .train__dest { font-size: 26px; }
+.bus-board .train__line { font-size: 22px; }
+
 /* The line badge: a fixed circle with one glyph centred in it, so it wants the
    metric-pinned face — the box cannot change size, only the glyph inside it can
    sit off-centre (which it does on the board's own font). */
