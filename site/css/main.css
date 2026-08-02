@@ -2106,6 +2106,131 @@ body.mode-ambient .gear--edit { display: none; }
 .f1-cols { display: flex; gap: 18px; }
 .f1-col { flex: 1; min-width: 0; }
 
+/* Formula 1, full screen: the season in three pillars (Sean's approved mockup,
+   2026-08-02). Deliberately the DENSEST view on the board — a season has three
+   things going on at once (the weekend ahead, the race just run, the two
+   championships) and a reader who taps an F1 card wants all three, so the type
+   runs 19-22px where every other view reads at 26-40. 19px is the floor and it
+   is spent only on the quiet columns the mockup spends it on.
+
+   Widths are fixed per pillar (510 / 570 / 520) and the GROUP is centred, so
+   the columns hold their proportions and the block sits in the middle of the
+   glass: 1600 of content + 2 x 56 gap = 1712, inside the 1776 the overlay's
+   72px side padding leaves. The middle pillar is sized to its own row rather
+   than to the mockup's 620: 34 pos + 12 + 12 dot + 26 flag + a surname + 12 +
+   52 grid + 12 + 52 points + 12 + 122 gap. Give it more and the name column
+   (the flexible one) grows into a gulf between the surname and the numbers
+   that belong to it. Nothing here measures itself — the tall pillar is the
+   next race, whose map takes the leftover height instead of forcing one. */
+.expand__body .f1v {
+  height: 100%; display: flex; justify-content: center; gap: 56px; overflow: hidden;
+}
+/* flex: none — the widths below are the layout, not a starting point. Without
+   it a flex item shrinks to fit whatever box it is in, and the pillars would
+   quietly narrow (and start ellipsizing surnames) on any viewport the group
+   does not fit in rather than staying the columns they were measured as. */
+.f1v__pillar { min-width: 0; flex: none; display: flex; flex-direction: column; }
+.f1v__pillar--next { width: 510px; }
+.f1v__pillar--last { width: 570px; }
+.f1v__pillar--stand { width: 520px; }
+/* Section rule, shared by all three pillars. Wider tracking than the card's
+   labels because it is spanning a 520px column, not a 300px one. */
+.f1v__h {
+  flex: none; font-size: 19px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--ink-faint); margin: 0 0 14px; padding-bottom: 10px;
+  border-bottom: 1px solid var(--bg-card-2);
+}
+/* ---- pillar 1: the weekend ahead ---- */
+.f1v-gp { flex: none; font-size: 40px; font-weight: 600; line-height: 1.1; }
+.f1v-gp__sub { flex: none; font-size: 22px; color: var(--ink-dim); margin-top: 8px; }
+.f1v-sessions { flex: none; margin-top: 18px; }
+.f1v-sess {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
+  padding: 8px 0; border-top: 1px solid var(--bg-card-2);
+}
+.f1v-sess span { font-size: 20px; color: var(--ink-faint); }
+.f1v-sess b { font-size: 21px; font-weight: 400; color: var(--ink-mid); font-variant-numeric: tabular-nums; }
+/* The race is the row the schedule exists for; the rest are the run-up. */
+.f1v-sess--race b { font-weight: 600; color: var(--ink); }
+.f1v-count { flex: none; font-size: 20px; color: var(--ink-faint); margin-top: 14px; }
+/* The outline eats the pillar's leftover height rather than dictating one, so a
+   sprint weekend's two extra schedule rows shorten the drawing instead of
+   pushing it off the canvas. preserveAspectRatio (meet, the default) centres a
+   circuit of any proportion inside whatever box is left. */
+.f1v-track { flex: 1; min-height: 0; display: flex; flex-direction: column; margin-top: 26px; }
+.f1v-track__box { flex: 1; min-height: 0; }
+.f1v-track__box svg { width: 100%; height: 100%; display: block; }
+/* Tier 1: Formula 1's own circuit diagram, hotlinked from their media CDN and
+   swapped in over the outline once it has decoded (see the note in
+   widgets/f1.js). The artwork is transparent-backed white-and-colour linework,
+   so it composites straight onto the overlay's dark canvas — verified against
+   the live asset. Contain, never cover: a track map that is cropped is wrong. */
+.f1v-track__img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.f1v-track__line {
+  fill: none; stroke: var(--ink-mid); stroke-width: 5; stroke-linejoin: round; stroke-linecap: round;
+}
+/* F1 red, this view's one saturated accent, on the start/finish line. Its own
+   plain <path>: gen1 Qt WebEngine has no SVG clipPath, so a two-tone line is
+   two lines (DESIGN.md). */
+.f1v-track__sf { fill: none; stroke: #e10600; stroke-width: 7; stroke-linecap: butt; }
+.f1v-track__lbl {
+  flex: none; font-size: 19px; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--ink-faint); margin-top: 8px;
+}
+/* ---- pillar 2: the race just run ---- */
+.f1v-last__head { flex: none; display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; }
+.f1v-last__id { min-width: 0; }
+.f1v-last__name { font-size: 26px; font-weight: 600; line-height: 1.2; }
+.f1v-last__sub { font-size: 19px; color: var(--ink-faint); margin-top: 4px; }
+/* The same outline as pillar 1, quieter and small: it names the place without
+   competing with the classification beside it. */
+.f1v-minitrack { flex: none; width: 150px; height: 84px; }
+.f1v-minitrack svg { width: 100%; height: 100%; display: block; }
+.f1v-minitrack .f1v-track__line { stroke: var(--ink-faint); stroke-width: 6; }
+.f1v-res { margin-top: 14px; }
+/* Row heights are PINNED (the .expand__head idiom) so twenty rows are twenty
+   rows on the board too, whatever face it renders in. The pillar's worst case:
+   an 84px head (the mini map, the tallest thing in it) + 14 + a 30px column
+   head + 20 x 31 = 748px inside the 814px body. */
+.f1v-rrow { display: flex; align-items: baseline; gap: 12px; height: 31px; }
+.f1v-drv { font-size: 22px; font-weight: 600; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Grid and race points. Two bare numbers in a row need saying what they are —
+   one quiet word each, in the column's own alignment, and never repeated. */
+.f1v-cell {
+  flex: none; width: 52px; text-align: right; font-size: 19px;
+  color: var(--ink-faint); font-variant-numeric: tabular-nums;
+}
+.f1v-rrow--head { height: 30px; }
+.f1v-rrow--head .f1v-cell { font-size: 17px; letter-spacing: 0.06em; text-transform: uppercase; }
+/* Fixed, so the times and the gaps make a column rather than a ragged edge. */
+.f1v-gap { flex: none; width: 122px; text-align: right; font-size: 20px; color: var(--ink-faint); font-variant-numeric: tabular-nums; }
+.f1v-gap--dnf { color: var(--bad); }
+/* F1 purple, the sport's own colour for the fastest lap of the race. It outranks
+   the DNF tone by rule order for the same reason it can never co-occur: a car
+   that did not finish did not set the race's fastest lap. */
+.f1v-gap--flap { color: #b360e6; }
+/* ---- pillar 3: the two championships ---- */
+.f1v-srow { display: flex; align-items: baseline; gap: 12px; height: 30px; }
+.f1v-who { font-size: 21px; font-weight: 600; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.f1v-who small { font-weight: 400; font-size: 19px; color: var(--ink-faint); margin-left: 8px; }
+.f1v-wins { width: 44px; text-align: right; font-size: 19px; color: var(--ink-faint); font-variant-numeric: tabular-nums; }
+.f1v-pts { font-size: 20px; color: var(--ink-mid); font-variant-numeric: tabular-nums; }
+.f1v__stand2 { margin-top: 24px; }
+/* ---- shared ---- */
+.f1v-pos { flex: none; width: 34px; font-size: 20px; color: var(--ink-faint); font-variant-numeric: tabular-nums; }
+.f1v-srow .f1v-pos { width: 30px; font-size: 19px; }
+.f1v-dot {
+  display: inline-block; width: 12px; height: 12px; border-radius: 50%;
+  margin-right: 10px; vertical-align: 0;
+}
+/* The card's flagcdn image flag, at the view's scale (Sean, 2026-08-02: the
+   flags come with). Same 4:3 box and same treatment as .f1-flag — a view keeps
+   the treatment of the card it came from. */
+.f1v-flag {
+  display: inline-block; width: 26px; height: 19.5px; object-fit: cover;
+  border-radius: 3px; margin-right: 10px; vertical-align: -0.15em;
+}
+
 /* ---------- service status ---------- */
 .svc { display: flex; flex-direction: column; gap: 2px; padding: 4px 0; }
 .svc__row { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
