@@ -2480,10 +2480,11 @@ body.mode-ambient .gear--edit { display: none; }
 .team--board { width: 980px; gap: 24px; min-height: 0; line-height: 1.25; }
 /* Same rule as the card's .team__logo note: clearance ≈ 8% of the diameter,
    because sub-pixel margins against the inscribed square (10px left 1.72px)
-   still read as shaved corners on the glass. 12px on 60px = a 36px mark,
-   corners 4.5px clear of the curve. */
-.team--board .team__logo { width: 60px; height: 60px; padding: 12px; }
-.team--board .team__abbr { width: 60px; font-size: 30px; }
+   still read as shaved corners on the glass — and the circle spends the
+   height the grand row affords. 72px circle, 15px padding = a 42px mark
+   (bigger than every prior attempt), corners 6.3px clear of the curve. */
+.team--board .team__logo { width: 72px; height: 72px; padding: 15px; }
+.team--board .team__abbr { width: 72px; font-size: 34px; }
 .team--board .team__info { flex: 1; line-height: 1.25; }
 .team--board .team__name { font-size: 28px; }
 /* 21px clears the AA floor that keeps --ink-faint off small text. */
@@ -2798,14 +2799,18 @@ body.ss-backdrop .cf-dial__svg, .ss-preview.ss-backdrop .cf-dial__svg {
    fraction of a pixel: 7px left the corners 0.79px off the curve, which device
    rendering shaved (Sean's zoom, 2026-08-02 — the same class of failure the
    old 4px produced on the Mets NY). Rule of thumb now: clearance ≈ 8% of the
-   diameter. 9px on 44px = a 26px mark, corners 3.6px clear. */
-.team__logo { width: 44px; height: 44px; object-fit: contain; flex: none; background: rgba(232, 237, 244, 0.08); border-radius: 50%; padding: 9px; }
+   diameter — and the circle itself should spend the height the row already
+   reserves (Sean, 2026-08-02: shrinking the mark inside a small circle made it
+   harder to see; the row's 64px min-height had 20px of unused air around a
+   44px circle). 60px circle, 12px padding = a 36px mark (bigger than the old
+   30px), corners 4.5px clear. */
+.team__logo { width: 60px; height: 60px; object-fit: contain; flex: none; background: rgba(232, 237, 244, 0.08); border-radius: 50%; padding: 12px; }
 .team__last { font-size: 17px; color: var(--ink-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } /* AA */
 /* Shallow cards: two compact rows fit (a 3×2 showed just one team over dead
    space) — smaller logo/type, no "Last:" line; the result line carries it. */
 .card--sports.t-s .team { min-height: 0; gap: 10px; }
-.card--sports.t-s .team__logo { width: 32px; height: 32px; padding: 7px; } /* corners 3.3px clear (was 0.44px, shaved) */
-.card--sports.t-s .team__abbr { width: 32px; font-size: 18px; }
+.card--sports.t-s .team__logo { width: 36px; height: 36px; padding: 8px; } /* 20px mark, corners 3.9px clear */
+.card--sports.t-s .team__abbr { width: 36px; font-size: 18px; }
 .card--sports.t-s .team__name { font-size: 19px; }
 .card--sports.t-s .team__line { font-size: 18px; }
 .card--sports.t-s .team__last { display: none; }
