@@ -19,7 +19,7 @@ import { fetchCitibike } from './citibike.js';
 import { fetchTfl } from './tfl.js';
 import { parseBeacon, beaconDataPoint, deviceModel } from './fleet.js';
 import { fetchChart, CHART_TOPICS } from './chart.js';
-import { fetchF1 } from './f1.js';
+import { fetchF1, mendF1 } from './f1.js';
 import { fetchGolf, fetchTennis } from './scores.js';
 import { fetchAmtrak } from './amtrak.js';
 import { runHealthChecks, notify, alertPlan, nextFailingState, heartbeat } from './health.js';
@@ -132,7 +132,7 @@ const STALE_TTL_S = 24 * 3600;
 // (see below) instead of restarting the clock on the board.
 const FRESH_UNTIL = 'X-Fresh-Until';
 
-async function cached(origin, key, ttlS, fetcher) {
+async function cached(origin, key, ttlS, fetcher, { mend } = {}) {
   const cache = caches.default;
   const freshKey = new Request(`${origin}/__cache/fresh/${encodeURIComponent(key)}`);
   const staleKey = new Request(`${origin}/__cache/stale/${encodeURIComponent(key)}`);
@@ -157,7 +157,15 @@ async function cached(origin, key, ttlS, fetcher) {
     });
   }
   try {
-    const fresh = await fetcher();
+    let fresh = await fetcher();
+    // A route may hand in a mend(): when the fetch came back partial and a
+    // complete 24h backup exists, the backup fills the holes. The mended
+    // payload keeps partial: true, so it still caches briefly and still never
+    // overwrites the backup it borrowed from.
+    if (fresh?.partial && mend) {
+      const backup = await cache.match(staleKey);
+      if (backup) fresh = mend(fresh, await backup.json());
+    }
     const body = JSON.stringify(fresh);
     const entry = (ttl) =>
       new Response(body, {
@@ -431,7 +439,7 @@ const handlers = {
     if (path === '/f1' && request.method === 'GET') {
       // One global digest (next race + last podium + standings) from Jolpica,
       // fanned out and merged in fetchF1. 1h TTL — F1 data changes weekly.
-      return cached(url.origin, 'f1', 3600, () => fetchF1());
+      return cached(url.origin, 'f1', 3600, () => fetchF1(), { mend: mendF1 });
     }
 
     if (path === '/amtrak/departures' && request.method === 'GET') {

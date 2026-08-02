@@ -173,9 +173,26 @@ export async function fetchF1() {
     if (!res.ok) throw new Error(`jolpica ${path} ${res.status}`);
     return res.json();
   };
-  const settled = await Promise.allSettled([
-    get('next'), get('last/results'), get('driverStandings'), get('constructorStandings'),
-  ]);
+  // SEQUENTIAL, with air between the calls — never parallel. Jolpica's
+  // unauthenticated burst limit sits at about four requests a second, and four
+  // parallel fetches land exactly on it: one to three of them draw a 429
+  // depending on timing, which is how the board spent a night showing a
+  // drivers-only card while every endpoint answered 200 to a polite client
+  // (live diagnosis 2026-08-02). A cache-missing fetch happens at most every
+  // hour when healthy, so ~1.5s of serialization costs nothing.
+  const paths = ['next', 'last/results', 'driverStandings', 'constructorStandings'];
+  const settled = [];
+  for (const path of paths) {
+    try {
+      settled.push({ status: 'fulfilled', value: await get(path) });
+    } catch (err) {
+      // Named per endpoint: the original incident was invisible because the
+      // rejections were swallowed silently and only a TOTAL wipeout logged.
+      console.warn(`[f1] ${path} failed: ${String(err?.message ?? err)}`);
+      settled.push({ status: 'rejected' });
+    }
+    if (settled.length < paths.length) await new Promise((r) => setTimeout(r, 250));
+  }
   if (settled.every((s) => s.status === 'rejected')) throw new Error('jolpica: all endpoints failed');
   const val = (s) => (s.status === 'fulfilled' ? s.value : null);
   const digest = mapF1(...settled.map(val));
@@ -183,4 +200,20 @@ export async function fetchF1() {
   // 24h stale backup (same guard as /markets).
   const partial = settled.some((s) => s.status === 'rejected');
   return { ...digest, ...(partial && { partial: true }) };
+}
+
+// Fill a partial digest's missing blocks from the 24h stale backup. F1 data
+// changes on race weekends, not by the minute, so a day-old next-race block or
+// constructors table is the truth for a reader — and a card should never look
+// gutted over one bounced upstream call. The result KEEPS partial: true (so it
+// caches briefly and never overwrites the stale backup) and adds mended: true
+// for diagnosability.
+export function mendF1(fresh, stale) {
+  const empty = (v) => v == null || v === '' || (Array.isArray(v) && v.length === 0);
+  const out = { ...fresh };
+  for (const [k, v] of Object.entries(stale ?? {})) {
+    if (k === 'updatedAt' || k === 'stale' || k === 'partial' || k === 'mended') continue;
+    if (empty(out[k])) out[k] = v;
+  }
+  return { ...out, mended: true };
 }

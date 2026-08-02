@@ -141,6 +141,47 @@ describe('cached() response headers', () => {
     expect(partial.headers.get('cache-control')).toBe('public, max-age=120'); // not 3600
     await clearCache('f1');
   });
+
+  it('mends a partial digest from the 24h backup, so one bounced call never guts the card', async () => {
+    // Round two of the same incident: the flake was not a flake but Jolpica's
+    // burst limit, and while the fetches are serialized now, resilience must
+    // not depend on an upstream's manners. A partial digest borrows its missing
+    // blocks from the complete 24h backup (F1 data is weekly; a day-old
+    // next-race block is the truth), stays partial (short cache, never
+    // overwrites the backup it borrowed from) and says it was mended.
+    await clearCache('f1');
+    const full = (name) => ({ MRData: {
+      RaceTable: { Races: [{ raceName: name, date: '2026-08-23', round: '15',
+        Circuit: { circuitName: 'Zandvoort', circuitId: 'zandvoort', Location: { country: 'Netherlands' } } }] },
+      StandingsTable: { StandingsLists: [{ DriverStandings: [
+        { position: '1', points: '219', wins: '6', Driver: { familyName: 'Antonelli', nationality: 'Italian' },
+          Constructors: [{ constructorId: 'mercedes' }] },
+      ], ConstructorStandings: [
+        { position: '1', points: '333', Constructor: { constructorId: 'mercedes', name: 'Mercedes' } },
+      ] }] },
+    } });
+    stubFetch([{ match: /jolpi/, body: full('Dutch Grand Prix'), times: 4 }]);
+    await call('/f1'); // healthy pass populates the 24h backup
+    await caches.default.delete(cacheKey('fresh', 'f1'));
+
+    const standingsOnly = full('unused');
+    delete standingsOnly.MRData.RaceTable; // drivers survive, the rest bounce
+    stubFetch([
+      { match: /next\.json/, body: 'down', status: 500 },
+      { match: /last\/results/, body: 'down', status: 500 },
+      { match: /driverStandings/, body: standingsOnly },
+      { match: /constructorStandings/, body: 'down', status: 500 },
+    ]);
+    const res = await call('/f1');
+    const digest = await res.json();
+    expect(digest.partial).toBe(true);
+    expect(digest.mended).toBe(true);
+    expect(digest.next?.name).toBe('Dutch Grand Prix'); // borrowed from the backup
+    expect(digest.teams?.length).toBe(1); // borrowed too
+    expect(digest.drivers?.length).toBe(1); // the live half stays live
+    expect(res.headers.get('cache-control')).toBe('public, max-age=120');
+    await clearCache('f1');
+  });
 });
 
 const clearThrottle = (ip = 'anon') =>
