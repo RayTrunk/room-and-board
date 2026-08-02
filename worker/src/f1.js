@@ -2,6 +2,14 @@
 // Four endpoints — next race, last-race results, driver + constructor standings —
 // fanned out and merged into one digest, cached 1h at the route. Team colours
 // and driver flags are added on the site, not here (this stays generic data).
+//
+// The digest serves two surfaces: the small CARD (next race, podium, top of both
+// standings) and the full-screen SEASON VIEW behind a tap (the whole weekend
+// schedule, the whole classification, both championships). The card's fields are
+// therefore frozen — `podium` in particular stays exactly as it was — and the
+// view's richer fields sit BESIDE them. Any of the view's fields may be missing
+// from a board's cached digest, so the view drops the affected block rather
+// than assuming it is there.
 
 const JOLPICA = 'https://api.jolpi.ca/ergast/f1/current';
 // Full browser UA — thin datacenter agents get bounced by some hosts.
@@ -10,27 +18,102 @@ const UA =
 
 const num = (x) => Number(x);
 
+// The weekend's sessions, in the payload's own vocabulary. Ids are stable and
+// short because the SITE owns the wording; labels ride along so a future
+// session type the site has never heard of still has something to print.
+// Order comes from the DATES, not this list: on a sprint weekend qualifying
+// falls after the sprint, and the schedule has to read the way it happens.
+const SESSIONS = [
+  ['FirstPractice', 'fp1', 'Practice 1'],
+  ['SecondPractice', 'fp2', 'Practice 2'],
+  ['ThirdPractice', 'fp3', 'Practice 3'],
+  ['SprintQualifying', 'sq', 'Sprint Qualifying'],
+  ['Sprint', 'sprint', 'Sprint'],
+  ['Qualifying', 'q', 'Qualifying'],
+];
+
+// Dates and times stay exactly as the payload gives them: `date` is a plain
+// YYYY-MM-DD and `time` is UTC ("13:00:00Z") or ''. The site formats both in
+// the board's own timezone at the board's 12/24h preference — a worker cached
+// for an hour has no business deciding what o'clock it is for a reader.
+function mapSessions(r) {
+  const out = [];
+  for (const [key, id, label] of SESSIONS) {
+    const s = r?.[key];
+    if (s?.date) out.push({ id, label, date: String(s.date), time: String(s.time ?? '') });
+  }
+  if (r?.date) out.push({ id: 'race', label: 'Race', date: String(r.date), time: String(r.time ?? '') });
+  return out.sort((a, b) => `${a.date}T${a.time}`.localeCompare(`${b.date}T${b.time}`));
+}
+
 function mapNext(j) {
   const r = j?.MRData?.RaceTable?.Races?.[0];
   if (!r) return null;
   return {
     name: String(r.raceName ?? ''),
     date: String(r.date ?? ''),
+    // The race's own UTC start, kept beside the date so a countdown and a
+    // schedule row can both be exact rather than assuming an hour.
+    time: String(r.time ?? ''),
     circuit: String(r.Circuit?.circuitName ?? ''),
+    // Keys the bundled track outline (site/data/f1-tracks.json). An id with no
+    // bundled outline simply draws no map.
+    circuitId: String(r.Circuit?.circuitId ?? ''),
     country: String(r.Circuit?.Location?.country ?? ''),
+    round: num(r.round) || null, // the calendar's ROUND N; the season total is not in this payload
+    sessions: mapSessions(r),
   };
 }
 
-function mapPodium(j) {
+// One classification row, as a table: where they started, where they finished,
+// what they scored, and how far back they were.
+//
+// A finishing time, a gap, or nothing. Ergast puts the winner's TOTAL race time
+// and everyone else's gap-to-winner in the same `Time.time` field ("1:27:11.335"
+// / "+0.427"); a lapped or retired car has no Time at all and only `status`
+// says what happened. Both are forwarded raw — deciding which of them is a
+// result and which is a failure (and what tone it earns) is the site's job.
+function mapResults(r) {
+  return (r?.Results ?? []).map((x) => ({
+    pos: num(x.position),
+    driver: String(x.Driver?.familyName ?? ''),
+    // The view draws the same flagcdn flags the card does, so the rows need
+    // the same demonym the podium rows carry.
+    nat: String(x.Driver?.nationality ?? ''),
+    cid: String(x.Constructor?.constructorId ?? ''),
+    // Starting position. Ergast writes 0 for a pit-lane start.
+    grid: num(x.grid) || 0,
+    // Points scored in THIS race (0 for everyone outside the top ten, plus the
+    // fastest-lap point where the season awards one) — not the championship
+    // total, which is what the standings block carries.
+    pts: num(x.points) || 0,
+    time: String(x.Time?.time ?? ''),
+    status: String(x.status ?? ''),
+    // Rank 1 across the field, not the driver's own best lap.
+    fastest: String(x.FastestLap?.rank ?? '') === '1',
+  }));
+}
+
+function mapLast(j) {
   const r = j?.MRData?.RaceTable?.Races?.[0];
-  if (!r?.Results?.length) return { lastRace: null, podium: null };
+  if (!r?.Results?.length) {
+    return { lastRace: null, lastDate: null, lastCircuit: null, lastCircuitId: null, podium: null, results: [] };
+  }
+  // Unchanged shape, unchanged field: the CARD reads this and must not move.
   const podium = r.Results.slice(0, 3).map((x) => ({
     pos: num(x.position),
     driver: String(x.Driver?.familyName ?? ''),
     nat: String(x.Driver?.nationality ?? ''),
     cid: String(x.Constructor?.constructorId ?? ''),
   }));
-  return { lastRace: String(r.raceName ?? ''), podium };
+  return {
+    lastRace: String(r.raceName ?? ''),
+    lastDate: String(r.date ?? '') || null,
+    lastCircuit: String(r.Circuit?.circuitName ?? '') || null,
+    lastCircuitId: String(r.Circuit?.circuitId ?? '') || null,
+    podium,
+    results: mapResults(r),
+  };
 }
 
 function mapDrivers(j) {
@@ -42,7 +125,22 @@ function mapDrivers(j) {
     // A driver's CURRENT team is the last constructor listed for the season.
     cid: String(s.Constructors?.[s.Constructors.length - 1]?.constructorId ?? ''),
     pts: num(s.points),
+    wins: num(s.wins) || 0,
   }));
+}
+
+// The season the digest describes. The /next payload carries it on the race;
+// the standings carry it on the list. Either will do — whichever block came
+// back — and a digest with neither simply has no season to name.
+function seasonOf(...jsons) {
+  for (const j of jsons) {
+    const s = j?.MRData?.RaceTable?.Races?.[0]?.season
+      ?? j?.MRData?.RaceTable?.season
+      ?? j?.MRData?.StandingsTable?.StandingsLists?.[0]?.season
+      ?? j?.MRData?.StandingsTable?.season;
+    if (s) return String(s);
+  }
+  return null;
 }
 
 function mapConstructors(j) {
@@ -58,13 +156,12 @@ function mapConstructors(j) {
 // Pure: each argument is a parsed Jolpica JSON object (or null for a block that
 // failed to fetch). Null blocks degrade to null/[] rather than throwing.
 export function mapF1(nextJson, lastJson, driversJson, teamsJson) {
-  const { lastRace, podium } = mapPodium(lastJson);
   return {
     updatedAt: Math.floor(Date.now() / 1000),
     stale: false,
+    season: seasonOf(nextJson, driversJson, teamsJson, lastJson),
     next: mapNext(nextJson),
-    lastRace,
-    podium,
+    ...mapLast(lastJson),
     drivers: mapDrivers(driversJson),
     teams: mapConstructors(teamsJson),
   };

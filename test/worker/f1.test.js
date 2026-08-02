@@ -19,7 +19,10 @@ describe('mapF1', () => {
   const d = mapF1(nextFx, lastFx, driversFx, teamsFx);
 
   it('maps the next race', () => {
-    expect(d.next).toEqual({ name: 'Belgian Grand Prix', date: '2026-07-19', circuit: 'Circuit de Spa-Francorchamps', country: 'Belgium' });
+    // The CARD's four fields, pinned. The digest carries more for the expanded
+    // season view (round, circuitId, the weekend's sessions) — those are
+    // test/f1-expand.test.js's, and this stays about what the card reads.
+    expect(d.next).toMatchObject({ name: 'Belgian Grand Prix', date: '2026-07-19', circuit: 'Circuit de Spa-Francorchamps', country: 'Belgium' });
   });
   it('extracts the last race podium (top 3, winner first, with nationality + team)', () => {
     expect(d.lastRace).toBe('British Grand Prix');
