@@ -2,7 +2,7 @@
 // NJ Transit, Amtrak, Ferry) — wave 2 of the +N rollout, one wiring because
 // they all render the same .train rows and must behave identically. After a
 // renderer has sliced to capacity, this fits the rows the browser can actually
-// hold, counts what the card is NOT showing, pins the quiet "+N more" corner
+// hold, counts what the card is NOT showing, pins the quiet "⤢ +N" corner
 // badge, and registers the full two-column departures overlay.
 //
 // The whole card is the target, the markets grammar (Sean, 2026-07-31): the
@@ -25,7 +25,7 @@ import { fitTrainRows } from './capacity.js';
 export function wireTrainExpand(el, { title, note = '', rows, alerts = [] }) {
   fitTrainRows(el);
   const hidden = rows.length - (el.querySelectorAll?.('.train').length ?? 0);
-  setMoreBadge(el, hidden, { verbose: true });
+  setMoreBadge(el, hidden);
   const subviews = alerts.length
     ? [{
         selector: '.talert',

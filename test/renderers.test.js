@@ -293,14 +293,15 @@ describe('widget renderers', () => {
     const nc = mkCard('news');
     news.render(nc.querySelector('.card__body'), { nowMs: Date.now(), items: Array.from({ length: 20 }, (_, i) => ({ title: `Story ${i}`, t: Date.now() - i * 1000, source: 'X' })) }, CFG);
     expect(nc.querySelector('.card__more')?.textContent).toBe('+18'); // cap 2 at 3x2
+    expect(nc.querySelector('.card__more svg.icon--more')).not.toBeNull();
     expect(nc.classList.contains('has-more')).toBe(true);
     expect(nc.querySelector('.more-hint')).toBeNull();
     nc.remove();
     const hc = mkCard('history');
     history.render(hc.querySelector('.card__body'), { events: Array.from({ length: 20 }, (_, i) => ({ year: 1900 + i, text: `Event ${i}` })) }, CFG);
-    // History expands now, so its badge is the mark plus the tap invitation:
-    // "18 more" without the "+", which the un-tappable news badge keeps.
-    expect(hc.querySelector('.card__more')?.textContent).toBe('18 more');
+    // History expands and news does not, and the corner says exactly the same
+    // thing on both: one form board-wide (2026-08-01).
+    expect(hc.querySelector('.card__more')?.textContent).toBe('+18');
     expect(hc.querySelector('.card__more svg.icon--more')).not.toBeNull();
     expect(hc.classList.contains('has-more')).toBe(true);
     hc.remove();

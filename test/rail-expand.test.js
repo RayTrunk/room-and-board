@@ -44,15 +44,17 @@ beforeEach(() => {
 });
 
 describe('rail +N badge and whole-card expand', () => {
-  it('shows the quiet "N more" badge when departures overflow: no well, no reserve', () => {
+  it('shows the quiet "⤢ +N" badge when departures overflow: no well, no reserve', () => {
     // Sean 07-31: the tappable pill's reserve cost a visible row, so the
     // trigger is the whole card (the markets grammar) and the badge went back
-    // to the quiet corner text — with "more" kept as the tap invitation.
+    // to the quiet corner text. 08-01: that text became the one board-wide
+    // form, the glyph plus a compact count.
     const { card } = railBoard('lirr', renderLirr, lirrVm(5));
     const badge = card.querySelector('.card__more');
     expect(badge).not.toBeNull();
     expect(badge.classList.contains('card__more--pill')).toBe(false);
-    expect(badge.textContent).toBe('3 more');
+    expect(badge.textContent).toBe('+3');
+    expect(badge.querySelector('svg.icon--more')).not.toBeNull();
     expect(card.classList.contains('is-expandable')).toBe(true);
     expect(card.classList.contains('is-expandable-pill')).toBe(false);
   });
@@ -109,7 +111,7 @@ describe('rail +N badge and whole-card expand', () => {
     const vm = { ...lirrVm(5), alerts: [{ routes: [], stops: [], header: 'Delays.' }] };
     const { card } = railBoard('lirr', renderLirr, vm);
     expect(card.querySelectorAll('.train').length).toBe(2);
-    expect(card.querySelector('.card__more').textContent).toBe('3 more');
+    expect(card.querySelector('.card__more').textContent).toBe('+3');
   });
 
   it('never reserves space for the badge: the row count matches capacity exactly', () => {
@@ -202,7 +204,7 @@ describe('rail +N on the other boards', () => {
     // Banners are not pre-charged a row (the measured fit sheds instead), so
     // the 3x2 promise of 2 rows holds and three of five trains hide.
     const { card } = railBoard('njt', renderNjt, njtVm(5));
-    expect(card.querySelector('.card__more').textContent).toBe('3 more');
+    expect(card.querySelector('.card__more').textContent).toBe('+3');
     card.querySelector('.card__more').click();
     expect(overlay().querySelectorAll('.train').length).toBe(5);
     expect(overlay().querySelector('.talert')).toBeNull();
@@ -214,7 +216,7 @@ describe('rail +N on the other boards', () => {
       branch: 'Harlem', routeId: '2', track: null,
     })), destName: 'Southeast' };
     const { card } = railBoard('mnr', renderMnr, vm);
-    expect(card.querySelector('.card__more').textContent).toBe('3 more');
+    expect(card.querySelector('.card__more').textContent).toBe('+3');
     card.querySelector('.card__more').click();
     expect(overlay().querySelectorAll('.train').length).toBe(5);
     expect(overlay().querySelector('.expand__title').textContent).toBe('Metro-North');
@@ -225,7 +227,7 @@ describe('rail +N on the other boards', () => {
       t: 1000 + i * 600, min: 10 + i * 10, dest: `Landing ${i}`, route: null,
     })) };
     const { card } = railBoard('ferry', renderFerry, vm);
-    expect(card.querySelector('.card__more').textContent).toBe('3 more');
+    expect(card.querySelector('.card__more').textContent).toBe('+3');
     card.querySelector('.card__more').click();
     expect(overlay().querySelectorAll('.train').length).toBe(5);
   });

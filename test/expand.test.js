@@ -1065,7 +1065,7 @@ describe('history card tap', () => {
   it('taps into the whole day: every event in the grand reading list', () => {
     const { card } = histBoard(histVm(9)); // a 6x2 card fits two events
     expect(card.querySelectorAll('.history__item').length).toBeLessThan(9);
-    expect(card.querySelector('.card__more').textContent).toBe('7 more');
+    expect(card.querySelector('.card__more').textContent).toBe('+7');
     card.querySelector('.card__body').click();
     expect(isExpandOpen()).toBe(true);
     expect(overlay().querySelector('.history-board')).not.toBeNull();
@@ -1092,18 +1092,24 @@ describe('history card tap', () => {
 });
 
 /**
- * The corner badge. It began (2026-08-01, morning) as the affordance for the
- * whole tap grammar, including a bare mark on cards with nothing to count.
- * That third form was retired the same day, on Sean's read of prod: almost
- * every card will eventually open into something, so a per-card mark for a
- * property the board shares says nothing and reads as chrome. What is left is
- * a COUNT, which is real information, and a mark that rides beside it to say
- * the tap is what gives the counted rows back. The contract is unchanged: the
- * badge never promises a tap the card will not honour.
+ * The corner badge, now ONE form board-wide: "⤢ +N".
+ *
+ * It began (2026-08-01, morning) as three forms carrying the whole tap
+ * grammar, and Sean cut it twice the same day, each time off a rendered board.
+ * The bare mark went first: almost every card will eventually open into
+ * something, so a per-card mark for a property the board shares says nothing
+ * and reads as chrome. The second COUNT dialect went next: "8 more" beside the
+ * mark on tappable cards against a plain "+8" elsewhere made one board speak
+ * two languages, which reads as inconsistency at glance distance long before
+ * it reads as a distinction.
+ *
+ * So the badge answers exactly one question now, "how much is this card not
+ * showing", and answers it identically everywhere. Whether the card opens is a
+ * separate fact, carried by .is-expandable and the button semantics, and the
+ * badge neither states it nor depends on it.
  */
-describe('the corner badge is the count, and the mark rides beside it', () => {
-  // A bare card, no widget: the badge's two inputs driven directly, which is
-  // the only way to reach the count-without-expansion form.
+describe('the corner badge: one form, "⤢ +N", everywhere', () => {
+  // A bare card, no widget: the badge's input driven directly.
   function bareCard(title = 'Headlines') {
     document.body.innerHTML = `
       <div id="grid">
@@ -1122,19 +1128,43 @@ describe('the corner badge is the count, and the mark rides beside it', () => {
   const badge = (card) => card.querySelector('.card__more');
   const mark = (card) => card.querySelector('.card__more svg.icon--more');
 
-  describe('two forms, and the honesty rule that picks between them', () => {
-    it('expands AND hides rows: the mark plus the count, no "+"', () => {
+  describe('one form, and the count alone decides whether it appears', () => {
+    it('expands AND hides rows: the mark and the compact count', () => {
       const { card, body } = bareCard();
       setMoreBadge(body, 24);
       setExpandSource(body, () => ({ title: 'Headlines', bodyHtml: '<p>all of them</p>' }));
       expect(mark(card)).not.toBeNull();
-      expect(badge(card).textContent).toBe('24 more');
+      expect(badge(card).textContent).toBe('+24');
+    });
+
+    it('counts WITHOUT opening: the identical badge, mark and all', () => {
+      // The second dialect Sean cut. News rows open stories of their own, so a
+      // tap here is never dead, and news nesting will make the card-level
+      // promise true anyway; what matters is that the corner reads the same on
+      // every card, whatever the tap does.
+      const { card, body } = bareCard();
+      setMoreBadge(body, 18);
+      expect(badge(card).textContent).toBe('+18');
+      expect(mark(card)).not.toBeNull();
+      expect(card.classList.contains('is-expandable')).toBe(false);
+      card.click();
+      expect(isExpandOpen()).toBe(false);
+    });
+
+    it('paints the same corner for the same count either way', () => {
+      // The two cases above, reduced to the claim itself: identical markup.
+      const opens = bareCard();
+      setMoreBadge(opens.body, 6);
+      setExpandSource(opens.body, () => ({ title: 'T', bodyHtml: '<p>x</p>' }));
+      const inert = bareCard();
+      setMoreBadge(inert.body, 6);
+      expect(badge(opens.card).outerHTML).toBe(badge(inert.card).outerHTML);
     });
 
     it('expands with nothing to count: NO badge, and the tap works anyway', () => {
       const { card, body } = bareCard('Weather');
       setExpandSource(body, () => ({ title: 'Weather', bodyHtml: '<p>the detail board</p>' }));
-      expect(badge(card)).toBeNull(); // the retired third form
+      expect(badge(card)).toBeNull(); // the retired bare mark
       // The affordance is untouched: only the paint went.
       expect(card.classList.contains('is-expandable')).toBe(true);
       expect(card.getAttribute('role')).toBe('button');
@@ -1144,27 +1174,10 @@ describe('the corner badge is the count, and the mark rides beside it', () => {
       expect(isExpandOpen()).toBe(true);
     });
 
-    it('counts but does not open: the plain "+N", and NO mark', () => {
-      const { card, body } = bareCard();
-      setMoreBadge(body, 18); // news rows open stories; the CARD does not expand
-      expect(badge(card)).not.toBeNull();
-      expect(badge(card).textContent).toBe('+18');
-      expect(mark(card)).toBeNull(); // the mark here would be a lie
-      card.click();
-      expect(isExpandOpen()).toBe(false);
-    });
-
     it('neither: no badge at all', () => {
       const { card, body } = bareCard();
       setMoreBadge(body, 0);
       expect(badge(card)).toBeNull();
-    });
-
-    it('keeps the verbose wording for a card that counts without opening', () => {
-      const { card, body } = bareCard();
-      setMoreBadge(body, 3, { verbose: true });
-      expect(badge(card).textContent).toBe('+3 more');
-      expect(mark(card)).toBeNull();
     });
   });
 
@@ -1205,37 +1218,44 @@ describe('the corner badge is the count, and the mark rides beside it', () => {
       const { card, body } = bareCard();
       setMoreBadge(body, 5);
       setExpandSource(body, () => ({ title: 'Headlines', bodyHtml: '<p>x</p>' }));
-      expect(badge(card).textContent).toBe('5 more');
+      expect(badge(card).textContent).toBe('+5');
       body.innerHTML = '<p>a fresh render wiped the body</p>'; // the badge lives on the CARD
       setMoreBadge(body, 6);
       setExpandSource(body, () => ({ title: 'Headlines', bodyHtml: '<p>x</p>' }));
       expect(card.querySelectorAll('.card__more').length).toBe(1); // one badge, not two
-      expect(badge(card).textContent).toBe('6 more');
+      expect(badge(card).textContent).toBe('+6');
       expect(mark(card)).not.toBeNull();
     });
 
     it('takes the count and the expansion in either order', () => {
-      // Every renderer paints its count BEFORE it registers its expansion, but
-      // nothing in the contract says it has to.
+      // Order stopped mattering to the badge entirely once the form went
+      // uniform, but the renderers still call both and neither may clobber
+      // the other's work.
       const first = bareCard();
       setExpandSource(first.body, () => ({ title: 'T', bodyHtml: '<p>x</p>' }));
       setMoreBadge(first.body, 9);
-      expect(first.card.querySelector('.card__more').textContent).toBe('9 more');
+      expect(first.card.querySelector('.card__more').textContent).toBe('+9');
 
       const second = bareCard();
       setMoreBadge(second.body, 9);
       setExpandSource(second.body, () => ({ title: 'T', bodyHtml: '<p>x</p>' }));
-      expect(second.card.querySelector('.card__more').textContent).toBe('9 more');
+      expect(second.card.querySelector('.card__more').textContent).toBe('+9');
     });
 
-    it('drops back to the plain count when the card stops expanding', () => {
+    it('leaves the badge alone when the card stops expanding', () => {
+      // This used to be "drops back to the plain count": losing the expansion
+      // rewrote "4 more" as "+4". There is one form now, so the corner does
+      // not flinch; only the tap goes.
       const { card, body } = bareCard();
       setMoreBadge(body, 4);
       setExpandSource(body, () => ({ title: 'T', bodyHtml: '<p>x</p>' }));
-      expect(badge(card).textContent).toBe('4 more');
+      const before = badge(card).outerHTML;
       setExpandSource(body, null);
-      expect(mark(card)).toBeNull();
-      expect(badge(card).textContent).toBe('+4');
+      expect(badge(card).outerHTML).toBe(before);
+      expect(mark(card)).not.toBeNull();
+      expect(card.classList.contains('is-expandable')).toBe(false);
+      card.click();
+      expect(isExpandOpen()).toBe(false);
     });
 
     it('removes the badge the moment the count reaches zero, expandable or not', () => {

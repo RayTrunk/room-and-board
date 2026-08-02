@@ -120,34 +120,31 @@ export function isOverlayOpen(doc = document) {
 
 // ---------- the bottom-right corner badge ----------
 //
-// One element, two independent facts, and neither owner may write it alone:
+// ONE form, board-wide: "⤢ +N", the expand glyph then the compact count.
+// It depends on exactly one fact, the renderer's, via setMoreBadge:
 //
-//   how many rows are hidden   — the renderer's, via setMoreBadge
-//   whether the card OPENS     — the engine's, via markExpandable
+//   hides N > 0   "⤢ +8"    every card, whatever its tap does
+//   hides nothing  no badge  the corner stays empty
 //
-// They arrive in either order (every renderer paints its count BEFORE it
-// registers its expansion) and on different schedules (a card re-renders its
-// body every refresh but only re-registers when its data changes shape), so
-// each records its fact on the card and calls paintMoreBadge, the one place
-// that reads both. That is also what makes the affordance automatic: a widget
-// that never heard of the badge gets it the moment it registers an expansion.
+// It arrived at one form by subtraction, all on 2026-08-01. It began as three
+// (the mark plus a count, a bare mark, a plain "+N"), and Sean cut it twice,
+// each time from a rendered board rather than from a description:
 //
-// The two forms, and the honesty rule that picks between them:
+//   the BARE MARK went first. Almost every card will eventually open into
+//   something, so a per-card label for a property the whole board shares says
+//   nothing, and five marks in five corners are just chrome.
 //
-//   expands + hides N   "⤢ N more"   the count earns the corner on its own,
-//                                     and the mark rides along to say the tap
-//                                     is what gives the rest back
-//   hides N, does not expand   "+N"    news, buses, world clock: the count is
-//                                     honest and the mark would be a lie
+//   the SECOND DIALECT went next. A count that read "8 more" beside the mark
+//   on tappable cards and "+8" without it elsewhere made one board speak two
+//   languages, which reads as inconsistency at glance distance long before it
+//   reads as a distinction. The row-tap cards (the news family) open per row,
+//   so a tap there is never dead, and news nesting will make the card-level
+//   promise true anyway.
 //
-// A card that expands and hides NOTHING gets no badge at all. The bare mark
-// was a third form until 2026-08-01, when Sean read the board and cut it:
-// almost every card will eventually open into something, so a per-card label
-// for a property the whole board shares says nothing, and five marks in five
-// corners are just chrome. Everything that makes the tap WORK is untouched
-// (.is-expandable, role/tabindex/aria-label, the :active tint); only the paint
-// went. Weather, surf, the picture cards, Chart of the Day and a history card
-// with nothing hidden are the ones that lost it, and each got its corner back.
+// So the badge no longer knows or cares whether the card expands. Everything
+// that makes a tap WORK is elsewhere and untouched: .is-expandable,
+// role/tabindex/aria-label, the :active tint. markExpandable does not repaint
+// the badge, because there is no longer any wording for it to flip.
 //
 // The corner is safe at every card width (a title badge clips beside long
 // titles on 2-wide cards) and .card__stamp is top-anchored, so the badge and
@@ -172,12 +169,9 @@ export function paintMoreBadge(card) {
   // querySelector may be absent on test fakes (capacity stubs) — no-op then.
   if (!card?.querySelector) return;
   const hidden = Number(card.dataset.more) || 0;
-  const verbose = card.dataset.moreVerbose === '1';
-  const expands = card.classList.contains('is-expandable');
   let badge = card.querySelector('.card__more');
-  // The count is what earns the corner. A card that opens but hides nothing
-  // gets no badge, however tappable it is: `expands` only chooses the WORDING
-  // and whether the mark rides along.
+  // The count is the whole trigger: no count, no corner, however tappable the
+  // card is.
   if (!hidden) {
     badge?.remove();
     card.classList.remove('has-more');
@@ -189,47 +183,45 @@ export function paintMoreBadge(card) {
   }
   badge.className = 'card__more';
   // The mark is an inline SVG, never a font character: a text chevron sits on
-  // baseline metrics and rides along the bottom of the words beside it, which
+  // baseline metrics and rides along the bottom of the digits beside it, which
   // is exactly the look Sean rejected. An SVG is a box, and a box centres.
-  const mark = expands ? icon('expand', 'icon--more') : '';
-  const text = expands ? `${hidden} more` : verbose ? `+${hidden} more` : `+${hidden}`;
-  badge.innerHTML = `${mark}<span class="card__more-n">${escapeHtml(text)}</span>`;
+  badge.innerHTML = `${icon('expand', 'icon--more')}`
+    + `<span class="card__more-n">${escapeHtml(`+${hidden}`)}</span>`;
   card.classList.add('has-more');
 }
 
-// The renderer's half: how many rows the card is NOT showing. Replaces the old
-// in-flow ".more-hint" row — the count costs no list row, and the "enlarge the
-// card" imperative lives only in edit mode (capacityLabel). hidden <= 0 drops
-// the whole badge, expandable or not. `verbose` picks the "+N more" wording for
-// a card that does NOT expand; an expandable card always reads "N more" beside
-// its mark, so the two can never coexist on one card.
-export function setMoreBadge(el, hidden, { verbose = false } = {}) {
+// The renderer's half, and now the only half: how many rows the card is NOT
+// showing. Replaces the old in-flow ".more-hint" row — the count costs no list
+// row, and the "enlarge the card" imperative lives only in edit mode
+// (capacityLabel). hidden <= 0 drops the whole badge, expandable or not.
+//
+// It took a `verbose` option until 2026-08-01, to pick "+N more" over "+N" on
+// a card that did not expand. One form board-wide leaves nothing for a caller
+// to choose, so the option is gone rather than kept as a no-op.
+export function setMoreBadge(el, hidden) {
   const card = el.closest?.('.card');
   if (!card?.querySelector) return;
   const n = hidden > 0 ? Math.round(hidden) : 0;
-  if (n) {
-    card.dataset.more = String(n);
-    card.dataset.moreVerbose = verbose ? '1' : '0';
-  } else {
-    delete card.dataset.more;
-    delete card.dataset.moreVerbose;
-  }
+  if (n) card.dataset.more = String(n);
+  else delete card.dataset.more;
   paintMoreBadge(card);
 }
 
-// The engine's half: this card opens something when you tap it. Called from
-// setExpandSource (the overlay engine) and from renderImageCard (the image
-// surface, whose full-screen viewer is its own expansion) — the two places a
-// card is MARKED tappable — so no widget wires the affordance itself and every
-// future expandable card gets it for free.
+// This card opens something when you tap it. Called from setExpandSource (the
+// overlay engine) and from renderImageCard (the image surface, whose
+// full-screen viewer is its own expansion) — the two places a card is MARKED
+// tappable — so no widget wires the affordance itself and every future
+// expandable card gets it for free.
 //
 // role/tabindex/aria-label ride along: a card that behaves like a button says
 // so, and the label names the destination rather than the card ("Expand
 // Weather details"). Image cards pass their own label, which already reads
 // "View image full screen".
 //
-// It still repaints the badge, because expandability picks the WORDING of a
-// count that is already there ("4 more" vs "+4"), not whether one is drawn.
+// It does NOT touch the badge. It used to, back when expandability picked the
+// count's wording; with one form board-wide there is nothing to flip, and the
+// two concerns are properly independent again: the badge answers "how much is
+// missing", this answers "does the card open".
 export function markExpandable(el, expands, { label = '' } = {}) {
   const card = el?.closest?.('.card');
   if (!card?.querySelector) return;
@@ -244,7 +236,6 @@ export function markExpandable(el, expands, { label = '' } = {}) {
     card.removeAttribute('tabindex');
     card.removeAttribute('aria-label');
   }
-  paintMoreBadge(card);
 }
 
 // Extract an iCloud shared-album token from a full URL, a #fragment, or a bare

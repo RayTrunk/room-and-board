@@ -2111,11 +2111,13 @@ body.mode-ambient .gear--edit { display: none; }
 .card.is-stale .card__asof { visibility: hidden; } /* the amber stale stamp takes over */
 /* The corner badge: pinned at the truncation point (bottom-right) instead of
    costing a list row. Safe at every card width, and .card__stamp is
-   top-anchored, so the badge and the amber "as of" stamp never meet. TWO forms
-   now, one element (see util.js paintMoreBadge): "⤢ N more" on a card that
-   opens, or a plain "+N" on one that does not. A count is what earns the
-   corner; the bare "⤢" was a third form until 2026-08-01, when it was retired
-   for saying nothing a board of tappable cards does not already say.
+   top-anchored, so the badge and the amber "as of" stamp never meet. ONE form
+   board-wide (see util.js paintMoreBadge): "⤢ +8", the glyph then the compact
+   count, on every card hiding something and on no card that is not. It got
+   there by two cuts on 2026-08-01: the bare "⤢" went for saying nothing a
+   board of tappable cards does not already say, and the second count dialect
+   ("N more" beside the mark vs a plain "+N" without it) went because one board
+   speaking two languages reads as inconsistency before it reads as meaning.
 
    20px, the board's type floor, up from 15px: a signifier that has to be read
    from 6 ft cannot be the smallest thing on the card. --ink-dim, never
@@ -2169,10 +2171,11 @@ body.mode-ambient .gear--edit { display: none; }
    anything hidden, so the artwork has its full height back: 2026-08-01.) */
 /* Rail +N (expand wave 2): the whole card is the tap target (the markets
    grammar, standard .is-expandable affordances above), and the corner badge
-   reads "+N more" as the invitation. The first cut's pill trigger reserved
-   46px under .trains and cost exactly one row on exactly-filled cards. */
-/* (The old has-more bottom fade is gone, 2026-07-31: it predated the badges
-   saying "+N more" in words and read as smudge once they did. The class stays
+   carries the count in the one board-wide form. The first cut's pill trigger
+   reserved 46px under .trains and cost exactly one row on exactly-filled
+   cards. */
+/* (The old has-more bottom fade is gone, 2026-07-31: it predated a badge that
+   spelled the overflow out and read as smudge once one did. The class stays
    on the card as a hook; the badge alone is the continues cue.) */
 
 /* ---------- my teams ---------- */

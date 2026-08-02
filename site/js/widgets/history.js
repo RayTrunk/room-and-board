@@ -23,9 +23,8 @@ export function render(el, vm, _cfg) {
   const rows = vm.events.map(row);
   const hidden = rows.length - Math.min(cap, rows.length);
   el.innerHTML = `<div class="history">${rows.slice(0, cap).join('')}</div>`;
-  // The overflow count rides the corner badge; with an expansion behind it,
-  // it reads "+N more" as the tap invitation (the rail grammar).
-  setMoreBadge(el, hidden, { verbose: true });
+  // The overflow count rides the corner badge, in the one board-wide form.
+  setMoreBadge(el, hidden);
   // Whole-card tap for the whole day (Sean's pick, mockup A): the grand
   // centered reading list of every event, the card's own rows at reading size.
   // Unconditional, not only when rows are hidden: the rows cover the card, so
