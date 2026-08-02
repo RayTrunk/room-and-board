@@ -203,8 +203,9 @@ export function setExpandSource(el, build, { trigger = null, subviews = null } =
     sources.delete(card);
   }
   // The single place a card is marked tappable: the class, the button
-  // semantics, and the corner mark all follow from this one call, so a widget
-  // that registers an expansion never has to know the affordance exists.
+  // semantics, and the wording of any corner count all follow from this one
+  // call, so a widget that registers an expansion never has to know the
+  // affordance exists.
   markExpandable(card, hasBuild);
 }
 

@@ -132,14 +132,22 @@ export function isOverlayOpen(doc = document) {
 // that reads both. That is also what makes the affordance automatic: a widget
 // that never heard of the badge gets it the moment it registers an expansion.
 //
-// The three forms, and the honesty rule that picks between them:
+// The two forms, and the honesty rule that picks between them:
 //
-//   expands + hides N   "⤢ N more"   the mark invites the tap, the count says
-//                                     what is behind it
-//   expands, nothing hidden   "⤢"     weather, the image cards: there is no
-//                                     count, but the tap still opens something
+//   expands + hides N   "⤢ N more"   the count earns the corner on its own,
+//                                     and the mark rides along to say the tap
+//                                     is what gives the rest back
 //   hides N, does not expand   "+N"    news, buses, world clock: the count is
 //                                     honest and the mark would be a lie
+//
+// A card that expands and hides NOTHING gets no badge at all. The bare mark
+// was a third form until 2026-08-01, when Sean read the board and cut it:
+// almost every card will eventually open into something, so a per-card label
+// for a property the whole board shares says nothing, and five marks in five
+// corners are just chrome. Everything that makes the tap WORK is untouched
+// (.is-expandable, role/tabindex/aria-label, the :active tint); only the paint
+// went. Weather, surf, the picture cards, Chart of the Day and a history card
+// with nothing hidden are the ones that lost it, and each got its corner back.
 //
 // The corner is safe at every card width (a title badge clips beside long
 // titles on 2-wide cards) and .card__stamp is top-anchored, so the badge and
@@ -147,11 +155,11 @@ export function isOverlayOpen(doc = document) {
 //
 // It sits at EQUAL 12px insets (main.css .card__more, 2026-08-01) rather than
 // on the content column's 26px edge: a glyph in a corner is a corner mark, not
-// reading matter, and the inherited 26/10 read as misplaced. The one thing a
-// renderer has to know is the consequence: a row that runs flush to the card's
-// BOTTOM edge stands in the mark's corner and owes it --more-gutter, because
-// there is nowhere sideways for the mark to go. Two rows pay it today
-// (weather's day tiles, surf's footer strip).
+// reading matter, and the inherited 26/10 read as misplaced. No renderer owes
+// the corner anything any more: the badge only appears beside a count, and no
+// card that shows a count has a row running flush to its bottom edge (swept
+// 2026-08-01), so weather's day tiles and surf's footer strip gave back the
+// gutter they had been paying.
 
 // Reads the widget's own name off the card for an aria-label. First text node
 // only: a title may carry an appended .card__asof span (same idiom as the text
@@ -167,7 +175,10 @@ export function paintMoreBadge(card) {
   const verbose = card.dataset.moreVerbose === '1';
   const expands = card.classList.contains('is-expandable');
   let badge = card.querySelector('.card__more');
-  if (!hidden && !expands) {
+  // The count is what earns the corner. A card that opens but hides nothing
+  // gets no badge, however tappable it is: `expands` only chooses the WORDING
+  // and whether the mark rides along.
+  if (!hidden) {
     badge?.remove();
     card.classList.remove('has-more');
     return;
@@ -181,17 +192,17 @@ export function paintMoreBadge(card) {
   // baseline metrics and rides along the bottom of the words beside it, which
   // is exactly the look Sean rejected. An SVG is a box, and a box centres.
   const mark = expands ? icon('expand', 'icon--more') : '';
-  const text = hidden ? (expands ? `${hidden} more` : verbose ? `+${hidden} more` : `+${hidden}`) : '';
-  badge.innerHTML = `${mark}${text ? `<span class="card__more-n">${escapeHtml(text)}</span>` : ''}`;
-  card.classList.toggle('has-more', hidden > 0);
+  const text = expands ? `${hidden} more` : verbose ? `+${hidden} more` : `+${hidden}`;
+  badge.innerHTML = `${mark}<span class="card__more-n">${escapeHtml(text)}</span>`;
+  card.classList.add('has-more');
 }
 
 // The renderer's half: how many rows the card is NOT showing. Replaces the old
 // in-flow ".more-hint" row — the count costs no list row, and the "enlarge the
 // card" imperative lives only in edit mode (capacityLabel). hidden <= 0 drops
-// the count (and the whole badge, unless the card expands). `verbose` picks the
-// "+N more" wording for a card that does NOT expand; an expandable card always
-// reads "N more" beside its mark, so the two can never coexist on one card.
+// the whole badge, expandable or not. `verbose` picks the "+N more" wording for
+// a card that does NOT expand; an expandable card always reads "N more" beside
+// its mark, so the two can never coexist on one card.
 export function setMoreBadge(el, hidden, { verbose = false } = {}) {
   const card = el.closest?.('.card');
   if (!card?.querySelector) return;
@@ -216,6 +227,9 @@ export function setMoreBadge(el, hidden, { verbose = false } = {}) {
 // so, and the label names the destination rather than the card ("Expand
 // Weather details"). Image cards pass their own label, which already reads
 // "View image full screen".
+//
+// It still repaints the badge, because expandability picks the WORDING of a
+// count that is already there ("4 more" vs "+4"), not whether one is drawn.
 export function markExpandable(el, expands, { label = '' } = {}) {
   const card = el?.closest?.('.card');
   if (!card?.querySelector) return;

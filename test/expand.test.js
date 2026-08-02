@@ -941,8 +941,10 @@ describe('subway status pill', () => {
 // --------------------------------------------------------------- weather ----
 
 // Weather is the OTHER class of expansion: nothing on its card is capped away,
-// so there is no "+N" badge and no hidden-row condition — the tap always has
-// something richer to open, and the press tint is the whole signifier.
+// so there is no badge at all and no hidden-row condition. The tap always has
+// something richer to open, and since 2026-08-01 it says so with nothing but
+// the press tint: a mark that would appear on nearly every card eventually
+// tells a viewer nothing, so only a count keeps the corner.
 function weatherBoard(vm, cfg = { loc: { label: 'New York 10001', units: 'F' } }, [w, h] = [3, 5]) {
   document.body.innerHTML = `
     <div id="grid">
@@ -963,12 +965,13 @@ function weatherBoard(vm, cfg = { loc: { label: 'New York 10001', units: 'F' } }
 }
 
 describe('weather card tap', () => {
-  it('always expands, and says so with the bare mark: nothing to count', () => {
+  it('always expands, and wears NO badge doing it: nothing to count', () => {
     const { card } = weatherBoard(DEMO_VMS.weather);
-    const badge = card.querySelector('.card__more');
-    expect(badge.querySelector('svg.icon--more')).not.toBeNull(); // the mark alone
-    expect(badge.textContent.trim()).toBe(''); // no count: nothing is hidden here
+    expect(card.querySelector('.card__more')).toBeNull(); // the bare mark is retired
+    // Everything that makes the tap work survives the mark's removal.
     expect(card.classList.contains('is-expandable')).toBe(true);
+    expect(card.getAttribute('role')).toBe('button');
+    expect(card.getAttribute('tabindex')).toBe('0');
 
     card.click();
     expect(isExpandOpen()).toBe(true);
@@ -1070,11 +1073,12 @@ describe('history card tap', () => {
     expect(overlay().querySelector('.expand__title').textContent).toBe('This Day in History');
   });
 
-  it('opens the same day view when every event already fits, with no count', () => {
+  it('opens the same day view when every event already fits, with no badge', () => {
     const { card } = histBoard(histVm(2));
-    // The mark stays (the tap still opens something); only the count goes.
-    expect(card.querySelector('.card__more').textContent.trim()).toBe('');
-    expect(card.querySelector('.card__more svg.icon--more')).not.toBeNull();
+    // No count, so no corner: the tap still opens the whole day, silently.
+    expect(card.querySelector('.card__more')).toBeNull();
+    expect(card.classList.contains('is-expandable')).toBe(true);
+    expect(card.getAttribute('tabindex')).toBe('0');
     card.click();
     expect(isExpandOpen()).toBe(true);
     expect(overlay().querySelectorAll('.history__item').length).toBe(2);
@@ -1088,15 +1092,18 @@ describe('history card tap', () => {
 });
 
 /**
- * The affordance itself. Before this, an expandable card was marked only by
- * cursor:pointer and an :active tint, neither of which exists at rest on a
- * touch panel — the board asked to be tapped in a language nobody standing in
- * front of it could read. The corner badge is now the signifier, and its whole
- * contract is that it never promises a tap the card will not honour.
+ * The corner badge. It began (2026-08-01, morning) as the affordance for the
+ * whole tap grammar, including a bare mark on cards with nothing to count.
+ * That third form was retired the same day, on Sean's read of prod: almost
+ * every card will eventually open into something, so a per-card mark for a
+ * property the board shares says nothing and reads as chrome. What is left is
+ * a COUNT, which is real information, and a mark that rides beside it to say
+ * the tap is what gives the counted rows back. The contract is unchanged: the
+ * badge never promises a tap the card will not honour.
  */
-describe('the corner badge is the tap affordance', () => {
+describe('the corner badge is the count, and the mark rides beside it', () => {
   // A bare card, no widget: the badge's two inputs driven directly, which is
-  // the only way to reach the third form (a count with nothing to open).
+  // the only way to reach the count-without-expansion form.
   function bareCard(title = 'Headlines') {
     document.body.innerHTML = `
       <div id="grid">
@@ -1115,7 +1122,7 @@ describe('the corner badge is the tap affordance', () => {
   const badge = (card) => card.querySelector('.card__more');
   const mark = (card) => card.querySelector('.card__more svg.icon--more');
 
-  describe('three forms, and the honesty rule that picks between them', () => {
+  describe('two forms, and the honesty rule that picks between them', () => {
     it('expands AND hides rows: the mark plus the count, no "+"', () => {
       const { card, body } = bareCard();
       setMoreBadge(body, 24);
@@ -1124,11 +1131,17 @@ describe('the corner badge is the tap affordance', () => {
       expect(badge(card).textContent).toBe('24 more');
     });
 
-    it('expands with nothing to count: the bare mark', () => {
+    it('expands with nothing to count: NO badge, and the tap works anyway', () => {
       const { card, body } = bareCard('Weather');
       setExpandSource(body, () => ({ title: 'Weather', bodyHtml: '<p>the detail board</p>' }));
-      expect(mark(card)).not.toBeNull();
-      expect(badge(card).textContent.trim()).toBe(''); // no number to show
+      expect(badge(card)).toBeNull(); // the retired third form
+      // The affordance is untouched: only the paint went.
+      expect(card.classList.contains('is-expandable')).toBe(true);
+      expect(card.getAttribute('role')).toBe('button');
+      expect(card.getAttribute('tabindex')).toBe('0');
+      expect(card.getAttribute('aria-label')).toBe('Expand Weather details');
+      card.click();
+      expect(isExpandOpen()).toBe(true);
     });
 
     it('counts but does not open: the plain "+N", and NO mark', () => {
@@ -1156,9 +1169,12 @@ describe('the corner badge is the tap affordance', () => {
   });
 
   describe('the mark is drawn, not typed', () => {
+    // The mark only ever appears beside a count now, so every case here paints
+    // one first.
     it('is an inline SVG from the icon set, never a font character', () => {
-      const { card, body } = bareCard('Weather');
-      setExpandSource(body, () => ({ title: 'Weather', bodyHtml: '<p>x</p>' }));
+      const { card, body } = bareCard('Headlines');
+      setMoreBadge(body, 5);
+      setExpandSource(body, () => ({ title: 'Headlines', bodyHtml: '<p>x</p>' }));
       const svg = mark(card);
       expect(svg).not.toBeNull();
       expect(svg.tagName.toLowerCase()).toBe('svg');
@@ -1172,8 +1188,9 @@ describe('the corner badge is the tap affordance', () => {
     });
 
     it('draws the diagonal expand mark, not a downward chevron', () => {
-      const { card, body } = bareCard('Weather');
-      setExpandSource(body, () => ({ title: 'Weather', bodyHtml: '<p>x</p>' }));
+      const { card, body } = bareCard('Headlines');
+      setMoreBadge(body, 5);
+      setExpandSource(body, () => ({ title: 'Headlines', bodyHtml: '<p>x</p>' }));
       // Two arrowheads pushing apart along the NE/SW diagonal, ink centred in
       // the viewBox (3..21 on both axes) so the glyph's optical centre IS its
       // box centre — which is what lets the badge centre it with align-items.
@@ -1221,12 +1238,16 @@ describe('the corner badge is the tap affordance', () => {
       expect(badge(card).textContent).toBe('+4');
     });
 
-    it('removes the badge entirely when the card stops expanding and hides nothing', () => {
-      const { card, body } = bareCard('Weather');
+    it('removes the badge the moment the count reaches zero, expandable or not', () => {
+      const { card, body } = bareCard('Headlines');
+      setMoreBadge(body, 4);
       setExpandSource(body, () => ({ title: 'T', bodyHtml: '<p>x</p>' }));
       expect(badge(card)).not.toBeNull();
-      setExpandSource(body, null);
+      setMoreBadge(body, 0); // the card still opens; there is just nothing to count
       expect(badge(card)).toBeNull();
+      expect(card.classList.contains('is-expandable')).toBe(true);
+      card.click();
+      expect(isExpandOpen()).toBe(true);
     });
 
     it('leaves the amber stale stamp its own corner', () => {
@@ -1287,6 +1308,9 @@ describe('the corner badge is the tap affordance', () => {
   describe('the stylesheet half', () => {
     const css = readFileSync(
       join(dirname(fileURLToPath(import.meta.url)), '../site/css/main.css'), 'utf8');
+    // Declarations only. The comments keep the history of what was removed and
+    // why, so an absence test that read them would fail on its own footnote.
+    const decls = css.replace(/\/\*[\s\S]*?\*\//g, '');
     const rule = (selector) => {
       const at = css.indexOf(`\n${selector} {`);
       expect(at, `no rule for "${selector}" in main.css`).toBeGreaterThan(-1);
@@ -1315,21 +1339,19 @@ describe('the corner badge is the tap affordance', () => {
       expect(body).toMatch(/height:\s*1em/);
     });
 
-    // The corner the mark sits in, and the two consequences that follow from
-    // it, as arithmetic rather than as three unrelated magic numbers. Every
-    // assertion below reads the badge's own inset out of the stylesheet and
-    // derives the rest from the card's geometry, so moving the badge fails
-    // whichever reserve stopped covering it instead of quietly landing the
-    // mark back on somebody's data.
+    // The corner the badge sits in, as arithmetic rather than as magic
+    // numbers. The two reserves that used to follow from it (an image card's
+    // artwork padding, and --more-gutter on weather's and surf's bottom-flush
+    // rows) are gone with the bare mark: those cards show no badge at all now,
+    // and no card that DOES show one has a row running flush to its bottom
+    // edge, so nothing stands in the corner any more.
     const px = (body, prop) => {
       const m = body.match(new RegExp(`${prop}:\\s*(-?\\d+)px`));
       expect(m, `no ${prop} in "${body.slice(0, 60)}…"`).not.toBeNull();
       return Number(m[1]);
     };
-    const CARD_PAD_BOTTOM = 22; // .card padding: 22px 26px
     const CARD_PAD_SIDE = 26;
     const CARD_RADIUS = 24; // --radius
-    const BADGE_BOX = 20; // font-size 20px at line-height 1, and a 1em mark
 
     it('sits at equal insets, one clear step inside the corner curve', () => {
       // The defect this replaced: right:26px (the content column's edge, right
@@ -1347,31 +1369,19 @@ describe('the corner badge is the tap affordance', () => {
       expect(right).toBeLessThan(CARD_PAD_SIDE);
     });
 
-    it('reserves the whole badge under an image card, not a guessed 10px', () => {
-      // An artwork fills its body to the floor, so it is the one surface that
-      // buys the overlap back. The mark must land on card surface: --ink-dim
-      // vanishes on a bright photo or a white infographic.
-      const inset = px(rule('.card__more'), 'bottom');
-      const pad = px(rule('.card.is-expandable .artwork'), 'padding-bottom');
-      expect(CARD_PAD_BOTTOM + pad).toBeGreaterThanOrEqual(inset + BADGE_BOX);
-    });
-
-    it('gives a bottom-flush row a gutter wide enough for the bare mark', () => {
-      // Weather's day tiles and surf's footer strip run to the card's bottom
-      // edge, where the mark cannot be stepped around vertically. The mark is
-      // one 1em box wide, and the row already starts behind the card's side
-      // padding, so the gutter has to carry the difference.
-      const gutter = px(rule(':root'), '--more-gutter');
-      const inset = px(rule('.card__more'), 'right');
-      expect(CARD_PAD_SIDE + gutter).toBeGreaterThanOrEqual(inset + BADGE_BOX);
-      // Both rows spend the shared token, so neither can drift off the badge.
-      for (const sel of ['.wx-days', '.sf-foot']) {
-        expect(rule(sel), `${sel} runs flush to the card's bottom edge`)
-          .toMatch(/padding-right:\s*var\(--more-gutter\)/);
-      }
-      // Spent on the ROW: a nudge on the last tile alone would de-centre it.
-      expect(rule('.wx-day'), 'the tiles keep their own centring')
+    it('makes no card pay a reserve for a mark it no longer shows', () => {
+      // Sean, 2026-08-01: weather and surf read as off balance, because both
+      // were buying a right gutter back from a bare mark. The token and its
+      // two payments went out with the mark, and an image card's artwork got
+      // its full height back the same way. The badge sits on a bottom-flush
+      // row only if a COUNTING card ever grows one, and none does today.
+      expect(decls, 'the --more-gutter token is retired').not.toMatch(/--more-gutter/);
+      expect(rule('.wx-days'), 'the day tiles divide the whole width again')
         .not.toMatch(/padding-right/);
+      expect(rule('.sf-foot'), 'the surf stamp sits on the card edge again')
+        .not.toMatch(/padding-right/);
+      expect(decls, 'no artwork reserve for a mark that is not painted')
+        .not.toMatch(/\.card\.is-expandable \.artwork/);
     });
   });
 });

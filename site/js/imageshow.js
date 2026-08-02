@@ -185,10 +185,11 @@ const tapWired = new WeakSet();
 // The WHOLE CARD is the tap target (2026-08-01), the same grammar as weather
 // and markets. The figure used to hold role="button" and the click listener,
 // which made the picture tappable but left the title row and the padding
-// around it dead — three tap models on one board, none of them labelled. The
-// button semantics move up with the target; markExpandable puts the expand
-// mark in the corner, so an image card announces its tap like every other
-// card that opens something.
+// around it dead: three tap models on one board, none of them labelled. The
+// button semantics move up with the target, so an image card behaves like
+// every other card that opens something. It draws no corner badge, because it
+// counts nothing hidden (see util.js paintMoreBadge) and the picture is
+// better off with the height a mark's reserve used to cost it.
 export function renderImageCard(el, { src, alt = '', caption = '', label = 'View image full screen', contain = false, onOpen } = {}) {
   let state = cardState.get(el);
   let fig = el.querySelector('.artwork');

@@ -427,7 +427,7 @@ describe('an image card is one tap target, not a figure inside a card', () => {
     expect(opened).toBe(2);
   });
 
-  it('moves the button semantics up to the card and marks the corner', async () => {
+  it('moves the button semantics up to the card, and leaves the corner clean', async () => {
     const el = cardHost();
     renderImageCard(el, { src: 'https://x.test/a.jpg', onOpen: () => {} });
     await settle();
@@ -437,9 +437,11 @@ describe('an image card is one tap target, not a figure inside a card', () => {
     expect(card.getAttribute('role')).toBe('button');
     expect(card.getAttribute('tabindex')).toBe('0');
     expect(card.getAttribute('aria-label')).toBe('View image full screen');
-    // Tapping opens something, so the card earns the mark — with no count.
-    expect(card.querySelector('.card__more svg.icon--more')).not.toBeNull();
-    expect(card.querySelector('.card__more').textContent.trim()).toBe('');
+    expect(card.classList.contains('is-expandable')).toBe(true);
+    // An image card counts nothing hidden, so it draws no badge: the bare mark
+    // it briefly wore was retired on 2026-08-01, and the picture kept the 12px
+    // its reserve had been costing.
+    expect(card.querySelector('.card__more')).toBeNull();
   });
 
   it('keeps exactly one handler however often the scaffold is rebuilt', async () => {
@@ -486,12 +488,12 @@ describe('an image card is one tap target, not a figure inside a card', () => {
     expect(opened).toBe(1);
   });
 
-  it('is neither tappable nor marked when there is no photo to open', async () => {
+  it('is not tappable at all when there is no photo to open', async () => {
     const el = cardHost('landscapes', 'Landscapes');
     let opened = 0;
     renderImageCard(el, { src: '', onOpen: () => { opened += 1; } });
     const card = el.closest('.card');
-    expect(card.querySelector('.card__more')).toBeNull(); // no mark, nothing opens
+    expect(card.classList.contains('is-expandable')).toBe(false);
     expect(card.getAttribute('role')).toBeNull();
     card.click();
     expect(opened).toBe(0);
@@ -509,20 +511,21 @@ describe('an image card is one tap target, not a figure inside a card', () => {
     clearImageCard(el);
     el.closest('.card').click();
     expect(opened).toBe(0);
-    expect(el.closest('.card').querySelector('.card__more')).toBeNull();
+    expect(el.closest('.card').classList.contains('is-expandable')).toBe(false);
   });
 
-  it('takes the mark back when the card falls to its empty state', async () => {
+  it('takes the tap back when the card falls to its empty state', async () => {
     const el = cardHost('chart', 'Chart of the Day');
     chart.render(el, { charts: [{ url: 'https://x.test/cotd.png', title: 'Growth' }] }, CFG);
     await settle();
     const card = el.closest('.card');
-    expect(card.querySelector('.card__more svg.icon--more')).not.toBeNull();
+    expect(card.classList.contains('is-expandable')).toBe(true);
     expect(card.getAttribute('aria-label')).toBe('View chart full screen');
+    expect(card.querySelector('.card__more')).toBeNull(); // nothing counted, nothing painted
 
     chart.render(el, { charts: [] }, CFG); // the feed came back empty
-    expect(card.querySelector('.card__more')).toBeNull(); // yesterday's mark does not outlive it
-    expect(card.getAttribute('role')).toBeNull();
+    expect(card.getAttribute('role')).toBeNull(); // yesterday's tap does not outlive it
+    expect(card.getAttribute('tabindex')).toBeNull();
     expect(card.classList.contains('is-expandable')).toBe(false);
   });
 
