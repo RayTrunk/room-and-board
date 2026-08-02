@@ -313,14 +313,17 @@ button:focus-visible {
 .log__group { display: flex; flex-wrap: wrap; gap: 4px 20px; padding: 15px 2px; border-top: 1px solid var(--bg-card-2); }
 .log__date { font-size: 16px; font-weight: 600; color: var(--ink-dim); margin: 0; flex: 0 0 150px; }
 /* The items flow into as many measure-sized columns as the row can hold rather
-   than running a single 68ch strip down the left of a 1,184px row: the prose
-   stays inside its measure (each column is ~45-60ch) and the layout stops
-   looking half-abandoned. One column is what a narrow row gets. */
+   than running a single 68ch strip down the left of a 1,184px row. CSS COLUMNS,
+   not grid (Sean, 2026-08-02): the grid's shared row heights parked a short
+   entry beside a long one and left its whole cell-mate's height as dead space.
+   Columns give every entry its own height and fill down-then-over, which is
+   also the newest-first reading order the page promises. One column is what a
+   narrow row gets. */
 .log__items {
-  display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 44ch), 1fr));
-  align-content: start; gap: 10px 28px; flex: 1 1 260px; min-width: 0;
+  columns: 44ch; column-gap: 28px; flex: 1 1 260px; min-width: 0;
 }
-.log__item { font-size: 16px; line-height: 1.5; color: var(--ink-mid); margin: 0; text-wrap: pretty; max-width: var(--measure); }
+.log__item { font-size: 16px; line-height: 1.5; color: var(--ink-mid); margin: 0 0 10px; text-wrap: pretty; max-width: var(--measure); break-inside: avoid; }
+.log__item:last-child { margin-bottom: 0; }
 .log__lead { font-weight: 600; color: var(--ink); margin-right: 0.4em; }
 /* The disclosure for older groups. Calm at rest — it reads as one more quiet
    row in the list, not a button competing with the copy — and only ignites on
