@@ -142,7 +142,12 @@ export { isOverlayOpen };
 // services') — extended to the overlays, which had no way to check their work
 // and so shipped whatever their model believed. Fit, not content: it runs once,
 // before the reader sees anything, and must converge.
-export function openExpand({ title = '', note = '', stamp = '', bodyHtml = '', onRowTap = null, onFit = null } = {}) {
+//
+// `hint` is the closing line. It defaults to the board-wide "Tap anywhere to
+// close" and every view that IS just a canvas keeps that default; a view whose
+// rows are themselves tappable (the news reading list) overrides it, because
+// "tap anywhere" is a lie once one region does something else.
+export function openExpand({ title = '', note = '', stamp = '', bodyHtml = '', hint = 'Tap anywhere to close', onRowTap = null, onFit = null } = {}) {
   if (isExpandOpen()) return false; // single instance: opening while open is a no-op
   if (isEditing()) return false;
   const host = overlayEl();
@@ -157,7 +162,7 @@ export function openExpand({ title = '', note = '', stamp = '', bodyHtml = '', o
       ${stamp ? `<span class="expand__stamp">${escapeHtml(stamp)}</span>` : ''}
     </div>
     <div class="expand__body">${bodyHtml}</div>
-    <p class="expand__hint">Tap anywhere to close</p>`;
+    <p class="expand__hint">${escapeHtml(hint)}</p>`;
   host.hidden = false;
   // After `hidden` clears, so the body has a real clientHeight to measure.
   if (onFit) onFit(host.querySelector('.expand__body'));
@@ -186,6 +191,16 @@ export function closeExpand() {
 // the whole card is the target, which is right for cards whose rows are not
 // tappable (markets, weather, the rail boards).
 //
+// `except` is the inverse of `trigger`: a tap landing inside it is NOT the
+// card's. It exists because the news family's rows already own their taps (a
+// headline opens its story) while the card around them owes the reader the
+// whole list, and `trigger` cannot express that — closest() walks UP, so a
+// ":not(.headline)" trigger still matches the row's parent and fires anyway.
+// The two compose: `trigger` narrows to a region, `except` punches the live
+// rows back out of it. Without this the news wave double-fires by
+// construction, since initExpand's listener is registered BEFORE the text
+// viewer's and would open the list underneath every story view.
+//
 // `subviews` are element-scoped views layered OVER the card target: a tap
 // landing on a subview's selector opens that build instead of the card's (the
 // rail alert banners read full screen; the schedule is everything else). The
@@ -193,12 +208,12 @@ export function closeExpand() {
 // several banners. A card with subviews but no card build is legal — the
 // banner still reads on a card with nothing hidden — and only a card build
 // earns the is-expandable affordance.
-export function setExpandSource(el, build, { trigger = null, subviews = null } = {}) {
+export function setExpandSource(el, build, { trigger = null, except = null, subviews = null } = {}) {
   const card = el?.closest?.('.card');
   if (!card) return; // test fakes without closest(): no-op, like setMoreBadge
   const hasBuild = typeof build === 'function';
   if (hasBuild || subviews?.length) {
-    sources.set(card, { build: hasBuild ? build : null, trigger, subviews });
+    sources.set(card, { build: hasBuild ? build : null, trigger, except, subviews });
   } else {
     sources.delete(card);
   }
@@ -279,6 +294,7 @@ export function initExpand(host) {
     // the banner IS its own trigger.
     const sub = source.subviews?.find((s) => e.target.closest?.(s.selector));
     if (!sub && source.trigger && !e.target.closest?.(source.trigger)) return; // tap missed the trigger
+    if (!sub && source.except && e.target.closest?.(source.except)) return; // the row owns this tap, not the card
     if (!sub && !source.build) return; // subviews only: the card surface stays inert
     // Never stack a second full-screen view on a live one. A widget's own
     // handler may have opened its viewer earlier in this very click (the art
