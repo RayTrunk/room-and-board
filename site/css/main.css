@@ -2130,6 +2130,37 @@ body.mode-ambient .gear--edit { display: none; }
 .cb__n { font-size: 24px; font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; }
 .cb__stat--off { color: var(--ink-faint); }
 .cb__e { color: var(--accent); font-weight: 600; }
+
+/* ---------- citi bike, full screen: one well per station ----------
+   Sean's pick 2026-08-01. The card's .cb__n emphasis taken to reading scale:
+   BIKES is the operative number, the one fact that decides whether you walk
+   over, so it leads each well and the docks/e-bikes line stays secondary. Two
+   columns by three rows holds the configured maximum (config.js caps the
+   station picker at six), so this grid has no scrolling case in practice —
+   overflow-y is the same never-clip backstop the subway wall carries. */
+.cbboard { height: 100%; display: flex; flex-direction: column; justify-content: center; overflow-y: auto; padding-top: 16px; }
+.cbboard__grid {
+  width: 1000px; max-width: 100%; margin: 0 auto;
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px 40px;
+}
+.cbwell { display: flex; align-items: center; gap: 28px; min-width: 0; background: var(--bg-card-2); border-radius: 16px; padding: 22px 28px; }
+.cbwell__count { flex: none; width: 132px; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+/* Momentum's rule is that the big numerals go LIGHT, and 60px is firmly big
+   (the rail overlay's 56px minutes are light for the same reason). The board's
+   Cisco face ships as a separate FAMILY per weight, so light type has to name
+   the family — declared here rather than joining the shared light-numeral list,
+   exactly as .wxf__temp does for the weather overlay. */
+.cbwell__n {
+  font-family: 'CiscoSansTT Light', 'CiscoSansTT', 'Cisco SansTT', -apple-system, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+  font-weight: 300; font-size: 60px; line-height: 1; color: var(--ink); font-variant-numeric: tabular-nums;
+}
+.cbwell__unit { font-size: 20px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-dim); }
+.cbwell__offword { font-size: 24px; color: var(--ink-faint); text-align: center; }
+.cbwell__body { min-width: 0; }
+.cbwell__name { font-size: 26px; font-weight: 600; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cbwell__sub { margin-top: 6px; font-size: 22px; color: var(--ink-dim); }
+.cbwell__e { color: var(--accent); font-weight: 600; }
+.cbwell--off .cbwell__name { color: var(--ink-dim); }
 /* Search-result buttons (weather cities, Citi Bike stations). The container
    had no rule at all — spacing was an accident of inline flow, and the new
    inline-flex .btn removed it, leaving results flush against the keyboard. */

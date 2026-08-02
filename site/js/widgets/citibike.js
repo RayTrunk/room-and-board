@@ -5,13 +5,49 @@
 import { WORKER_URL } from '../env.js';
 import { escapeHtml, setMoreBadge, setupPrompt } from '../util.js';
 import { itemCapacity, cardSize } from '../capacity.js';
+import { setExpandSource } from '../expand.js';
 
 export const meta = { id: 'citibike', title: 'Citi Bike', refreshMs: 60 * 1000 };
+
+// ---------- tap-to-expand: every configured station, one well each ----------
+
+// Sean's pick 2026-08-01: the card's .cb__n emphasis taken to reading scale.
+// BIKES is the operative number — the one fact that decides whether you walk
+// over — so it leads each well at 60px with a small unit beneath it, and the
+// docks/e-bikes line stays secondary. Two columns by three rows holds the
+// configured maximum (config.js caps the station picker at six), so this grid
+// has no scrolling case in practice.
+//
+// e-bikes appear only when there are some, exactly as the card's "(N⚡)" does:
+// a row of "0 e-bikes" is noise on a wall, and the accent is meant to mark a
+// thing that is there.
+export function bikeWells(chosen, byId) {
+  const well = (st) => {
+    const live = byId.get(st.id);
+    const off = !live || !live.ok;
+    const count = off
+      ? '<span class="cbwell__offword">not renting</span>'
+      : `<b class="cbwell__n">${escapeHtml(live.bikes)}</b><span class="cbwell__unit">bikes</span>`;
+    const sub = off
+      ? ''
+      : `<div class="cbwell__sub">${escapeHtml(live.docks)} docks${
+        live.ebikes > 0 ? ` · <b class="cbwell__e">${escapeHtml(live.ebikes)} e-bikes</b>` : ''
+      }</div>`;
+    return `<div class="cbwell${off ? ' cbwell--off' : ''}">
+        <div class="cbwell__count">${count}</div>
+        <div class="cbwell__body">
+          <div class="cbwell__name">${escapeHtml(st.name)}</div>${sub}
+        </div>
+      </div>`;
+  };
+  return `<div class="cbboard"><div class="cbboard__grid">${chosen.map(well).join('')}</div></div>`;
+}
 
 export function render(el, vm, cfg) {
   const chosen = cfg.citibike?.stations ?? [];
   if (!chosen.length) {
     el.innerHTML = setupPrompt('citibike', 'add stations', 'Citi Bike');
+    setExpandSource(el, null); // an unconfigured card taps into Settings
     return;
   }
   const byId = new Map((vm.stations ?? []).map((s) => [s.id, s]));
@@ -30,6 +66,18 @@ export function render(el, vm, cfg) {
     })
     .join('');
   setMoreBadge(el, hidden);
+  // Badge and expansion agree exactly: no badge, no expansion. The rows here
+  // are not tappable, so the whole card is the target.
+  setExpandSource(
+    el,
+    hidden > 0
+      ? () => ({
+        title: meta.title,
+        note: `${chosen.length} stations`,
+        bodyHtml: bikeWells(chosen, byId),
+      })
+      : null,
+  );
 }
 
 export async function fetchData(cfg, net) {
