@@ -2252,6 +2252,15 @@ body.mode-ambient .gear--edit { display: none; }
 /* An actual issue lights the LEFT side up too: full ink + bold name
    (unknown states stay quiet — no evidence of a problem). */
 .svc__name--alert { color: var(--ink); font-weight: 700; }
+/* One per INCIDENT since 2026-08-02, so a degraded row can stack several of
+   these. The clamp stays at 1 line and needs no stacking rule: each incident is
+   its own box, clamped on its own, which is what keeps a long title from eating
+   the line below it. The 2px .svc gap is deliberate at three lines too — the
+   lines want to read as one list under their service name, and the separation
+   that groups them is the elastic row-gap BETWEEN .svc blocks (10-26px above),
+   which is always the larger of the two. Verified in the browser at 3x2, 3x4
+   and 3x8; do not widen this gap without re-checking the 3x2 floor, where the
+   card has room for one service and nothing to spare. */
 .svc__note { font-size: 17px; color: var(--warn); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; }
 .svc--tap { cursor: pointer; }
 

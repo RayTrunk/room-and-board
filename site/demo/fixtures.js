@@ -474,7 +474,19 @@ export const DEMO_VMS = {
         { title: 'Cloudflare Dashboard and API service issues', since: '2026-07-11T14:12:00.000Z',
           update: 'Cloudflare is investigating elevated error rates on the Dashboard and API. Cached content and traffic proxying are unaffected.' },
       ] },
-      { id: 'm365', label: 'Microsoft 365', state: 'ok', note: "We're all good!", incidents: [] },
+      // Multi-incident sample, mirroring the real Microsoft digest of 2026-08-02:
+      // three core workloads degraded at once, core-first as the Worker sorts
+      // them, and no timestamps (the consumer feed's clock is its own, not the
+      // incident's). This is the case the card's per-incident note lines exist
+      // for, so the audit harness has to be able to see it.
+      { id: 'm365', label: 'Microsoft 365', state: 'minor', note: 'Exchange Online: service degradation', incidents: [
+        { title: 'Exchange Online: service degradation', since: '',
+          update: 'Users may be unable to access their mailboxes or may see delays sending and receiving mail.' },
+        { title: 'Microsoft 365 suite: service degradation', since: '',
+          update: 'Users may be unable to sign in to Microsoft 365 services or may see errors after signing in.' },
+        { title: 'Microsoft Teams: service degradation', since: '',
+          update: 'Users may see delays loading chats and channels, or may be unable to join meetings.' },
+      ] },
       { id: 'aws', label: 'AWS', state: 'unknown', note: 'Status unavailable', incidents: [] },
     ],
   },

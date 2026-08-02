@@ -129,7 +129,11 @@ const CASES = [
   ['worldclock', worldclock, ['Hyderabad', '5:43 PM', 'Hong Kong', '+1d']],
   ['photos', photos, ['Beach']],
   ['marketsnews', marketsnews, ['Fed holds rates']],
-  ['services', services, ['Zoom', 'Operational', 'Cloudflare', 'Minor', 'Minor Service Outage']],
+  // A degraded row's lines are its INCIDENTS now (mockup A, 2026-08-02), which
+  // is the same prose the expansion has always shown — so a one-incident
+  // service names the thing that broke instead of repeating its state word.
+  ['services', services, ['Zoom', 'Operational', 'Cloudflare', 'Minor',
+    'Cloudflare Dashboard and API service issues', 'Microsoft Teams: service degradation']],
   ['apod', apod, ['Messier 24', 'Chuck Ayoub']],
 ];
 
@@ -821,6 +825,126 @@ describe('services severity ordering', () => {
     expect(viewer.textContent).toContain('BROKEN');
     expect(viewer.textContent).toContain('Everything is on fire');
     viewer.remove();
+    c.remove();
+  });
+});
+
+// Sean's pick 2026-08-02, mockup A ("Every line"): when a provider has several
+// things wrong at once, the card lists each affected piece instead of the one
+// summary line. Green services yield the space; the severity sort, the
+// fill-to-fit loops and the corner +N already handle the bumping.
+describe('services incident lines', () => {
+  const card = (w, h) => {
+    const c = document.createElement('article');
+    c.className = 'card card--services';
+    c.dataset.w = String(w);
+    c.dataset.h = String(h);
+    c.innerHTML = '<h2 class="card__title">Cloud Services</h2><div class="card__body"></div>';
+    document.body.appendChild(c);
+    return c;
+  };
+  const notes = (host) => [...host.querySelectorAll('.svc__note')].map((n) => n.textContent);
+  const rowNotes = (host, i) => [...host.querySelectorAll('.svc')[i].querySelectorAll('.svc__note')]
+    .map((n) => n.textContent);
+  // The real Microsoft digest of 2026-08-02, worker-sorted (core workloads
+  // first) and already carrying the Worker's title wording.
+  const M365 = {
+    id: 'm365', label: 'Microsoft 365', state: 'minor', note: 'Exchange Online: service degradation',
+    incidents: [
+      { title: 'Exchange Online: service degradation', since: '', update: 'Mailbox access is delayed.' },
+      { title: 'Microsoft 365 suite: service degradation', since: '', update: 'Sign-in errors.' },
+      { title: 'Microsoft Teams: service degradation', since: '', update: 'Chats load slowly.' },
+    ],
+  };
+  const ok = (id) => ({ id, label: id.toUpperCase(), state: 'ok', note: 'All systems operational', incidents: [] });
+  // happy-dom has no layout engine, so the measured loops are driven by hand:
+  // a real element everywhere else, with the two numbers the loops read derived
+  // from the markup actually rendered (a .svc row plus a line per note).
+  const measure = (body, clientHeight, { rowPx = 30, notePx = 22 } = {}) => {
+    Object.defineProperty(body, 'clientHeight', { configurable: true, get: () => clientHeight });
+    Object.defineProperty(body, 'scrollHeight', {
+      configurable: true,
+      get: () => body.querySelectorAll('.svc').length * rowPx
+        + body.querySelectorAll('.svc__note').length * notePx,
+    });
+  };
+
+  it('gives a multi-incident service one amber line per incident, in the order given', () => {
+    const c = card(3, 5);
+    const body = c.querySelector('.card__body');
+    services.render(body, { services: [ok('webex'), M365] }, CFG);
+    // No re-sorting client-side: the Worker's core-first order is the order.
+    expect(rowNotes(body, 0)).toEqual([
+      'Exchange Online: service degradation',
+      'Microsoft 365 suite: service degradation',
+      'Microsoft Teams: service degradation',
+    ]);
+    expect(rowNotes(body, 1)).toEqual([]); // operational rows stay one line tall
+    c.remove();
+  });
+
+  it('keeps the single summary line for a degraded service with no incident list', () => {
+    const c = card(3, 5);
+    const body = c.querySelector('.card__body');
+    services.render(body, { services: [
+      { id: 'zoom', label: 'Zoom', state: 'major', note: 'Major Service Outage', incidents: [] },
+    ] }, CFG);
+    expect(notes(body)).toEqual(['Major Service Outage']);
+    c.remove();
+  });
+
+  it('keeps an unknown row at its one "Status unavailable" line', () => {
+    const c = card(3, 5);
+    const body = c.querySelector('.card__body');
+    services.render(body, { services: [
+      { id: 'aws', label: 'AWS', state: 'unknown', note: 'Status unavailable', incidents: [] },
+    ] }, CFG);
+    expect(notes(body)).toEqual(['Status unavailable']);
+    c.remove();
+  });
+
+  it('spends leftover slack by dropping EVERY note line of the final row', () => {
+    const c = card(3, 5);
+    const body = c.querySelector('.card__body');
+    // A(30+3*22=96) + B(30+2*22=74) = 170 overflows 130, so the fit loop lands
+    // on one row; B's row alone (30) fits in what is left, so it comes back
+    // without any of its notes. The tap still shows them.
+    measure(body, 130);
+    services.render(body, { services: [
+      M365,
+      { id: 'slack', label: 'Slack', state: 'minor', note: 'Degraded', incidents: [
+        { title: 'Message sending is delayed', since: '', update: '' },
+        { title: 'Huddles are failing to connect', since: '', update: '' },
+      ] },
+    ] }, CFG);
+    expect(body.querySelectorAll('.svc')).toHaveLength(2);
+    expect(rowNotes(body, 0)).toHaveLength(3); // the worse service keeps all of its lines
+    expect(rowNotes(body, 1)).toEqual([]);     // ALL of the last row's notes yielded, not just one
+    c.remove();
+  });
+
+  it('sheds incident lines from the bottom when one service alone overflows', () => {
+    const c = card(3, 2);
+    const body = c.querySelector('.card__body');
+    measure(body, 80); // 30 + 3*22 = 96 overflows; 30 + 2*22 = 74 fits
+    services.render(body, { services: [M365, ok('webex'), ok('slack')] }, CFG);
+    expect(body.querySelectorAll('.svc')).toHaveLength(1);
+    expect(notes(body)).toEqual([
+      'Exchange Online: service degradation',
+      'Microsoft 365 suite: service degradation',
+    ]);
+    // Trimmed LINES are not hidden SERVICES: the badge still counts the two
+    // services that got bumped, which is what the expansion will show.
+    expect(c.querySelector('.card__more').textContent).toBe('+2');
+    c.remove();
+  });
+
+  it('never silences a degraded row: the last line stays even when it cannot fit', () => {
+    const c = card(3, 2);
+    const body = c.querySelector('.card__body');
+    measure(body, 40); // even 30 + 22 = 52 overflows, and there is nothing else to give
+    services.render(body, { services: [M365] }, CFG);
+    expect(notes(body)).toEqual(['Exchange Online: service degradation']);
     c.remove();
   });
 });

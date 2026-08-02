@@ -116,23 +116,41 @@ export function render(el, vm, cfg) {
     setExpandSource(el, null); // an unconfigured card taps into Settings, never an empty ledger
     return;
   }
-  const rowHtml = (s, i, dropNote) => `<div class="svc ${s.state !== 'ok' ? 'svc--tap' : ''}" data-svc="${i}">
+  // The amber lines under a degraded row. Sean's pick 2026-08-02 (mockup A,
+  // "Every line"): a service reporting several incidents lists EVERY one of
+  // them, a line each, rather than the single summary note — when Microsoft has
+  // Exchange, Teams and the suite all degraded, the board says so without a tap.
+  // The titles arrive worker-sorted (core workloads first, then severity) and
+  // worker-capped (6 for m365, 3 elsewhere), so they render in the order given:
+  // no re-sorting here, and no cap of our own beyond the overflow backstop.
+  // `maxLines` is that backstop (0 = no cap) and cuts from the BOTTOM, which is
+  // where the least important incident already sits. A service with no incident
+  // list keeps its one summary line, which is what an unknown row (a failed
+  // status fetch, "Status unavailable") always has.
+  const noteLines = (s, maxLines = 0) => {
+    if (s.state === 'ok') return [];
+    const titles = (s.incidents ?? []).map((i) => i.title).filter(Boolean);
+    const lines = titles.length ? titles : (s.note ? [s.note] : []);
+    return maxLines > 0 ? lines.slice(0, maxLines) : lines;
+  };
+  const rowHtml = (s, i, dropNote, maxLines) => `<div class="svc ${s.state !== 'ok' ? 'svc--tap' : ''}" data-svc="${i}">
         <div class="svc__row">
           <span class="svc__name ${s.state === 'minor' || s.state === 'major' ? 'svc__name--alert' : ''}">${escapeHtml(s.label)}</span>
           <span class="svc__state svc__state--${escapeHtml(s.state)}">${STATE_LABEL[s.state] ?? escapeHtml(s.state)}</span>
         </div>
-        ${!dropNote && s.state !== 'ok' && s.note ? `<div class="svc__note">${escapeHtml(s.note)}</div>` : ''}
+        ${dropNote ? '' : noteLines(s, maxLines).map((t) => `<div class="svc__note">${escapeHtml(t)}</div>`).join('')}
       </div>`;
   // Markup for the first n rows. The overflow count rides the title badge
   // (setMoreBadge below), so it costs no row. dropLastNote drops the final
-  // row's incident note to spend leftover slack (the note is one line taller).
-  const build = (n, dropLastNote = false) =>
-    all.slice(0, n).map((s, i) => rowHtml(s, i, dropLastNote && i === n - 1)).join('');
+  // row's incident notes — ALL of them, now that a row can carry several — to
+  // spend leftover slack on one more service the tap still explains in full.
+  const build = (n, dropLastNote = false, maxLines = 0) =>
+    all.slice(0, n).map((s, i) => rowHtml(s, i, dropLastNote && i === n - 1, maxLines)).join('');
   // Stamp the elastic row-gap divisor with every rebuild so the gap math
   // tracks the rows actually shown as the trim/grow loops move n.
-  const apply = (n, dropLastNote = false) => {
+  const apply = (n, dropLastNote = false, maxLines = 0) => {
     el.style.setProperty('--n', String(n));
-    el.innerHTML = build(n, dropLastNote);
+    el.innerHTML = build(n, dropLastNote, maxLines);
   };
   // Static estimate from the capacity model — the final answer when there's no
   // rendered box to measure (happy-dom tests).
@@ -156,6 +174,24 @@ export function render(el, vm, cfg) {
       n += 1;
       apply(n, true);
       if (el.scrollHeight > el.clientHeight) { n -= 1; apply(n); }
+    }
+    // The floor's backstop. Shedding rows stops at one, but ONE service can now
+    // be several lines tall on its own, so a small card holding a six-incident
+    // Microsoft still clips with nothing left to drop. Shed that row's note
+    // lines from the bottom, one at a time, until the card fits — keeping at
+    // least one, so a degraded row never goes silent. Runs last because every
+    // loop above re-renders from scratch and would undo the trim; by here n is
+    // settled, and n === 1 is the only state that can still be overflowing
+    // (the grow and slack steps revert themselves).
+    // Trimmed LINES are not hidden SERVICES: the +N badge below counts services
+    // only, so this cannot desync the badge from the expansion, and the tap (or
+    // the expansion) still shows every incident in full.
+    if (n === 1 && el.scrollHeight > el.clientHeight) {
+      let lines = noteLines(all[0]).length;
+      while (lines > 1 && el.scrollHeight > el.clientHeight) {
+        lines -= 1;
+        apply(n, false, lines);
+      }
     }
   }
   const hidden = all.length - n;
