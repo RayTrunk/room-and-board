@@ -13,6 +13,10 @@
       {
         "lead": "World Clock",
         "text": "The card fits a smaller space now. Three cities read clearly on a short, wide one, so a world clock can sit along the bottom of the board instead of claiming a taller card. Resize it in Edit mode."
+      },
+      {
+        "lead": "Microsoft 365",
+        "text": "The Microsoft row is telling the truth again. The page it used to read from was retired, so the row had quietly been saying status unavailable to everyone walking past. It reads Microsoft's own status pages now, and it finally covers the Microsoft an office actually uses: when Exchange mail, Teams, SharePoint or OneDrive is having a bad morning, the board says which one and shows the details behind a tap. Back office things like Defender and Purview are listed there too, without turning the whole row amber on their own. If only one of the two pages answers, the row reports what that one knows instead of going blank."
       }
     ]
   },

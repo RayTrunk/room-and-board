@@ -40,7 +40,12 @@ function stubFetch(routes) {
     return new Response(
       route.raw ? route.body
         : typeof route.body === 'string' ? route.body : JSON.stringify(route.body),
-      { status: route.status ?? 200, headers: { 'Content-Type': route.raw ? 'application/x-protobuf' : 'application/json' } },
+      {
+        status: route.status ?? 200,
+        // `ctype` overrides for the feeds that answer 200 with the WRONG type
+        // (Microsoft's hosts serve HTML error pages that way).
+        headers: { 'Content-Type': route.ctype ?? (route.raw ? 'application/x-protobuf' : 'application/json') },
+      },
     );
   });
   vi.stubGlobal('fetch', stub);
@@ -1130,13 +1135,22 @@ describe('/gdrive/album route', () => {
   });
 });
 
-import { mapStatuspage, mapSlack, mapMicrosoft, mapGoogle, mapWebex, mapAws } from '../../worker/src/svcstatus.js';
+import { mapStatuspage, mapSlack, mapGoogle, mapWebex, mapAws } from '../../worker/src/svcstatus.js';
+import { mapM365, mapM365Consumer, mapM365Mirror, mendServiceStatuses } from '../../worker/src/svcstatus.js';
 import spOk from './fixtures/svc-statuspage-ok.json';
 import spBad from './fixtures/svc-statuspage-degraded.json';
 import slackFx from './fixtures/svc-slack.json';
 import claudeFx from './fixtures/svc-claude.json';
 import openaiFx from './fixtures/svc-openai.json';
+// Both halves of the Microsoft row, recorded live 2026-08-02. The consumer feed
+// was all-green that day; the mirror caught a real multi-workload incident
+// (Exchange, Teams and the M365 suite degraded, Purview investigating), which
+// is why the degraded cases below are fixture-driven rather than invented.
 import m365Fx from './fixtures/svc-m365.json';
+import m365MirrorFx from './fixtures/svc-m365-mirror.json';
+// The mirror is only believed for 6 hours, so every test that wants it BELIEVED
+// must reckon from the moment it was generated, not from the wall clock.
+const MIRROR_NOW = Date.parse(m365MirrorFx.generated_at) + 60e3;
 import googleFx from './fixtures/svc-google.json';
 import webexFx from './fixtures/svc-webex.json';
 import awsFx from './fixtures/svc-aws.json';
@@ -1267,9 +1281,12 @@ describe('service status adapters: HTML-bodied feeds render as text', () => {
     expect(out.incidents[0].update).toBe("We're investigating.\n\nNext update in 30 minutes.");
   });
   it('microsoft / webex / aws: names, messages and summaries are sanitized too', () => {
-    const ms = mapMicrosoft({ Services: [{ Name: 'Exchange <i>Online</i>', IsUp: false, Message: '<p>Mailbox access is degraded.</p><p>Mitigation in progress.</p>' }] });
-    expect(ms.note).toBe('Exchange Online is down');
-    expect(ms.incidents[0].title).toBe('Exchange Online');
+    const ms = mapM365([{
+      ServiceDisplayName: 'Outlook<i>.com</i>', Status: 'Service degradation',
+      Title: 'Mail delays', Message: '<p>Mailbox access is degraded.</p><p>Mitigation in progress.</p>',
+    }], null, Date.now());
+    expect(ms.note).toBe('Outlook.com: service degradation');
+    expect(ms.incidents[0].title).toBe('Outlook.com: service degradation');
     expect(ms.incidents[0].update).toBe('Mailbox access is degraded.\n\nMitigation in progress.');
 
     const wx = mapWebex({ unResolvedIncidents: [{ incidentName: 'Meetings <b>join</b> failures', impact: 'major', createTime: 'x' }] });
@@ -1317,11 +1334,117 @@ describe('service status adapters', () => {
     expect(out.state).toBe('major');
     expect(out.incidents[0].update).toBe('working on it');
   });
-  it('m365: ok fixture, one IsUp:false is major with the name', () => {
-    expect(mapMicrosoft(m365Fx).state).toBe('ok');
-    const out = mapMicrosoft({ Services: [{ Id: 'x', Name: 'Exchange Online', IsUp: false, Message: 'mailbox issues' }] });
+  it('m365 consumer: all-operational fixture is ok, a degraded row names the service', () => {
+    expect(mapM365Consumer(m365Fx).state).toBe('ok');
+    const out = mapM365Consumer([
+      { ServiceDisplayName: 'Outlook.com', Status: 'Service degradation', Title: '', Message: 'Mail is slow.' },
+      { ServiceDisplayName: 'OneDrive', Status: 'Operational', Title: '', Message: '' },
+    ]);
+    expect(out.state).toBe('minor');
+    expect(out.note).toBe('Outlook.com: service degradation');
+    expect(out.incidents).toHaveLength(1); // only the degraded workload
+  });
+
+  it('m365 mirror: core workloads set the state, back-office ones only add incidents', () => {
+    // The recorded incident: Exchange, Teams and the M365 suite degraded (all
+    // core), Defender and Purview also unhappy (neither is core).
+    const out = mapM365Mirror(m365MirrorFx, MIRROR_NOW);
+    expect(out.state).toBe('minor');
+    expect(out.note).toBe('Exchange Online: service degradation');
+    // Every degraded workload is listed, core or not, so the ledger shows the
+    // whole picture even though only the core ones coloured the row.
+    const titles = out.incidents.map((i) => i.title);
+    expect(titles).toContain('Exchange Online: service degradation');
+    expect(titles).toContain('Microsoft Defender XDR: service degradation'); // non-core
+    expect(titles).toContain('Microsoft Purview: investigating');
+    expect(titles.some((t) => t.startsWith('SharePoint Online'))).toBe(false); // operational
+    // The workload the NOTE names must be the first thing a tap reveals, and
+    // the back-office ones sink below the core ones a reader came to check.
+    expect(titles[0]).toBe('Exchange Online: service degradation');
+    const lastCore = Math.max(titles.indexOf('Exchange Online: service degradation'),
+      titles.indexOf('Microsoft Teams: service degradation'));
+    expect(titles.indexOf('Microsoft Purview: investigating')).toBeGreaterThan(lastCore);
+    expect(titles.indexOf('Microsoft Defender XDR: service degradation')).toBeGreaterThan(lastCore);
+    // Prose and start time come from the matching open issue.
+    const exchange = out.incidents.find((i) => i.title.startsWith('Exchange Online'));
+    expect(exchange.since).toBe(m365MirrorFx.issues.find((i) => i.service === 'Exchange Online').start_time);
+    expect(exchange.update.length).toBeGreaterThan(0);
+  });
+
+  it('m365 mirror: a degraded NON-core workload alone leaves the row green', () => {
+    const backOfficeOnly = {
+      ...m365MirrorFx,
+      services: m365MirrorFx.services.map((s) => (
+        s.service === 'Microsoft Defender XDR' ? s : { ...s, status: 'serviceOperational' })),
+    };
+    const out = mapM365Mirror(backOfficeOnly, MIRROR_NOW);
+    expect(out.state).toBe('ok'); // Defender is not something the office feels
+    expect(out.incidents.map((i) => i.title)).toEqual(['Microsoft Defender XDR: service degradation']);
+  });
+
+  it('m365 mirror: serviceInterruption on a core workload is major', () => {
+    const down = {
+      ...m365MirrorFx,
+      services: m365MirrorFx.services.map((s) => (
+        s.service === 'Microsoft Teams' ? { ...s, status: 'serviceInterruption' } : s)),
+    };
+    const out = mapM365Mirror(down, MIRROR_NOW);
     expect(out.state).toBe('major');
-    expect(out.note).toContain('Exchange Online');
+    expect(out.note).toBe('Microsoft Teams: service interruption');
+  });
+
+  it('m365 mirror: stale or unparsable generated_at makes the source ABSENT, never green', () => {
+    // Six hours is several missed publishing runs. A frozen copy must not claim
+    // the outage that started after it is not happening.
+    expect(mapM365Mirror(m365MirrorFx, MIRROR_NOW + 7 * 3600e3)).toBeNull();
+    expect(mapM365Mirror({ ...m365MirrorFx, generated_at: 'not a date' }, MIRROR_NOW)).toBeNull();
+    expect(mapM365Mirror({ ...m365MirrorFx, generated_at: undefined }, MIRROR_NOW)).toBeNull();
+    // ...and an absent mirror does not drag the row down: the consumer half
+    // still answers on its own.
+    const composed = mapM365(m365Fx, m365MirrorFx, MIRROR_NOW + 7 * 3600e3);
+    expect(composed.state).toBe('ok');
+    expect(composed.note).toBe('All systems operational');
+  });
+
+  it('m365: schema confusion makes a source absent, and unknown is never blank', () => {
+    // The two feeds have OPPOSITE top-level shapes (consumer is an array, mirror
+    // is an object). Handed the wrong one, each must decline rather than guess.
+    expect(mapM365Consumer(m365MirrorFx)).toBeNull(); // object where an array belongs
+    expect(mapM365Mirror(m365Fx, MIRROR_NOW)).toBeNull(); // array where an object belongs
+    expect(mapM365Consumer([])).toBeNull();
+    expect(mapM365Consumer([{ nothing: 'recognizable' }])).toBeNull();
+    // Both gone: unknown, and it always SAYS why (a blank note drew an empty
+    // amber line on the card).
+    const dead = mapM365(null, null, Date.now());
+    expect(dead).toMatchObject({ state: 'unknown', note: 'Status unavailable', incidents: [] });
+    expect(mapM365({ Services: [] }, 'garbage', Date.now()).note).toBe('Status unavailable');
+  });
+
+  it('m365: the composed row takes the WORST of the two halves and both sets of incidents', () => {
+    const consumerDown = [
+      { ServiceDisplayName: 'Outlook.com', Status: 'Service interruption', Title: '', Message: 'Cannot sign in.' },
+    ];
+    // Mirror says minor (degradation), consumer says major (interruption).
+    const out = mapM365(consumerDown, m365MirrorFx, MIRROR_NOW);
+    expect(out.state).toBe('major');
+    expect(out.note).toBe('Outlook.com: service interruption'); // the more severe finding speaks
+    expect(out.incidents.some((i) => i.title.startsWith('Outlook.com'))).toBe(true);
+    expect(out.incidents.some((i) => i.title.startsWith('Exchange Online'))).toBe(true);
+    expect(out.incidents.length).toBeLessThanOrEqual(6);
+
+    // Equal severity: the enterprise half wins the note, because the workload an
+    // office actually feels is the more useful sentence to put on the wall.
+    const consumerMinor = [
+      { ServiceDisplayName: 'Outlook.com', Status: 'Service degradation', Title: '', Message: '' },
+    ];
+    expect(mapM365(consumerMinor, m365MirrorFx, MIRROR_NOW).note).toBe('Exchange Online: service degradation');
+
+    // All green on both halves reads as one plain sentence, not a service name.
+    const allGood = mapM365(m365Fx, {
+      ...m365MirrorFx,
+      services: m365MirrorFx.services.map((s) => ({ ...s, status: 'serviceOperational' })),
+    }, MIRROR_NOW);
+    expect(allGood).toMatchObject({ state: 'ok', note: 'All systems operational' });
   });
   it('google: all-ended fixture is ok, active incident is minor', () => {
     expect(mapGoogle(googleFx, Date.now()).state).toBe('ok');
@@ -1376,14 +1499,141 @@ describe('/services/status route', () => {
     expect(digest.services.find((s) => s.id === 'github').state).toBe('unknown');
     expect(digest.services.find((s) => s.id === 'slack').state).toBe('ok');
   });
-  it('retries a flapping source before reporting unknown (portal.office.com alternates 200/404)', async () => {
+  // The recorded mirror carries its REAL generated_at, which the freshness gate
+  // would eventually reject — so route tests that want it believed re-stamp it.
+  const freshMirror = (extra = {}) => ({ ...m365MirrorFx, generated_at: new Date().toISOString(), ...extra });
+  const allGreenMirror = () => freshMirror({
+    services: m365MirrorFx.services.map((s) => ({ ...s, status: 'serviceOperational' })), issues: [],
+  });
+
+  it('retries a flapping source before reporting unknown', async () => {
     await clearCache('svc:m365');
     stubFetch([
-      { match: /portal\.office\.com/, body: { Message: 'No HTTP resource was found' }, status: 404, times: 1 },
-      { match: /portal\.office\.com/, body: m365Fx },
+      { match: /status\.cloud\.microsoft/, body: { Message: 'No HTTP resource was found' }, status: 404, times: 1 },
+      { match: /status\.cloud\.microsoft/, body: m365Fx },
+      { match: /aguidetocloud/, body: allGreenMirror() },
     ]);
     const digest = await (await call('/services/status?ids=m365')).json();
     expect(digest.services[0]).toMatchObject({ id: 'm365', state: 'ok' });
+    await clearCache('svc:m365');
+  });
+
+  it('m365 reads both feeds and reports the outage an office would feel', async () => {
+    await clearCache('svc:m365');
+    stubFetch([
+      { match: /status\.cloud\.microsoft/, body: m365Fx },
+      { match: /aguidetocloud/, body: freshMirror() },
+    ]);
+    const digest = await (await call('/services/status?ids=m365')).json();
+    // Consumer green, enterprise degraded: the row follows the worse half.
+    expect(digest.services[0]).toMatchObject({ id: 'm365', label: 'Microsoft 365', state: 'minor' });
+    expect(digest.services[0].note).toBe('Exchange Online: service degradation');
+    expect(digest.services[0].incidents.length).toBeGreaterThan(1);
+    expect(digest.partial).toBeUndefined(); // a degraded row is an ANSWER, not a failure
+    await clearCache('svc:m365');
+  });
+
+  it('one dead half still answers: the surviving feed carries the row', async () => {
+    await clearCache('svc:m365');
+    stubFetch([
+      { match: /status\.cloud\.microsoft/, body: 'gone', status: 404, times: 3 },
+      { match: /aguidetocloud/, body: freshMirror() },
+    ]);
+    const digest = await (await call('/services/status?ids=m365')).json();
+    expect(digest.services[0].state).toBe('minor'); // mirror alone is enough
+    expect(digest.partial).toBeUndefined();
+    await clearCache('svc:m365');
+  });
+
+  it('a 200 carrying HTML is RETRIED, not swallowed, and still says why it failed', async () => {
+    // The defect this pins: the JSON parse used to sit outside the retry loop,
+    // so Microsoft answering 200 with an HTML error page threw once and became
+    // a silent unknown without a single retry.
+    await clearCache('svc:m365,slack');
+    const calls = stubFetch([
+      // Wrong content-type AND an unparseable body: both routes into the loop.
+      { match: /status\.cloud\.microsoft/, body: '<html><body>Error</body></html>', ctype: 'text/html', times: 9 },
+      { match: /aguidetocloud/, body: '<!doctype html><h1>502</h1>', times: 9 },
+      { match: /status\.slack\.com/, body: slackFx },
+    ]);
+    const res = await call('/services/status?ids=m365,slack');
+    const digest = await res.json();
+    const m365 = digest.services.find((s) => s.id === 'm365');
+    expect(m365.state).toBe('unknown');
+    expect(m365.note).toBe('Status unavailable'); // never blank
+    // Three attempts per source, two sources.
+    expect(calls.filter((u) => /status\.cloud\.microsoft/.test(u))).toHaveLength(3);
+    expect(calls.filter((u) => /aguidetocloud/.test(u))).toHaveLength(3);
+    await clearCache('svc:m365,slack');
+  });
+
+  it('an unknown row makes the digest PARTIAL: brief cache, and the backup survives', async () => {
+    // Same lesson the F1 and markets routes learned: a digest with a hole must
+    // not sit in the cache for the full TTL, and must never overwrite the 24h
+    // backup — which is the only copy the mend below has to borrow from.
+    await clearCache('svc:m365,slack');
+    stubFetch([
+      { match: /status\.cloud\.microsoft/, body: m365Fx },
+      { match: /aguidetocloud/, body: allGreenMirror() },
+      { match: /status\.slack\.com/, body: slackFx },
+    ]);
+    const healthy = await call('/services/status?ids=m365,slack');
+    expect(healthy.headers.get('cache-control')).toBe('public, max-age=480');
+    expect((await healthy.json()).partial).toBeUndefined();
+
+    await caches.default.delete(cacheKey('fresh', 'svc:m365,slack'));
+    stubFetch([
+      { match: /status\.cloud\.microsoft/, body: 'down', status: 500, times: 3 },
+      { match: /aguidetocloud/, body: 'down', status: 500, times: 3 },
+      { match: /status\.slack\.com/, body: slackFx },
+    ]);
+    const res = await call('/services/status?ids=m365,slack');
+    const digest = await res.json();
+    expect(digest.partial).toBe(true);
+    expect(res.headers.get('cache-control')).toBe('public, max-age=120'); // not 480
+
+    // The backup still holds the COMPLETE digest, not the crippled one.
+    const backup = await caches.default.match(cacheKey('stale', 'svc:m365,slack'));
+    expect((await backup.json()).services.find((s) => s.id === 'm365').state).toBe('ok');
+    await clearCache('svc:m365,slack');
+  });
+
+  it('mends an unknown row from the backup, so one dead provider never greys the card', async () => {
+    await clearCache('svc:m365,slack');
+    stubFetch([
+      { match: /status\.cloud\.microsoft/, body: m365Fx },
+      { match: /aguidetocloud/, body: freshMirror() },
+      { match: /status\.slack\.com/, body: slackFx },
+    ]);
+    await call('/services/status?ids=m365,slack'); // populates the 24h backup
+    await caches.default.delete(cacheKey('fresh', 'svc:m365,slack'));
+
+    stubFetch([
+      { match: /status\.cloud\.microsoft/, body: 'down', status: 500, times: 3 },
+      { match: /aguidetocloud/, body: 'down', status: 500, times: 3 },
+      { match: /status\.slack\.com/, body: slackFx },
+    ]);
+    const res = await call('/services/status?ids=m365,slack');
+    const digest = await res.json();
+    expect(digest.mended).toBe(true);
+    expect(digest.partial).toBe(true); // still short-cached, still no backup write
+    const m365 = digest.services.find((s) => s.id === 'm365');
+    expect(m365.state).toBe('minor'); // borrowed from the backup, not greyed out
+    expect(m365.note).toBe('Exchange Online: service degradation');
+    expect(digest.services.find((s) => s.id === 'slack').state).toBe('ok'); // the live half stays live
+    expect(res.headers.get('cache-control')).toBe('public, max-age=120');
+    await clearCache('svc:m365,slack');
+  });
+
+  it('does not borrow a row old enough to be fiction', () => {
+    // A day-old "operational" is not last-known-good, it is a guess about a
+    // window in which an outage could have come and gone. Unknown is honest.
+    const fresh = { services: [{ id: 'm365', label: 'Microsoft 365', state: 'unknown', note: 'Status unavailable', incidents: [] }], partial: true };
+    const old = { updatedAt: Math.floor(Date.now() / 1000) - 6 * 3600, services: [{ id: 'm365', state: 'ok', note: 'All systems operational', incidents: [] }] };
+    expect(mendServiceStatuses(fresh, old).services[0].state).toBe('unknown');
+    expect(mendServiceStatuses(fresh, {}).services[0].state).toBe('unknown');
+    const recent = { ...old, updatedAt: Math.floor(Date.now() / 1000) - 60 };
+    expect(mendServiceStatuses(fresh, recent).services[0].state).toBe('ok');
   });
   it('serves Claude and OpenAI (openai: incident.io compat feed, no incidents key)', async () => {
     await clearCache('svc:claude,openai');

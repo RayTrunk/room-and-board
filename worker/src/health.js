@@ -61,6 +61,20 @@ export const CHECKS = [
     ok: (j) => typeof j.version === 'string' && j.version.length > 3,
   },
   {
+    // Microsoft 365 is the status row most likely to rot silently: it is the
+    // only one assembled from two feeds, and its previous endpoint went to a
+    // permanent 404 without anyone noticing that the row had been reading
+    // "Status unavailable" for weeks. An unknown m365 state is exactly that
+    // failure, so it is what this check tests — not merely that the route
+    // answered. Only m365 is requested, so another provider's outage cannot
+    // page for Microsoft.
+    name: 'm365',
+    path: '/services/status?ids=m365',
+    maxStaleSec: STALE_MAX,
+    ok: (j) => Array.isArray(j.services)
+      && j.services.some((s) => s?.id === 'm365' && s.state !== 'unknown'),
+  },
+  {
     name: 'njt', // NJTransit — getStationSchedule is a STATIC daily timetable, so
     // "old" is not "wrong": healthy = the schedule still has a future departure.
     // A prior-day timetable (every train already in the past) is the real

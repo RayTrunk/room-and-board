@@ -1,34 +1,57 @@
-{
- "CID": "9b60ae55-bb3a-4020-a5db-0edd40127934",
- "Title": "We're all good!",
- "SubTitle": "Everything is up and running.",
- "Services": [
-  {
-   "Id": "M365Consumer",
-   "Name": "Microsoft 365 (Consumer)",
-   "IsUp": true,
-   "Messages": null
-  },
-  {
-   "Id": "Outlook.com",
-   "Name": "Outlook.com",
-   "IsUp": true,
-   "Messages": null
-  },
-  {
-   "Id": "OneDriveConsumer",
-   "Name": "OneDrive",
-   "IsUp": true,
-   "Messages": null
-  },
-  {
-   "Id": "CopilotConsumer",
-   "Name": "Microsoft Copilot",
-   "IsUp": true,
-   "Messages": null
-  }
- ],
- "LastRefreshed": "Last refreshed: 2026-07-11 15:41:41Z (UTC)",
- "IsAllUp": true,
- "IsRightToLeft": false
-}
+[
+ {
+  "ServiceDisplayName": "Microsoft 365 (Consumer)",
+  "ServiceWorkloadName": "M365Consumer",
+  "Id": null,
+  "AuthoredDateTime": "0001-01-01T00:00:00+00:00",
+  "InternalDateTime": "0001-01-01T00:00:00+00:00",
+  "LastUpdatedTime": "2026-08-02T14:53:00.863505+00:00",
+  "Title": "",
+  "Message": "",
+  "Status": "Operational"
+ },
+ {
+  "ServiceDisplayName": "Outlook.com",
+  "ServiceWorkloadName": "Outlook.com",
+  "Id": null,
+  "AuthoredDateTime": "0001-01-01T00:00:00+00:00",
+  "InternalDateTime": "0001-01-01T00:00:00+00:00",
+  "LastUpdatedTime": "2026-08-02T14:53:00.8635067+00:00",
+  "Title": "",
+  "Message": "",
+  "Status": "Operational"
+ },
+ {
+  "ServiceDisplayName": "OneDrive",
+  "ServiceWorkloadName": "OneDriveConsumer",
+  "Id": null,
+  "AuthoredDateTime": "0001-01-01T00:00:00+00:00",
+  "InternalDateTime": "0001-01-01T00:00:00+00:00",
+  "LastUpdatedTime": "2026-08-02T14:53:00.8635066+00:00",
+  "Title": "",
+  "Message": "",
+  "Status": "Operational"
+ },
+ {
+  "ServiceDisplayName": "Microsoft Teams Free",
+  "ServiceWorkloadName": "TeamsforLife",
+  "Id": null,
+  "AuthoredDateTime": "0001-01-01T00:00:00+00:00",
+  "InternalDateTime": "0001-01-01T00:00:00+00:00",
+  "LastUpdatedTime": "2026-08-02T14:53:00.8635063+00:00",
+  "Title": "",
+  "Message": "",
+  "Status": "Operational"
+ },
+ {
+  "ServiceDisplayName": "Microsoft Copilot",
+  "ServiceWorkloadName": "CopilotConsumer",
+  "Id": null,
+  "AuthoredDateTime": "0001-01-01T00:00:00+00:00",
+  "InternalDateTime": "0001-01-01T00:00:00+00:00",
+  "LastUpdatedTime": "2026-08-02T14:53:00.8635061+00:00",
+  "Title": "",
+  "Message": "",
+  "Status": "Operational"
+ }
+]

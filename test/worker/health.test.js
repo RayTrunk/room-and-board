@@ -10,6 +10,7 @@ const OK_BODIES = {
   'gdrive': { photos: [{ id: 'a' }, { id: 'b' }] },
   'amtrak': { station: 'New York Penn', departures: [] }, // empty at night is still healthy
   '/njt': { station: 'NY', trains: [{ time: 9999999999, dest: 'Trenton' }] }, // far-future = an upcoming departure exists
+  '/services/status': { services: [{ id: 'm365', label: 'Microsoft 365', state: 'ok', note: 'All systems operational', incidents: [] }] },
 };
 const bodyFor = (url) => OK_BODIES[Object.keys(OK_BODIES).find((k) => url.includes(k))];
 
@@ -53,6 +54,18 @@ describe('health CHECKS validators', () => {
     expect(byName.amtrak({ station: 'NYP', departures: [] })).toBe(true);
     expect(byName.amtrak({ station: 'NYP' })).toBe(false);
     expect(byName.amtrak({ departures: [] })).toBe(false);
+  });
+  it('m365: an unknown status row is the failure worth paging for', () => {
+    // The row read "Status unavailable" for weeks after Microsoft retired its
+    // old endpoint, and nothing noticed — because the route kept answering 200.
+    const row = (state) => ({ services: [{ id: 'm365', state }] });
+    expect(byName.m365(row('ok'))).toBe(true);
+    expect(byName.m365(row('minor'))).toBe(true); // a real outage is a working check
+    expect(byName.m365(row('major'))).toBe(true);
+    expect(byName.m365(row('unknown'))).toBe(false); // the endpoint rotted
+    expect(byName.m365({ services: [] })).toBe(false);
+    expect(byName.m365({})).toBe(false);
+    expect(byName.m365({ services: [{ id: 'slack', state: 'ok' }] })).toBe(false); // wrong service
   });
   it('njt: healthy only with an upcoming departure (static daily schedule)', () => {
     const now = Date.now() / 1000;

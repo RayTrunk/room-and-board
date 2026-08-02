@@ -13,7 +13,7 @@ import { fetchFerryDepartures } from './ferry.js';
 import { fetchSubstackPosts } from './posts.js';
 import { fetchIcloudAlbum } from './icloud.js';
 import { fetchGdriveAlbum } from './gdrive.js';
-import { fetchServiceStatuses, SERVICES } from './svcstatus.js';
+import { fetchServiceStatuses, mendServiceStatuses, SERVICES } from './svcstatus.js';
 import { fetchApod } from './apod.js';
 import { fetchCitibike } from './citibike.js';
 import { fetchTfl } from './tfl.js';
@@ -425,7 +425,10 @@ const handlers = {
       // Sorted ids in the key so permutations share one cache entry. 480s is
       // ~1.5x the card's 5-minute poll: a TTL at or under the poll interval
       // expires just before every request, so a lone board never hit the cache.
-      return cached(url.origin, `svc:${[...ids].sort().join(',')}`, 480, () => fetchServiceStatuses(ids));
+      // mend: one provider's dead endpoint leaves an unknown row and marks the
+      // digest partial; the backup fills that row back in rather than showing a
+      // grey card (see mendServiceStatuses for the age bound on that).
+      return cached(url.origin, `svc:${[...ids].sort().join(',')}`, 480, () => fetchServiceStatuses(ids), { mend: mendServiceStatuses });
     }
 
     if (path === '/golf' && request.method === 'GET') {
