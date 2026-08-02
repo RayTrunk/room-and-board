@@ -13,6 +13,7 @@ import { newsFeedUrl } from '../../worker/src/news.js';
 import { parseLegs, siriUrl } from '../../worker/src/bus.js';
 import { njtDateToEpoch } from '../../worker/src/njt.js';
 import { mapMtaAlerts } from '../../worker/src/alerts.js';
+import { resetGraphToken } from '../../worker/src/svcstatus.js';
 
 const ctx = { waitUntil() {}, passThroughOnException() {} };
 const call = (path, init, extraEnv = {}) =>
@@ -56,6 +57,7 @@ afterEach(async () => {
   vi.unstubAllGlobals();
   await resetNjtToken(env); // clears the KV session token + isolate memo so it can't leak between cases
   await resetNjtSchedule(env); // clears the KV daily schedule + memo
+  resetGraphToken(); // clears the isolate's Microsoft Graph token memo
   await caches.default.delete(new Request('https://api.test/__cache/njt-alerts'));
 });
 
@@ -1136,7 +1138,7 @@ describe('/gdrive/album route', () => {
 });
 
 import { mapStatuspage, mapSlack, mapGoogle, mapWebex, mapAws } from '../../worker/src/svcstatus.js';
-import { mapM365, mapM365Consumer, mapM365Mirror, mendServiceStatuses } from '../../worker/src/svcstatus.js';
+import { mapM365, mapM365Consumer, mapM365Mirror, mapM365Graph, mendServiceStatuses } from '../../worker/src/svcstatus.js';
 import spOk from './fixtures/svc-statuspage-ok.json';
 import spBad from './fixtures/svc-statuspage-degraded.json';
 import slackFx from './fixtures/svc-slack.json';
@@ -1151,6 +1153,16 @@ import m365MirrorFx from './fixtures/svc-m365-mirror.json';
 // The mirror is only believed for 6 hours, so every test that wants it BELIEVED
 // must reckon from the moment it was generated, not from the wall clock.
 const MIRROR_NOW = Date.parse(m365MirrorFx.generated_at) + 60e3;
+// The optional third source: a tenant's OWN Graph healthOverviews answer. This
+// one is HAND-BUILT from Microsoft's reference docs, not recorded — the repo
+// ships no credentials to record with (its _provenance field says so too). It
+// deliberately disagrees with the mirror: Teams is degraded there and healthy
+// here, which is how the tests below tell which source spoke.
+import m365GraphFx from './fixtures/svc-m365-graph.json';
+const greenGraph = () => ({
+  ...m365GraphFx,
+  value: m365GraphFx.value.map((r) => ({ ...r, status: 'ServiceOperational', issues: [] })),
+});
 import googleFx from './fixtures/svc-google.json';
 import webexFx from './fixtures/svc-webex.json';
 import awsFx from './fixtures/svc-aws.json';
@@ -1446,6 +1458,64 @@ describe('service status adapters', () => {
     }, MIRROR_NOW);
     expect(allGood).toMatchObject({ state: 'ok', note: 'All systems operational' });
   });
+
+  it('m365 graph: a tenant grades exactly like the mirror, and only OPEN issues speak', () => {
+    const out = mapM365Graph(m365GraphFx);
+    expect(out.state).toBe('minor');
+    expect(out.note).toBe('Exchange Online: service degradation'); // same sentence as the mirror path
+    expect(out.incidents).toHaveLength(2);
+    const [first, second] = out.incidents;
+    expect(first.title).toBe('Exchange Online: service degradation'); // core workload leads
+    expect(first.since).toBe('2026-08-02T09:14:00Z'); // the OPEN issue's start, not the resolved one's
+    expect(first.update).toContain('delays of several minutes');
+    // $expand hands back resolved history alongside the news; it must not speak.
+    expect(first.update).not.toContain('migrate');
+    // Non-core trouble still shows up in the ledger, it just doesn't set state.
+    expect(second.title).toBe('Microsoft Intune: investigating');
+  });
+
+  it('m365 graph: a degraded workload with no open issue still gets its verdict row', () => {
+    const noIssues = { ...m365GraphFx, value: m365GraphFx.value.map((r) => ({ ...r, issues: [] })) };
+    const out = mapM365Graph(noIssues);
+    expect(out.state).toBe('minor');
+    expect(out.incidents[0]).toMatchObject({
+      title: 'Exchange Online: service degradation', since: '', update: '',
+    });
+  });
+
+  it('m365 graph: an answer we do not understand is ABSENT, never green', () => {
+    expect(mapM365Graph(null)).toBeNull();
+    expect(mapM365Graph({})).toBeNull();
+    expect(mapM365Graph({ value: [] })).toBeNull();
+    expect(mapM365Graph(m365Fx)).toBeNull(); // the consumer feed's array
+    expect(mapM365Graph(m365MirrorFx)).toBeNull(); // the mirror's object
+    // A shape we recognize saying words we don't: no signal, not "fine".
+    expect(mapM365Graph({ value: [{ service: 'Exchange Online', status: 'SomethingBrandNew' }] })).toBeNull();
+  });
+
+  it('m365: a tenant answer RETIRES the mirror rather than arguing with it', () => {
+    // Own tenant degraded, consumer green: the row follows the reader's own
+    // Microsoft. Teams is degraded in the mirror and healthy here, so the
+    // mirror's finding must not appear at all.
+    const own = mapM365(m365Fx, m365MirrorFx, MIRROR_NOW, m365GraphFx);
+    expect(own.state).toBe('minor');
+    expect(own.note).toBe('Exchange Online: service degradation');
+    expect(own.incidents.some((i) => i.title.startsWith('Microsoft Teams'))).toBe(false);
+    expect(own.incidents.some((i) => i.title.startsWith('Microsoft Intune'))).toBe(true);
+
+    // Own tenant healthy: a stranger's outage does not amber a row about YOUR
+    // Microsoft, even though the mirror is fresh and degraded.
+    const calm = mapM365(m365Fx, m365MirrorFx, MIRROR_NOW, greenGraph());
+    expect(calm).toMatchObject({ state: 'ok', note: 'All systems operational' });
+    expect(calm.incidents).toHaveLength(0);
+
+    // No tenant configured, or its fetch failed: the mirror speaks, exactly as
+    // it did before any of this existed.
+    const fallback = mapM365(m365Fx, m365MirrorFx, MIRROR_NOW, null);
+    expect(fallback.note).toBe('Exchange Online: service degradation');
+    expect(fallback.incidents.some((i) => i.title.startsWith('Microsoft Teams'))).toBe(true);
+  });
+
   it('google: all-ended fixture is ok, active incident is minor', () => {
     expect(mapGoogle(googleFx, Date.now()).state).toBe('ok');
     const out = mapGoogle([{ begin: '2026-07-11T00:00:00Z', external_desc: '**Gmail delays**\ndetail here' }], Date.now());
@@ -1542,6 +1612,128 @@ describe('/services/status route', () => {
     const digest = await (await call('/services/status?ids=m365')).json();
     expect(digest.services[0].state).toBe('minor'); // mirror alone is enough
     expect(digest.partial).toBeUndefined();
+    await clearCache('svc:m365');
+  });
+
+  // ---- Optional: the operator's own tenant, via Microsoft Graph -------------
+  // Three secrets turn the enterprise half from a stranger's tenant into the
+  // reader's own. None of these values is real; the point of several of these
+  // cases is that none of them reaches a log either.
+  const MS_ENV = {
+    MS_TENANT_ID: 'contoso.onmicrosoft.com',
+    MS_CLIENT_ID: '11111111-2222-3333-4444-555555555555',
+    MS_CLIENT_SECRET: 'never-print-this-secret',
+  };
+  const tenantStubs = (extra = []) => stubFetch([
+    ...extra,
+    { match: /login\.microsoftonline\.com/, body: { access_token: 'tenant-bearer-token', expires_in: 3599 }, times: 9 },
+    { match: /graph\.microsoft\.com/, body: m365GraphFx, times: 9 },
+    { match: /status\.cloud\.microsoft/, body: m365Fx, times: 9 },
+    { match: /aguidetocloud/, body: allGreenMirror(), times: 9 },
+  ]);
+  const loginCalls = (calls) => calls.filter((u) => /login\.microsoftonline\.com/.test(u));
+  const graphCalls = (calls) => calls.filter((u) => /graph\.microsoft\.com/.test(u));
+
+  it('a configured tenant carries the row, and is asked for a token only once', async () => {
+    await clearCache('svc:m365');
+    const calls = tenantStubs();
+    const first = await (await call('/services/status?ids=m365', undefined, MS_ENV)).json();
+    // Consumer green and mirror green: minor can only have come from the tenant.
+    expect(first.services[0]).toMatchObject({ id: 'm365', state: 'minor' });
+    expect(first.services[0].note).toBe('Exchange Online: service degradation');
+    expect(first.partial).toBeUndefined();
+
+    await clearCache('svc:m365');
+    const second = await (await call('/services/status?ids=m365', undefined, MS_ENV)).json();
+    expect(second.services[0].state).toBe('minor');
+    // Two polls, two Graph reads, ONE token: the memo survives between them.
+    expect(loginCalls(calls)).toHaveLength(1);
+    expect(graphCalls(calls)).toHaveLength(2);
+    await clearCache('svc:m365');
+  });
+
+  it('a token inside its last five minutes is re-minted, not reused', async () => {
+    // expires_in shorter than the early-refresh window, so the memo exists but
+    // is already too old to trust — a token must never die mid-request.
+    await clearCache('svc:m365');
+    const calls = stubFetch([
+      { match: /login\.microsoftonline\.com/, body: { access_token: 'about-to-expire', expires_in: 60 }, times: 9 },
+      { match: /graph\.microsoft\.com/, body: m365GraphFx, times: 9 },
+      { match: /status\.cloud\.microsoft/, body: m365Fx, times: 9 },
+      { match: /aguidetocloud/, body: allGreenMirror(), times: 9 },
+    ]);
+    await call('/services/status?ids=m365', undefined, MS_ENV);
+    await clearCache('svc:m365');
+    await call('/services/status?ids=m365', undefined, MS_ENV);
+    expect(loginCalls(calls)).toHaveLength(2);
+    await clearCache('svc:m365');
+  });
+
+  it('a tenant that rejects the credentials falls back to the mirror, and logs no secret', async () => {
+    await clearCache('svc:m365');
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    stubFetch([
+      {
+        match: /login\.microsoftonline\.com/,
+        body: { error: 'invalid_client', error_description: 'AADSTS7000215: Invalid client secret provided.' },
+        status: 401,
+        times: 9,
+      },
+      { match: /status\.cloud\.microsoft/, body: m365Fx, times: 9 },
+      { match: /aguidetocloud/, body: freshMirror(), times: 9 },
+    ]);
+    const digest = await (await call('/services/status?ids=m365', undefined, MS_ENV)).json();
+    // The mirror's own finding, unblocked: Teams is degraded there.
+    expect(digest.services[0].state).toBe('minor');
+    expect(digest.services[0].incidents.some((i) => i.title.startsWith('Microsoft Teams'))).toBe(true);
+    expect(digest.partial).toBeUndefined(); // a failed tenant is not a failed row
+    const logged = warn.mock.calls.flat().map(String).join(' ');
+    expect(logged).toContain('[svcstatus] m365 graph token HTTP 401');
+    expect(logged).toContain('invalid_client'); // the failure CLASS, so an operator can act
+    expect(logged).not.toContain(MS_ENV.MS_CLIENT_SECRET);
+    expect(logged).not.toContain(MS_ENV.MS_CLIENT_ID);
+    expect(logged).not.toContain(MS_ENV.MS_TENANT_ID); // no URL in the line either
+    expect(logged).not.toContain('Bearer');
+    warn.mockRestore();
+    await clearCache('svc:m365');
+  });
+
+  it('a tenant answering a shape we do not understand is ABSENT, not green', async () => {
+    await clearCache('svc:m365');
+    stubFetch([
+      { match: /login\.microsoftonline\.com/, body: { access_token: 't', expires_in: 3599 }, times: 9 },
+      { match: /graph\.microsoft\.com/, body: { value: [{ service: 'Exchange Online', status: 'SomethingBrandNew' }] }, times: 9 },
+      { match: /status\.cloud\.microsoft/, body: m365Fx, times: 9 },
+      { match: /aguidetocloud/, body: freshMirror(), times: 9 },
+    ]);
+    const digest = await (await call('/services/status?ids=m365', undefined, MS_ENV)).json();
+    expect(digest.services[0].state).toBe('minor');
+    expect(digest.services[0].incidents.some((i) => i.title.startsWith('Microsoft Teams'))).toBe(true);
+    await clearCache('svc:m365');
+  });
+
+  it('with no tenant secrets the row never reaches Microsoft login', async () => {
+    // The contract an open-source fork is owed: unconfigured behaves exactly as
+    // it did before the tenant source existed. The stub throws on any unmocked
+    // URL, and the assertion pins it explicitly besides.
+    await clearCache('svc:m365');
+    const calls = stubFetch([
+      { match: /status\.cloud\.microsoft/, body: m365Fx, times: 9 },
+      { match: /aguidetocloud/, body: freshMirror(), times: 9 },
+    ]);
+    const digest = await (await call('/services/status?ids=m365')).json();
+    expect(digest.services[0].state).toBe('minor'); // the mirror, same as always
+    expect(calls.some((u) => /login\.microsoftonline\.com|graph\.microsoft\.com/.test(u))).toBe(false);
+
+    // Two of three secrets is a half-finished setup, not a tenant: it stays
+    // keyless rather than 401ing against Microsoft every poll.
+    await clearCache('svc:m365');
+    const half = stubFetch([
+      { match: /status\.cloud\.microsoft/, body: m365Fx, times: 9 },
+      { match: /aguidetocloud/, body: freshMirror(), times: 9 },
+    ]);
+    await call('/services/status?ids=m365', undefined, { MS_TENANT_ID: 'contoso', MS_CLIENT_ID: 'abc', MS_CLIENT_SECRET: '  ' });
+    expect(half.some((u) => /login\.microsoftonline\.com|graph\.microsoft\.com/.test(u))).toBe(false);
     await clearCache('svc:m365');
   });
 

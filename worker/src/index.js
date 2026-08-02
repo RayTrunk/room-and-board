@@ -428,7 +428,10 @@ const handlers = {
       // mend: one provider's dead endpoint leaves an unknown row and marks the
       // digest partial; the backup fills that row back in rather than showing a
       // grey card (see mendServiceStatuses for the age bound on that).
-      return cached(url.origin, `svc:${[...ids].sort().join(',')}`, 480, () => fetchServiceStatuses(ids), { mend: mendServiceStatuses });
+      // env rides along for the optional MS_* tenant secrets (see the Graph
+      // block in svcstatus.js); with none set the fetch is byte-identical to
+      // the keyless one this route shipped with.
+      return cached(url.origin, `svc:${[...ids].sort().join(',')}`, 480, () => fetchServiceStatuses(ids, env), { mend: mendServiceStatuses });
     }
 
     if (path === '/golf' && request.method === 'GET') {

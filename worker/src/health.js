@@ -67,7 +67,10 @@ export const CHECKS = [
     // "Status unavailable" for weeks. An unknown m365 state is exactly that
     // failure, so it is what this check tests — not merely that the route
     // answered. Only m365 is requested, so another provider's outage cannot
-    // page for Microsoft.
+    // page for Microsoft. selfFetch hands the route the same env the request
+    // handler gets, so on a worker with the optional MS_* tenant secrets set
+    // this check exercises the Graph source too — though a broken tenant alone
+    // won't page, since the public sources still answer the row.
     name: 'm365',
     path: '/services/status?ids=m365',
     maxStaleSec: STALE_MAX,

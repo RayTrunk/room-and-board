@@ -419,6 +419,31 @@ npx wrangler deploy
 Without NJT credentials everything else still works; the NJT widget shows
 "unavailable" (worker returns `njt_not_configured`).
 
+**Your own Microsoft tenant (optional).** The Service Status card's Microsoft
+365 row reads two public sources by default: Microsoft's consumer feed, plus one
+volunteer tenant's enterprise health republished as static JSON on a ~2 hour
+delay. Neither is *your* Microsoft. Set three secrets and the enterprise half
+becomes your own tenant, live, straight from Microsoft Graph:
+
+```bash
+cd worker
+npx wrangler secret put MS_TENANT_ID       # directory (tenant) id or domain
+npx wrangler secret put MS_CLIENT_ID       # application (client) id
+npx wrangler secret put MS_CLIENT_SECRET   # client secret VALUE, not its id
+```
+
+In the Entra admin center: **App registrations → New registration** (no redirect
+URI needed), then **API permissions → Microsoft Graph → Application permissions
+→ ServiceHealth.Read.All → Grant admin consent**, then **Certificates & secrets
+→ New client secret**. That permission is read-only service health; it grants no
+access to mail, files, or users.
+
+All three or none. With any of them missing the row behaves exactly as it does
+in a fork that never set them, and a tenant that is misconfigured, unconsented,
+or mid-outage falls back to the public sources rather than blanking the row or
+faking green. The secrets never leave the Worker and never reach a log; a
+failure records only its HTTP status and Microsoft's short error code.
+
 **Usage metrics (optional).** Boards send an anonymous hourly heartbeat to
 `POST /fleet`. Exactly what is collected, for transparency:
 
@@ -702,7 +727,8 @@ welcome screen; re-enter a setup code to restore.
 | MTA alert feeds (camsys) | Worker digest | raw subway feed ~800 KB → ~2 KB digest shared fleet-wide |
 | MTA BusTime SIRI | Worker + free key | `wrangler secret put MTA_BUS_KEY`; widget reports unconfigured until set |
 | Google Drive API | Worker + free key | `wrangler secret put GDRIVE_KEY` (free Cloud project, Drive API enabled, key restricted to it); the GDrive Photos widget reports unconfigured until set. The same route serves the built-in curated folders (Landscapes, the clock backdrop) — those folder ids are public and link-shared; only the key is secret. Lists images sitting directly in the folder — subfolders aren't traversed |
-| Service status pages | Worker proxy, no keys | Statuspage instances (Zoom/Ubiquiti/Cloudflare/GitHub/Claude) + OpenAI (incident.io compat) + Slack/Microsoft/Google/Webex/AWS public JSON; failures report "Unknown", never fake green. Several deliver incident prose as HTML, so the Worker reduces it to plain text at the data boundary (`worker/src/htmltext.js`) instead of letting the board's escape-on-render print the tags out literally |
+| Service status pages | Worker proxy, no keys | Statuspage instances (Zoom/Ubiquiti/Cloudflare/GitHub/Claude) + OpenAI (incident.io compat) + Slack/Microsoft/Google/Webex/AWS public JSON; failures report "Unknown", never fake green. Several deliver incident prose as HTML, so the Worker reduces it to plain text at the data boundary (`worker/src/htmltext.js`) instead of letting the board's escape-on-render print the tags out literally. The Microsoft row is a composite: the consumer feed plus an enterprise source, since Microsoft publishes no keyless enterprise health (see the row below) |
+| Your Microsoft tenant (optional) | Worker + Entra app | `wrangler secret put MS_TENANT_ID` / `MS_CLIENT_ID` / `MS_CLIENT_SECRET` (an app registration with the `ServiceHealth.Read.All` **application** permission plus admin consent, read-only service health and nothing else); the Microsoft 365 row then reports your own tenant's Graph health live instead of a volunteer tenant's republished copy. All three or none. Unset, the row uses the public sources, and a tenant that is rejected, unconsented, or failing falls back to them rather than faking green |
 | NASA APOD | Worker + free key | `wrangler secret put NASA_KEY` (free key from api.nasa.gov); falls back to `DEMO_KEY` when unset — viable because the 1h fleet-shared cache stays under DEMO_KEY's daily cap, but the real key is preferred |
 | Health alerts (optional) | Worker webhook | `wrangler secret put ALERT_WEBHOOK` (a Slack incoming-webhook or ntfy.sh URL); the 20-minute health cron posts only state *changes*, so an ongoing outage pages once. Unset, alerts go to Workers Logs |
 | Dead-man heartbeat (optional) | Worker ping | `wrangler secret put HEARTBEAT_URL` (a healthchecks.io-style check, ~20-minute period with grace); the cron pings it after each *completed* run, so a cron that stops firing — or a run that dies — goes silent and the external check pages. The monitor cannot watch itself |
@@ -768,7 +794,11 @@ is written to keep it that way.
   an arbitrary host.
 - **Secrets stay server-side.** Optional API keys (MTA BusTime, Google Drive,
   NASA) live as Worker secrets, are URL-encoded into upstream requests, and are
-  never returned to the client or written to logs.
+  never returned to the client or written to logs. The optional Microsoft tenant
+  credentials go further: the client secret is exchanged for a token in a POST
+  body (never a URL), the token is memoized in the isolate rather than in the
+  shared Cache API, and a failed exchange logs only its HTTP status and
+  Microsoft's error code, never the credential, the token, or the request URL.
 - **Markup dies at the data boundary.** Feeds that deliver prose as HTML are
   reduced to plain text in the digest (`worker/src/htmltext.js`), so the
   client's escape-on-render has no tags left to print literally. The escaping

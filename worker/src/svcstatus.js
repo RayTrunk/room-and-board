@@ -48,7 +48,7 @@ export function mapSlack(json) {
 }
 
 // ---------------------------------------------------------------------------
-// Microsoft 365: a two-source composite.
+// Microsoft 365: a composite row, one consumer half plus one enterprise half.
 //
 // The old portal.office.com/api/servicestatus/index feed (mapMicrosoft, removed
 // 2026-08-02) is decommissioned — a permanent hard 404, so the row had been
@@ -58,9 +58,12 @@ export function mapSlack(json) {
 //     none of it is what a company runs on;
 //   * the enterprise picture only exists behind an authenticated Graph call
 //     (serviceAnnouncement), which a keyless public worker cannot make.
-// So the row reads both: the consumer feed direct, and one tenant's Graph
-// health republished as static JSON for the enterprise half. Either source may
-// be missing without blanking the row; only losing BOTH reports unknown.
+// So the row reads both: the consumer feed direct, and for the enterprise half
+// whichever of two sources answered — the operator's OWN tenant via Graph when
+// three optional secrets are set (see graphConfigured below), otherwise one
+// tenant's Graph health republished as static JSON by aguidetocloud.com. Any
+// source may be missing without blanking the row; only losing ALL of them
+// reports unknown.
 
 // Severity ordering for "worst of". Only present sources are ranked — an absent
 // source is dropped entirely rather than counted as a state.
@@ -81,9 +84,12 @@ const CONSUMER_STATE = {
   'service interruption': 'major',
 };
 
-// Microsoft Graph's serviceAnnouncement health enums, as republished by the
-// mirror. 'investigating' is Microsoft admitting it does not yet know, which an
-// office feels as trouble, so it degrades rather than reads green.
+// Microsoft Graph's serviceAnnouncement health enums — spoken by BOTH
+// enterprise sources, since the mirror is republishing exactly this vocabulary.
+// 'investigating' is Microsoft admitting it does not yet know, which an office
+// feels as trouble, so it degrades rather than reads green. Graph serves these
+// PascalCase live ("ServiceOperational") and camelCase in its docs; humanize()
+// flattens both, and anything unlisted is no signal rather than a guess.
 const MIRROR_STATE = {
   serviceoperational: 'ok', servicerestored: 'ok', resolved: 'ok', falsepositive: 'ok',
   postincidentreviewpublished: 'ok', investigationsuspended: 'ok',
@@ -98,8 +104,10 @@ const MIRROR_STATE = {
 // from some back-office workload would make the signal worthless, the same
 // lesson Webex's maintenance filter learned. Non-core trouble still appears in
 // incidents; it just does not set the row's state.
-// Matched on the mirror's own service names, lowercased and trimmed (its feed
+// Matched on Microsoft's own service names, lowercased and trimmed (the mirror
 // ships "Microsoft Clipchamp " with a trailing space, so trimming is required).
+// The same strings serve a tenant's direct Graph answer, since the mirror is
+// republishing exactly those names.
 // 'onedrive for business' is Microsoft's older name for the same workload and
 // is accepted in case the mirror reverts to it.
 const M365_CORE = new Set([
@@ -151,23 +159,21 @@ export function mapM365Consumer(json) {
   };
 }
 
-// Returns null (source ABSENT) when unusable: wrong shape, or too old to mean
-// anything. nowMs is passed in so the freshness gate is testable.
-export function mapM365Mirror(json, nowMs) {
-  if (!json || !Array.isArray(json.services) || !json.services.length) return null;
-  const generated = Date.parse(json.generated_at);
-  if (!Number.isFinite(generated) || nowMs - generated > MIRROR_MAX_AGE_MS) return null;
-
-  const name = (s) => String(s ?? '').trim();
-  const graded = json.services
-    .map((s) => ({ svc: s, name: name(s.service), state: MIRROR_STATE[humanize(s.status).replace(/ /g, '')] }))
+// Both enterprise sources say the same two things in different field names: a
+// list of workloads carrying a Graph health enum, and a list of open issues
+// whose prose belongs to the workload each one names. Grading them here rather
+// than twice is what keeps the two paths honest — the core-set rule, the
+// core-first sort and the note wording are one implementation, so a correction
+// to either source's verdict can't quietly drift from the other's.
+// Takes already-normalized rows: workloads [{name, status}] and open issues
+// [{name, since, update}]. Returns null (source ABSENT) when nothing in the
+// payload graded, which is a source saying nothing recognizable rather than a
+// source saying "fine".
+function gradeM365Workloads(workloads, openIssues) {
+  const graded = workloads
+    .map((w) => ({ ...w, state: MIRROR_STATE[humanize(w.status).replace(/ /g, '')] }))
     .filter((g) => g.state && g.name);
   if (!graded.length) return null;
-
-  // An open issue for the same workload carries the prose a reader wants; the
-  // services[] row only carries the verdict.
-  const open = (json.issues ?? []).filter((i) => i && !i.is_resolved);
-  const issueFor = (workload) => open.find((i) => name(i.service).toLowerCase() === workload.toLowerCase());
 
   // Core workloads lead, then severity. The row's note names the worst core
   // finding, so that same workload must be the first thing a tap reveals —
@@ -177,30 +183,99 @@ export function mapM365Mirror(json, nowMs) {
   const bad = graded.filter((g) => g.state !== 'ok')
     .sort((a, b) => (isCore(b) - isCore(a)) || (RANK[b.state] - RANK[a.state]));
   const core = bad.filter(isCore);
+  // A degraded workload with no matching open issue still gets its row: the
+  // verdict is the finding, the issue only supplies prose and a start time.
   const incidents = bad.map((g) => {
-    const issue = issueFor(g.name);
+    const issue = openIssues.find((i) => i.name.toLowerCase() === g.name.toLowerCase());
     return {
-      title: `${text(g.name)}: ${humanize(g.svc.status)}`,
-      since: String(issue?.start_time ?? ''),
-      update: clamp(issue?.impact || issue?.title),
+      title: `${text(g.name)}: ${humanize(g.status)}`,
+      since: String(issue?.since ?? ''),
+      update: clamp(issue?.update),
     };
   });
   if (!core.length) return { state: 'ok', note: 'All systems operational', incidents };
   return {
     state: core[0].state,
-    note: `${text(core[0].name)}: ${humanize(core[0].svc.status)}`,
+    note: `${text(core[0].name)}: ${humanize(core[0].status)}`,
     incidents,
   };
 }
 
-// Compose the row from whichever halves answered. Either argument may be null
-// (that fetch failed) or unusable (guarded above); only losing both reports
-// unknown, and an unknown ALWAYS carries a note — a blank one rendered as an
-// empty amber line on the board.
-export function mapM365(consumerJson, mirrorJson, nowMs) {
-  // Mirror first: on an equal-severity tie its note wins, because the workload
-  // an office actually feels is the more useful sentence to put on the wall.
-  const sources = [mapM365Mirror(mirrorJson, nowMs), mapM365Consumer(consumerJson)].filter(Boolean);
+// The mirror's own service names arrive untrimmed (its feed ships "Microsoft
+// Clipchamp " with a trailing space), and so do Graph's in principle.
+const svcName = (s) => String(s ?? '').trim();
+
+// Returns null (source ABSENT) when unusable: wrong shape, or too old to mean
+// anything. nowMs is passed in so the freshness gate is testable.
+export function mapM365Mirror(json, nowMs) {
+  if (!json || !Array.isArray(json.services) || !json.services.length) return null;
+  const generated = Date.parse(json.generated_at);
+  if (!Number.isFinite(generated) || nowMs - generated > MIRROR_MAX_AGE_MS) return null;
+
+  // An open issue for the same workload carries the prose a reader wants; the
+  // services[] row only carries the verdict.
+  return gradeM365Workloads(
+    json.services.map((s) => ({ name: svcName(s.service), status: s.status })),
+    (json.issues ?? [])
+      .filter((i) => i && !i.is_resolved)
+      .map((i) => ({ name: svcName(i.service), since: i.start_time, update: i.impact || i.title })),
+  );
+}
+
+// The operator's OWN tenant, from GET /admin/serviceAnnouncement/healthOverviews
+// ?$expand=issues: { value: [{ service, status, id, issues: [...] }] }. Field
+// names verified against Microsoft's serviceHealth and serviceHealthIssue
+// reference docs (v1.0), which is the only ground truth available to a repo
+// that ships no credentials of its own.
+//
+// Returns null (source ABSENT) for anything that is not that shape, so a Graph
+// answer we don't understand falls through to the mirror instead of painting
+// the row green. No freshness gate: unlike the mirror this is live, and Graph
+// has no "generated_at" to disbelieve.
+export function mapM365Graph(json) {
+  const rows = Array.isArray(json?.value) ? json.value : null;
+  if (!rows?.length) return null;
+  const workloads = rows
+    .filter((r) => r && typeof r.service === 'string' && typeof r.status === 'string')
+    .map((r) => ({ name: svcName(r.service), status: r.status }));
+  if (!workloads.length) return null;
+
+  // $expand nests each workload's issues under its own row, and that collection
+  // is HISTORY as well as news — the docs' own example issue is isResolved:true.
+  // Only the open ones describe anything a reader can still feel. The parent
+  // row's service name backstops an issue that omits its own.
+  const open = [];
+  for (const r of rows) {
+    for (const issue of Array.isArray(r?.issues) ? r.issues : []) {
+      if (!issue || issue.isResolved) continue;
+      open.push({
+        name: svcName(issue.service || r.service),
+        since: issue.startDateTime,
+        update: issue.impactDescription || issue.title,
+      });
+    }
+  }
+  return gradeM365Workloads(workloads, open);
+}
+
+// Compose the row from whichever halves answered. Every argument may be null
+// (that fetch failed, or that source isn't configured) or unusable (guarded
+// above); only losing them all reports unknown, and an unknown ALWAYS carries a
+// note — a blank one rendered as an empty amber line on the board.
+//
+// graphJson is optional and last so the three-argument callers this file shipped
+// with keep working unchanged.
+export function mapM365(consumerJson, mirrorJson, nowMs, graphJson = null) {
+  // The two enterprise sources are not peers. A tenant's own Graph answer is
+  // about the reader's OWN Microsoft; the mirror is about somebody else's. So
+  // the moment Graph answers, the mirror is irrelevant and is dropped rather
+  // than worst-of'd in — a stranger's outage must not amber a row whose own
+  // tenant just reported healthy. The mirror speaks only when Graph is absent:
+  // unconfigured, or configured and failing (which fetchOne reports as absent).
+  const enterprise = mapM365Graph(graphJson) ?? mapM365Mirror(mirrorJson, nowMs);
+  // Enterprise first: on an equal-severity tie its note wins, because the
+  // workload an office actually feels is the more useful sentence for the wall.
+  const sources = [enterprise, mapM365Consumer(consumerJson)].filter(Boolean);
   if (!sources.length) return { state: 'unknown', note: 'Status unavailable', incidents: [] };
   const worst = sources.reduce((a, b) => (RANK[b.state] > RANK[a.state] ? b : a));
   return {
@@ -339,25 +414,146 @@ async function fetchJson(url, { binary = false } = {}) {
   throw lastErr;
 }
 
-async function fetchOne(id) {
+// ---------------------------------------------------------------------------
+// Optional: the operator's own Microsoft tenant, via Graph.
+//
+// Bring-your-own-tenant. Set three secrets and the enterprise half of the m365
+// row stops being a stranger's tenant republished on a two-hour delay and
+// becomes YOUR Microsoft, live:
+//   npx wrangler secret put MS_TENANT_ID / MS_CLIENT_ID / MS_CLIENT_SECRET
+// (an Entra app registration with the ServiceHealth.Read.All APPLICATION
+// permission and admin consent — read-only, no mailbox or user scope).
+// With any of them missing the source is simply not attempted and the row
+// behaves exactly as it does in a fork that never heard of this, which is the
+// contract an open-source repo owes its self-hosters.
+const GRAPH_HEALTH_URL = 'https://graph.microsoft.com/v1.0/admin/serviceAnnouncement/healthOverviews?$expand=issues';
+const GRAPH_SCOPE = 'https://graph.microsoft.com/.default';
+
+// All three or nothing: two of three is a half-finished setup, and guessing at
+// it would only produce a confusing 401 every poll.
+function graphConfigured(env) {
+  return ['MS_TENANT_ID', 'MS_CLIENT_ID', 'MS_CLIENT_SECRET']
+    .every((k) => String(env?.[k] ?? '').trim().length > 0);
+}
+
+// Token cache, per isolate. Deliberately NOT the Cache API that the rest of
+// this worker leans on: that cache is keyed by URL and shared across routes, so
+// parking a live bearer token in it would leave a credential lying somewhere it
+// was never meant to be readable. An isolate-local memo is the smaller blast
+// radius, and the cost of the miss is one extra token POST on a cold start.
+// Refreshed ~5 min before expiry so a token can't die mid-request.
+let graphToken = null; // { token, exp } — the token itself is NEVER logged
+const TOKEN_EARLY_MS = 5 * 60e3;
+
+// Test hook: clear the isolate memo so credentials can't leak between cases.
+export function resetGraphToken() { graphToken = null; }
+
+// Client-credentials grant. Two attempts, not the public feeds' three: this
+// endpoint either accepts the credentials or it does not, and a rejected secret
+// is not going to change its mind on the third ask — the retry exists only for
+// a transient network blip.
+//
+// Nothing about the credentials reaches a log, ever. The only detail that
+// escapes is the HTTP status and, when the body offers one, AAD's short error
+// CODE ('invalid_client'), which names the failure class without echoing back
+// any request material.
+async function graphAccessToken(env) {
+  if (graphToken && graphToken.exp > Date.now() + TOKEN_EARLY_MS) return graphToken.token;
+  const url = `https://login.microsoftonline.com/${encodeURIComponent(String(env.MS_TENANT_ID).trim())}/oauth2/v2.0/token`;
+  const body = new URLSearchParams({
+    grant_type: 'client_credentials',
+    client_id: String(env.MS_CLIENT_ID).trim(),
+    client_secret: String(env.MS_CLIENT_SECRET).trim(),
+    scope: GRAPH_SCOPE,
+  }).toString();
+  let lastErr;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body,
+        signal: AbortSignal.timeout(attempt ? 4000 : 8000),
+      });
+      if (!res.ok) {
+        const code = await res.json().then((j) => (typeof j?.error === 'string' ? j.error : null)).catch(() => null);
+        throw new Error(`token HTTP ${res.status}${code ? ` (${code})` : ''}`);
+      }
+      const j = await res.json();
+      if (typeof j?.access_token !== 'string' || !j.access_token) throw new Error('token response missing access_token');
+      // expires_in is SECONDS from now, counted from the answer landing rather
+      // than from when we started asking.
+      const ttl = Number(j.expires_in);
+      graphToken = { token: j.access_token, exp: Date.now() + (Number.isFinite(ttl) && ttl > 0 ? ttl : 3600) * 1000 };
+      return graphToken.token;
+    } catch (e) {
+      lastErr = e;
+      if (attempt < 1) await new Promise((r) => setTimeout(r, RETRY_PAUSE_MS));
+    }
+  }
+  throw lastErr;
+}
+
+// Throws on any failure — the caller turns that into an ABSENT source, never a
+// green one. A 401/403 on the DATA call means the memoized token went bad (or
+// consent was pulled), so the memo is dropped and the next poll starts clean
+// instead of replaying a dead token every five minutes.
+async function fetchGraphHealth(env) {
+  const token = await graphAccessToken(env);
+  let lastErr;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const res = await fetch(GRAPH_HEALTH_URL, {
+        headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+        signal: AbortSignal.timeout(attempt ? 5000 : 8000),
+      });
+      if (!res.ok) {
+        if (res.status === 401 || res.status === 403) graphToken = null;
+        throw new Error(`health HTTP ${res.status}`);
+      }
+      // Same lesson as fetchJson: Microsoft's hosts answer 200 with an HTML
+      // consent/error page often enough that the body has to be checked.
+      if (/text\/html/i.test(res.headers.get('content-type') ?? '')) throw new Error('health HTML body');
+      return await res.json();
+    } catch (e) {
+      lastErr = e;
+      if (attempt < 1) await new Promise((r) => setTimeout(r, RETRY_PAUSE_MS));
+    }
+  }
+  throw lastErr;
+}
+
+// env is optional: every caller that predates the tenant source (and every test
+// that maps a fixture) may leave it off, and without it the Graph source is
+// simply never reached.
+async function fetchOne(id, env) {
   const svc = SERVICES[id];
   if (svc.adapter === 'm365') {
-    // Both halves in parallel, each with its own retries; either may come back
-    // null without blanking the row (mapM365 composes whatever answered).
-    const [consumer, mirror] = await Promise.all(
-      svc.urls.map((u) => fetchJson(u).catch((e) => {
+    // All sources in parallel, each with its own retries; any of them may come
+    // back null without blanking the row (mapM365 composes whatever answered).
+    // Graph runs alongside the public feeds rather than ahead of them, so a
+    // tenant that is misconfigured or mid-outage costs the fallback no latency.
+    const [consumer, mirror, graph] = await Promise.all([
+      ...svc.urls.map((u) => fetchJson(u).catch((e) => {
         console.warn(`[svcstatus] m365 source failed (${u}): ${String(e?.message ?? e)}`);
         return null;
       })),
-    );
-    return { id, label: svc.label, ...mapM365(consumer, mirror, Date.now()) };
+      graphConfigured(env) ? fetchGraphHealth(env).catch((e) => {
+        // Failure CLASS only. No URL (it carries the tenant id), no headers, no
+        // body prose — a status code and AAD's error code are enough to tell an
+        // operator whether they mistyped a secret or never granted consent.
+        console.warn(`[svcstatus] m365 graph ${String(e?.message ?? e)}`);
+        return null;
+      }) : null,
+    ]);
+    return { id, label: svc.label, ...mapM365(consumer, mirror, Date.now(), graph) };
   }
   const json = await fetchJson(svc.url, { binary: svc.adapter === 'aws' });
   return { id, label: svc.label, ...MAPPERS[svc.adapter](json, Date.now()) };
 }
 
-export async function fetchServiceStatuses(ids) {
-  const settled = await Promise.allSettled(ids.map((id) => fetchOne(id)));
+export async function fetchServiceStatuses(ids, env) {
+  const settled = await Promise.allSettled(ids.map((id) => fetchOne(id, env)));
   const services = settled.map((s, i) => (s.status === 'fulfilled' ? s.value
     : { id: ids[i], label: SERVICES[ids[i]].label, state: 'unknown', note: 'Status unavailable', incidents: [] }))
     // An unknown row ALWAYS says why. The card prints .svc__note in amber under

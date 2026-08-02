@@ -8,6 +8,12 @@
 # Health-alert channel (see src/health.js) — a Slack incoming-webhook URL or an
 # ntfy.sh topic URL; the monitor no-ops if unset:
 #   npx wrangler secret put ALERT_WEBHOOK
+# Your own Microsoft tenant for the Service Status row (see src/svcstatus.js) —
+# an Entra app registration with ServiceHealth.Read.All (application) + admin
+# consent. All three or none; unset, the row uses the public sources:
+#   npx wrangler secret put MS_TENANT_ID
+#   npx wrangler secret put MS_CLIENT_ID
+#   npx wrangler secret put MS_CLIENT_SECRET
 name = "signage-api"
 main = "src/index.js"
 compatibility_date = "2026-06-01"

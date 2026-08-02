@@ -1,0 +1,122 @@
+{
+  "_provenance": "HAND-BUILT 2026-08-02, not recorded live: this repo ships no Microsoft credentials, so the shape comes from Microsoft's own reference docs — GET /admin/serviceAnnouncement/healthOverviews?$expand=issues (serviceHealth + serviceHealthIssue, Graph v1.0). Field names, PascalCase status casing and the resolved/unresolved mix follow the documented example responses. Re-verify against a real tenant response the first time credentials exist.",
+  "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#admin/serviceAnnouncement/healthOverviews(issues())",
+  "value": [
+    {
+      "service": "Exchange Online",
+      "status": "ServiceDegradation",
+      "id": "Exchange",
+      "issues": [
+        {
+          "startDateTime": "2026-08-02T09:14:00Z",
+          "endDateTime": null,
+          "lastModifiedDateTime": "2026-08-02T11:02:17.41Z",
+          "title": "Users may experience delays sending or receiving mail",
+          "id": "EX1451220",
+          "impactDescription": "Users may see delays of several minutes when sending or receiving email, and some messages may be temporarily queued.",
+          "classification": "Incident",
+          "origin": "Microsoft",
+          "status": "ServiceDegradation",
+          "service": "Exchange Online",
+          "feature": "E-Mail timely delivery",
+          "featureGroup": "E-Mail and calendar access",
+          "isResolved": false,
+          "details": [],
+          "posts": [
+            {
+              "createdDateTime": "2026-08-02T09:41:03.12Z",
+              "postType": "Regular",
+              "description": {
+                "contentType": "Html",
+                "content": "<p>We're investigating a potential issue with mail delivery and will provide an update within 30 minutes.</p>"
+              }
+            }
+          ]
+        },
+        {
+          "startDateTime": "2026-07-21T13:00:00Z",
+          "endDateTime": "2026-07-21T18:35:00Z",
+          "lastModifiedDateTime": "2026-07-21T18:41:52.83Z",
+          "title": "Admins were unable to migrate some user mailboxes using the Exchange admin center",
+          "id": "EX1442215",
+          "impactDescription": "Admins attempting to migrate some user mailboxes using the Exchange admin center or PowerShell experienced failures.",
+          "classification": "Advisory",
+          "origin": "Microsoft",
+          "status": "ServiceRestored",
+          "service": "Exchange Online",
+          "feature": "Tenant Administration (Provisioning, Remote PowerShell)",
+          "featureGroup": "Management and Provisioning",
+          "isResolved": true,
+          "details": [],
+          "posts": []
+        }
+      ]
+    },
+    {
+      "service": "Microsoft Teams",
+      "status": "ServiceOperational",
+      "id": "MicrosoftTeams",
+      "issues": []
+    },
+    {
+      "service": "SharePoint Online",
+      "status": "ServiceOperational",
+      "id": "SharePoint",
+      "issues": []
+    },
+    {
+      "service": "Microsoft OneDrive",
+      "status": "ServiceOperational",
+      "id": "OneDriveForBusiness",
+      "issues": []
+    },
+    {
+      "service": "Microsoft 365 suite",
+      "status": "ServiceOperational",
+      "id": "OSDPPlatform",
+      "issues": []
+    },
+    {
+      "service": "Identity Service",
+      "status": "ServiceRestored",
+      "id": "OrgLiveID",
+      "issues": []
+    },
+    {
+      "service": "Microsoft Intune",
+      "status": "Investigating",
+      "id": "Intune",
+      "issues": [
+        {
+          "startDateTime": "2026-08-02T10:05:00Z",
+          "endDateTime": null,
+          "lastModifiedDateTime": "2026-08-02T10:48:09.77Z",
+          "title": "Some admins may be unable to view device compliance reports",
+          "id": "IT1451233",
+          "impactDescription": "Admins may see report generation fail or time out in the Intune admin center.",
+          "classification": "Advisory",
+          "origin": "Microsoft",
+          "status": "Investigating",
+          "service": "Microsoft Intune",
+          "feature": "Reporting",
+          "featureGroup": "Device Management",
+          "isResolved": false,
+          "details": [],
+          "posts": []
+        }
+      ]
+    },
+    {
+      "service": "Microsoft Purview",
+      "status": "ServiceOperational",
+      "id": "Compliance",
+      "issues": []
+    },
+    {
+      "service": "Microsoft Defender XDR",
+      "status": "ServiceOperational",
+      "id": "MDATP",
+      "issues": []
+    }
+  ]
+}
