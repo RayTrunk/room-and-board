@@ -21,6 +21,10 @@
       {
         "lead": "Subway status",
         "text": "When an alert names another line partway through a sentence, the card now draws that line's coloured bullet instead of its letter in brackets. Same on the full status board behind a tap."
+      },
+      {
+        "lead": "World Clock",
+        "text": "The card fits a smaller space now. Three cities read clearly on a short, wide one, so a world clock can sit along the bottom of the board instead of claiming a taller card. Resize it in Edit mode."
       }
     ]
   },
