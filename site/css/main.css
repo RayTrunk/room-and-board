@@ -2070,6 +2070,58 @@ body.mode-ambient .gear--edit { display: none; }
 .svc__note { font-size: 17px; color: var(--warn); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; }
 .svc--tap { cursor: pointer; }
 
+/* ---------- the ledger, full screen (Cloud Services + TfL Status) ----------
+   Sean's pick 2026-08-01, mockup 6B: a TYPOGRAPHIC ledger, deliberately not the
+   subway wall's wells. Any trouble leads in reading type with its status prose
+   UNCUT — the card clamps that note to one line, and completing it used to cost
+   a per-row tap — and everything that is fine settles underneath as two quiet
+   columns of hairline rows. No boxes anywhere: hairlines and type carry the
+   whole structure, which is what keeps a full eleven-service config calm on one
+   canvas. Shared by both cards (site/js/ledger.js builds it); the TfL block
+   below adds only the line-colour dot. */
+.ledger { height: 100%; overflow-y: auto; }
+/* min-height plus centred flex is the pattern that centres a SHORT ledger
+   without stranding a long one: once the content is taller than the canvas
+   there is no free space left, so the centring goes inert and the top of the
+   list can never be cut away above the scroller's origin. The narrow band is
+   the point of 6B — a ledger read at arm's length wants a column, not the full
+   1776px of glass. */
+.ledger__band {
+  width: 980px; max-width: 100%; margin: 0 auto; min-height: 100%;
+  display: flex; flex-direction: column; justify-content: center;
+  padding-top: 16px; /* ~52px clear of the title, per the mockups */
+}
+.ledger__row { border-bottom: 1px solid rgba(255, 255, 255, 0.10); }
+.ledger__row--lead { padding: 18px 0 20px; }
+.ledger__head { display: flex; align-items: baseline; justify-content: space-between; gap: 24px; }
+/* A flex box rather than a bare span so TfL's dot can sit beside the name and
+   stay centred on it; the text is still what the row aligns on. */
+.ledger__name { display: flex; align-items: center; gap: 14px; min-width: 0; font-size: 26px; font-weight: 600; color: var(--ink); }
+.ledger__state { flex: none; font-size: 22px; color: var(--ink-dim); white-space: nowrap; }
+.ledger__row--lead .ledger__state { font-weight: 600; }
+.ledger__state--minor, .ledger__state--alert { color: var(--warn); }
+.ledger__state--major { color: var(--bad); }
+/* Unknown is a FAILED status fetch, not a confirmed problem. The card refuses
+   to colour it and so does this: the quietness rule carries over intact. */
+.ledger__state--unknown { color: var(--ink-dim); }
+.ledger__note { margin: 10px 0 0; font-size: 22px; line-height: 1.45; color: var(--ink-dim); }
+.ledger__note + .ledger__note { margin-top: 14px; }
+.ledger__since { color: var(--ink-faint); }
+.ledger__update { display: block; margin-top: 6px; color: var(--ink-faint); }
+/* The all-clear, in two columns dealt by ledger.js (not multi-column layout:
+   the wall deals its own columns for the same reason subway does, so the split
+   is testable and the reading order is fixed). */
+.ledger__quiet { display: flex; align-items: flex-start; column-gap: 72px; margin-top: 26px; }
+.ledger__lead + .ledger__quiet { margin-top: 34px; }
+.ledger__col { flex: 1 1 0; min-width: 0; }
+.ledger__col .ledger__row { display: flex; align-items: baseline; justify-content: space-between; gap: 20px; padding: 13px 0; }
+/* Quiet rows drop to regular weight; the state word stays --ink-dim rather than
+   --ink-faint, which fails AA at this size. */
+.ledger__col .ledger__name { font-size: 24px; font-weight: 400; color: var(--ink-mid); }
+/* No trailing hairline dangling under the last row of a group. */
+.ledger__col .ledger__row:last-child,
+.ledger__lead:last-child .ledger__row--lead:last-child { border-bottom: none; }
+
 /* ---------- citi bike ---------- */
 .cb { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 5px 0; }
 .cb__name { font-size: 21px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -2078,6 +2130,37 @@ body.mode-ambient .gear--edit { display: none; }
 .cb__n { font-size: 24px; font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; }
 .cb__stat--off { color: var(--ink-faint); }
 .cb__e { color: var(--accent); font-weight: 600; }
+
+/* ---------- citi bike, full screen: one well per station ----------
+   Sean's pick 2026-08-01. The card's .cb__n emphasis taken to reading scale:
+   BIKES is the operative number, the one fact that decides whether you walk
+   over, so it leads each well and the docks/e-bikes line stays secondary. Two
+   columns by three rows holds the configured maximum (config.js caps the
+   station picker at six), so this grid has no scrolling case in practice —
+   overflow-y is the same never-clip backstop the subway wall carries. */
+.cbboard { height: 100%; display: flex; flex-direction: column; justify-content: center; overflow-y: auto; padding-top: 16px; }
+.cbboard__grid {
+  width: 1000px; max-width: 100%; margin: 0 auto;
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px 40px;
+}
+.cbwell { display: flex; align-items: center; gap: 28px; min-width: 0; background: var(--bg-card-2); border-radius: 16px; padding: 22px 28px; }
+.cbwell__count { flex: none; width: 132px; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+/* Momentum's rule is that the big numerals go LIGHT, and 60px is firmly big
+   (the rail overlay's 56px minutes are light for the same reason). The board's
+   Cisco face ships as a separate FAMILY per weight, so light type has to name
+   the family — declared here rather than joining the shared light-numeral list,
+   exactly as .wxf__temp does for the weather overlay. */
+.cbwell__n {
+  font-family: 'CiscoSansTT Light', 'CiscoSansTT', 'Cisco SansTT', -apple-system, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+  font-weight: 300; font-size: 60px; line-height: 1; color: var(--ink); font-variant-numeric: tabular-nums;
+}
+.cbwell__unit { font-size: 20px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-dim); }
+.cbwell__offword { font-size: 24px; color: var(--ink-faint); text-align: center; }
+.cbwell__body { min-width: 0; }
+.cbwell__name { font-size: 26px; font-weight: 600; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cbwell__sub { margin-top: 6px; font-size: 22px; color: var(--ink-dim); }
+.cbwell__e { color: var(--accent); font-weight: 600; }
+.cbwell--off .cbwell__name { color: var(--ink-dim); }
 /* Search-result buttons (weather cities, Citi Bike stations). The container
    had no rule at all — spacing was an accident of inline flow, and the new
    inline-flex .btn removed it, leaving results flush against the keyboard. */
@@ -2092,6 +2175,11 @@ body.mode-ambient .gear--edit { display: none; }
 .tfl__status { font-size: 19px; color: var(--ink-dim); white-space: nowrap; flex: none; }
 .tfl--alert .tfl__status { color: var(--warn); font-weight: 600; }
 .tfl--tap { cursor: pointer; }
+/* TfL's half of the shared full-screen ledger above: the line colour, at the
+   reading scale that surface is set in (the card's dot is 14px against 21px
+   type). Same ring as the card's, so an almost-black line still reads as a
+   disc rather than a hole. */
+.ledger__dot { flex: none; width: 20px; height: 20px; border-radius: 50%; box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.3); }
 .tflchips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
 /* Joined the standard chip primitive: 56px touch floor (was ~41px), 20px type
    floor, outline treatment; the line-colour dot stays inside. */
@@ -2245,6 +2333,15 @@ body.has-strip .clockface { bottom: 84px; }
 .cf-city__time { font-weight: 300; font-size: 44px; margin-top: 6px; color: rgba(255, 255, 255, 0.85); font-variant-numeric: tabular-nums; }
 .cf-city--night .cf-city__time { color: rgba(255, 255, 255, 0.45); }
 .cf-city__sub { font-weight: 300; font-size: 20px; color: var(--ink-dim); margin-top: 2px; }
+/* The World Clock card's expansion reuses this analog face VERBATIM
+   (clockFaceHtml('worldclocks'), see worldclock.js), and the face is written as
+   an absolutely positioned layer filling .clockface. Inside the tap-to-expand
+   overlay there is no .clockface, so .cf would resolve against the
+   position:fixed .expand instead and cover the title and the "tap anywhere to
+   close" hint. Re-flow it as an ordinary block filling the body's canvas: the
+   flex centring inside it, the dial scale, the night dimming and the home-city
+   treatment are all untouched, which is the whole point of reusing it. */
+.expand__body .cf { position: relative; inset: auto; height: 100%; overflow: hidden; }
 
 /* ---------- clock-face photo backdrop (opt-in) ---------- */
 /* An optional daily photo behind the clock screensavers. #backdrop sits below

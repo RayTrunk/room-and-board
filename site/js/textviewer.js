@@ -24,6 +24,17 @@ const EXPANDABLE =
 // deferring keeps them out of the reader on any card, expandable or not.
 const DEFER_TO_EXPAND = '.linestatus__text, .talert__text';
 
+// The same rule, for the cards that wire their OWN row taps rather than coming
+// through the delegated listener below. Cloud Services and TfL attach a click
+// handler per degraded row, and their status text is not in EXPANDABLE at all,
+// so the selector list above can never reach them — this predicate is how they
+// ask the same question. Once the card itself opens a fuller view the per-row
+// reader is a redundant intermediate (the ledger those cards expand into
+// carries the very prose the reader used to show), so it steps aside and
+// leaves exactly one handler in play. A card with nothing hidden is not
+// expandable, and its rows keep opening the reader exactly as before.
+export const defersToExpand = (el) => Boolean(el?.closest?.('.card.is-expandable'));
+
 const defaultTruncated = (el) =>
   el.scrollHeight - el.clientHeight > 1 || el.scrollWidth - el.clientWidth > 1;
 
@@ -189,7 +200,7 @@ export function initTextViewer(host, { truncated = defaultTruncated } = {}) {
     // board. Deferring here leaves exactly one handler in play. Cards with no
     // expansion are untouched: the rail alert banners on LIRR/MNR/NJT, and a
     // subway card small enough to hide nothing, still open the reader.
-    if (el.matches?.(DEFER_TO_EXPAND) && el.closest('.card.is-expandable')) return;
+    if (el.matches?.(DEFER_TO_EXPAND) && defersToExpand(el)) return;
     if (!truncated(el)) return;
     // First text node only: card titles may carry extra spans (e.g. "as of").
     const title = el.closest('.card')?.querySelector('.card__title')?.childNodes[0]?.textContent?.trim() ?? '';

@@ -4,6 +4,8 @@
 
 import { escapeHtml, clockTimeOpts, setMoreBadge } from '../util.js';
 import { itemCapacity, cardSize } from '../capacity.js';
+import { setExpandSource } from '../expand.js';
+import { clockFaceHtml } from '../clockfaces.js';
 
 export const meta = { id: 'worldclock', title: 'World Clock', refreshMs: 30 * 1000 };
 
@@ -69,7 +71,75 @@ export async function fetchData(cfg) {
   return worldTimes(new Date(), cfg.worldclock.cities, cfg.clock24);
 }
 
-export function render(el, vm) {
+// ---------- tap-to-expand: the analog face, verbatim ----------
+
+// The expansion is the SCREENSAVER's world face (design C), reused exactly as
+// clockFaceHtml builds it for ambient mode — dials, night dimming, the home
+// city treatment and the day markers all included. Nothing is rebuilt here on
+// purpose: two drawings of the same clock would drift, and the face is already
+// the board's most legible answer to "what time is it there".
+//
+// It is also why this card registers UNCONDITIONALLY, unlike the list cards
+// whose expansion only uncaps a slice (history and weather set the precedent).
+// The face is a richer RE-READ rather than a longer list: worldCities always
+// injects the local zone as a home dial, which the card never shows at all, so
+// even a card displaying every configured city still owes a tap something it
+// does not have. Only the corner badge tracks what is hidden.
+const DIAL_MIN = 200;
+const DIAL_STEP = 15;
+const GAP_MIN = 40;
+const GAP_STEP = 6;
+
+// The screensaver lays its dials out against .clockface, roughly 1032px tall;
+// the overlay canvas is OVERLAY_BODY_H, 814. Walking clockfaces' own planRows
+// and gridScale, every dial count clears that except exactly SIX: six deals as
+// 3 + 3, which gridScale then draws at the biggest 330px dial for about 892px
+// of cells. (A user with five cities and no home city lands there, because the
+// local dial is injected.) Rather than re-tune the shared grid — the face must
+// stay the screensaver's, verbatim, everywhere it already fits — step the dial
+// down only when the browser says it genuinely overflows. Same estimate-then-
+// measure contract fitStatusBoard and fitTrainRows run, bounded by DIAL_MIN,
+// and a no-op under happy-dom where nothing has a clientHeight.
+export function fitWorldFace(body) {
+  const cf = body?.querySelector?.('.cf');
+  const dials = body?.querySelector?.('.cf-dials');
+  if (!cf?.clientHeight || !dials) return 0;
+  let steps = 0;
+  while (dials.offsetHeight > cf.clientHeight) {
+    const dial = parseFloat(dials.style.getPropertyValue('--dial'));
+    if (!(dial > DIAL_MIN)) break;
+    dials.style.setProperty('--dial', `${Math.max(DIAL_MIN, dial - DIAL_STEP)}px`);
+    const gap = parseFloat(dials.style.getPropertyValue('--dgap'));
+    if (gap > GAP_MIN) dials.style.setProperty('--dgap', `${Math.max(GAP_MIN, gap - GAP_STEP)}px`);
+    steps += 1;
+  }
+  return steps;
+}
+
+// A clock is the one thing the overlay's snapshot rule cannot hold: every other
+// expansion shows data that was already stale the moment it was fetched, but a
+// face reading 9:14 while the wall clock says 9:31 is simply WRONG. So it
+// repaints on the minute boundary, the same alignment (and the same no-seconds
+// calm) as the screensaver engine.
+//
+// It stops itself, which is why the engine needs no close hook: closeExpand
+// empties the overlay, detaching this very body element, so `isConnected` is
+// the liveness signal. The 60s idle auto-close bounds the whole thing anyway —
+// a reader sees at most one repaint.
+export function startWorldFaceRepaint(body, cfg, schedule = setTimeout) {
+  const arm = () => {
+    if (!body?.isConnected) return null;
+    return schedule(() => {
+      if (!body.isConnected) return; // closed between the arm and the tick
+      body.innerHTML = clockFaceHtml('worldclocks', cfg);
+      fitWorldFace(body);
+      arm();
+    }, 60000 - (Date.now() % 60000) + 80);
+  };
+  return arm();
+}
+
+export function render(el, vm, cfg) {
   const [w, h] = cardSize(el, [3, 4]);
   const cap = itemCapacity('worldclock', w, h);
   const shown = vm.slice(0, cap);
@@ -94,4 +164,14 @@ export function render(el, vm) {
     })
     .join('');
   setMoreBadge(el, hidden);
+  // Built at TAP time, not here: the face must read the clock the moment it is
+  // opened, not the clock at the last card refresh.
+  setExpandSource(el, () => ({
+    title: meta.title,
+    bodyHtml: clockFaceHtml('worldclocks', cfg),
+    onFit: (bodyEl) => {
+      fitWorldFace(bodyEl);
+      startWorldFaceRepaint(bodyEl, cfg);
+    },
+  }));
 }
