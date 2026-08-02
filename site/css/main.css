@@ -2222,6 +2222,32 @@ body.mode-ambient .gear--edit { display: none; }
 .team__line { font-size: 20px; color: var(--ink-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .team--live .team__line { color: var(--ink); font-weight: 600; }
 .team__livedot { color: var(--bad); font-size: 14px; }
+/* The full-screen My Teams view (Sean's pick): ONE grand centered column
+   carrying everything the card row carries, at reading size — the club's own
+   artwork, the name with its record beside it, the Last/Next line beneath, and
+   the status line held out on the right where the eye can run down it. 980px is
+   the band: wide enough for the longest name beside a live score, narrow enough
+   that the logo and the score stay in one glance. The cap is the config's own
+   six teams, so the column always fills the canvas and never overruns it.
+
+   The row's line-height is PINNED (the .expand__head idiom) so the fit is
+   arithmetic rather than a measurement taken in whatever face this happened to
+   be modelled in: a two-line stack of 28 + 21 at 1.25 is 61.25px and outgrows
+   the 60px logo, so six rows on 40px gaps = 568px inside the 814px body. */
+.expand__body .team-board {
+  height: 100%; display: flex; flex-direction: column;
+  justify-content: center; align-items: center; gap: 40px; overflow: hidden;
+}
+.team--board { width: 980px; gap: 24px; min-height: 0; line-height: 1.25; }
+.team--board .team__logo { width: 60px; height: 60px; padding: 9px; }
+.team--board .team__abbr { width: 60px; font-size: 30px; }
+.team--board .team__info { flex: 1; line-height: 1.25; }
+.team--board .team__name { font-size: 28px; }
+/* 21px clears the AA floor that keeps --ink-faint off small text. */
+.team--board .team__name small { font-size: 21px; color: var(--ink-dim); }
+.team--board .team__last { font-size: 21px; }
+.team--board .team__line { flex: none; max-width: 460px; font-size: 25px; text-align: right; }
+.team--board .team__livedot { font-size: 17px; }
 
 /* (World Cup's .wc-section / .wc-match / .wc-flag / .flag-inline rules were
    deleted with the widget on 2026-07-29. The .wc-row* rules further up are
@@ -2387,6 +2413,52 @@ body.ss-backdrop .cf-dial__svg, .ss-preview.ss-backdrop .cf-dial__svg {
 .tennis-row__score { flex: none; font-size: 19px; color: var(--ink-dim); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .tennis-row--live .tennis-row__score { color: var(--ink); font-weight: 600; }
 .tennis-row__live { color: var(--bad); font-size: 13px; }
+
+/* The full-screen leaderboard (Sean's pick): the card's own four fields at
+   reading size on hairline rules, dealt into two centered columns so a deep
+   field reads DOWN then across. --board-rows (set inline by golf.js) is the
+   rows per column, so a short field fills the left column before it spills
+   right and never straddles. Twelve is the canvas: with the row's line-height
+   PINNED (the .expand__head idiom, so the fit is arithmetic rather than a
+   measurement in whatever face this was modelled in) a row is 12 + 12 + 35 +
+   its 1px rule = 60px, and twelve of them are 720px inside the 814px body. A
+   third column would push the player names under the 20px floor. Flags are
+   dropped here — 24 of them turn a leaderboard into bunting, and the names
+   carry identity at 26px. */
+.expand__body .golf-board {
+  height: 100%; display: grid;
+  grid-template-columns: 640px;
+  grid-template-rows: repeat(var(--board-rows, 12), min-content);
+  grid-auto-flow: column;
+  align-content: center; justify-content: center; column-gap: 80px; overflow: hidden;
+}
+.expand__body .golf-board--split { grid-template-columns: repeat(2, 600px); }
+.golf-board__row {
+  display: flex; align-items: baseline; gap: 16px; line-height: 1.25;
+  padding: 12px 0; border-bottom: 1px solid var(--bg-card-2);
+}
+.golf-board__row .golf-row__pos { width: 46px; font-size: 22px; }
+.golf-board__row .golf-row__name { font-size: 26px; }
+.golf-board__row .golf-row__today { min-width: 96px; text-align: right; font-size: 22px; }
+.golf-board__row .golf-row__score { min-width: 72px; font-size: 28px; }
+
+/* The full-screen tennis view (Sean's pick): a narrow centered column of
+   stacked match rows — the matchup on its own line, the score or the start time
+   quiet beneath it, so a mixed board of finals and fixtures reads as one list.
+   Eight is the canvas, on PINNED line-heights (the .expand__head idiom, so the
+   fit is arithmetic rather than a measurement in whatever face this was
+   modelled in): a 32.5 + 4 + 28.75 = 65.25px row on a 28px rhythm puts eight
+   rows at 718px inside the 814px body, and nine at 811px with nothing left. */
+.expand__body .tennis-board {
+  height: 100%; display: flex; flex-direction: column;
+  justify-content: center; align-items: center; gap: 28px; overflow: hidden;
+}
+.tennis-board__row { width: 980px; display: flex; flex-direction: column; gap: 4px; }
+.tennis-board__match { font-size: 26px; line-height: 1.25; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tennis-board__score { font-size: 23px; line-height: 1.25; color: var(--ink-dim); font-variant-numeric: tabular-nums; }
+.tennis-board__row.tennis-row--live .tennis-board__score { color: var(--ink); font-weight: 600; }
+.tennis-board .tennis-row__flag { width: 27px; height: 18px; margin-right: 8px; }
+.tennis-board .tennis-row__live { font-size: 16px; }
 
 /* ---------- headlines ---------- */
 /* Source + age on a small meta line above the full-width headline; the
