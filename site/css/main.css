@@ -685,7 +685,10 @@ body { position: relative; top: max(0px, calc((100dvh - 1080px) / 2)); }
   gap: 24px; max-width: 1280px; margin: 0 auto; overflow: hidden;
 }
 .history-board .history__item { grid-template-columns: 84px 1fr; gap: 20px; font-size: 26px; line-height: 1.4; }
-.history-board .history__year { font-size: 30px; color: var(--ink); } /* weight rides the light-numeral block */
+/* The year keeps the CARD's accent (Sean, 2026-08-01): it is the same column of
+   numerals the card leads its rows with, and the tap that opened this view was
+   a tap on those. Only the size grows; weight rides the light-numeral block. */
+.history-board .history__year { font-size: 30px; color: var(--accent); }
 .history-board .history__text { color: var(--ink-mid); }
 
 /* (Swiped photo surfaces need no further CSS: swipeFadeThrough in
@@ -2136,9 +2139,16 @@ body.mode-ambient .gear--edit { display: none; }
 .ledger__row--lead .ledger__state { font-weight: 600; }
 .ledger__state--minor, .ledger__state--alert { color: var(--warn); }
 .ledger__state--major { color: var(--bad); }
-/* Unknown is a FAILED status fetch, not a confirmed problem. The card refuses
-   to colour it and so does this: the quietness rule carries over intact. */
-.ledger__state--unknown { color: var(--ink-dim); }
+/* Unknown is a FAILED status fetch, and the CARD has always said so in amber:
+   the state word rests quiet there, but "Status unavailable" sits under it in
+   --warn (.svc__note). This surface has no second line to carry that — the
+   note slot holds the operator's prose in --ink-dim — so the amber rides the
+   state word instead, which is where the ledger keeps every tone. Shipped
+   neutral 2026-08-01 and corrected the same day (Sean: the ledger had dropped
+   an amber the card shows). Still not --bad: a fetch that failed is a "might
+   be", never a confirmed outage, and the WORD is what separates it from a
+   real minor issue — colour is never the only signal. */
+.ledger__state--unknown { color: var(--warn); }
 .ledger__note { margin: 10px 0 0; font-size: 22px; line-height: 1.45; color: var(--ink-dim); }
 .ledger__note + .ledger__note { margin-top: 14px; }
 .ledger__since { color: var(--ink-faint); }
@@ -2327,7 +2337,15 @@ body.mode-ambient .gear--edit { display: none; }
   justify-content: center; align-items: center; gap: 40px; overflow: hidden;
 }
 .team--board { width: 980px; gap: 24px; min-height: 0; line-height: 1.25; }
-.team--board .team__logo { width: 60px; height: 60px; padding: 9px; }
+/* Padding is derived the way the card's is (see the .team__logo note): a
+   contained logo fills a SQUARE, and a circular well only clears that square
+   inside its inscribed one — 60px inscribes 60/√2 = 42.43px. 9px of padding
+   left a 42px mark against that 42.43px, i.e. the artwork's corners sat 29.70px
+   out against the circle's own 30px radius, and the curve shaved them. (The
+   number was scaled off the card's box ratio, 7/44, instead of re-derived
+   against the inscribed square.) 10px leaves a 40px mark, 1.72px clear of the
+   curve — more than the card's 0.79px, in a bigger circle. */
+.team--board .team__logo { width: 60px; height: 60px; padding: 10px; }
 .team--board .team__abbr { width: 60px; font-size: 30px; }
 .team--board .team__info { flex: 1; line-height: 1.25; }
 .team--board .team__name { font-size: 28px; }
@@ -2625,7 +2643,15 @@ body.ss-backdrop .cf-dial__svg, .ss-preview.ss-backdrop .cf-dial__svg {
 .news-board .headline--tail { padding-bottom: 0; border-bottom: none; }
 .news-board .headline__meta { line-height: 24px; }
 .news-board .headline__src, .news-board .headline__age { font-size: 20px; }
-.news-board .headline__title { font-size: 26px; line-height: 34px; -webkit-line-clamp: 2; }
+/* Weight 400, NOT the card's 600 (Sean, 2026-08-01: "the expand view font feels
+   heavy/thick/loud... not comfortable to scan to find something to read"). Bold
+   buys salience by being RARE: three headlines on a card are three things worth
+   noticing, but twenty-one of them are a wall where nothing leads and the eye
+   has no rest to move between. Size and full ink still separate the headline
+   from its metadata — this list has no competition to win, only a column to be
+   read down. The colours are untouched, and the card keeps its 600. */
+.news-board .headline__src { font-weight: 400; }
+.news-board .headline__title { font-size: 26px; font-weight: 400; line-height: 34px; -webkit-line-clamp: 2; }
 /* A row with a story behind it presses; one without is inert and closes the
    overlay like any other tap (newscore.js marks only the former). */
 .news-board .headline--more { padding-left: 12px; padding-right: 12px; margin-left: -12px; margin-right: -12px; }

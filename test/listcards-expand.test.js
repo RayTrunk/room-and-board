@@ -165,14 +165,23 @@ describe('Cloud Services expand', () => {
     expect(serviceNotes(svc('x', 'major', { note: '', incidents: [] }))).toEqual([]);
   });
 
-  it('keeps unknown quiet: no alert colour, the way the card refuses to colour it', () => {
+  it('gives unknown its own tone, so the amber it earns is never the red it has not', () => {
+    // The card says "Status unavailable" in --warn under an unknown row, and
+    // the ledger carries that amber on the state word (overlay-chrome.test.js
+    // pins the colour). What must NOT happen is unknown collapsing into the
+    // outage tones: a failed status fetch is a "might be", and the tone stays
+    // its own class so a junk state out of a status page cannot borrow one.
     const items = serviceItems([svc('dark', 'unknown'), svc('bad', 'major'), svc('meh', 'minor')]);
-    expect(items[0].tone).toBe('unknown'); // its own quiet tone, never an alarm one
+    expect(items[0].tone).toBe('unknown');
     expect(items[0].tone).not.toBe('major');
     expect(items[0].tone).not.toBe('minor');
     expect(items[1].tone).toBe('major');
     expect(items[2].tone).toBe('minor');
-    expect(items[0].alert).toBe(true);     // but it still leads, above operational
+    expect(items[0].alert).toBe(true);     // and it leads, above operational
+    // The tone reaches the markup as its own selector, not a shared one.
+    const html = ledgerBody(items);
+    expect(html).toContain('ledger__state--unknown');
+    expect(html).toContain('ledger__state--major');
   });
 
   it('tones a state it has never heard of as unknown, never inventing a selector', () => {

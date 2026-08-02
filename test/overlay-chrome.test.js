@@ -196,6 +196,81 @@ describe('font-metric-independent boxed labels', () => {
   });
 });
 
+// ---------------------------------------------------------------------------
+// A full-screen view is a RE-READ of the card that opened it, so the things
+// that carry a card's identity — the shape a logo sits in, the colour of a
+// leading numeral, the amber on a status word — have to survive the tap. Every
+// item below is a place the expand wave of 2026-08-01 dropped one, found by
+// Sean on the boards the next morning. They are all one declaration each, which
+// is exactly why they are cheap to lose and worth pinning.
+// ---------------------------------------------------------------------------
+describe('a view keeps the treatment of the card it came from', () => {
+  // A contained logo fills a SQUARE, and a circular well only clears that
+  // square inside the circle's INSCRIBED one (side = diameter / √2). Both the
+  // card's number and the view's are derived that way; the view's was not, and
+  // the curve shaved the artwork's corners.
+  const wellClearance = (selector, fallback) => {
+    const box = px(decl(selector, 'width'));
+    const pad = px(decl(selector, 'padding'));
+    const art = box - 2 * pad;                 // the contained mark's own square
+    expect(px(decl(selector, 'height'))).toBe(box); // a circle, so it must be square
+    expect(decl(fallback ?? selector, 'object-fit')).toBe('contain');
+    return { box, art, clear: box / 2 - (art * Math.SQRT2) / 2 }; // radius left over at 45°
+  };
+
+  it('never lets the circle cut the mark, on the card or in the view', () => {
+    const card = wellClearance('.team__logo');
+    const view = wellClearance('.team--board .team__logo', '.team__logo');
+    expect(view.box).toBeGreaterThan(card.box); // the view reads at reading size
+    // The mark clears the curve on both, and the BIGGER well is not the tighter
+    // one: 9px of padding on a 60px circle left 0.21px, which is what a corner
+    // being shaved looks like. Scaling the card's box ratio (7/44) is what got
+    // it there; the number has to come off the inscribed square instead.
+    expect(card.clear).toBeGreaterThan(0.5);
+    expect(view.clear).toBeGreaterThan(card.clear);
+    expect(view.art).toBeLessThan(view.box / Math.SQRT2);
+  });
+
+  it('leads the day view with the card\'s accent years', () => {
+    // The years are the column the card leads its rows with, and the tap that
+    // opened the view was a tap on those. The view had them in plain --ink.
+    expect(decl('.history__year', 'color')).toBe('var(--accent)');
+    expect(decl('.history-board .history__year', 'color')).toBe('var(--accent)');
+  });
+
+  it('keeps the card\'s amber on an unavailable service, on the state word', () => {
+    // The card says it twice over: the state word rests quiet, but the note
+    // under it ("Status unavailable") is --warn. The ledger has no second line
+    // to carry that — its note slot holds the operator's prose — so the amber
+    // rides the state word, which is where every ledger tone lives.
+    expect(decl('.svc__note', 'color')).toBe('var(--warn)');
+    expect(decl('.ledger__state--unknown', 'color')).toBe('var(--warn)');
+    // Still not a confirmed outage: --bad stays reserved for major.
+    expect(decl('.ledger__state--unknown', 'color')).not.toBe('var(--bad)');
+    expect(decl('.ledger__state--major', 'color')).toBe('var(--bad)');
+    // ...and the prose beneath stays quiet, so the row has exactly one alarm.
+    expect(decl('.ledger__note', 'color')).toBe('var(--ink-dim)');
+  });
+
+  it('sets the reading list at regular weight, and leaves the card bold', () => {
+    // Bold buys salience by being RARE. Three headlines on a card are three
+    // things worth noticing; twenty-one of them are a wall where nothing leads
+    // (Sean: "heavy/thick/loud... not comfortable to scan"). Size and full ink
+    // still separate a headline from its metadata in the list.
+    expect(px(decl('.headline__title', 'font-weight'))).toBe(600);
+    expect(px(decl('.headline__src', 'font-weight'))).toBe(600);
+    expect(px(decl('.news-board .headline__title', 'font-weight'))).toBe(400);
+    expect(px(decl('.news-board .headline__src', 'font-weight'))).toBe(400);
+    // Colours are untouched, and the list still reads BIGGER than the card.
+    expect(css).not.toMatch(/\.news-board \.headline__title \{[^}]*color:/);
+    const size = px(decl('.news-board .headline__title', 'font-size'));
+    expect(size).toBeGreaterThan(px(decl('.headline__title', 'font-size')));
+    // Bulk reading wants air between the lines; the pinned pixels are ~1.3.
+    expect(px(decl('.news-board .headline__title', 'line-height')) / size)
+      .toBeGreaterThanOrEqual(1.3);
+  });
+});
+
 describe('full-screen image fit', () => {
   it('matches each widget to how its OWN screensaver shows the same photo', () => {
     // Curated scenery fills the glass; art and a viewer's own album letterbox

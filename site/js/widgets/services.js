@@ -83,11 +83,14 @@ export function serviceNotes(s) {
 // (bySeverity: major, minor, unknown, then operational). Trouble leads with its
 // prose; the operational tail is the quiet two-column group.
 //
-// The unknown-state quietness rules carry over intact: `tone` is what colours
-// the state word, and an unknown service gets the same neutral treatment the
-// card gives it (no alert red, no amber) because a failed status fetch is a
-// "might be" and never a confirmed outage. The name is left at the shared lead
-// weight for every item, so the alarm lives in exactly one place.
+// `tone` is what colours the state word, and it keeps the card's three-way
+// reading: --bad for a confirmed outage, --warn for a minor one, and --warn
+// again for unknown, because the card has always said "Status unavailable" in
+// amber under an unknown row (.svc__note) even while its state word rested
+// quiet. This surface has no second line to carry that amber, so the state
+// word takes it. Unknown stays out of --bad: a failed status fetch is a "might
+// be" and never a confirmed outage. The name is left at the shared lead weight
+// for every item, so the alarm lives in exactly one place.
 const TONE = { minor: 'minor', major: 'major' };
 export const serviceItems = (all) => all.map((s) => ({
   name: s.label,
