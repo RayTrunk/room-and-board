@@ -129,7 +129,7 @@ export function render(el, vm, _cfg) {
   const emptyHint = vm?.filtered
     ? `Nothing about your teams right now. Tap here to turn off Only my teams, or ${viaSettings('Sports News')}`
     : `No sports news yet. Tap here to pick sources or ${viaSettings('Sports News')}`;
-  renderHeadlines(el, vm, { widgetId: 'sportsnews', emptyHint });
+  renderHeadlines(el, vm, { widgetId: 'sportsnews', title: meta.title, emptyHint });
 }
 
 // data/teams.json is a static ~19KB roster and the only place a followed

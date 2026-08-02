@@ -3,6 +3,8 @@
 import { escapeHtml, setMoreBadge } from '../util.js';
 import { WORKER_URL } from '../env.js';
 import { itemCapacity, cardSize } from '../capacity.js';
+import { setExpandSource, OVERLAY_BODY_H } from '../expand.js';
+import { openStoryViewer } from '../textviewer.js';
 
 // Common named HTML entities seen in news feeds (numeric refs handled inline).
 const NAMED_ENTITIES = {
@@ -140,9 +142,72 @@ export function ageLabel(t, nowMs) {
   return `${Math.round(min / 1440)}d`;
 }
 
-export function renderHeadlines(el, vm, { widgetId, emptyHint }) {
+// ---------- the expanded reading list (wave 3) ----------
+//
+// Every headline the card holds, at reading size, on the full-screen overlay.
+// It NEVER scrolls: a passerby will not discover a scroll on a wall panel, so
+// the list is capped to what honestly fits instead. The fit is arithmetic
+// rather than measured because it also has to answer a question asked BEFORE
+// the overlay exists — how big may the corner badge's "+N" be (see the cap in
+// renderHeadlines) — and because every term below is pinned as a fixed px in
+// main.css precisely so this sum stays exact on a board whose font is not the
+// one the list was measured in. Same contract as OVERLAY_BODY_H itself.
+const LIST_META_H = 24; // 20px source/age line, line-height pinned to 24px
+const LIST_META_GAP = 4;
+const LIST_TITLE_LH = 34; // 26px headline, line-height pinned to 34px
+// What separates two rows: 8px under the text, the 1px hairline, then the
+// grid's 10px row-gap. It is charged BETWEEN rows only, which is exactly true
+// on the board because the last row of every column drops its padding and rule
+// (.headline--tail) — so this model is not an estimate, it is the geometry.
+const LIST_ROW_GAP = 8 + 1 + 10; // 19
+// Titles clamp to two lines, so two is what a row is budgeted at. In a
+// three-column list a column runs ~500px, which is ~38 characters of 26px
+// type: a typical headline really does take both lines, so this is the honest
+// row height and not a worst case that never happens. A one-line row simply
+// leaves its slack unspent (the grid rows are min-content).
+export const LIST_ROW_H = LIST_META_H + LIST_META_GAP + 2 * LIST_TITLE_LH; // 96
+// The board's 52px of air between the overlay title and the first row (the
+// approved mockup's breathing room) is 36px of .expand__body margin plus this,
+// and this part comes out of the canvas the rows get to use.
+export const LIST_TOP_PAD = 16;
+export const LIST_BODY_H = OVERLAY_BODY_H - LIST_TOP_PAD; // 798
+
+// Rows per column: n rows cost n row-heights plus the n-1 gaps BETWEEN them,
+// so the trailing gap is added to the budget rather than subtracted from each
+// row. Seven at the shipped numbers (7*96 + 6*19 = 786 of 798; an eighth would
+// need 901).
+export function listRows(bodyH = LIST_BODY_H) {
+  return Math.max(1, Math.floor((bodyH + LIST_ROW_GAP) / (LIST_ROW_H + LIST_ROW_GAP)));
+}
+
+// How wide a family's list may deal. The headline outlets carry short, dense
+// titles and read well three across; Substack and Bluesky carry long ones and
+// were approved at two.
+export const LIST_MAX_COLS = { news: 3, marketsnews: 3, sportsnews: 3, substack: 2, bsky: 2 };
+
+// Few items stay in one grand centered column (the history day-view grammar),
+// then two, then the family's maximum. Driven by the item count the card HOLDS,
+// which never grows after the cap is applied, so the choice cannot oscillate
+// between the capacity it implies and the count that implied it.
+export function listColumns(n, maxCols) {
+  if (n <= 6) return 1;
+  if (n <= 12) return Math.min(2, maxCols);
+  return maxCols;
+}
+
+export function listCapacity(n, widgetId) {
+  return listRows() * listColumns(n, LIST_MAX_COLS[widgetId] ?? 3);
+}
+
+// Bluesky posts and Substack essays are not "headlines", and the hint line is
+// the one place the board says the word out loud.
+const READ_NOUN = { substack: 'piece', bsky: 'post' };
+
+export function renderHeadlines(el, vm, { widgetId, emptyHint, title = '' }) {
   if (!vm.items?.length) {
     el.innerHTML = `<div class="empty" data-setup="${widgetId}">${emptyHint}</div>`;
+    setMoreBadge(el, 0);
+    setExpandSource(el, null); // an emptied card is inert again, badge and tap together
     return;
   }
   const nowMs = vm.nowMs ?? Date.now();
@@ -150,9 +215,13 @@ export function renderHeadlines(el, vm, { widgetId, emptyHint }) {
   // squeezes the other (at 3 cols the old side-by-side row truncated both).
   // A story with a link or summary is tappable (opens the full-screen story
   // view); carry those on the element so the delegated handler can read them.
-  const itemHtml = (i, clamp) => {
+  // `inList` marks up the same row for the full-screen reading list. Only a row
+  // with a story behind it becomes an expand-row: the engine keeps the overlay
+  // open for those and closes it for every other tap, so a row that has nothing
+  // to open still reads as "tap anywhere else to close" rather than as a dud.
+  const itemHtml = (i, clamp, { list = false, tail = false } = {}) => {
     const more = i.link || i.desc;
-    return `<div class="headline${clamp ? ' headline--clamp' : ''}${more ? ' headline--more' : ''}"${i.link ? ` data-link="${escapeHtml(i.link)}"` : ''}${i.desc ? ` data-desc="${escapeHtml(i.desc)}"` : ''}>
+    return `<div class="headline${clamp ? ' headline--clamp' : ''}${more ? ' headline--more' : ''}${tail ? ' headline--tail' : ''}"${list && more ? ' data-expand-row' : ''}${i.link ? ` data-link="${escapeHtml(i.link)}"` : ''}${i.desc ? ` data-desc="${escapeHtml(i.desc)}"` : ''}>
         <div class="headline__meta">
           <span class="headline__src">${escapeHtml(i.source)}</span>
           <span class="headline__age">${escapeHtml(ageLabel(i.t, nowMs))}</span>
@@ -191,7 +260,54 @@ export function renderHeadlines(el, vm, { widgetId, emptyHint }) {
       if (el.scrollHeight > el.clientHeight) { n -= 1; el.innerHTML = build(n); }
     }
   }
-  setMoreBadge(el, vm.items.length - n);
+  // THE +N CAP (Sean, 2026-08-01). The badge is a promise about the tap, so it
+  // must never advertise more than the tap can actually deliver. This is the
+  // one family where that can bite: mergeNews hands over as many as 30 items
+  // while the reading list seats 21 at most, so an uncapped count would offer
+  // a "+26" that opens onto 21 rows. Every other card's overlay shows
+  // everything it holds, which is why the cap lives here and not in
+  // setMoreBadge.
+  const viewCap = listCapacity(vm.items.length, widgetId);
+  setMoreBadge(el, Math.max(0, Math.min(vm.items.length - n, viewCap - n)));
+
+  // Whole-card tap for the whole list, EXCEPT on a headline row: the rows
+  // already own their taps (each opens its own story) and the card owes the
+  // reader everything else. Unconditional, like the history day view: the rows
+  // cover the card, so one card has to mean one destination, and a card whose
+  // items all fit still owes a tap the bigger reading view. Only the badge
+  // tracks what is hidden.
+  const shown = Math.min(vm.items.length, viewCap);
+  const cols = listColumns(vm.items.length, LIST_MAX_COLS[widgetId] ?? 3);
+  const perCol = Math.ceil(shown / cols);
+  // The last row of each column carries no rule: a separator under the final
+  // row divides it from nothing, and it is also what makes the height model
+  // above exact (the tail row costs 96px, not 96 + padding + hairline).
+  const listHtml = vm.items.slice(0, shown)
+    .map((i, idx) => itemHtml(i, false, { list: true, tail: (idx + 1) % perCol === 0 || idx === shown - 1 }))
+    .join('');
+  const noun = READ_NOUN[widgetId] ?? 'headline';
+  setExpandSource(
+    el,
+    () => ({
+      title,
+      hint: `Tap a ${noun} to read it · Tap anywhere else to close`,
+      // Column-first, so the freshest story is top-left and the list reads down
+      // one column before crossing to the next (the rail split board's grammar).
+      // --list-rows balances the columns; the markup is snapshot-at-open.
+      bodyHtml: `<div class="news-board news-board--c${cols}" style="--list-rows:${perCol}">${listHtml}</div>`,
+      // The overlay lives outside #grid, so the text viewer's delegated listener
+      // never sees these rows — this is the only handler in play, and the story
+      // view stacks above the list rather than replacing it.
+      onRowTap: (row) => openStoryViewer({
+        title: row.querySelector('.headline__title')?.textContent.trim() ?? '',
+        source: row.querySelector('.headline__src')?.textContent.trim() ?? '',
+        age: row.querySelector('.headline__age')?.textContent.trim() ?? '',
+        desc: row.dataset.desc ?? '',
+        link: row.dataset.link ?? '',
+      }),
+    }),
+    { except: '.headline' },
+  );
 }
 
 // `filter`, when given, keeps only the items it accepts. It runs on the WHOLE

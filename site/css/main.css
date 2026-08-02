@@ -2377,6 +2377,55 @@ body.ss-backdrop .cf-dial__svg, .ss-preview.ss-backdrop .cf-dial__svg {
    full item wouldn't fit). */
 .headline--clamp .headline__title { -webkit-line-clamp: 1; }
 
+/* ---------- the news family's expanded reading list (wave 3) ----------
+   Every headline the card holds, full screen, at reading size. It reuses the
+   card's own .headline markup (the history/rail overlays do the same) so the
+   row a reader taps here is the row they tapped there, and the story view
+   reads its source/age/link back off identical elements.
+
+   It NEVER scrolls. newscore.js caps the item count to listRows() *
+   listColumns() instead, and every number that sum depends on is pinned here
+   as a fixed px so the arithmetic holds on a board whose font is not the one
+   this was measured in — the same contract as .expand__head's pinned height.
+   Change a number here and you must change its twin in newscore.js:
+     24px  .news-board .headline__meta line-height   (LIST_META_H)
+      4px  .news-board .headline row gap             (LIST_META_GAP)
+     34px  .news-board .headline__title line-height  (LIST_TITLE_LH)
+     8+1+10px  row padding + hairline + row-gap      (LIST_ROW_GAP = 19)
+     16px  padding-top                               (LIST_TOP_PAD)
+   Worst case at three columns: 7 rows * 96px + 6 * 19px = 786 of the 798px
+   left after the padding (an 8th row would need 901). overflow:hidden is the
+   backstop only. */
+.expand__body .news-board {
+  height: 100%; box-sizing: border-box; padding-top: 16px;
+  display: grid; grid-auto-flow: column;
+  grid-template-rows: repeat(var(--list-rows, 7), min-content);
+  align-content: center; justify-content: center;
+  column-gap: 70px; row-gap: 10px;
+  margin: 0 auto; overflow: hidden;
+}
+/* Centered, widening with the column count: one grand column reads at the
+   story view's measure, two hold the ~66% band, and the three-column list
+   flexes past it (Sean's approved 20-item layout ran ~1640px). */
+.news-board--c1 { grid-template-columns: 900px; max-width: 900px; }
+.news-board--c2 { grid-template-columns: repeat(2, 600px); max-width: 1270px; }
+.news-board--c3 { grid-template-columns: repeat(3, 500px); max-width: 1640px; }
+/* Reading size. The meta line keeps the card's order (source and age ABOVE the
+   headline) and its quiet grey, but climbs to the 20px floor — at overlay
+   distance the card's 15px micro-metadata is simply unreadable. */
+.news-board .headline { gap: 4px; padding-bottom: 8px; border-bottom: 1px solid var(--bg-card-2); }
+/* The separator divides rows, so the last row of each COLUMN drops it (it would
+   otherwise underline nothing). newscore.js marks those rows, because no
+   selector can name "last in its grid column" — and dropping the rule is also
+   what makes the 96px row model exact for the tallest column. */
+.news-board .headline--tail { padding-bottom: 0; border-bottom: none; }
+.news-board .headline__meta { line-height: 24px; }
+.news-board .headline__src, .news-board .headline__age { font-size: 20px; }
+.news-board .headline__title { font-size: 26px; line-height: 34px; -webkit-line-clamp: 2; }
+/* A row with a story behind it presses; one without is inert and closes the
+   overlay like any other tap (newscore.js marks only the former). */
+.news-board .headline--more { padding-left: 12px; padding-right: 12px; margin-left: -12px; margin-right: -12px; }
+
 /* 7px padding keeps the contained logo inside the circle's inscribed square
    (44px circle inscribes ~31px; 4px padding left 36px — wide logos like the
    Mets NY clipped at the sides) */

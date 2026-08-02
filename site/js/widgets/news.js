@@ -23,7 +23,7 @@ export const NEWS_SOURCES = [
 const SOURCE_BY_ID = Object.fromEntries(NEWS_SOURCES.map((s) => [s[0], s]));
 
 export function render(el, vm, _cfg) {
-  renderHeadlines(el, vm, { widgetId: 'news', emptyHint: `No headlines yet. Tap here to pick sources or ${viaSettings('Headlines')}` });
+  renderHeadlines(el, vm, { widgetId: 'news', title: meta.title, emptyHint: `No headlines yet. Tap here to pick sources or ${viaSettings('Headlines')}` });
 }
 
 export async function fetchData(cfg, net) {
