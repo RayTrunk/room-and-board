@@ -187,7 +187,7 @@ body { position: relative; top: max(0px, calc((100dvh - 1080px) / 2)); }
 /* Shallow tier: TOP-packed on the fit model's own fixed 10px gap, not the
    centered elastic above. The elastic fills the body to its bottom edge, and
    at 3x2 (the one exact-fill size) that parks the last row's time inside the
-   corner badge's zone — the "⤢ +2" sat ON "1:13 PM" (Sean's board, 2026-08-02).
+   corner badge's zone — the "+2" sat ON "1:13 PM" (Sean's board, 2026-08-02).
    Top-packing leaves the fit's ~18px of slack at the BOTTOM, which is exactly
    where the badge lives. */
 .card--worldclock.t-s .card__body { --wcrow: 28px; justify-content: flex-start; row-gap: 10px; }
@@ -2265,38 +2265,39 @@ body.mode-ambient .gear--edit { display: none; }
 /* The corner badge: pinned at the truncation point (bottom-right) instead of
    costing a list row. Safe at every card width, and .card__stamp is
    top-anchored, so the badge and the amber "as of" stamp never meet. ONE form
-   board-wide (see util.js paintMoreBadge): "⤢ +8", the glyph then the compact
-   count, on every card hiding something and on no card that is not. It got
-   there by two cuts on 2026-08-01: the bare "⤢" went for saying nothing a
+   board-wide (see util.js paintMoreBadge): "+8", the compact count and nothing
+   else, on every card hiding something and on no card that is not. It got there
+   by three cuts. 2026-08-01: the bare expand mark went for saying nothing a
    board of tappable cards does not already say, and the second count dialect
    ("N more" beside the mark vs a plain "+N" without it) went because one board
    speaking two languages reads as inconsistency before it reads as meaning.
+   2026-08-02: the mark itself went from beside the count, because a board
+   carrying several count cards showed the same glyph in every corner and it
+   read as clutter rather than as information.
 
    20px, the board's type floor, up from 15px: a signifier that has to be read
    from 6 ft cannot be the smallest thing on the card. --ink-dim, never
    --ink-faint, which fails AA below 18px.
 
    EQUAL insets, 12px on both axes (2026-08-01). The badge inherited right:26px
-   from the text-only "+N", which aligned it with the card's 26px side padding
-   because it was reading matter that belonged to the list above it. A visible
-   glyph is not reading matter, it is a corner mark, and 26/10 read as dropped
-   in the wrong place, the defect Sean shot. What a corner mark owes is the
-   corner: the card's 24px radius meets the 45-degree diagonal 7px in, so 12px
-   is the smallest equal inset that clears the curve, and it clears it by
-   another 7px. (It was chosen while a mark could stand in that corner alone,
-   where the 12px inset put its optical centre at 22,22, within 2px of the
-   arc's own centre. The badge always carries words now, so what sits in the
-   corner is the count's last digit, on the same clear inset.)
+   from an earlier text-only "+N", which aligned it with the card's 26px side
+   padding because it was reading matter that belonged to the list above it. A
+   corner mark is not reading matter, and 26/10 read as dropped in the wrong
+   place, the defect Sean shot. What a corner mark owes is the corner: the
+   card's 24px radius meets the 45-degree diagonal 7px in, so 12px is the
+   smallest equal inset that clears the curve, and it clears it by another 7px.
+   The count kept those insets when the glyph left: a count in a corner is the
+   same corner mark the glyph was, and the digits sit no closer to the curve.
 
    Why 12 and not the 14 that would hit 24,24 exactly: the badge only ever
    appears on a card that is FULL, and its 20px line box already reaches 10px
    past the card's 22px bottom padding into the last row. Every further pixel of
    rise is spent against the ~7px of air a centred last-row element (a track
    pill, a service state) keeps below itself. 12 spends 2 of those and grazes
-   nothing new; 14 spends 4 and puts the mark's stroke on a departure card's
-   track pill. The 14px the badge moved RIGHT is free in the other direction:
-   it pulls the badge OFF the content column, which ends at 26px, so every list
-   card's last row gained 14px of horizontal clearance today.
+   nothing new; 14 spends 4 and puts the badge on a departure card's track pill.
+   The 14px the badge moved RIGHT is free in the other direction: it pulls the
+   badge OFF the content column, which ends at 26px, so every list card's last
+   row gained 14px of horizontal clearance.
 
    Nothing owes the corner a reserve any more. A row running flush to the
    card's BOTTOM edge cannot be cleared sideways, so weather and surf used to
@@ -2306,19 +2307,14 @@ body.mode-ambient .gear--edit { display: none; }
    back together if a counting card ever grows one. */
 .card__more {
   position: absolute; right: 12px; bottom: 12px;
-  display: inline-flex; align-items: center; gap: 8px;
   font-size: 20px; line-height: 1; font-weight: 400; letter-spacing: 0;
   text-transform: none; color: var(--ink-dim); white-space: nowrap;
 }
-/* The mark is optically centred on the words by construction, not by nudging:
-   both children are 1em boxes with line-height 1, align-items centres the
-   boxes, and the glyph's ink is centred in its own viewBox. A font chevron
-   would instead sit on the baseline and ride along the bottom of the text —
-   the thing this replaced. stroke-width 2.2 rather than the set's 1.6: the
-   icons are drawn on a 24px grid and shipped at 28px, so 2.2 at 20px puts the
-   same ~1.9px stroke on the glass as the gear and pencil. */
-.card__more .icon--more { width: 1em; height: 1em; flex: none; stroke-width: 2.2; }
-/* (An image card's artwork used to reserve 12px at its floor so the bare mark
+/* (The badge used to be a flex row: an inline SVG expand mark sized 1em and
+   centred against the count on an 8px gap. Text alone needs no row and no
+   sizing rule, so both went with the glyph on 2026-08-02.)
+
+   (An image card's artwork used to reserve 12px at its floor so the bare mark
    would sit on card surface rather than on a bright photo, where --ink-dim
    vanishes. No image card carries a badge now, since none of them counts
    anything hidden, so the artwork has its full height back: 2026-08-01.) */

@@ -2,7 +2,7 @@
 // NJ Transit, Amtrak, Ferry) — wave 2 of the +N rollout, one wiring because
 // they all render the same .train rows and must behave identically. After a
 // renderer has sliced to capacity, this fits the rows the browser can actually
-// hold, counts what the card is NOT showing, pins the quiet "⤢ +N" corner
+// hold, counts what the card is NOT showing, pins the quiet "+N" corner
 // badge, and registers the full two-column departures overlay.
 //
 // The whole card is the target, the markets grammar (Sean, 2026-07-31): the

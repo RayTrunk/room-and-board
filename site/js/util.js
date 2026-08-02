@@ -120,15 +120,14 @@ export function isOverlayOpen(doc = document) {
 
 // ---------- the bottom-right corner badge ----------
 //
-// ONE form, board-wide: "⤢ +N", the expand glyph then the compact count.
+// ONE form, board-wide, and it is text: "+N", the compact count alone.
 // It depends on exactly one fact, the renderer's, via setMoreBadge:
 //
-//   hides N > 0   "⤢ +8"    every card, whatever its tap does
+//   hides N > 0   "+8"      every card, whatever its tap does
 //   hides nothing  no badge  the corner stays empty
 //
-// It arrived at one form by subtraction, all on 2026-08-01. It began as three
-// (the mark plus a count, a bare mark, a plain "+N"), and Sean cut it twice,
-// each time from a rendered board rather than from a description:
+// It arrived there by subtraction, over 2026-08-01 and 08-02, each cut made off
+// a rendered board rather than off a description:
 //
 //   the BARE MARK went first. Almost every card will eventually open into
 //   something, so a per-card label for a property the whole board shares says
@@ -141,6 +140,13 @@ export function isOverlayOpen(doc = document) {
 //   so a tap there is never dead, and news nesting will make the card-level
 //   promise true anyway.
 //
+//   the GLYPH went last, 2026-08-02. It was drawn to mark WHICH cards open full
+//   screen; the expand wave made card-opening effectively universal, so on a
+//   board of count cards it repeated a known fact five times over and read as
+//   icon clutter ("if you have a lot of cards that have +N items it feels off
+//   to see so many icons", Sean). The count was carrying the whole message by
+//   then, so the mark went and the count stayed.
+//
 // So the badge no longer knows or cares whether the card expands. Everything
 // that makes a tap WORK is elsewhere and untouched: .is-expandable,
 // role/tabindex/aria-label, the :active tint. markExpandable does not repaint
@@ -151,12 +157,12 @@ export function isOverlayOpen(doc = document) {
 // the amber "as of" stamp can never collide.
 //
 // It sits at EQUAL 12px insets (main.css .card__more, 2026-08-01) rather than
-// on the content column's 26px edge: a glyph in a corner is a corner mark, not
-// reading matter, and the inherited 26/10 read as misplaced. No renderer owes
-// the corner anything any more: the badge only appears beside a count, and no
-// card that shows a count has a row running flush to its bottom edge (swept
-// 2026-08-01), so weather's day tiles and surf's footer strip gave back the
-// gutter they had been paying.
+// on the content column's 26px edge: what sits in a corner is a corner mark,
+// not reading matter, and the inherited 26/10 read as misplaced. No renderer
+// owes the corner anything any more: the badge only appears where there is a
+// count, and no card that shows one has a row running flush to its bottom
+// edge (swept 2026-08-01), so weather's day tiles and surf's footer strip gave
+// back the gutter they had been paying.
 
 // Reads the widget's own name off the card for an aria-label. First text node
 // only: a title may carry an appended .card__asof span (same idiom as the text
@@ -182,11 +188,9 @@ export function paintMoreBadge(card) {
     card.appendChild(badge);
   }
   badge.className = 'card__more';
-  // The mark is an inline SVG, never a font character: a text chevron sits on
-  // baseline metrics and rides along the bottom of the digits beside it, which
-  // is exactly the look Sean rejected. An SVG is a box, and a box centres.
-  badge.innerHTML = `${icon('expand', 'icon--more')}`
-    + `<span class="card__more-n">${escapeHtml(`+${hidden}`)}</span>`;
+  // Text, and nothing but: no glyph, so no wrapper span to align one against
+  // and no markup to escape. textContent is the whole badge.
+  badge.textContent = `+${hidden}`;
   card.classList.add('has-more');
 }
 

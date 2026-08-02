@@ -44,17 +44,17 @@ beforeEach(() => {
 });
 
 describe('rail +N badge and whole-card expand', () => {
-  it('shows the quiet "⤢ +N" badge when departures overflow: no well, no reserve', () => {
+  it('shows the quiet "+N" badge when departures overflow: no well, no reserve', () => {
     // Sean 07-31: the tappable pill's reserve cost a visible row, so the
     // trigger is the whole card (the markets grammar) and the badge went back
     // to the quiet corner text. 08-01: that text became the one board-wide
-    // form, the glyph plus a compact count.
+    // form. 08-02: the expand glyph beside it went too, leaving the count.
     const { card } = railBoard('lirr', renderLirr, lirrVm(5));
     const badge = card.querySelector('.card__more');
     expect(badge).not.toBeNull();
     expect(badge.classList.contains('card__more--pill')).toBe(false);
     expect(badge.textContent).toBe('+3');
-    expect(badge.querySelector('svg.icon--more')).not.toBeNull();
+    expect(badge.querySelector('svg')).toBeNull();
     expect(card.classList.contains('is-expandable')).toBe(true);
     expect(card.classList.contains('is-expandable-pill')).toBe(false);
   });

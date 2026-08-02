@@ -32,6 +32,7 @@ import {
 } from '../site/js/widgets/subway.js';
 import { render as renderWeather } from '../site/js/widgets/weather.js';
 import { fmtClock, setMoreBadge } from '../site/js/util.js';
+import { icon } from '../site/js/icons.js';
 import { DEMO_VMS } from '../site/demo/fixtures.js';
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
@@ -1092,23 +1093,25 @@ describe('history card tap', () => {
 });
 
 /**
- * The corner badge, now ONE form board-wide: "⤢ +N".
+ * The corner badge, now ONE form board-wide and text only: "+N".
  *
  * It began (2026-08-01, morning) as three forms carrying the whole tap
- * grammar, and Sean cut it twice the same day, each time off a rendered board.
- * The bare mark went first: almost every card will eventually open into
- * something, so a per-card mark for a property the board shares says nothing
- * and reads as chrome. The second COUNT dialect went next: "8 more" beside the
- * mark on tappable cards against a plain "+8" elsewhere made one board speak
- * two languages, which reads as inconsistency at glance distance long before
- * it reads as a distinction.
+ * grammar, and Sean cut it three times off a rendered board. The bare mark
+ * went first: almost every card will eventually open into something, so a
+ * per-card mark for a property the board shares says nothing and reads as
+ * chrome. The second COUNT dialect went next: "8 more" beside the mark on
+ * tappable cards against a plain "+8" elsewhere made one board speak two
+ * languages, which reads as inconsistency at glance distance long before it
+ * reads as a distinction. The MARK itself went last (2026-08-02): with the
+ * expand wave making card-opening near enough universal, a board of count
+ * cards wore the same glyph in five corners for no new information.
  *
  * So the badge answers exactly one question now, "how much is this card not
- * showing", and answers it identically everywhere. Whether the card opens is a
- * separate fact, carried by .is-expandable and the button semantics, and the
- * badge neither states it nor depends on it.
+ * showing", and answers it identically everywhere, in digits. Whether the card
+ * opens is a separate fact, carried by .is-expandable and the button
+ * semantics, and the badge neither states it nor depends on it.
  */
-describe('the corner badge: one form, "⤢ +N", everywhere', () => {
+describe('the corner badge: one form, a plain "+N", everywhere', () => {
   // A bare card, no widget: the badge's input driven directly.
   function bareCard(title = 'Headlines') {
     document.body.innerHTML = `
@@ -1126,18 +1129,19 @@ describe('the corner badge: one form, "⤢ +N", everywhere', () => {
   }
 
   const badge = (card) => card.querySelector('.card__more');
-  const mark = (card) => card.querySelector('.card__more svg.icon--more');
+  // No glyph may return to the corner: the badge is digits, not iconography.
+  const mark = (card) => card.querySelector('.card__more svg');
 
   describe('one form, and the count alone decides whether it appears', () => {
-    it('expands AND hides rows: the mark and the compact count', () => {
+    it('expands AND hides rows: the compact count, alone', () => {
       const { card, body } = bareCard();
       setMoreBadge(body, 24);
       setExpandSource(body, () => ({ title: 'Headlines', bodyHtml: '<p>all of them</p>' }));
-      expect(mark(card)).not.toBeNull();
       expect(badge(card).textContent).toBe('+24');
+      expect(mark(card)).toBeNull();
     });
 
-    it('counts WITHOUT opening: the identical badge, mark and all', () => {
+    it('counts WITHOUT opening: the identical badge', () => {
       // The second dialect Sean cut. News rows open stories of their own, so a
       // tap here is never dead, and news nesting will make the card-level
       // promise true anyway; what matters is that the corner reads the same on
@@ -1145,7 +1149,7 @@ describe('the corner badge: one form, "⤢ +N", everywhere', () => {
       const { card, body } = bareCard();
       setMoreBadge(body, 18);
       expect(badge(card).textContent).toBe('+18');
-      expect(mark(card)).not.toBeNull();
+      expect(mark(card)).toBeNull();
       expect(card.classList.contains('is-expandable')).toBe(false);
       card.click();
       expect(isExpandOpen()).toBe(false);
@@ -1181,35 +1185,29 @@ describe('the corner badge: one form, "⤢ +N", everywhere', () => {
     });
   });
 
-  describe('the mark is drawn, not typed', () => {
-    // The mark only ever appears beside a count now, so every case here paints
-    // one first.
-    it('is an inline SVG from the icon set, never a font character', () => {
+  describe('the badge is a count, not iconography', () => {
+    // Sean, 2026-08-02: "if you have a lot of cards that have +N items it feels
+    // off to see so many icons". The expand mark was drawn to say WHICH cards
+    // open full screen, and the expand wave made that near enough universal, so
+    // it repeated a known fact in every counting corner. The count stayed.
+    it('paints digits and nothing else: no glyph, drawn or typed', () => {
       const { card, body } = bareCard('Headlines');
       setMoreBadge(body, 5);
       setExpandSource(body, () => ({ title: 'Headlines', bodyHtml: '<p>x</p>' }));
-      const svg = mark(card);
-      expect(svg).not.toBeNull();
-      expect(svg.tagName.toLowerCase()).toBe('svg');
-      expect(svg.querySelector('path')).not.toBeNull();
-      expect(svg.getAttribute('stroke')).toBe('currentColor'); // inherits --ink-dim
-      expect(svg.getAttribute('aria-hidden')).toBe('true'); // the label carries the meaning
-      // A font glyph sits on baseline metrics and rides along the bottom of the
-      // words beside it, which is exactly the look this replaced. No chevron,
-      // arrow or expand character may appear in the badge's text.
+      expect(badge(card).textContent).toBe('+5');
+      expect(mark(card), 'no SVG returns to the corner').toBeNull();
+      expect(badge(card).querySelector('*'), 'text needs no element inside it').toBeNull();
+      // Nor may a font character stand in for the retired mark: it would sit on
+      // baseline metrics and ride along the bottom of the digits, the very look
+      // the SVG was drawn to avoid.
       expect(badge(card).textContent).not.toMatch(/[⌄⤡⤢⬌⬍▾▼]/u);
     });
 
-    it('draws the diagonal expand mark, not a downward chevron', () => {
-      const { card, body } = bareCard('Headlines');
-      setMoreBadge(body, 5);
-      setExpandSource(body, () => ({ title: 'Headlines', bodyHtml: '<p>x</p>' }));
-      // Two arrowheads pushing apart along the NE/SW diagonal, ink centred in
-      // the viewBox (3..21 on both axes) so the glyph's optical centre IS its
-      // box centre — which is what lets the badge centre it with align-items.
-      const d = mark(card).querySelector('path').getAttribute('d');
-      expect(d).toBe('M15 3h6v6M21 3l-7 7M9 21H3v-6M3 21l7-7');
-      expect(mark(card).getAttribute('viewBox')).toBe('0 0 24 24');
+    it('leaves the icon set with no expand mark to reach for', () => {
+      // Its only caller was this badge, so the glyph went out with it rather
+      // than sitting in the set as a temptation.
+      expect(icon('expand')).toBe(icon('__no_such_icon__')); // both fall back to the default
+      expect(icon('expand')).not.toContain('M15 3h6v6'); // the retired maximize-2 path
     });
   });
 
@@ -1224,7 +1222,7 @@ describe('the corner badge: one form, "⤢ +N", everywhere', () => {
       setExpandSource(body, () => ({ title: 'Headlines', bodyHtml: '<p>x</p>' }));
       expect(card.querySelectorAll('.card__more').length).toBe(1); // one badge, not two
       expect(badge(card).textContent).toBe('+6');
-      expect(mark(card)).not.toBeNull();
+      expect(mark(card)).toBeNull();
     });
 
     it('takes the count and the expansion in either order', () => {
@@ -1252,7 +1250,7 @@ describe('the corner badge: one form, "⤢ +N", everywhere', () => {
       const before = badge(card).outerHTML;
       setExpandSource(body, null);
       expect(badge(card).outerHTML).toBe(before);
-      expect(mark(card)).not.toBeNull();
+      expect(badge(card).textContent).toBe('+4');
       expect(card.classList.contains('is-expandable')).toBe(false);
       card.click();
       expect(isExpandOpen()).toBe(false);
@@ -1345,18 +1343,14 @@ describe('the corner badge: one form, "⤢ +N", everywhere', () => {
       expect(body).not.toMatch(/--ink-faint/);
     });
 
-    it('centres the mark on the words with flex, not with a baseline nudge', () => {
+    it('keeps a tight line box, and no sizing rule for a mark it no longer has', () => {
       const body = rule('.card__more');
-      expect(body).toMatch(/display:\s*inline-flex/);
-      expect(body).toMatch(/align-items:\s*center/);
-      expect(body).toMatch(/line-height:\s*1\b/); // both children are 1em boxes
-      expect(body).not.toMatch(/vertical-align/); // the rejected baseline idiom
-    });
-
-    it('sizes the mark off the badge text, so the two scale together', () => {
-      const body = rule('.card__more .icon--more');
-      expect(body).toMatch(/width:\s*1em/);
-      expect(body).toMatch(/height:\s*1em/);
+      expect(body).toMatch(/line-height:\s*1\b/); // the corner sits on its own metrics
+      // The flex row existed only to centre the glyph against the count. Text
+      // alone needs no row, and no rule may size an icon inside the badge.
+      expect(decls, 'the glyph sizing rule went with the glyph')
+        .not.toMatch(/\.card__more\s+\.icon--more/);
+      expect(decls, 'nothing styles a badge icon class any more').not.toMatch(/icon--more/);
     });
 
     // The corner the badge sits in, as arithmetic rather than as magic

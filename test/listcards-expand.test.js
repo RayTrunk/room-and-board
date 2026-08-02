@@ -2,9 +2,10 @@
  * @vitest-environment happy-dom
  */
 // Tap-to-expand for the four remaining count cards: Cloud Services, TfL Status,
-// World Clock and Citi Bike. Every count card wears the "⤢ +N" corner badge, so
-// these four had to earn it — the glyph promised a destination their taps did
-// not have.
+// World Clock and Citi Bike. Every count card wears the "+N" corner badge, and
+// these four earned their taps back when the badge still carried an expand
+// glyph that promised a destination they did not have. The glyph is gone
+// (2026-08-02); the destinations it forced are the lasting part.
 import { describe, it, expect, beforeEach } from 'vitest';
 import { closeExpand, isExpandOpen, initExpand } from '../site/js/expand.js';
 import { initTextViewer, closeTextViewer, defersToExpand } from '../site/js/textviewer.js';

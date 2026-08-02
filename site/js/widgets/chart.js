@@ -45,9 +45,8 @@ export function render(el, vm, cfg) {
   }
   // The shared image surface (2026-08-01), which this card had been hand-rolling
   // a copy of: it brings the decode-before-swap cross-fade, and — the reason for
-  // the change — the one place that makes the WHOLE CARD the tap target and
-  // stamps the expand mark in the corner, instead of a role="button" figure
-  // whose title row and padding were dead glass.
+  // the change — the one place that makes the WHOLE CARD the tap target, instead
+  // of a role="button" figure whose title row and padding were dead glass.
   //
   // No card caption: the infographic embeds its own title and the Statista
   // branding — a caption would just repeat both (Sean flagged the duplicate).
