@@ -44,7 +44,7 @@ function teamBoard(rows) {
     .map((r) => {
       const under = [lastLine(r), nextLine(r)].filter(Boolean);
       return `<div class="team team--board ${r.state === 'in' ? 'team--live' : ''}">
-        ${r.logo ? `<img class="team__logo" src="${escapeHtml(logoUrl(r.logo, 120))}" alt="">` : `<span class="team__abbr">${escapeHtml(r.abbr)}</span>`}
+        ${r.logo ? `<span class="team__crest"><img class="team__logo" src="${escapeHtml(logoUrl(r.logo, 120))}" alt=""></span>` : `<span class="team__abbr">${escapeHtml(r.abbr)}</span>`}
         <div class="team__info">
           <span class="team__name">${escapeHtml(r.name)}${r.record ? ` <small>${escapeHtml(r.record)}</small>` : ''}</span>
           ${under.map((t) => `<span class="team__last">${escapeHtml(t)}</span>`).join('')}
@@ -71,7 +71,7 @@ export function render(el, vm, _cfg) {
     shown
       .map(
         (r) => `<div class="team ${r.state === 'in' ? 'team--live' : ''}">
-          ${r.logo ? `<img class="team__logo" src="${escapeHtml(logoUrl(r.logo))}" alt="">` : `<span class="team__abbr">${escapeHtml(r.abbr)}</span>`}
+          ${r.logo ? `<span class="team__crest"><img class="team__logo" src="${escapeHtml(logoUrl(r.logo))}" alt=""></span>` : `<span class="team__abbr">${escapeHtml(r.abbr)}</span>`}
           <div class="team__info">
             <span class="team__name">${escapeHtml(r.name)}${r.record ? ` <small>${escapeHtml(r.record)}</small>` : ''}</span>
             <span class="team__line">${r.state === 'in' ? '<b class="team__livedot">●</b> ' : ''}${escapeHtml(r.line)}</span>

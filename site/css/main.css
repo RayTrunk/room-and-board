@@ -2478,12 +2478,11 @@ body.mode-ambient .gear--edit { display: none; }
   justify-content: center; align-items: center; gap: 40px; overflow: hidden;
 }
 .team--board { width: 980px; gap: 24px; min-height: 0; line-height: 1.25; }
-/* Same rule as the card's .team__logo note: clearance ≈ 8% of the diameter,
-   because sub-pixel margins against the inscribed square (10px left 1.72px)
-   still read as shaved corners on the glass — and the circle spends the
-   height the grand row affords. 72px circle, 15px padding = a 42px mark
-   (bigger than every prior attempt), corners 6.3px clear of the curve. */
-.team--board .team__logo { width: 72px; height: 72px; padding: 15px; }
+/* Same wrapper model as the card (see the .team__crest note): the disc is
+   painted behind the mark, so nothing clips at any size. The grand row
+   affords a 72px disc and a 46px mark, the largest of any attempt. */
+.team--board .team__crest { width: 72px; height: 72px; }
+.team--board .team__logo { width: 46px; height: 46px; }
 .team--board .team__abbr { width: 72px; font-size: 34px; }
 .team--board .team__info { flex: 1; line-height: 1.25; }
 .team--board .team__name { font-size: 28px; }
@@ -2794,22 +2793,23 @@ body.ss-backdrop .cf-dial__svg, .ss-preview.ss-backdrop .cf-dial__svg {
    overlay like any other tap (newscore.js marks only the former). */
 .news-board .headline--more { padding-left: 12px; padding-right: 12px; margin-left: -12px; margin-right: -12px; }
 
-/* A contained logo fills a SQUARE, and the circle only clears that square
-   inside its inscribed one (d/√2), so the mark's corners need REAL air, not a
-   fraction of a pixel: 7px left the corners 0.79px off the curve, which device
-   rendering shaved (Sean's zoom, 2026-08-02 — the same class of failure the
-   old 4px produced on the Mets NY). Rule of thumb now: clearance ≈ 8% of the
-   diameter — and the circle itself should spend the height the row already
-   reserves (Sean, 2026-08-02: shrinking the mark inside a small circle made it
-   harder to see; the row's 64px min-height had 20px of unused air around a
-   44px circle). 60px circle, 12px padding = a 36px mark (bigger than the old
-   30px), corners 4.5px clear. */
-.team__logo { width: 60px; height: 60px; object-fit: contain; flex: none; background: rgba(232, 237, 244, 0.08); border-radius: 50%; padding: 12px; }
+/* THE CIRCLE IS A WRAPPER, NEVER THE IMAGE. border-radius on a replaced
+   element trims its content to the CONTENT-EDGE curve (the spec's own rule),
+   whose radius shrinks by the padding — so a rounded <img> masks every logo
+   with a small circle no padding value can escape. Sean diagnosed it from the
+   glass (2026-08-02): "an invisible ring mask overlayed at a specific padding
+   measurement. The size of the images was never a problem." Two padding
+   rounds proved him right. The disc is painted BEHIND the mark by
+   .team__crest; the img itself has no radius and can never be cut. The disc
+   spends the height the row already reserves (64px min-height). */
+.team__crest { width: 60px; height: 60px; border-radius: 50%; background: rgba(232, 237, 244, 0.08); flex: none; display: flex; align-items: center; justify-content: center; }
+.team__logo { width: 38px; height: 38px; object-fit: contain; flex: none; }
 .team__last { font-size: 17px; color: var(--ink-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } /* AA */
 /* Shallow cards: two compact rows fit (a 3×2 showed just one team over dead
    space) — smaller logo/type, no "Last:" line; the result line carries it. */
 .card--sports.t-s .team { min-height: 0; gap: 10px; }
-.card--sports.t-s .team__logo { width: 36px; height: 36px; padding: 8px; } /* 20px mark, corners 3.9px clear */
+.card--sports.t-s .team__crest { width: 36px; height: 36px; }
+.card--sports.t-s .team__logo { width: 22px; height: 22px; }
 .card--sports.t-s .team__abbr { width: 36px; font-size: 18px; }
 .card--sports.t-s .team__name { font-size: 19px; }
 .card--sports.t-s .team__line { font-size: 18px; }

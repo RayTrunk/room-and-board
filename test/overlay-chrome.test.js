@@ -205,30 +205,35 @@ describe('font-metric-independent boxed labels', () => {
 // is exactly why they are cheap to lose and worth pinning.
 // ---------------------------------------------------------------------------
 describe('a view keeps the treatment of the card it came from', () => {
-  // A contained logo fills a SQUARE, and a circular well only clears that
-  // square inside the circle's INSCRIBED one (side = diameter / √2). Both the
-  // card's number and the view's are derived that way; the view's was not, and
-  // the curve shaved the artwork's corners.
-  const wellClearance = (selector, fallback) => {
-    const box = px(decl(selector, 'width'));
-    const pad = px(decl(selector, 'padding'));
-    const art = box - 2 * pad;                 // the contained mark's own square
-    expect(px(decl(selector, 'height'))).toBe(box); // a circle, so it must be square
-    expect(decl(fallback ?? selector, 'object-fit')).toBe('contain');
-    return { box, art, clear: box / 2 - (art * Math.SQRT2) / 2 }; // radius left over at 45°
+  // border-radius on a replaced element trims its content to the CONTENT-EDGE
+  // curve, whose radius shrinks by the padding — so a rounded <img> masks the
+  // mark with a small circle NO padding value can escape (two shipped padding
+  // "fixes" proved it; Sean read the ring mask straight off the glass). The
+  // only correct shape is structural: the disc is a wrapper painting behind an
+  // unclipped image. These pins hold that structure, not a tuned number.
+  const crest = (sel, imgSel) => {
+    const disc = px(decl(sel, 'width'));
+    expect(px(decl(sel, 'height'))).toBe(disc); // a circle, so it must be square
+    const mark = px(decl(imgSel, 'width'));
+    return { disc, mark };
   };
 
-  it('never lets the circle cut the mark, on the card or in the view', () => {
-    const card = wellClearance('.team__logo');
-    const view = wellClearance('.team--board .team__logo', '.team__logo');
-    expect(view.box).toBeGreaterThan(card.box); // the view reads at reading size
-    // The mark clears the curve on both, and the BIGGER well is not the tighter
-    // one: 9px of padding on a 60px circle left 0.21px, which is what a corner
-    // being shaved looks like. Scaling the card's box ratio (7/44) is what got
-    // it there; the number has to come off the inscribed square instead.
-    expect(card.clear).toBeGreaterThan(0.5);
-    expect(view.clear).toBeGreaterThan(card.clear);
-    expect(view.art).toBeLessThan(view.box / Math.SQRT2);
+  it('paints the disc behind the mark and never clips it, card and view alike', () => {
+    // The load-bearing ABSENCE: the img must carry no radius and no padding —
+    // either one re-arms the content-edge mask. (decl() asserts presence, so
+    // absence reads the raw rule text.)
+    expect(rule('.team__logo')).not.toMatch(/border-radius|padding/);
+    expect(decl('.team__logo', 'object-fit')).toBe('contain');
+    // The radius lives ONCE, on the base disc; overrides only resize it.
+    expect(decl('.team__crest', 'border-radius')).toBe('50%');
+    const card = crest('.team__crest', '.team__logo');
+    const view = crest('.team--board .team__crest', '.team--board .team__logo');
+    expect(view.disc).toBeGreaterThan(card.disc); // the view reads at reading size
+    expect(view.mark).toBeGreaterThan(card.mark);
+    // Optical containment (nothing clips; this keeps the mark's diagonal
+    // inside the disc so the composition reads as a badge, not an overflow).
+    expect(card.mark * Math.SQRT2).toBeLessThanOrEqual(card.disc);
+    expect(view.mark * Math.SQRT2).toBeLessThanOrEqual(view.disc);
   });
 
   it('leads the day view with the card\'s accent years', () => {
