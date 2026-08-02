@@ -2302,6 +2302,15 @@ body.has-strip .clockface { bottom: 84px; }
 .cf-city__time { font-weight: 300; font-size: 44px; margin-top: 6px; color: rgba(255, 255, 255, 0.85); font-variant-numeric: tabular-nums; }
 .cf-city--night .cf-city__time { color: rgba(255, 255, 255, 0.45); }
 .cf-city__sub { font-weight: 300; font-size: 20px; color: var(--ink-dim); margin-top: 2px; }
+/* The World Clock card's expansion reuses this analog face VERBATIM
+   (clockFaceHtml('worldclocks'), see worldclock.js), and the face is written as
+   an absolutely positioned layer filling .clockface. Inside the tap-to-expand
+   overlay there is no .clockface, so .cf would resolve against the
+   position:fixed .expand instead and cover the title and the "tap anywhere to
+   close" hint. Re-flow it as an ordinary block filling the body's canvas: the
+   flex centring inside it, the dial scale, the night dimming and the home-city
+   treatment are all untouched, which is the whole point of reusing it. */
+.expand__body .cf { position: relative; inset: auto; height: 100%; overflow: hidden; }
 
 /* ---------- clock-face photo backdrop (opt-in) ---------- */
 /* An optional daily photo behind the clock screensavers. #backdrop sits below
