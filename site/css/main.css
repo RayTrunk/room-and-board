@@ -184,7 +184,13 @@ body { position: relative; top: max(0px, calc((100dvh - 1080px) / 2)); }
   justify-content: center;
   row-gap: clamp(10px, calc((100% - var(--n, 5) * var(--wcrow)) / max(var(--n, 5) - 1, 1)), 26px);
 }
-.card--worldclock.t-s .card__body { --wcrow: 28px; }
+/* Shallow tier: TOP-packed on the fit model's own fixed 10px gap, not the
+   centered elastic above. The elastic fills the body to its bottom edge, and
+   at 3x2 (the one exact-fill size) that parks the last row's time inside the
+   corner badge's zone — the "⤢ +2" sat ON "1:13 PM" (Sean's board, 2026-08-02).
+   Top-packing leaves the fit's ~18px of slack at the BOTTOM, which is exactly
+   where the badge lives. */
+.card--worldclock.t-s .card__body { --wcrow: 28px; justify-content: flex-start; row-gap: 10px; }
 /* Same bounded elastic for the other uniform-row list cards. Row vars are
    worst-case heights: overshooting a var only leaves centered air, while
    undershooting would overflow. Subway/services opt OUT: their rows expand
