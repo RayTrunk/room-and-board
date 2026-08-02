@@ -530,19 +530,21 @@ body { position: relative; top: max(0px, calc((100dvh - 1080px) / 2)); }
    0.7x what it reads as. That is how the shipped `vertical-align: -0.3em` put
    the circle most of a line below the words: 0.21em of push under a baseline the
    inline-flex box was already hanging below.
-   `middle` is geometry rather than a tuned number — the box's own midpoint set
-   on the parent's baseline plus half the parent's x-height, i.e. the optical
-   centre of the line. It depends on nothing that differs between the three
-   consumers: not the inherited line-height (1.25 / 1.34 / 1.45), not the
-   baseline of the glyph inside the circle, and not whether the face is
-   CiscoSansTT or the desktop fallback. And it still costs no height: on the
-   tightest of the three, the card row's 20px/1.25 line, the centred 21px circle
-   reaches ~15.7px above the baseline and ~5.3px below it, both inside the
-   strut's own ~19.5/5.5 — where the -0.3em version hung 11px below and grew
-   every alert line it landed on. */
+   `middle` is the layout anchor: the box's own midpoint set on the parent's
+   baseline plus half the parent's x-height. That is the centre of the x-BAND,
+   and a circle taller than the caps is read against the CAP band, whose centre
+   sits (cap - x)/2 higher: in CiscoSansTT (cap 0.714em, x 0.517em) that is
+   ~0.099em of the parent, so the middle-aligned circle sat flush with the cap
+   tops while hanging visibly below the baseline (Sean, on a live board, twice).
+   The `top` lift is that same metric expressed in the bullet's OWN 0.7em face
+   (0.0985 / 0.7 = 0.14em), not a tuned number. It rides on position: relative,
+   which moves the box AFTER layout, so the line still costs no height — the
+   -0.3em vertical-align this rule once shipped both hung the circle low and
+   grew every alert line it landed on; a raising vertical-align would push the
+   line box open the same way from the other side. */
 .bullet--inline {
   font-size: 0.7em; width: 1.5em; height: 1.5em;
-  vertical-align: middle; margin: 0 0.1em;
+  vertical-align: middle; position: relative; top: -0.14em; margin: 0 0.1em;
 }
 
 .train { display: flex; align-items: center; gap: 16px; font-size: 22px; }

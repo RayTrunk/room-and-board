@@ -254,15 +254,22 @@ describe('widget renderers', () => {
       return css.slice(at, css.indexOf('}', at));
     };
 
-    it('centres the circle on the line optically, with no hand-tuned offset', () => {
+    it('centres the circle on the cap band, and only ever moves it after layout', () => {
       const body = rule('.bullet--inline');
-      // `em` inside this rule is the bullet's OWN 0.7em face, so a negative
-      // offset here is worth 0.7x what it reads as: the shipped -0.3em pushed
-      // the circle 0.21em BELOW a baseline it was already hanging under.
-      // `middle` is measured off the parent's baseline plus half the parent's
-      // x-height, i.e. the optical centre of the line, at every text size.
+      // `middle` anchors the box midpoint at baseline + half the parent's
+      // x-height: the centre of the x-BAND. A circle taller than the caps is
+      // read against the CAP band, whose centre is (cap - x)/2 higher — in
+      // CiscoSansTT ~0.099em of the parent, or 0.14em in the bullet's own
+      // 0.7em face. Measured on a live board: middle alone left the circle
+      // flush with the cap tops and hanging 5px under the 20px row's baseline.
       expect(body).toContain('vertical-align: middle');
-      expect(body, 'a negative offset is the bug this replaced').not.toMatch(/vertical-align:\s*-/);
+      // The lift MUST ride on position: relative (applied after layout, costs
+      // the line no height). A vertical-align offset in either direction is
+      // the bug this rule has already shipped once: -0.3em hung the circle a
+      // line low AND grew every alert row it landed on.
+      expect(body).toContain('position: relative');
+      expect(body).toContain('top: -0.14em');
+      expect(body, 'offsets belong on top:, never on vertical-align').not.toMatch(/vertical-align:\s*[-0-9]/);
       // And it stays sized off the text it lands in, never in px.
       expect(body).toContain('font-size: 0.7em');
       expect(body).toContain('width: 1.5em; height: 1.5em');

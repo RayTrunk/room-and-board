@@ -13,6 +13,10 @@
       {
         "lead": "World Clock",
         "text": "The card fits a smaller space now. Three cities read clearly on a short, wide one, so a world clock can sit along the bottom of the board instead of claiming a taller card. Resize it in Edit mode."
+      },
+      {
+        "lead": "Subway status",
+        "text": "The small coloured bullets inside alert sentences sit centered on the words around them now, instead of dipping below the line."
       }
     ]
   },
