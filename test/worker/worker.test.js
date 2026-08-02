@@ -115,6 +115,32 @@ describe('cached() response headers', () => {
     expect(dead.headers.get('cache-control')).toBe('no-store');
     expect(dead.headers.get('access-control-allow-origin')).toBe('*');
   });
+
+  it('caches a PARTIAL digest only briefly, so a flake cannot linger for the route TTL', async () => {
+    // Live lesson 2026-08-02: three of Jolpica's four endpoints flaked for a
+    // few seconds, and the resulting drivers-only F1 digest was cached at the
+    // route's full 3600s — an hour of a drivers-only card on every board
+    // behind that colo. A partial answer is served, but remembered for at most
+    // 120s so the next poll retries the failed upstreams.
+    await clearCache('f1');
+    const standings = { MRData: { StandingsTable: { StandingsLists: [{ DriverStandings: [
+      { position: '1', points: '219', wins: '6', Driver: { familyName: 'Antonelli', nationality: 'Italian' },
+        Constructors: [{ constructorId: 'mercedes' }] },
+    ] }] } } };
+    stubFetch([
+      { match: /next\.json/, body: 'down', status: 500 },
+      { match: /last\/results/, body: 'down', status: 500 },
+      { match: /driverStandings/, body: standings },
+      { match: /constructorStandings/, body: 'down', status: 500 },
+    ]);
+    const partial = await call('/f1');
+    expect(partial.status).toBe(200);
+    const digest = await partial.json();
+    expect(digest.partial).toBe(true);
+    expect(digest.drivers.length).toBe(1); // what survived is served
+    expect(partial.headers.get('cache-control')).toBe('public, max-age=120'); // not 3600
+    await clearCache('f1');
+  });
 });
 
 const clearThrottle = (ip = 'anon') =>

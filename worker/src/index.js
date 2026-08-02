@@ -167,18 +167,25 @@ async function cached(origin, key, ttlS, fetcher) {
           [FRESH_UNTIL]: String(Date.now() + ttl * 1000),
         },
       });
+    // A partial answer must also not LINGER: serve it fresh, but cache it only
+    // briefly so the next poll soon retries the failed upstreams instead of
+    // reading a mostly-empty digest for the route's whole TTL. Live lesson
+    // 2026-08-02: a seconds-long Jolpica flake became an HOUR of a drivers-only
+    // F1 card on every board behind that colo, because the partial digest was
+    // cached at the route's full 3600s.
+    const freshTtl = fresh?.partial ? Math.min(ttlS, 120) : ttlS;
     try {
       // A `partial` payload (some upstreams failed) is fine to serve fresh, but
       // must NOT overwrite the complete 24h stale backup.
       await Promise.all([
-        cache.put(freshKey, entry(ttlS)),
+        cache.put(freshKey, entry(freshTtl)),
         ...(fresh?.partial ? [] : [cache.put(staleKey, entry(STALE_TTL_S))]),
       ]);
     } catch {
       // Caching is best-effort — a put failure must not drop the fresh payload
       // we already fetched.
     }
-    return json(fresh, 200, { 'Cache-Control': `public, max-age=${ttlS}` });
+    return json(fresh, 200, { 'Cache-Control': `public, max-age=${freshTtl}` });
   } catch (err) {
     // Observability: log which upstream failed and why (visible in `wrangler
     // tail` / Workers logs), so a silent stale-serve (e.g. NJT returning 500s)
