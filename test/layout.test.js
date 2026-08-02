@@ -310,4 +310,33 @@ describe('multi-mode minimums (MIN_ALTS)', () => {
     ];
     expect(firstFitAny(blocker, 'wotd')).toMatchObject({ x: 0, y: 6, w: 3, h: 2 });
   });
+
+  // Sean, 2026-08-01: "3 cities should fit a 3x2 card, and today we don't allow
+  // it." It is the wotd argument exactly — the rows do not fit two grid rows at
+  // the full-size pitch, but three columns of width plus the shallow tier's own
+  // 28px row do (capacity.test.js re-does that sum against the stylesheet).
+  it('worldclock accepts the shallow 3x2, but never 2x2 and never 3x1', () => {
+    expect(meetsMin('worldclock', 3, 2)).toBe(true);
+    expect(meetsMin('worldclock', 2, 3)).toBe(true);  // the canonical shape, still five cities
+    expect(meetsMin('worldclock', 4, 2)).toBe(true);  // wider than the alternative is fine
+    expect(meetsMin('worldclock', 2, 2)).toBe(false); // two columns still need three rows
+    expect(meetsMin('worldclock', 3, 1)).toBe(false);
+    expect(canPlace([], { id: 'worldclock', x: 0, y: 0, w: 3, h: 2 })).toBe(true);
+    expect(canPlace([], { id: 'worldclock', x: 0, y: 0, w: 2, h: 2 })).toBe(false);
+    // The resize gesture runs its own path; it must agree.
+    expect(placeWithPush([], { id: 'worldclock', x: 0, y: 0, w: 3, h: 2 })).toBeTruthy();
+    expect(placeWithPush([], { id: 'worldclock', x: 0, y: 0, w: 2, h: 2 })).toBeNull();
+  });
+
+  it('leaves every already-legal worldclock exactly where it is', () => {
+    // Opening an alternative must not re-shape a stored board: normalizeLayout
+    // re-clamps every layout on load, and 2x3 is still the canonical entry, so
+    // a tie in growth cost goes to it.
+    expect(clampRect({ id: 'worldclock', x: 0, y: 0, w: 3, h: 3 })).toMatchObject({ w: 3, h: 3 });
+    expect(clampRect({ id: 'worldclock', x: 0, y: 0, w: 2, h: 3 })).toMatchObject({ w: 2, h: 3 });
+    expect(clampRect({ id: 'worldclock', x: 0, y: 0, w: 3, h: 2 })).toMatchObject({ w: 3, h: 2 });
+    // An undersized rect grows the cheapest way, as wotd's does.
+    expect(clampRect({ id: 'worldclock', x: 0, y: 0, w: 2, h: 2 })).toMatchObject({ w: 2, h: 3 });
+    expect(clampRect({ id: 'worldclock', x: 0, y: 0, w: 3, h: 1 })).toMatchObject({ w: 3, h: 2 });
+  });
 });

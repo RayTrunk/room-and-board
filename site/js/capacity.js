@@ -100,9 +100,18 @@ const MODELS = {
   // every row wraps to the full 2 lines, and the +N hint needs headroom too.
   substack: listCapacity(90, 62),
   bsky: listCapacity(90, 62),
-  // Single-line 35px rows + 10px gap (shrunk so five zones fit a 3-tall
-  // card); min height is 3 rows so tier s never applies.
-  worldclock: listCapacity(45, 45),
+  // Single-line 35px rows + 10px gap (shrunk so five zones fit a 3-tall card).
+  // The shallow tier was 45 too, because h=2 was illegal and tier s could never
+  // apply. It can now (MIN_ALTS opened 3x2, Sean 2026-08-01: three cities ought
+  // to fit a small card), and 38 is that tier's own measured pitch: main.css
+  // gives .card--worldclock.t-s a FIXED 28px row and drops the time to 21px, on
+  // the same 10px gap floor every other list card uses. bodyPx(2) is 114, so
+  // floor(114 / 38) = 3 — and the honest fit is 3 * 28 + 2 * 10 = 104, which
+  // clears the estimate by 10px (and the real h=2 box, which measures ~121, by
+  // more; see the RAIL_ROWS note on bodyPx running under). The row height is
+  // pinned rather than measured so a device font with taller metrics cannot
+  // spend that margin. Change 28 or 10 here and change its twin in main.css.
+  worldclock: listCapacity(45, 38),
   // Calibrated to the TYPICAL all-Operational row (~44px incl gap) so the
   // edit-mode label matches what actually renders (52 budgeted worst-case
   // degraded rows — a 3×3 promised 4 but showed 5). The renderer measures

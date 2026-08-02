@@ -333,7 +333,7 @@ describe('World Clock expand', () => {
 
   it('opens the screensaver world face verbatim, one dial per city plus Local', () => {
     const { card } = board('worldclock', renderWorldclock, wcVm(CITIES), wcCfg(CITIES), [3, 2]);
-    expect(card.querySelectorAll('.wc-row').length).toBe(2); // the capped card
+    expect(card.querySelectorAll('.wc-row').length).toBe(3); // the capped card, on the shallow tier's 28px row
     card.querySelector('.card__body').click();
     const face = overlay().querySelector('.cf.cf--world');
     expect(face).not.toBeNull();

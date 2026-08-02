@@ -165,12 +165,26 @@ body { position: relative; top: max(0px, calc((100dvh - 1080px) / 2)); }
 /* Day offset is information, not a warning — quiet dim, and 15px meets the type floor. */
 .wc-row__day { flex: none; width: 0; overflow: hidden; font-size: 15px; color: var(--ink-dim); font-weight: 600; text-align: left; transform: translateY(-2px); }
 .wc-has-day .wc-row__day { width: 30px; margin-left: 4px; }
+/* Shallow cards (h=2, legal since 2026-08-01 — see MIN_ALTS): three cities fit
+   where the full-size row fits two. The row is FIXED at 28px rather than left to
+   its line boxes, because this is the one size where the fit is exact and a
+   device font with taller metrics must not be able to spend the margin — the
+   same contract the news list's pinned pixels run. 21px is the largest time that
+   sits in 28px on any of them; the city stays at the 20px legibility floor, and
+   weight plus full ink still make the time the thing the eye lands on.
+   28px row + the 10px gap floor = the 38 in capacity.js. Keep them together. */
+.card--worldclock.t-s .wc-row { min-height: 0; height: 28px; }
+.card--worldclock.t-s .wc-row__time { font-size: 21px; }
 /* Bounded elastic rows, same pattern as markets: gaps absorb slack up to a
-   cap, then the list centers. --n stamped by the renderer. */
+   cap, then the list centers. --n stamped by the renderer. --wcrow is the
+   WORST-CASE row height (overshooting it only leaves centered air; undershooting
+   would overflow), so the shallow tier restates it alongside its own row. */
 .card--worldclock .card__body {
+  --wcrow: 35px;
   justify-content: center;
-  row-gap: clamp(10px, calc((100% - var(--n, 5) * 35px) / max(var(--n, 5) - 1, 1)), 26px);
+  row-gap: clamp(10px, calc((100% - var(--n, 5) * var(--wcrow)) / max(var(--n, 5) - 1, 1)), 26px);
 }
+.card--worldclock.t-s .card__body { --wcrow: 28px; }
 /* Same bounded elastic for the other uniform-row list cards. Row vars are
    worst-case heights: overshooting a var only leaves centered air, while
    undershooting would overflow. Subway/services opt OUT: their rows expand

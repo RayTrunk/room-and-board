@@ -1,5 +1,30 @@
 import { describe, it, expect } from 'vitest';
-import { itemCapacity, capacityLabel } from '../site/js/capacity.js';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
+import { itemCapacity, capacityLabel, bodyPx } from '../site/js/capacity.js';
+
+// Some capacity numbers are only half the answer: the other half is a pixel in
+// main.css, and nothing re-measures the two against each other at runtime. Read
+// the stylesheet back and re-do the sum. Same idiom as overlay-chrome.test.js
+// and viewport.test.js: literal selectors, so renaming or splitting a rule
+// throws rather than silently passing.
+const css = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '../site/css/main.css'), 'utf8');
+function rule(selector) {
+  const at = css.indexOf(`\n${selector} {`);
+  expect(at, `no rule for "${selector}" in main.css`).toBeGreaterThan(-1);
+  return css.slice(at, css.indexOf('}', at));
+}
+function decl(selector, prop) {
+  const m = rule(selector).match(new RegExp(`(?:^|[;{\\s])${prop}\\s*:\\s*([^;}]+)`));
+  expect(m, `no ${prop} in "${selector}"`).not.toBeNull();
+  return m[1].trim();
+}
+const px = (v) => {
+  const n = Number.parseFloat(v);
+  expect(Number.isFinite(n), `not a number: ${v}`).toBe(true);
+  return n;
+};
 
 // Sizes are on the 12×8 grid: h=2 is a shallow strip (compact tier s), h=4 the
 // common default (tier m), h=6/8 a tall card (tier l).
@@ -68,6 +93,60 @@ describe('itemCapacity', () => {
   });
   it('returns null for widgets without a primary list', () => {
     expect(itemCapacity('art', 2, 2)).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// World Clock's shallow tier. h=2 became legal on 2026-08-01 (MIN_ALTS opened
+// 3x2), which is the first time tier 's' ever applied to this card — so the
+// compact pitch stopped being a placeholder and became a promise, and the
+// stylesheet has to be able to keep it.
+// ---------------------------------------------------------------------------
+describe('worldclock at its new shallow size', () => {
+  it('fits three cities in a 3x2, and does not over-promise a fourth', () => {
+    expect(itemCapacity('worldclock', 3, 2)).toBe(3);
+    expect(itemCapacity('worldclock', 3, 2)).toBeLessThan(4);
+    // The taller tiers are untouched: the change is the compact pitch alone.
+    expect(itemCapacity('worldclock', 2, 3)).toBe(5);
+    expect(itemCapacity('worldclock', 3, 4)).toBe(7);
+    expect(itemCapacity('worldclock', 3, 8)).toBe(17);
+  });
+
+  it('is a fit the stylesheet can actually keep', () => {
+    // The split constant: capacity.js promises three rows, main.css draws them.
+    // Nothing re-measures the two against each other at runtime, so the sum is
+    // re-done here — the same join overlay-chrome.test.js holds for the hint
+    // band. The shallow row is a FIXED height on purpose: an h=2 World Clock is
+    // the one size where the fit is exact, and a device font with taller metrics
+    // must not be able to spend the margin.
+    const row = px(decl('.card--worldclock.t-s .wc-row', 'height'));
+    const gapFloor = px(rule('.card--worldclock .card__body').match(/clamp\(([^,]+),/)[1]);
+    const rowVar = px(decl('.card--worldclock.t-s .card__body', '--wcrow'));
+    expect(row).toBe(28);
+    expect(gapFloor).toBe(10);
+    // The clamp's row var is what the elastic gap divides the leftover by, so
+    // undershooting it would overflow the card (main.css says so out loud).
+    // It must be the row the stylesheet actually draws, not the taller one.
+    expect(rowVar).toBe(row);
+    expect(px(decl('.card--worldclock .card__body', '--wcrow'))).toBe(35);
+    // capacity.js's compact constant IS row + gap, and three of them fit the
+    // model's own body estimate with room over.
+    const n = itemCapacity('worldclock', 3, 2);
+    expect(Math.floor(bodyPx(2) / (row + gapFloor))).toBe(n);
+    expect(n * row + (n - 1) * gapFloor).toBeLessThanOrEqual(bodyPx(2));
+    // A fourth row would not, which is why the count is three and not four.
+    expect((n + 1) * row + n * gapFloor).toBeGreaterThan(bodyPx(2));
+  });
+
+  it('keeps the city at the legibility floor and the time above it', () => {
+    // PRODUCT's hard floor is 20px; the shallow tier buys its row height from
+    // the TIME (23 -> 21), never from the city, and weight + full ink keep the
+    // time the thing the eye lands on.
+    expect(px(decl('.wc-row__city', 'font-size'))).toBe(20);
+    const time = px(decl('.card--worldclock.t-s .wc-row__time', 'font-size'));
+    expect(time).toBe(21);
+    expect(time).toBeGreaterThan(px(decl('.wc-row__city', 'font-size')));
+    expect(time).toBeLessThan(px(decl('.wc-row__time', 'font-size'))); // shorter than the full-size row's
   });
 });
 

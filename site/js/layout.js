@@ -11,9 +11,10 @@ export const GRID = { cols: 12, rows: 8 };
 // notes) — deliberately far below the old 6×4 footprints so many more widgets
 // fit on the board at once. Text-heavy widgets keep a 3-column floor so the
 // primary fact stays readable at 6 ft; simple ones shrink to 2×2. A few need a
-// taller floor: weather stacks a current block + hourly + daily (h≥4), bus and
-// worldclock need h≥3 for their rows to fit. Re-run the audit before lowering
-// any of these further.
+// taller floor: weather stacks a current block + hourly + daily (h≥4) and bus
+// needs h≥3 to hold a stop header plus arrivals. World Clock needs h≥3 only at
+// two columns wide — with three it goes shallow, see MIN_ALTS. Re-run the audit
+// before lowering any of these further.
 export const MIN_SIZE = {
   weather: [3, 4],
   subway: [2, 2], // rows are bullet+text; at 2-wide the ⚠ hides (amber already signals) so alert clamps stay readable
@@ -44,7 +45,7 @@ export const MIN_SIZE = {
   // than weather's 8 and there are no day chips under it. 3x3 is the measured
   // floor — the 58px chart there is the smallest that still reads as a build.
   surf: [3, 3],
-  worldclock: [2, 3], // shortest card that fits a useful clock list (rows slice to fit)
+  worldclock: [2, 3], // canonical shape; 3x2 also legal via MIN_ALTS (three cities)
   sports: [3, 2],
   golf: [3, 3],
   tennis: [3, 3],
@@ -114,8 +115,8 @@ export const MAX_SIZE = {
 // parameter; widgets absent from the map keep their static bounds.
 // [id, count-of-followed-list, search-floor]. Floors above the widget's MIN
 // height mark where a REDUCED presentation lives below: markets h<=2 drops
-// sparklines, sports h<=2 drops the "Last:" line — the cap must not lock the
-// richer tier out. Subway/services keep alert/incident headroom through their
+// sparklines, sports h<=2 drops the "Last:" line, worldclock h<=2 shortens its
+// row and its time — the cap must not lock the richer tier out. Subway/services keep alert/incident headroom through their
 // deliberately generous capacity pitches, and both renderers shed rows to the
 // corner badge when expanded rows overflow anyway.
 const CONTENT_CAPPED = [
@@ -162,8 +163,15 @@ export function contentMaxH(cfg) {
 // 2x3 or 3x2 both do). First alternative is the canonical shape — MIN_SIZE
 // carries it so single-min consumers stay simple; meetsMin/firstFitAny and
 // clampRect understand the full set.
+// World Clock joined 2026-08-01 (Sean: "3 cities should fit a 3x2 card, and
+// today we don't allow it"). It is the wotd argument exactly: the rows do not
+// fit a 2-tall card at the full-size pitch, but they do at three columns of
+// width on the shallow tier's own 28px row (capacity.js worldclock, main.css
+// .card--worldclock.t-s), which fits three cities in bodyPx(2). 2x3 stays
+// canonical — it shows five.
 export const MIN_ALTS = {
   wotd: [[2, 3], [3, 2]],
+  worldclock: [[2, 3], [3, 2]],
 };
 export const minAlternatives = (id) => MIN_ALTS[id] ?? [MIN_SIZE[id] ?? [1, 1]];
 export const meetsMin = (id, w, h) => minAlternatives(id).some(([mw, mh]) => w >= mw && h >= mh);

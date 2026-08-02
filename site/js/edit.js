@@ -5,7 +5,7 @@
 // (green = will commit, red = unsolvable) and neighbor blocks preview their
 // pushed positions live. The drag ghost moves via transform only.
 
-import { GRID, MIN_SIZE, MAX_SIZE, firstFit, firstFitAny, placeWithPush, contentMaxH } from './layout.js';
+import { GRID, MIN_SIZE, MAX_SIZE, minAlternatives, firstFit, firstFitAny, placeWithPush, contentMaxH } from './layout.js';
 import { capacityLabel } from './capacity.js';
 import { WIDGET_GROUPS, isAddable } from './config.js';
 
@@ -109,7 +109,13 @@ export function openEditMode(cfg, { root, onDone, onCancel, cellSize } = {}) {
   const rectOf = (id) => layout.find((r) => r.id === id);
   const capOf = (id, w, h) => capacityLabel(id, w, h, cfg) ?? '';
   const sizeLabel = (r) => {
-    const [mw, mh] = MIN_SIZE[r.id] ?? [1, 1];
+    // A widget with more than one legal minimum (wotd, World Clock) is named by
+    // the alternative the card is ACTUALLY in, so a perfectly legal 3×2 never
+    // reads "3×2 · min 2×3" and contradicts itself on the tile. Falls back to
+    // the canonical entry, which is what a card below every alternative will
+    // grow to anyway.
+    const alts = minAlternatives(r.id);
+    const [mw, mh] = alts.find(([aw, ah]) => r.w >= aw && r.h >= ah) ?? alts[0] ?? [1, 1];
     const [Mw] = MAX_SIZE[r.id] ?? [];
     const Mh = caps[r.id];
     const wCap = Mw && Mw < GRID.cols;
