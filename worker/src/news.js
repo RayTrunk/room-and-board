@@ -14,6 +14,7 @@ const FEEDS = {
   zeit: 'https://newsfeed.zeit.de/all',
   tagesschau: 'https://www.tagesschau.de/xml/rss2',
   heise: 'https://www.heise.de/rss/heise-top-atom.xml',
+  golem: 'https://rss.golem.de/rss.php?feed=RSS2.0',
   // Austria
   orf: 'https://rss.orf.at/news.xml',
   derstandard: 'https://www.derstandard.at/rss',

@@ -27,6 +27,7 @@ export const NEWS_SOURCES = [
   ['zeit',         'Zeit Online',     'proxy',  'zeit',           'Deutschland'],
   ['tagesschau',   'Tagesschau',      'proxy',  'tagesschau',     'Deutschland'],
   ['heise',        'Heise Online',    'proxy',  'heise',          'Deutschland'],
+  ['golem',        'Golem.de',        'proxy',  'golem',          'Deutschland'],
   // ---- Austria ----
   ['orf',          'ORF',             'proxy',  'orf',            'Österreich'],
   ['derstandard',  'Der Standard',    'proxy',  'derstandard',    'Österreich'],

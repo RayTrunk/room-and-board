@@ -20,7 +20,7 @@ export const ART_CATS = [
 ];
 
 export const WIDGET_IDS = [
-  'weather', 'subway', 'lirr', 'mnr', 'njt', 'amtrak', 'path', 'ferry', 'bus', 'citibike', 'tfl', 'art', 'photos', 'gdrivephotos', 'landscapes', 'apod', 'history', 'aqi', 'surf', 'quote', 'wotd', 'markets', 'marketsnews', 'worldclock', 'sports', 'sportsnews', 'news', 'substack', 'bsky', 'rss', 'services', 'chart', 'f1', 'golf', 'tennis', 'iptv',
+  'weather', 'subway', 'lirr', 'mnr', 'njt', 'amtrak', 'path', 'ferry', 'bus', 'citibike', 'tfl', 'art', 'photos', 'gdrivephotos', 'landscapes', 'apod', 'history', 'aqi', 'surf', 'quote', 'wotd', 'markets', 'marketsnews', 'worldclock', 'sports', 'sportsnews', 'news', 'substack', 'bsky', 'rss', 'calendar', 'services', 'chart', 'f1', 'golf', 'tennis', 'iptv',
 ];
 
 // Display grouping for the widget pickers (board Settings and phone /setup).
@@ -33,6 +33,7 @@ export const WIDGET_GROUPS = [
   { label: 'Markets', ids: ['markets', 'marketsnews'] },
   { label: 'Sports', ids: ['sports', 'sportsnews', 'f1', 'golf', 'tennis'] },
   { label: 'News & Social', ids: ['news', 'substack', 'bsky', 'rss'] },
+  { label: 'Productivity', ids: ['calendar'] },
   // Images = every card whose content IS the picture: art, photography, apod,
   // and (since Ambient retired, 2026-07-29) the Live Video stream, which is the
   // same media surface with the pictures moving. It is a superset of the
@@ -75,6 +76,8 @@ export const DEFAULT_CONFIG = Object.freeze({
   v: 3,
   t: 0,
   name: '',
+  greetingMode: 'auto', // 'auto' | 'name' | 'logo' | 'off'
+  logo: '',
   loc: Object.freeze({ lat: 40.7506, lon: -73.9971, label: 'New York 10001', units: 'F' }),
   layout: DEFAULT_LAYOUT,
   worldclock: Object.freeze({ cities: Object.freeze([
@@ -115,6 +118,9 @@ export const DEFAULT_CONFIG = Object.freeze({
   sportsnews: Object.freeze({ sources: Object.freeze(['espn', 'cbs-sports', 'yahoo-sports', 'the-athletic']), sports: Object.freeze([]), onlyMyTeams: false }),
   news: Object.freeze({ sources: Object.freeze(['nyt-home', 'nyt-nyregion']) }),
   rss: Object.freeze({ feeds: Object.freeze([]) }), // [{url, label}] up to 5 user-supplied feeds
+  // iCal calendar: up to 3 feeds (webcal:// or https:// .ics URLs).
+  // days = how many days ahead to show; feeds = [{url, label}].
+  calendar: Object.freeze({ feeds: Object.freeze([]), days: 7 }),
   // Starter accounts (AI/tech/finance, politically neutral, verified active
   // 2026-07-05) — removable entries like the markets tickers.
   substack: Object.freeze({ pubs: Object.freeze([
@@ -280,6 +286,8 @@ export function normalizeConfig(raw) {
     v: 3,
     t: num(raw.t, 0),
     name: str(raw.name, DEFAULT_CONFIG.name, MAX_NAME),
+    greetingMode: ['auto', 'name', 'logo', 'off'].includes(raw.greetingMode) ? raw.greetingMode : 'auto',
+    logo: (typeof raw.logo === 'string' && /^data:image\//.test(raw.logo) && raw.logo.length <= 200000) ? raw.logo : '',
     loc: normalizeLoc(raw.loc),
     layout,
     widgets: layout.map((r) => r.id),
@@ -505,6 +513,16 @@ export function normalizeConfig(raw) {
           .map((f) => ({ url: f.url.trim().slice(0, 500), label: str(f.label, '', 40) }));
       })(),
     },
+    calendar: {
+      days: Math.min(Math.max(Number(raw.calendar?.days ?? 7), 1), 90),
+      feeds: (() => {
+        const list = Array.isArray(raw.calendar?.feeds) ? raw.calendar.feeds : [];
+        return list
+          .filter((f) => typeof f?.url === 'string' && /^(https?|webcal):\/\//i.test(f.url.trim()))
+          .slice(0, 3)
+          .map((f) => ({ url: f.url.trim().slice(0, 500), label: str(f.label, '', 40) }));
+      })(),
+    },
     beacon: raw.beacon !== false, // absent (older configs) → on
     clock24: raw.clock24 === true, // absent/anything-but-true → 12-hour default
     theme: THEMES.includes(raw.theme) ? raw.theme : DEFAULT_CONFIG.theme,
@@ -578,6 +596,9 @@ export async function encodeConfig(cfg) {
   if (wire.nerdMode === false) delete wire.nerdMode;
   if (wire.screensaver && isDefault(wire.screensaver, DEFAULT_CONFIG.screensaver)) delete wire.screensaver;
   if (wire.rss && !wire.rss.feeds?.length) delete wire.rss;
+  if (wire.calendar && !wire.calendar.feeds?.length) delete wire.calendar;
+  if (wire.greetingMode === DEFAULT_CONFIG.greetingMode) delete wire.greetingMode;
+  if (!wire.logo) delete wire.logo;
   if (wire.theme === DEFAULT_CONFIG.theme) delete wire.theme;
   if (!wire.themeAccent) delete wire.themeAccent;
   if (wire.lang === DEFAULT_CONFIG.lang) delete wire.lang;
@@ -696,7 +717,10 @@ const PHOTOS_CODE_MARK = '~P~';
 // Live Video rides the same phone-to-board bridge: '~V~' carries just the
 // stream URL (+ optional label) so redeeming never disturbs the board's setup.
 const VIDEO_CODE_MARK = '~V~';
+// Calendar: '~C~' carries an array of {url, label} feed objects (up to 3).
+const CALENDAR_CODE_MARK = '~C~';
 const isStreamUrl = (u) => typeof u === 'string' && /^https:\/\/\S+$/i.test(u.trim());
+const isIcalUrl = (u) => typeof u === 'string' && /^(https?|webcal):\/\/\S+$/i.test(u.trim());
 
 export async function encodePhotosCode({ icloud, gdrive } = {}) {
   const patch = {};
@@ -712,6 +736,18 @@ export async function encodeVideoCode({ url, label } = {}) {
   if (typeof label === 'string' && label.trim()) patch.label = label.trim().slice(0, 40);
   const bytes = new TextEncoder().encode(JSON.stringify(patch));
   return VIDEO_CODE_MARK + bytesToBase64url(await pipe(bytes, new CompressionStream('deflate-raw')));
+}
+
+// Encode a calendar feed list for the phone-to-board code bridge.
+// feeds: [{url, label}] (up to 3). webcal:// URLs are kept as-is; the widget
+// normalizes them to https:// before calling the Worker.
+export async function encodeCalendarCode({ feeds } = {}) {
+  const safe = (feeds ?? [])
+    .filter((f) => isIcalUrl(f?.url))
+    .slice(0, 3)
+    .map((f) => ({ url: f.url.trim(), label: (f.label ?? '').trim().slice(0, 40) }));
+  const bytes = new TextEncoder().encode(JSON.stringify({ feeds: safe }));
+  return CALENDAR_CODE_MARK + bytesToBase64url(await pipe(bytes, new CompressionStream('deflate-raw')));
 }
 
 // Resolve a redeemed setup-code payload: { scope:'photos', patch:{icloud?,gdrive?} }
@@ -736,6 +772,16 @@ export async function decodeCode(encoded) {
     if (isStreamUrl(p.url)) patch.url = p.url.trim();
     if (typeof p.label === 'string' && p.label.trim()) patch.label = p.label.trim().slice(0, 40);
     return { scope: 'video', patch };
+  }
+  if (typeof encoded === 'string' && encoded.startsWith(CALENDAR_CODE_MARK)) {
+    const compressed = base64urlToBytes(encoded.slice(CALENDAR_CODE_MARK.length));
+    const bytes = await pipe(compressed, new DecompressionStream('deflate-raw'));
+    const p = JSON.parse(new TextDecoder().decode(bytes));
+    const feeds = (p.feeds ?? [])
+      .filter((f) => isIcalUrl(f?.url))
+      .slice(0, 3)
+      .map((f) => ({ url: f.url.trim(), label: (f.label ?? '').trim().slice(0, 40) }));
+    return { scope: 'calendar', patch: { feeds } };
   }
   return { scope: 'full', cfg: await decodeConfig(encoded) };
 }

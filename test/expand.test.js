@@ -2,6 +2,7 @@
  * @vitest-environment happy-dom
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import '../site/js/locales/en.js';
 import {
   openExpand,
   closeExpand,

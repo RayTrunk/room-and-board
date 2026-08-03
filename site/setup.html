@@ -301,13 +301,13 @@
       </section>
 
       <section class="field" id="iptv-field">
-        <h2>Live Video</h2>
-        <label for="iptv-url">HLS stream link (https, usually ends in .m3u8) <span class="req" data-req="iptv">Required</span></label>
-        <input type="url" id="iptv-url" inputmode="url" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="https://example.com/live/stream.m3u8">
-        <p class="hint" id="iptv-url-warn" hidden>Must be an https link (usually ending in .m3u8) or the card will stay unconfigured.</p>
+        <h2>Live Video / YouTube</h2>
+        <label for="iptv-url">YouTube, HLS stream, or camera link <span class="req" data-req="iptv">Required</span></label>
+        <input type="url" id="iptv-url" inputmode="url" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="https://youtube.com/watch?v=… or https://…/stream.m3u8">
+        <p class="hint" id="iptv-url-warn" hidden>Must be an https link — YouTube (youtube.com/watch or youtu.be), an HLS stream (.m3u8), or a UniFi camera share.</p>
         <label for="iptv-label">Label shown on the card (optional)</label>
         <input type="text" id="iptv-label" maxlength="40" placeholder="Lobby cam">
-        <p class="hint">The card plays it muted. Use a stream you have the rights to show.</p>
+        <p class="hint">The card always plays muted. Use content you have the rights to show.</p>
       </section>
 
       <h2 class="setup__group" data-group="Daily">Daily</h2>
@@ -318,6 +318,13 @@
         <div id="chart-topics" class="checks"></div>
         <p class="hint">Pick any number to cycle through. None selected shows the newest chart across everything.</p>
         <label class="alertcheck"><input type="checkbox" id="chart-politics"> Hide political charts</label>
+      </section>
+
+      <h2 class="setup__group" data-group="Productivity">Productivity</h2>
+
+      <section class="field" id="calendar-field">
+        <h2>Calendar</h2>
+        <p class="hint">Add iCal feeds (Google Calendar, Apple iCloud, or any .ics URL) from the board settings (Settings → Calendar) after setup. Up to 3 feeds supported.</p>
       </section>
 
       <h2 class="setup__group" data-group="Reference">Reference</h2>

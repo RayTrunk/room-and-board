@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { registerWidget, activeWidgets, clearRegistry } from '../site/js/registry.js';
 import { chooseBootConfig } from '../site/js/boot.js';
 import { parseFragment } from '../site/js/bridge.js';
+import '../site/js/locales/en.js'; // registers English strings so t() resolves greetings
 import { greetingFor } from '../site/js/widgets/clock.js';
 import { normalizeConfig, encodeConfig } from '../site/js/config.js';
 

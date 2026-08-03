@@ -21,15 +21,24 @@ export function escapeHtml(s) {
 // narrow/short browser window doesn't clip the bottom rows of the dashboard.
 export function fitViewport(root = document.documentElement) {
   if (!root?.style) return null;
-  root.style.zoom = ''; // reset first, so a resize re-measures unscaled (idempotent)
-  const w = root.clientWidth;
-  if (!Number.isFinite(w) || w <= 0) return null;
-  const scaleW = w / 1920;
-  if (scaleW >= 1) return null; // Board Pro / Navigator: meta makes w==1920, no-op
-  // On desktop browsers also fit height so bottom rows aren't clipped
+  root.style.zoom = ''; // reset first so a resize re-measures unscaled (idempotent)
+  const cssW = root.clientWidth;
+  if (!Number.isFinite(cssW) || cssW <= 0) return null;
+  // The viewport meta `width=1920` makes cssW==1920 on both RoomOS (Board Pro,
+  // Navigator) AND desktop browsers. Use window.outerWidth (physical window
+  // width, unaffected by the viewport meta) as the true available width.
+  // On a Board Pro the display IS 1920 px so outerWidth ≈ 1920; on a desktop
+  // browser in a narrower window it is the actual window size.
+  const outerW = typeof window !== 'undefined' && window.outerWidth > 0 ? window.outerWidth : cssW;
+  const scaleW = Math.min(cssW, outerW) / 1920;
+  // Always also fit height: on a desktop browser with address bar + OS taskbar
+  // window.innerHeight is typically < 1080, so the gear buttons at bottom:44px
+  // would be clipped without this. (Board Pro: innerHeight ≈ 1040 → scale 0.963,
+  // fitting the canvas exactly into the physical display.)
   const h = typeof window !== 'undefined' ? window.innerHeight : 0;
   const scaleH = Number.isFinite(h) && h > 0 ? h / 1080 : 1;
   const scale = Math.round(Math.min(scaleW, scaleH) * 1000) / 1000;
+  if (scale >= 1) return null; // nothing needs scaling — Board Pro or wide/tall desktop
   if (scale < 0.25) return null; // implausible measurement — leave the page alone
   root.style.zoom = String(scale);
   return scale;

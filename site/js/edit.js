@@ -64,11 +64,12 @@ const TITLES = {
   f1: 'Formula 1',
   golf: 'Golf',
   tennis: 'Tennis',
-  iptv: 'Live Video',
+  iptv: 'Live Video / YouTube',
   news: 'Headlines',
   substack: 'Substack',
   bsky: 'Bluesky',
   rss: 'RSS Feeds',
+  calendar: 'Calendar',
 };
 
 export function openEditMode(cfg, { root, onDone, onCancel, cellSize } = {}) {

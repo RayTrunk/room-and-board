@@ -1,12 +1,11 @@
-// Live Video: streams a user-supplied HLS (.m3u8) feed. RoomOS WebEngine is
-// Chromium without native HLS, so playback rides hls.js (light build,
-// vendored, loaded on demand only when a stream is configured) over MSE.
-// Muted always — signage never makes sound, and muted is what allows
-// autoplay. No stream is bundled or defaulted; the URL is the user's.
+// Live Video + YouTube: streams HLS feeds, UniFi camera shares, or YouTube
+// videos/playlists. Muted always — signage never makes sound, and muted is
+// what allows autoplay. No stream is bundled or defaulted; the URL is the
+// user's. YouTube uses the privacy-enhanced nocookie embed domain.
 
 import { setupPrompt, setCardNote, escapeHtml } from '../util.js';
 
-export const meta = { id: 'iptv', title: 'Live Video', refreshMs: 60 * 1000 };
+export const meta = { id: 'iptv', title: 'Live Video / YouTube', refreshMs: 60 * 1000 };
 
 // UniFi Protect "share livestream" pages (monitor.ui.com/<id>) embed cleanly
 // (no frame-ancestors as of 2026-07); they play via UI's WebRTC relay, so
@@ -22,6 +21,42 @@ export const isCameraShare = (u) => {
 // HLS playlists go through hls.js; everything else (progressive .mp4/.webm,
 // go2rtc's stream.mp4) plays directly in the <video> element.
 export const isHlsUrl = (u) => /\.m3u8(?:[?#]|$)/i.test(u);
+
+// YouTube URL detection and embed conversion.
+// Supported: watch?v=, youtu.be/, playlist?list=
+export const isYouTubeUrl = (u) => {
+  try {
+    const url = new URL(u);
+    return (
+      url.host === 'www.youtube.com' || url.host === 'youtube.com' ||
+      url.host === 'youtu.be' ||
+      url.host === 'www.youtube-nocookie.com'
+    );
+  } catch { return false; }
+};
+
+export function youtubeEmbedUrl(raw) {
+  try {
+    const url = new URL(raw);
+    const params = new URLSearchParams({
+      autoplay: '1', mute: '1', loop: '1',
+      controls: '0', rel: '0', iv_load_policy: '3', disablekb: '1',
+    });
+    // Playlist
+    const list = url.searchParams.get('list');
+    if (list && (url.pathname === '/playlist' || url.host === 'www.youtube.com')) {
+      params.set('list', list);
+      return `https://www.youtube-nocookie.com/embed/videoseries?${params}`;
+    }
+    // Single video: watch?v= or youtu.be/<id>
+    const vid = url.host === 'youtu.be' ? url.pathname.slice(1) : url.searchParams.get('v');
+    if (vid) {
+      params.set('playlist', vid); // required for loop=1 on single video
+      return `https://www.youtube-nocookie.com/embed/${encodeURIComponent(vid)}?${params}`;
+    }
+  } catch { /* fall through */ }
+  return null;
+}
 
 let hlsLoader = null;
 function loadHls() {
@@ -165,7 +200,32 @@ function mountFrame(el, url) {
   });
 }
 
+function mountYouTube(el, url) {
+  const embedUrl = youtubeEmbedUrl(url);
+  if (!embedUrl) { el.innerHTML = '<div class="empty">Invalid YouTube link</div>'; return; }
+  el.innerHTML = `<div class="iptv iptv--yt">
+    <iframe class="iptv__frame iptv__frame--yt" src="${escapeHtml(embedUrl)}"
+      allow="autoplay; encrypted-media; picture-in-picture"
+      allowfullscreen referrerpolicy="no-referrer" title="YouTube video"></iframe>
+    <button class="iptv__expand" aria-label="Full screen">${EXPAND_ICON}</button>
+  </div>`;
+  const wrap = el.querySelector('.iptv');
+  const m = { url, hls: null, video: null, wrap, iframe: wrap.querySelector('iframe'), retryTimer: 0, gen: 0, full: false };
+  mounts.set(el, m);
+  const btn = el.querySelector('.iptv__expand');
+  btn.addEventListener('click', () => {
+    m.full = !m.full;
+    wrap.classList.toggle('iptv--full', m.full);
+    btn.innerHTML = m.full ? COLLAPSE_ICON : EXPAND_ICON;
+    btn.setAttribute('aria-label', m.full ? 'Exit full screen' : 'Full screen');
+  });
+}
+
 function mount(el, url) {
+  if (isYouTubeUrl(url)) {
+    mountYouTube(el, url);
+    return;
+  }
   if (isCameraShare(url)) {
     mountFrame(el, url);
     return;

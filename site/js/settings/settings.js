@@ -3,6 +3,7 @@
 // (setup codes use the on-page keypad, names come from the companion page).
 
 import { isLaunched, isAdvancedHidden, normalizeConfig, encodeConfig, decodeCode, WIDGET_IDS, ART_CATS, NJT_LINES, CURATED_SOURCES } from '../config.js';
+import { setLocale, currentLang } from '../i18n.js';
 import { saveConfig, loadCache, markPendingEdit } from '../store.js';
 import { fetchJSON } from '../net.js';
 import { fetchDailyBackdrop } from '../curated.js';
@@ -49,11 +50,12 @@ export const WIDGET_LABELS = {
   f1: 'Formula 1',
   golf: 'Golf (PGA)',
   tennis: 'Tennis',
-  iptv: 'Live Video',
+  iptv: 'Live Video / YouTube',
   news: 'Headlines',
   substack: 'Substack',
   bsky: 'Bluesky',
   rss: 'RSS Feeds',
+  calendar: 'Calendar',
 };
 
 
@@ -73,6 +75,7 @@ export async function openSettings(cfg, { focus } = {}) {
     cfg: structuredClone(cfg),
     originalTheme: document.documentElement.getAttribute('data-theme') ?? 'dark',
     originalAccent: document.documentElement.style.getPropertyValue('--accent'),
+    originalLang: currentLang(),
     root: document.querySelector('#settings-root'),
     // Land on the nav's first entry (Display) unless asked to focus a
     // specific section (setup-code path, or an unconfigured card's tap).
@@ -173,10 +176,11 @@ function attachScrollIndicator(scrollEl, host, right) {
 
 export function closeSettings() {
   if (!state) return;
-  // Revert any live theme preview applied during settings browsing.
+  // Revert any live theme/language preview applied during settings browsing.
   document.documentElement.setAttribute('data-theme', state.originalTheme);
   if (state.originalAccent) document.documentElement.style.setProperty('--accent', state.originalAccent);
   else document.documentElement.style.removeProperty('--accent');
+  setLocale(state.originalLang);
   state.root.innerHTML = '';
   state = null;
 }
@@ -223,11 +227,12 @@ export const NAV_MODEL = [
     ['path', 'PATH'], ['ferry', 'NYC Ferry'], ['bus', 'Express Bus'], ['citibike', 'Citi Bike'], ['tfl', 'TfL Status'] ] },
   { type: 'group', label: 'Markets', items: [['markets', 'Markets'], ['marketsnews', 'Markets News']] },
   { type: 'group', label: 'News & Social', items: [['news', 'Headlines'], ['substack', 'Substack'], ['bsky', 'Bluesky']] },
+  { type: 'item', id: 'calendar', label: 'Calendar' },
   // Sean named the group Sports: it holds more than the teams card now.
   { type: 'group', label: 'Sports', items: [['sports', 'My Teams'], ['sportsnews', 'Sports News']] },
   { type: 'item', id: 'services', label: 'Cloud Services' },
   { type: 'item', id: 'chart', label: 'Chart of the Day' },
-  { type: 'item', id: 'iptv', label: 'Live Video' },
+  { type: 'item', id: 'iptv', label: 'Live Video / YouTube' },
   { type: 'item', id: 'code', label: 'Setup code' },
   { type: 'item', id: 'diag', label: 'Diagnostics' },
 ];
@@ -293,6 +298,7 @@ const SECTION_RENDERERS = {
   widgets: renderWidgets, subway: renderSubway, lirr: renderLirr, mnr: renderMnr, njt: renderNjt, amtrak: renderAmtrak,
   path: renderPath, ferry: renderFerry, bus: renderBus, citibike: renderCitibike, tfl: renderTfl, markets: renderMarkets, marketsnews: renderMarketsNews, sports: renderSports, sportsnews: renderSportsNews,
   news: renderNews, substack: renderSubstack, bsky: renderBsky, worldclock: renderWorldclock, services: renderServices, chart: renderChart, iptv: renderIptv, screensaver: renderScreensaver,
+  calendar: renderCalendar,
   art: renderArt, photos: renderPhotos, gdrivephotos: renderGdrivePhotos, landscapes: renderLandscapes, weather: renderWeather, display: renderDisplay,
   code: renderCode, diag: renderDiag,
 };
@@ -1166,19 +1172,20 @@ async function renderNews() {
   const _nav = navToken;
   const { NEWS_SOURCES } = await import('../widgets/news.js');
   if (navStale(_nav)) return;
-  const groups = ['National', 'Local NYC'];
+  // Derive group order from the source list (preserves declaration order, deduped)
+  const groups = [...new Set(NEWS_SOURCES.map((s) => s[4]))];
   pane().innerHTML = `
     <h2 class="pane__title">Headlines</h2>
     <p class="pane__hint">Pick your sources: newest stories across all of them, merged.</p>
     ${groups.map((g) => `
-      <p class="pane__label">${g}</p>
+      <p class="pane__label">${escapeHtml(g)}</p>
       <div class="rows">${NEWS_SOURCES.filter((s) => s[4] === g).map(([id, label]) => {
         const on = state.cfg.news.sources.includes(id);
         return `<div class="row">
           <button class="toggle ${on ? 'is-on' : ''}" data-src="${id}" role="switch" aria-checked="${on}">
             <span class="toggle__knob"></span>
           </button>
-          <span class="row__label">${label}</span>
+          <span class="row__label">${escapeHtml(label)}</span>
         </div>`;
       }).join('')}</div>`).join('')}`;
   pane().querySelectorAll('[data-src]').forEach((btn) =>
@@ -1443,7 +1450,7 @@ async function renderIptv() {
   const host = (() => { try { return new URL(c.url).host; } catch { return ''; } })();
   pane().innerHTML = `
     <h2 class="pane__title">Live Video</h2>
-    <p class="pane__hint">Streams a live HLS feed (always muted) or a UniFi camera share link on the card. Use a stream you have the rights to show.</p>
+    <p class="pane__hint">Plays a YouTube video or playlist (muted, looping), a live HLS stream, or a UniFi camera share — always muted. Use content you have the rights to show.</p>
     ${c.url ? `
     <div class="rows">
       <div class="row"><span class="row__label">Stream</span><span class="row__value">${escapeHtml(host)}</span></div>
@@ -1451,7 +1458,7 @@ async function renderIptv() {
     </div>
     <button class="btn btn--ghost" data-clear-stream>Remove</button>` : ''}
     <p class="pane__label pane__label--head">${c.url ? 'Change it from your phone' : 'Set it up from your phone'}</p>
-    <p class="pane__hint">Scan to paste the stream link and preview it; the page hands you a short code. Enter the code below.</p>
+    <p class="pane__hint">Scan to paste your YouTube, HLS stream, or camera link — preview it, get a code. Enter the code below.</p>
     <div class="qr qr--photos"></div>
     <button class="btn" data-code-reveal>Enter code</button>
     <div class="photo-code" hidden></div>
@@ -1504,6 +1511,98 @@ async function renderServices() {
       renderServices();
     }),
   );
+}
+
+/* ---------- calendar ---------- */
+
+function renderCalendar() {
+  const feeds = () => state.cfg.calendar?.feeds ?? [];
+  const draw = () => {
+    const list = feeds();
+    pane().innerHTML = `
+      <h2 class="pane__title">Calendar</h2>
+      <p class="pane__hint">Add up to 3 iCal feeds — Google Calendar, Apple iCloud Calendar, or any .ics URL. The card shows today's events and the next 7 days.</p>
+      ${list.length ? `<div class="rows">${list.map((f, i) => `
+        <div class="row">
+          <span class="row__label">${escapeHtml(f.label || new URL(f.url).hostname)}</span>
+          <button class="btn btn--ghost btn--sm" data-rm-cal="${i}">Remove</button>
+        </div>`).join('')}</div>` : ''}
+      <p class="pane__label pane__label--head">${list.length < 3 ? 'Add a calendar from your phone' : 'Calendar limit reached (3 feeds)'}</p>
+      ${list.length < 3 ? `
+      <p class="pane__hint">Open your calendar app, find the option to share a link or copy a feed URL (webcal:// or https://), then scan the code below or enter a board code.</p>
+      <div class="qr qr--cal"></div>
+      <button class="btn" data-cal-code-reveal>Enter code</button>
+      <div class="cal-code" hidden></div>
+      <p class="code__status"></p>` : ''}`;
+
+    list.forEach((_, i) =>
+      pane().querySelector(`[data-rm-cal="${i}"]`)?.addEventListener('click', () => {
+        state.cfg.calendar = { ...state.cfg.calendar, feeds: feeds().filter((_, j) => j !== i) };
+        draw();
+      }),
+    );
+
+    if (list.length < 3) {
+      import('../vendor/qrcode.js').then(({ default: qrcode }) => {
+        const box = pane()?.querySelector('.qr--cal');
+        if (!box) return;
+        const qr = qrcode(0, 'M');
+        qr.addData(`https://${location.host}/calendar-setup`);
+        qr.make();
+        box.innerHTML = qr.createSvgTag({ cellSize: 6, margin: 4 });
+      });
+      wireCalendarCodeEntry(pane().querySelector('.code__status'), draw);
+    }
+  };
+  draw();
+}
+
+function wireCalendarCodeEntry(status, rerender) {
+  const host = pane().querySelector('.cal-code');
+  let code = '';
+  const paint = () => {
+    host.innerHTML = `<output class="osk__display code__display--pin" aria-live="polite">${code.padEnd(6, '·')}</output>`
+      + qwertyKeypad('ABCDEFGHJKMNPQRSTVWXYZ0123456789', [],
+        '<button class="key osk__key osk__key--wide" data-key="⌫">⌫</button>');
+    host.querySelectorAll('[data-key]').forEach((btn) =>
+      btn.addEventListener('click', async () => {
+        const k = btn.dataset.key;
+        if (k === '⌫') code = code.slice(0, -1);
+        else if (code.length < 6) code += k;
+        paint();
+        if (code.length === 6) {
+          setStatus(status, 'Checking…', 'busy');
+          try {
+            const { cfg: encoded } = await fetchJSON(`${WORKER_URL}/code/${code}`);
+            const decoded = await decodeCode(encoded);
+            if (decoded.scope !== 'calendar') {
+              setStatus(status, 'That code is not a Calendar code.');
+              code = '';
+              paint();
+              return;
+            }
+            const existing = state.cfg.calendar?.feeds ?? [];
+            const incoming = decoded.patch.feeds ?? [];
+            const merged = [...existing, ...incoming].slice(0, 3);
+            state.cfg.calendar = { ...state.cfg.calendar, feeds: merged };
+            rerender();
+            setStatus(pane().querySelector('.code__status') ?? status, 'Calendar added. Press Save to finish.', 'good');
+          } catch (err) {
+            setStatus(status, err?.status === 404
+              ? 'Code not found (codes expire after an hour).'
+              : "Couldn't reach the code service. Check the network and try again.");
+            code = '';
+            paint();
+          }
+        }
+      }));
+  };
+  pane().querySelector('[data-cal-code-reveal]')?.addEventListener('click', (e) => {
+    e.currentTarget.hidden = true;
+    paint();
+    host.hidden = false;
+    host.scrollIntoView({ block: 'end' });
+  });
 }
 
 /* ---------- newsletters (substack) + bluesky ---------- */
@@ -1758,13 +1857,29 @@ function renderDisplay() {
       ${state.cfg.schedule.length < 4 ? '<button class="btn" data-add-win>Add window</button>' : ''}
     </div>` : ''}
     ${clockFormatMarkup()}
-    <p class="pane__label">Greeting name</p>
-    ${navRow('Shown as', escapeHtml(state.cfg.name || 'not set'), 'data-edit-name')}
+    <p class="pane__label">Greeting</p>
+    <div class="segmented" role="group" aria-label="Greeting mode">
+      ${[['auto','Auto'],['name','Name'],['logo','Logo'],['off','Off']].map(([v,l]) =>
+        `<button class="seg ${state.cfg.greetingMode === v ? 'is-active' : ''}" data-set="greetingMode:${v}">${l}</button>`
+      ).join('')}
+    </div>
+    ${state.cfg.greetingMode !== 'logo' && state.cfg.greetingMode !== 'off' ? `
+    <p class="pane__hint">${state.cfg.greetingMode === 'name' ? 'Name or text shown in the top-left corner.' : 'Time-based greeting shown before the name.'}</p>
+    ${navRow('Name', escapeHtml(state.cfg.name || 'not set'), 'data-edit-name')}
     ${state.cfg.name ? '<button class="btn btn--ghost" data-clear-name>Remove name</button>' : ''}
     <div class="namepad" hidden>
       <output class="code__display" aria-live="polite">·</output>
       <div class="namepad__keys"></div>
-    </div>
+    </div>` : ''}
+    ${state.cfg.greetingMode === 'logo' ? `
+    <p class="pane__hint">Your logo shown in the top-left corner. Upload a PNG, SVG, or JPG.</p>
+    ${state.cfg.logo ? `<img class="logo-preview" src="${escapeHtml(state.cfg.logo)}" alt="Logo preview">` : ''}
+    <label class="btn btn--ghost logo-upload-label">
+      ${state.cfg.logo ? 'Replace logo' : 'Upload logo'}
+      <input type="file" accept="image/*" class="logo-file-input" hidden>
+    </label>
+    ${state.cfg.logo ? '<button class="btn btn--ghost" data-clear-logo>Remove logo</button>' : ''}
+    ` : ''}
     <p class="pane__label">Theme</p>
     <div class="theme-swatches">
       ${[
@@ -1795,6 +1910,7 @@ function renderDisplay() {
     btn.addEventListener('click', () => {
       const [group, value] = btn.dataset.set.split(':');
       state.cfg[group] = value;
+      if (group === 'lang') setLocale(value);
       renderDisplay();
     }),
   );
@@ -1819,6 +1935,38 @@ function renderDisplay() {
   pane().querySelector('[data-clear-name]')?.addEventListener('click', () => {
     state.cfg.name = '';
     renderDisplay();
+  });
+  pane().querySelector('[data-clear-logo]')?.addEventListener('click', () => {
+    state.cfg.logo = '';
+    renderDisplay();
+  });
+  pane().querySelector('.logo-file-input')?.addEventListener('change', (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const img = new Image();
+      img.onload = () => {
+        const maxH = 200, maxW = 600;
+        let w = img.naturalWidth, h = img.naturalHeight;
+        if (h > maxH) { w = Math.round(w * maxH / h); h = maxH; }
+        if (w > maxW) { h = Math.round(h * maxW / w); w = maxW; }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        const dataUri = canvas.toDataURL('image/webp', 0.85) || canvas.toDataURL('image/jpeg', 0.85);
+        if (dataUri.length > 200000) {
+          // Try harder compression
+          const small = canvas.toDataURL('image/jpeg', 0.6);
+          state.cfg.logo = small.length <= 200000 ? small : dataUri.slice(0, 200000);
+        } else {
+          state.cfg.logo = dataUri;
+        }
+        renderDisplay();
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
   });
   pane().querySelectorAll('[data-theme-pick]').forEach((btn) =>
     btn.addEventListener('click', () => {
@@ -1913,6 +2061,15 @@ function renderCode() {
               setStatus(status, 'Applied the Live Video stream. Press Save to finish.', 'good');
             } else {
               setStatus(status, "That code didn't carry a usable stream link.");
+            }
+          } else if (decoded.scope === 'calendar') {
+            const incoming = decoded.patch.feeds ?? [];
+            if (incoming.length) {
+              const existing = state.cfg.calendar?.feeds ?? [];
+              state.cfg.calendar = { ...state.cfg.calendar, feeds: [...existing, ...incoming].slice(0, 3) };
+              setStatus(status, 'Calendar added. Press Save to finish.', 'good');
+            } else {
+              setStatus(status, "That code didn't carry a usable calendar link.");
             }
           } else {
             state.cfg = decoded.cfg;
@@ -2052,7 +2209,7 @@ function renderDiag() {
       </button>
       <span class="row__label">Nerd mode</span>
     </div>
-    <p class="pane__hint">Shows advanced cards in the widget pickers that need self-hosted gear behind them (live video streams, camera gateways). Off keeps the pickers simple.</p>
+    <p class="pane__hint">Shows advanced cards in the widget pickers that need self-hosted gear behind them (live video streams, camera gateways). YouTube works without this. Off keeps the pickers simple.</p>
     <p class="pane__label">Display</p>
     <div class="btnrow">
       <button class="btn btn--primary" data-reload>Reload display now</button>

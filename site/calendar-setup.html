@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en" style="background:#000">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https: data: blob:; connect-src 'self' https:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FARO DASH — Add calendar</title>
+<link rel="icon" type="image/png" sizes="32x32" href="assets/room-and-board-favicon-32.png">
+<link rel="apple-touch-icon" href="assets/room-and-board-icon-180.png">
+<link rel="stylesheet" href="css/setup.css">
+</head>
+<body>
+  <main class="setup">
+    <header class="setup__head">
+      <h1>Add a calendar to your board</h1>
+      <p>Paste up to 3 iCal feed URLs, then get a short code to type on your board (Settings → Calendar → Enter code). Works with Google Calendar, Apple iCloud Calendar, Nextcloud, and any standard .ics feed.</p>
+      <p class="setup__head-note"><b>Google Calendar:</b> Open Google Calendar → Settings → the calendar → "Integrate calendar" → copy the <b>Secret address in iCal format</b> (webcal://… link). Do not use the public iCal address — it only shows free/busy.<br><br><b>Apple iCloud:</b> In Calendar.app → right-click a calendar → Share Calendar → enable Public Calendar → copy the link (webcal://…).<br><br><b>Nextcloud / other:</b> Paste the https:// URL of your calendar's .ics export.</p>
+    </header>
+
+    <section class="field" id="cs-feeds">
+      <h2>Calendar feeds</h2>
+      <div id="cs-feed-list"></div>
+      <button id="cs-add" class="primary" type="button">+ Add feed</button>
+      <p id="cs-limit" class="hint" hidden>Maximum 3 feeds reached.</p>
+    </section>
+
+    <section class="field">
+      <button id="cs-getcode" class="primary" type="button" disabled>Get board code</button>
+      <div class="code-out" id="cs-code" hidden>
+        <p class="code-out__label">Your board code</p>
+        <output id="cs-code-out" aria-live="polite"></output>
+        <p id="cs-code-note"></p>
+      </div>
+    </section>
+  </main>
+  <script type="module" src="js/calendar-setup.js"></script>
+</body>
+</html>

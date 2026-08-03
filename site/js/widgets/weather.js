@@ -5,6 +5,7 @@
 import { escapeHtml, setCardNote, chaikin } from '../util.js';
 import { icon } from '../icons.js';
 import { setExpandSource } from '../expand.js';
+import { t, currentLang } from '../i18n.js';
 
 export const meta = { id: 'weather', title: 'Weather', refreshMs: 10 * 60 * 1000 };
 
@@ -68,44 +69,42 @@ export function trendSvg(temps, gradId, minWindow = 6) {
 const DROP = '<svg class="wx-pp__drop" viewBox="1 0 7 11" width="7" height="11" fill="currentColor" aria-hidden="true">'
   + '<path d="M4.5 0.5C3.2 2.6 1 5.4 1 7.1a3.5 3.5 0 0 0 7 0C8 5.4 5.8 2.6 4.5 0.5Z"/></svg>';
 
-// WMO weather interpretation codes → display label + icon key.
+// WMO weather interpretation codes → [i18n-key, icon key].
 const WMO = new Map([
-  [0, ['Clear', 'clear']],
-  [1, ['Mostly clear', 'clear']],
-  [2, ['Partly cloudy', 'partly']],
-  [3, ['Overcast', 'cloudy']],
-  [45, ['Fog', 'fog']],
-  [48, ['Freezing fog', 'fog']],
-  [51, ['Light drizzle', 'drizzle']],
-  [53, ['Drizzle', 'drizzle']],
-  [55, ['Heavy drizzle', 'drizzle']],
-  [56, ['Freezing drizzle', 'sleet']],
-  [57, ['Freezing drizzle', 'sleet']],
-  [61, ['Light rain', 'rain']],
-  [63, ['Rain', 'rain']],
-  [65, ['Heavy rain', 'rain']],
-  [66, ['Freezing rain', 'sleet']],
-  [67, ['Freezing rain', 'sleet']],
-  [71, ['Light snow', 'snow']],
-  [73, ['Snow', 'snow']],
-  [75, ['Heavy snow', 'snow']],
-  [77, ['Snow grains', 'snow']],
-  [80, ['Light showers', 'rain']],
-  [81, ['Showers', 'rain']],
-  [82, ['Heavy showers', 'rain']],
-  [85, ['Snow showers', 'snow']],
-  [86, ['Snow showers', 'snow']],
-  [95, ['Thunderstorm', 'thunder']],
-  [96, ['Thunderstorm w/ hail', 'thunder']],
-  [99, ['Thunderstorm w/ hail', 'thunder']],
+  [0,  ['wx.clear',            'clear']],
+  [1,  ['wx.mostly_clear',     'clear']],
+  [2,  ['wx.partly_cloudy',    'partly']],
+  [3,  ['wx.overcast',         'cloudy']],
+  [45, ['wx.fog',              'fog']],
+  [48, ['wx.freezing_fog',     'fog']],
+  [51, ['wx.light_drizzle',    'drizzle']],
+  [53, ['wx.drizzle',          'drizzle']],
+  [55, ['wx.heavy_drizzle',    'drizzle']],
+  [56, ['wx.freezing_drizzle', 'sleet']],
+  [57, ['wx.freezing_drizzle', 'sleet']],
+  [61, ['wx.light_rain',       'rain']],
+  [63, ['wx.rain',             'rain']],
+  [65, ['wx.heavy_rain',       'rain']],
+  [66, ['wx.freezing_rain',    'sleet']],
+  [67, ['wx.freezing_rain',    'sleet']],
+  [71, ['wx.light_snow',       'snow']],
+  [73, ['wx.snow',             'snow']],
+  [75, ['wx.heavy_snow',       'snow']],
+  [77, ['wx.snow_grains',      'snow']],
+  [80, ['wx.light_showers',    'rain']],
+  [81, ['wx.showers',          'rain']],
+  [82, ['wx.heavy_showers',    'rain']],
+  [85, ['wx.snow_showers',     'snow']],
+  [86, ['wx.snow_showers',     'snow']],
+  [95, ['wx.thunderstorm',     'thunder']],
+  [96, ['wx.thunderstorm_hail','thunder']],
+  [99, ['wx.thunderstorm_hail','thunder']],
 ]);
 
 export function wmoInfo(code) {
   const hit = WMO.get(code);
-  return hit ? { label: hit[0], icon: hit[1] } : { label: '—', icon: 'clear' };
+  return hit ? { label: t(hit[0]), icon: hit[1] } : { label: '—', icon: 'clear' };
 }
-
-const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 // An hour axis is a clock reading, so it honors the board-wide 12/24-hour
 // preference (cfg.clock24) that already drives the topbar Clock and World Clock.
@@ -149,9 +148,10 @@ export function fmtAmount(inch, units) {
 }
 
 function dayLabel(isoDate, index) {
-  if (index === 0) return 'Today';
-  // Parse as UTC noon to avoid TZ date shifts, then take the weekday.
-  return DAY_NAMES[new Date(`${isoDate}T12:00:00Z`).getUTCDay()];
+  if (index === 0) return t('wx.today');
+  // Parse as UTC noon to avoid TZ date shifts, then format the weekday locale-aware.
+  const d = new Date(`${isoDate}T12:00:00Z`);
+  return d.toLocaleDateString(currentLang(), { weekday: 'short', timeZone: 'UTC' });
 }
 
 const SEVERITY_RANK = { Extreme: 0, Severe: 1, Moderate: 2, Minor: 3, Unknown: 4 };
@@ -391,16 +391,16 @@ export function meteoBoard(vm, cfg) {
         </div>
         <div class="wxf__herometa">
           <span class="wxf__cond">${escapeHtml(info.label)}</span>
-          <span class="wxf__feels">Feels like ${fmtTemp(vm.now.feels, units)}</span>
+          <span class="wxf__feels">${t('wx.feels_like')} ${fmtTemp(vm.now.feels, units)}</span>
         </div>
         <div class="wxf__todayrail">
           <div class="wxf__rule"></div>
-          ${kvRow('High today', fmtTemp(d0.hi, units))}
-          ${kvRow('Low tonight', fmtTemp(d0.lo, units))}
-          ${kvRow('Chance of rain', orDash(d0.ppMax, (v) => `${v}%`))}
+          ${kvRow(t('wx.high_today'), fmtTemp(d0.hi, units))}
+          ${kvRow(t('wx.low_tonight'), fmtTemp(d0.lo, units))}
+          ${kvRow(t('wx.rain_chance'), orDash(d0.ppMax, (v) => `${v}%`))}
           <div class="wxf__rule"></div>
-          ${kvRow('Sunrise', vm.sunrise ? timeLabel(vm.sunrise, clock24) : '—')}
-          ${kvRow('Sunset', vm.sunset ? timeLabel(vm.sunset, clock24) : '—')}
+          ${kvRow(t('wx.sunrise'), vm.sunrise ? timeLabel(vm.sunrise, clock24) : '—')}
+          ${kvRow(t('wx.sunset'), vm.sunset ? timeLabel(vm.sunset, clock24) : '—')}
         </div>
       </section>
       <div class="wxf__colright">
@@ -414,12 +414,12 @@ export function meteoBoard(vm, cfg) {
       </div>
     </div>
     <div class="wxf__stats">
-      ${statCell(orDash(vm.now.wind, (v) => fmtWind(v, units) + (Number.isFinite(vm.now.dir) ? ` ${compass(vm.now.dir)}` : '')), 'Wind')}
-      ${statCell(orDash(vm.now.gust, (v) => fmtWind(v, units)), 'Gusts')}
-      ${statCell(orDash(vm.now.humidity, (v) => `${v}%`), 'Humidity')}
-      ${statCell(orDash(d0.uvMax, (v) => String(Math.round(v))), 'UV max today')}
-      ${statCell(orDash(d0.precipSum, (v) => fmtAmount(v, units)), 'Rain today')}
-      ${statCell(orDash(d0.windMax, (v) => fmtWind(v, units)), 'Peak wind today')}
+      ${statCell(orDash(vm.now.wind, (v) => fmtWind(v, units) + (Number.isFinite(vm.now.dir) ? ` ${compass(vm.now.dir)}` : '')), t('wx.wind'))}
+      ${statCell(orDash(vm.now.gust, (v) => fmtWind(v, units)), t('wx.gusts'))}
+      ${statCell(orDash(vm.now.humidity, (v) => `${v}%`), t('wx.humidity'))}
+      ${statCell(orDash(d0.uvMax, (v) => String(Math.round(v))), t('wx.uv_today'))}
+      ${statCell(orDash(d0.precipSum, (v) => fmtAmount(v, units)), t('wx.rain_today'))}
+      ${statCell(orDash(d0.windMax, (v) => fmtWind(v, units)), t('wx.peak_wind'))}
     </div>
   </div>`;
 }
@@ -502,7 +502,7 @@ export function render(el, vm, cfg) {
       <span class="wx-now__temp">${fmtTemp(vm.now.temp, units)}</span>
       <div class="wx-now__meta">
         <span class="wx-now__label">${escapeHtml(vm.now.label)}</span>
-        <span class="wx-now__feels">Feels like ${fmtTemp(vm.now.feels, units)}</span>
+        <span class="wx-now__feels">${t('wx.feels_like')} ${fmtTemp(vm.now.feels, units)}</span>
       </div>
     </div>
     <div class="wx-rule"></div>

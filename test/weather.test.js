@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { readFile } from 'node:fs/promises';
+import '../site/js/locales/en.js'; // register English strings so t() resolves in tests
 import {
   mapWeather, wmoInfo, inUS, fetchData, trendSvg,
   hourLabel, timeLabel, compass, fmtWind, fmtAmount, meteoBoard, meteoCanvas,

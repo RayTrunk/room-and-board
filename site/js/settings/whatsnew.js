@@ -112,7 +112,7 @@ export function fitChangelog(pane) {
 // purpose: it is an absence, not an error, and it names the place the reader
 // can always get them (their phone, which is where a board with no browser
 // sends you).
-export const EMPTY_COPY = 'Couldn’t load the update notes just now. They are always at roomboard.app/info.';
+export const EMPTY_COPY = "Couldn't load the update notes just now. Please try again later.";
 
 export function emptyHtml(copy = EMPTY_COPY) {
   return `<div class="log"><p class="log__empty">${escapeHtml(copy)}</p></div>`;
@@ -168,11 +168,11 @@ export function paneHtml(groups, { build = '' } = {}) {
   return `<div class="whatsnew">
       <div class="pane__head">
         <button class="iconbtn" type="button" data-wn-back aria-label="Back to settings">←</button>
-        <h2 class="pane__title">What’s new</h2>
+        <h2 class="pane__title">What's new</h2>
       </div>
       <p class="pane__hint">Updates to this board, newest first. It keeps itself up to date, so there is nothing to install.</p>
       ${list || emptyHtml()}
-      <p class="log__foot">Room &amp; Board${build ? ` · version ${escapeHtml(build)}` : ''} · full guide at roomboard.app/info</p>
+      <p class="log__foot">FARO DASH${build ? ` · version ${escapeHtml(build)}` : ''}</p>
     </div>`;
 }
 
@@ -192,7 +192,7 @@ export function paneHtml(groups, { build = '' } = {}) {
 // wants it will look.
 export function railFootHtml() {
   return `<button class="settings__whatsnew" type="button" data-whatsnew>
-      <img class="settings__lockup" src="assets/room-and-board-wordmark-dark.svg" alt="" width="216" height="50">
-      <span class="settings__wnline">What’s new</span>
+      <img class="settings__lockup" src="assets/faro-dash-lockup.svg" alt="" width="200" height="49">
+      <span class="settings__wnline">What's new</span>
     </button>`;
 }

@@ -50,11 +50,12 @@ export const WIDGET_LABELS = {
   f1: 'Formula 1',
   golf: 'Golf (PGA)',
   tennis: 'Tennis',
-  iptv: 'Live Video (HLS)',
+  iptv: 'Live Video / YouTube',
   news: 'Headlines',
   substack: 'Substack',
   bsky: 'Bluesky',
   rss: 'RSS Feeds',
+  calendar: 'Calendar',
 };
 
 // Ordered config sections for the two-step /setup wizard. A section shows in
@@ -90,6 +91,7 @@ export const SETUP_SECTIONS = [
   // no section here — same as apod. Same in Daily: only Chart of the Day has
   // anything to ask about.
   { id: 'chart-field', group: 'Daily', triggers: ['chart'] },
+  { id: 'calendar-field', group: 'Productivity', triggers: ['calendar'] },
   { id: 'wc-field', group: 'Reference', triggers: ['worldclock'] },
   { id: 'services-field', group: 'Reference', triggers: ['services'] },
 ];
@@ -118,7 +120,7 @@ export const REQUIRED_FIELDS = Object.freeze([
   { id: 'sports', widget: 'My Teams', field: 'Teams', filled: (c) => (c?.sports?.teams?.length ?? 0) > 0 },
   // Mirrors normalizeConfig's https-only rule: anything else normalizes to ''
   // on the way out, so anything else is unconfigured here too.
-  { id: 'iptv', widget: 'Live Video', field: 'HLS stream link', filled: (c) => /^https:\/\/\S+$/i.test(c?.iptv?.url ?? '') },
+  { id: 'iptv', widget: 'Live Video / YouTube', field: 'YouTube, HLS stream, or camera link', filled: (c) => /^https:\/\/\S+$/i.test(c?.iptv?.url ?? '') },
   { id: 'photos', widget: 'iCloud Photos', field: 'Album link', filled: (c) => Boolean(c?.photos?.album) },
   { id: 'gdrivephotos', widget: 'GDrive Photos', field: 'Folder link', filled: (c) => Boolean(c?.gdrivephotos?.album) },
 ]);

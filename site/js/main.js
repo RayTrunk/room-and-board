@@ -389,8 +389,8 @@ function showWelcome() {
   $('#grid').hidden = true;
   welcome.innerHTML = `
     <div class="welcome__inner">
-      <img class="welcome__logo" src="assets/room-and-board-lockup-dark.svg" alt="Room & Board" width="340" height="88">
-      <h1>Welcome to your office display</h1>
+      <img class="welcome__logo" src="assets/faro-dash-lockup.svg" alt="FARO DASH" width="340" height="83">
+      <h1>Welcome to FARO DASH</h1>
       <p>Set it up from your phone or desktop, or start with sensible defaults and fine-tune later.</p>
       <div class="qr welcome__qr"></div>
       <p class="welcome__hint">Scan to build a setup code on your phone, or visit <b>${location.host}/setup</b>.</p>

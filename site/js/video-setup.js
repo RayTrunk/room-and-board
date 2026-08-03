@@ -1,12 +1,11 @@
-// Dedicated video-setup page. Takes an HLS stream URL (plus an optional card
-// label), offers a muted preview (native HLS on iPhone Safari, hls.js light
-// elsewhere), and mints a video-only setup code the user types on their board
-// (Settings → Live Video → Enter code). The code merges ONLY the Live Video
-// block — never the rest of the board's config.
+// Dedicated video/YouTube setup page. Accepts an HLS stream, a UniFi camera
+// share, or a YouTube video/playlist URL — previews it and mints a board code
+// (Settings → Live Video / YouTube → Enter code). The code merges ONLY the
+// Live Video block — never the rest of the board's config.
 
 import { WORKER_URL } from './env.js';
 import { encodeVideoCode } from './config.js';
-import { isCameraShare, isHlsUrl } from './widgets/iptv.js';
+import { isCameraShare, isHlsUrl, isYouTubeUrl, youtubeEmbedUrl } from './widgets/iptv.js';
 
 const $ = (sel) => document.querySelector(sel);
 const STREAM_RE = /^https:\/\/\S+$/i;
@@ -25,10 +24,9 @@ function refresh() {
   const u = urlInput.value.trim();
   $('#vs-getcode').disabled = !currentUrl();
   $('#vs-code').hidden = true; // an edited link stales any shown code
-  status.textContent = u && !STREAM_RE.test(u)
-    ? 'Must be an https link (usually ending in .m3u8).'
-    : '';
-  status.className = u && !STREAM_RE.test(u) ? 'hint ps-bad' : 'hint';
+  const bad = u && !STREAM_RE.test(u);
+  status.textContent = bad ? 'Must be an https link (HLS stream, camera share, or YouTube URL).' : '';
+  status.className = bad ? 'hint ps-bad' : 'hint';
 }
 urlInput.addEventListener('input', refresh);
 refresh();
@@ -37,6 +35,24 @@ async function preview() {
   const url = currentUrl();
   if (!url) { refresh(); return; }
   const frame = document.getElementById('vs-frame');
+
+  if (isYouTubeUrl(url)) {
+    video.hidden = true;
+    hls?.destroy();
+    hls = null;
+    const embedUrl = youtubeEmbedUrl(url);
+    if (!embedUrl) {
+      status.textContent = "Couldn't parse that YouTube URL. Try a youtube.com/watch or youtu.be link.";
+      status.className = 'hint ps-bad';
+      return;
+    }
+    frame.innerHTML = `<iframe src="${embedUrl.replace(/"/g, '&quot;')}" allow="autoplay; encrypted-media" style="width:100%;height:240px;border:0;border-radius:12px;background:#000"></iframe>`;
+    frame.hidden = false;
+    status.textContent = 'YouTube preview — the board will play this muted and looping.';
+    status.className = 'hint ps-ok';
+    return;
+  }
+
   if (isCameraShare(url)) {
     // UniFi's own player in an iframe — nothing for hls.js to do.
     video.hidden = true;

@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 450 110" width="100%" height="100%" fill="none">
+  <defs>
+    <linearGradient id="fl" x1="0%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" stop-color="#1e3a8a"/>
+      <stop offset="100%" stop-color="#0284c7"/>
+    </linearGradient>
+    <linearGradient id="fr" x1="0%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" stop-color="#0284c7"/>
+      <stop offset="100%" stop-color="#22d3ee"/>
+    </linearGradient>
+    <linearGradient id="wc" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#38bdf8"/>
+      <stop offset="100%" stop-color="#06b6d4"/>
+    </linearGradient>
+    <filter id="bg" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="3.5" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+  </defs>
+  <g transform="translate(10,5)">
+    <path d="M 20 20 A 36 36 0 0 1 80 20" stroke="url(#wc)" stroke-width="4.5" stroke-linecap="round"/>
+    <path d="M 30 26 A 25 25 0 0 1 70 26" stroke="#0284c7" stroke-width="4" stroke-linecap="round"/>
+    <polygon points="50,56 36,56 28,94 50,94" fill="url(#fl)"/>
+    <polygon points="50,56 64,56 72,94 50,94" fill="url(#fr)"/>
+    <polygon points="50,52 33,52 35,56 50,56" fill="#1e3a8a"/>
+    <polygon points="50,52 67,52 65,56 50,56" fill="#0284c7"/>
+    <polygon points="50,36 38,36 38,52 50,52" fill="url(#fl)" opacity="0.85"/>
+    <polygon points="50,36 62,36 62,52 50,52" fill="url(#fr)" opacity="0.85"/>
+    <polygon points="50,24 35,36 50,36" fill="#1e3a8a"/>
+    <polygon points="50,24 65,36 50,36" fill="#0284c7"/>
+    <circle cx="50" cy="44" r="8" fill="#38bdf8" opacity="0.35" filter="url(#bg)"/>
+    <circle cx="50" cy="44" r="4.5" fill="#a5f3fc"/>
+    <circle cx="50" cy="44" r="2.5" fill="#ffffff"/>
+  </g>
+  <text x="120" y="64" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif" font-size="44" font-weight="800" letter-spacing="2" fill="#f1f5f9">FARO <tspan fill="#0284c7">DASH</tspan></text>
+  <text x="122" y="86" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif" font-size="13.5" font-weight="600" letter-spacing="3.8" fill="#64748b">DIGITAL INFO BOARD</text>
+</svg>

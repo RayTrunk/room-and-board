@@ -188,7 +188,7 @@ describe('wireChangelog', () => {
 });
 
 describe('loadChangelog never throws — the board has no console to show it in', () => {
-  it('reads the changelog off the board’s own origin, relative', () => {
+  it("reads the changelog off the board's own origin, relative", () => {
     expect(CHANGELOG_URL).toBe('data/changelog.json');
     expect(CHANGELOG_URL.startsWith('/')).toBe(false); // beta. and preview deploys too
     expect(CHANGELOG_URL).not.toMatch(/^https?:/); // and never the worker
@@ -212,29 +212,29 @@ describe('loadChangelog never throws — the board has no console to show it in'
 describe('paneHtml', () => {
   it('carries the title, hint, back control and colophon', () => {
     const html = paneHtml(shipped, { build: 'fa395c8b41d2' });
-    expect(html).toContain('What’s new');
+    expect(html).toContain("What's new");
     expect(html).toContain('data-wn-back');
     expect(html).toContain('aria-label="Back to settings"');
     expect(html).toContain('nothing to install');
     expect(html).toContain('version fa395c8b41d2');
-    expect(html).toContain('roomboard.app/info');
+    expect(html).toContain('FARO DASH');
   });
 
   it('shows one quiet line, still under its own heading, when the notes are missing', () => {
     for (const groups of [null, undefined]) {
       const html = paneHtml(groups);
       expect(html).toContain('log__empty');
-      expect(html).toContain('roomboard.app/info');
-      expect(html).toContain('What’s new'); // the pane never renders bare
+      expect(html).toContain('FARO DASH');
+      expect(html).toContain("What's new"); // the pane never renders bare
       expect(html).not.toContain('data-log-more');
     }
-    expect(EMPTY_COPY).toContain('roomboard.app/info');
+    expect(EMPTY_COPY).toContain('Please try again later');
   });
 
   it('drops the version clause rather than printing an empty one', () => {
     // Scoped to the colophon: the notes themselves may well say "version".
     const foot = /<p class="log__foot">(.*?)<\/p>/.exec(paneHtml(shipped))[1];
-    expect(foot).toBe('Room &amp; Board · full guide at roomboard.app/info');
+    expect(foot).toBe('FARO DASH');
     expect(foot).not.toMatch(/·\s*·/);
   });
 
@@ -247,7 +247,7 @@ describe('the rail-footer entry point', () => {
   it('is a control that names itself', () => {
     const html = railFootHtml();
     expect(html).toContain('data-whatsnew');
-    expect(html).toContain('What’s new');
+    expect(html).toContain("What's new");
     expect(html).toContain('type="button"');
   });
 
@@ -256,7 +256,7 @@ describe('the rail-footer entry point', () => {
     // showing it to everyone who walked past. The control's whole caption is
     // now the two words, with the caret drawn by .settings__wnline::after.
     const line = /<span class="settings__wnline">(.*?)<\/span>/s.exec(railFootHtml())[1];
-    expect(line).toBe('What’s new');
+    expect(line).toBe("What's new");
     const html = railFootHtml();
     expect(html).not.toContain('settings__ver');
     expect(html).not.toMatch(/[0-9a-f]{7}/); // no build id, short or full
@@ -264,7 +264,7 @@ describe('the rail-footer entry point', () => {
     expect(railFootHtml.length).toBe(0);
   });
 
-  it('leaves the pane’s colophon as the one place a board states its version', () => {
+  it("leaves the pane's colophon as the one place a board states its version", () => {
     // The load-bearing half of the removal. If this ever fails, the July 29
     // changelog line "The board also shows which version it is running" has
     // stopped being true and has to go with it.

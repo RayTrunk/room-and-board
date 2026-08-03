@@ -8,6 +8,7 @@ import { escapeHtml, fmtClock, setCardNote, setMoreBadge, setupPrompt } from '..
 import { WORKER_URL } from '../env.js';
 import { itemCapacity, cardSize } from '../capacity.js';
 import { openTextViewer } from '../textviewer.js';
+import { t } from '../i18n.js';
 
 export const meta = { id: 'services', title: 'Cloud Services', refreshMs: 5 * 60 * 1000 };
 
@@ -27,7 +28,7 @@ export const SERVICE_CHOICES = [
 ];
 export const DEFAULT_SERVICES = ['webex', 'slack', 'm365']; // mirrors DEFAULT_CONFIG.services.list
 
-const STATE_LABEL = { ok: 'Operational', minor: 'Minor issue', major: 'Major outage', unknown: 'Unknown' };
+const STATE_LABEL = () => ({ ok: t('svc.ok'), minor: t('svc.minor'), major: t('svc.major'), unknown: t('svc.unknown') });
 
 // Trouble first, the way the subway wall floats alerting lines above Good
 // Service: a long list gets sliced to the card's capacity, and the row that
@@ -67,7 +68,7 @@ export function render(el, vm, cfg) {
   const rowHtml = (s, i, dropNote) => `<div class="svc ${s.state !== 'ok' ? 'svc--tap' : ''}" data-svc="${i}">
         <div class="svc__row">
           <span class="svc__name ${s.state === 'minor' || s.state === 'major' ? 'svc__name--alert' : ''}">${escapeHtml(s.label)}</span>
-          <span class="svc__state svc__state--${escapeHtml(s.state)}">${STATE_LABEL[s.state] ?? escapeHtml(s.state)}</span>
+          <span class="svc__state svc__state--${escapeHtml(s.state)}">${STATE_LABEL()[s.state] ?? escapeHtml(s.state)}</span>
         </div>
         ${!dropNote && s.state !== 'ok' && s.note ? `<div class="svc__note">${escapeHtml(s.note)}</div>` : ''}
       </div>`;
@@ -117,7 +118,7 @@ export function render(el, vm, cfg) {
       const body = items
         .map((i) => `${i.title}${sinceLabel(i.since)}${i.update ? `\n${i.update}` : ''}`)
         .join('\n\n');
-      openTextViewer(`${s.label} — ${STATE_LABEL[s.state] ?? s.state}`, body);
+      openTextViewer(`${s.label} — ${STATE_LABEL()[s.state] ?? s.state}`, body);
     }),
   );
 }

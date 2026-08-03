@@ -203,6 +203,8 @@ body { position: relative; top: max(0px, calc((100dvh - 1080px) / 2)); }
 /* ---------- top bar ---------- */
 .topbar { display: flex; justify-content: space-between; align-items: baseline; padding-bottom: 24px; }
 .topbar__greeting { font-size: 40px; font-weight: 600; letter-spacing: -0.01em; }
+.topbar__greeting--off { min-width: 0; }
+.topbar__logo { max-height: 52px; max-width: 280px; object-fit: contain; display: block; }
 .topbar__clock { display: flex; align-items: baseline; gap: 18px; }
 .topbar__time { font-size: 48px; font-weight: 700; font-variant-numeric: tabular-nums; } /* 1.2x the greeting — anchor, not shout */
 .topbar__date { font-size: 26px; color: var(--ink-dim); }
@@ -1245,6 +1247,9 @@ body.mode-ambient .gear--edit { display: none; }
 .pane__rowlabel { font-size: 23px; flex: 1; }
 .theme-color { width: 54px; height: 44px; border: none; border-radius: 8px; cursor: pointer; background: none; padding: 0; }
 .qr { margin-top: 20px; }
+/* Logo upload (Settings → Display → Greeting: Logo) */
+.logo-preview { max-height: 52px; max-width: 240px; object-fit: contain; display: block; margin: 12px 0 8px; border-radius: 6px; }
+.logo-upload-label { display: inline-flex; align-items: center; cursor: pointer; }
 /* White padding grows the quiet zone so the corner radius rounds into it,
    never into code modules (the board's rendering clipped a corner cell). */
 .qr svg { background: #fff; border-radius: 12px; padding: 10px; }
@@ -2079,6 +2084,7 @@ body.mode-ambient .gear--edit { display: none; }
 
 /* ---------- word of the day ---------- */
 .wotd { display: flex; flex-direction: column; justify-content: center; height: 100%; gap: 8px; }
+.wotd__label { font-size: 14px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); opacity: 0.8; }
 .wotd__word { font-size: 40px; font-weight: 700; letter-spacing: -0.01em; }
 .wotd__meta { font-size: 20px; color: var(--ink-dim); }
 .wotd__def { font-size: 22px; line-height: 1.35; }

@@ -8,6 +8,7 @@ import { fetchMtaAlerts } from './alerts.js';
 import { fetchBusStops, parseLegs } from './bus.js';
 import { fetchNewsFeed, newsFeedUrl } from './news.js';
 import { fetchRss, isSafeRssUrl } from './rss.js';
+import { fetchIcal, isSafeIcalUrl } from './ical.js';
 import { fetchTeamSummary, LEAGUE_PATHS as SPORTS_LEAGUES } from './sports.js';
 import { fetchPathRealtime } from './path.js';
 import { fetchFerryDepartures } from './ferry.js';
@@ -526,6 +527,25 @@ const handlers = {
       caches.default.put(new Request(`${url.origin}/__rss/${encodeURIComponent(feedUrl)}`), stored.clone());
       return new Response(xml, { headers: { 'Content-Type': 'text/xml', ...CORS, 'Cache-Control': 'no-store' } });
     }
+
+    // iCal proxy: fetches any safe https/.ics URL, parses VEVENTs, returns JSON.
+    // webcal:// is normalized to https:// by the client before calling here.
+    // Cache 15 min (matching the RSS proxy) — calendar data doesn't change faster.
+    if (path === '/ical' && request.method === 'GET') {
+      const feedUrl = url.searchParams.get('url') ?? '';
+      const days = Math.min(Math.max(Number(url.searchParams.get('days') ?? 30), 1), 90);
+      if (!isSafeIcalUrl(feedUrl)) return json({ error: 'invalid_url' }, 400);
+      const cacheKey = `ical:${feedUrl}:${days}`;
+      const cacheReq = new Request(`${url.origin}/__ical/${encodeURIComponent(feedUrl)}?days=${days}`);
+      const cached15min = await caches.default.match(cacheReq);
+      if (cached15min) return new Response(await cached15min.text(), { headers: { 'Content-Type': 'application/json', ...CORS, 'Cache-Control': 'no-store' } });
+      let events;
+      try { events = await fetchIcal(feedUrl, days); } catch (err) { return json({ error: String(err) }, 502); }
+      const body = JSON.stringify(events);
+      caches.default.put(cacheReq, new Response(body, { headers: { 'Content-Type': 'application/json', 'Cache-Control': 'max-age=900' } }));
+      return new Response(body, { headers: { 'Content-Type': 'application/json', ...CORS, 'Cache-Control': 'no-store' } });
+    }
+
 
     if (path === '/bus/stops' && request.method === 'GET') {
       if (!env.MTA_BUS_KEY) return json({ error: 'bus_not_configured' }, 503);

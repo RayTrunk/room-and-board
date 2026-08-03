@@ -114,6 +114,7 @@ export const DEMAND = {
   path: { kind: 'elastic', target: 4, feed: 12 }, // path.js has no measure-trim
   news: { kind: 'elastic', target: 4, feed: 10 },
   rss: { kind: 'elastic', target: 4, feed: 40 },
+  calendar: { kind: 'elastic', target: 4, feed: 20 },
   marketsnews: { kind: 'elastic', target: 4, feed: 10 },
   // Same feed shape, but the Only-my-teams filter can cut the merged list to a
   // handful, so it is never worth buying rows past the shared target.
@@ -234,7 +235,7 @@ const DEAD_AIR = -4;
 // of WIDGET_GROUPS' own order, which is picker ergonomics, not board layout —
 // but it must name exactly the same groups (asserted in the test).
 // ---------------------------------------------------------------------------
-export const GROUP_ORDER = ['Weather & Air', 'Commute', 'Markets', 'Sports', 'News & Social', 'Reference', 'Daily', 'Images'];
+export const GROUP_ORDER = ['Weather & Air', 'Commute', 'Markets', 'Sports', 'News & Social', 'Productivity', 'Reference', 'Daily', 'Images'];
 const GROUP_OF = new Map();
 for (const g of WIDGET_GROUPS) for (const id of g.ids) GROUP_OF.set(id, g.label);
 const groupRank = (id) => {

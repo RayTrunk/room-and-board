@@ -227,9 +227,9 @@ describe('WIDGET_GROUPS taxonomy', () => {
     expect([...grouped].sort()).toEqual([...ALL_IDS].sort());
   });
 
-  it('has the eight expected group labels in order', () => {
+  it('has the nine expected group labels in order', () => {
     expect(WIDGET_GROUPS.map((g) => g.label)).toEqual([
-      'Commute', 'Weather & Air', 'Markets', 'Sports', 'News & Social', 'Images', 'Daily', 'Reference',
+      'Commute', 'Weather & Air', 'Markets', 'Sports', 'News & Social', 'Productivity', 'Images', 'Daily', 'Reference',
     ]);
   });
 
@@ -669,7 +669,7 @@ describe('required-field gating (setup)', () => {
     expect(one).toContain('LIRR (Only trains stopping at)');
     expect(one).toContain('uncheck that widget in step 1');
     const many = requiredNotice(missingRequired(DEFAULT_CONFIG, ['lirr', 'sports', 'iptv']));
-    expect(many).toContain('LIRR (Only trains stopping at), My Teams (Teams) and Live Video (HLS stream link)');
+    expect(many).toContain('LIRR (Only trains stopping at), My Teams (Teams) and Live Video / YouTube (YouTube, HLS stream, or camera link)');
     expect(many).toContain('uncheck those widgets in step 1');
   });
 
@@ -1076,7 +1076,7 @@ describe('Settings → What’s new', () => {
 
   it('names itself and nothing else; the version stays in the pane’s colophon', async () => {
     await open();
-    expect(entry().textContent.trim()).toBe('What’s new');
+    expect(entry().textContent.trim()).toBe("What's new");
     expect(entry().textContent).not.toMatch(/[0-9a-f]{7}/); // no build id on the rail
     entry().click();
     await settle();
@@ -1089,7 +1089,7 @@ describe('Settings → What’s new', () => {
     expect(document.querySelector('.settings__pane .pane__title').textContent).toBe('Display');
     entry().click();
     await settle();
-    expect(document.querySelector('.settings__pane .pane__title').textContent).toBe('What’s new');
+    expect(document.querySelector('.settings__pane .pane__title').textContent).toBe("What's new");
     expect(document.querySelectorAll('.settings__pane .log__group').length).toBe(shippedLog.length);
     expect(entry().classList.contains('is-active')).toBe(true);
     // The nav highlight never moved, so back has somewhere honest to go.
@@ -1128,8 +1128,8 @@ describe('Settings → What’s new', () => {
     // NOT the pane-level "Couldn't load this section" copy: loadChangelog's
     // never-throw contract turns a dead network into an absence, not an error.
     expect(document.querySelector('.pane__empty')).toBeNull();
-    expect(document.querySelector('.log__empty').textContent).toContain('roomboard.app/info');
-    expect(document.querySelector('.pane__title').textContent).toBe('What’s new');
+    expect(document.querySelector('.log__empty').textContent).toContain('Please try again later');
+    expect(document.querySelector('.pane__title').textContent).toBe("What's new");
     expect(document.querySelector('[data-log-more]')).toBeNull();
   });
 });

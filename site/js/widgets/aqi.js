@@ -5,23 +5,26 @@
 import { escapeHtml } from '../util.js';
 import { icon } from '../icons.js';
 import { cardSize, sizeTier } from '../capacity.js';
+import { t, currentLang } from '../i18n.js';
 
 export const meta = { id: 'aqi', title: 'Air & Sky', refreshMs: 60 * 60 * 1000 };
 
-const timeOnly = (iso) => {
+const timeOnly = (iso, clock24) => {
   if (!iso) return '—';
   const h = Number(iso.slice(11, 13));
   const m = iso.slice(14, 16);
+  if (clock24) return `${String(h).padStart(2, '0')}:${m}`;
   const hr = h % 12 === 0 ? 12 : h % 12;
   return `${hr}:${m} ${h < 12 ? 'AM' : 'PM'}`;
 };
 
-export function render(el, vm, _cfg) {
+export function render(el, vm, cfg) {
   // Two labeled stat blocks side by side (AQI and UV), then the sun/moon
   // rows. Tall cards label each reading with a head ("AIR QUALITY"); shallow
   // cards can't afford head rows, so the label rides inline instead.
   const [, h] = cardSize(el, [2, 4]);
   const shallow = sizeTier(h) === 's';
+  const clock24 = cfg?.clock24;
   const stat = (band, head, value, label) => `
     <div class="sky__aqi sky__aqi--${band}">
       ${shallow ? '' : `<div class="sky__aqi-head">${head}</div>`}
@@ -32,51 +35,62 @@ export function render(el, vm, _cfg) {
     </div>`;
   const aqiBand = vm.aqi <= 50 ? 'good' : vm.aqi <= 100 ? 'moderate' : 'bad';
   const uvBand = vm.uv <= 2 ? 'good' : vm.uv <= 7 ? 'moderate' : 'bad';
+  const moonName = moonPhaseName(vm.moonPhase.fraction);
   el.innerHTML = `
     <div class="sky">
       <div class="sky__stats${vm.uv == null ? ' sky__stats--single' : ''}">
-        ${stat(aqiBand, 'Air quality', vm.aqi, `${shallow ? 'AQI · ' : ''}${escapeHtml(vm.category)}`)}
-        ${vm.uv != null ? stat(uvBand, 'UV index', vm.uv, `${shallow ? 'UV · ' : ''}${uvLabel(vm.uv)}`) : ''}
+        ${stat(aqiBand, t('aqi.air_quality'), vm.aqi, `${shallow ? 'AQI · ' : ''}${escapeHtml(t(CATEGORY_KEY[vm.category] ?? vm.category))}`)}
+        ${vm.uv != null ? stat(uvBand, t('aqi.uv_index'), vm.uv, `${shallow ? 'UV · ' : ''}${uvLabel(vm.uv)}`) : ''}
       </div>
-      <div class="sky__row">${icon('sun', 'icon--sm')}<span>Sunrise ${timeOnly(vm.sunrise)}</span></div>
-      <div class="sky__row">${icon('sun', 'icon--sm')}<span>Sunset ${timeOnly(vm.sunset)}</span></div>
-      <div class="sky__row">${icon('moon', 'icon--sm')}<span>${escapeHtml(vm.moonPhase.name)}</span></div>
+      <div class="sky__row">${icon('sun', 'icon--sm')}<span>${t('wx.sunrise')} ${timeOnly(vm.sunrise, clock24)}</span></div>
+      <div class="sky__row">${icon('sun', 'icon--sm')}<span>${t('wx.sunset')} ${timeOnly(vm.sunset, clock24)}</span></div>
+      <div class="sky__row">${icon('moon', 'icon--sm')}<span>${escapeHtml(moonName)}</span></div>
     </div>`;
 }
 
-// WHO UV index bands.
+// WHO UV index bands — i18n keys
 export function uvLabel(uv) {
-  return uv <= 2 ? 'Low' : uv <= 5 ? 'Moderate' : uv <= 7 ? 'High' : uv <= 10 ? 'Very high' : 'Extreme';
+  return t(uv <= 2 ? 'aqi.uv_low' : uv <= 5 ? 'aqi.uv_moderate' : uv <= 7 ? 'aqi.uv_high' : uv <= 10 ? 'aqi.uv_very_high' : 'aqi.uv_extreme');
 }
 
+// AQI categories — English strings kept in vm for API compat; render() translates.
 const CATEGORIES = [
-  [50, 'Good'],
-  [100, 'Moderate'],
-  [150, 'Sensitive groups'], // EPA shorthand — the full name overflows small cards
-  [200, 'Unhealthy'],
-  [300, 'Very Unhealthy'],
-  [Infinity, 'Hazardous'],
+  [50,       'Good',            'aqi.good'],
+  [100,      'Moderate',        'aqi.moderate'],
+  [150,      'Sensitive groups','aqi.sensitive'],
+  [200,      'Unhealthy',       'aqi.unhealthy'],
+  [300,      'Very Unhealthy',  'aqi.very_unhealthy'],
+  [Infinity, 'Hazardous',       'aqi.hazardous'],
 ];
 
 export function aqiCategory(aqi) {
-  for (const [max, name] of CATEGORIES) if (aqi <= max) return name;
+  for (const [max, label] of CATEGORIES) if (aqi <= max) return label;
   return 'Hazardous';
 }
+
+// Map English AQI label → i18n key for render()
+const CATEGORY_KEY = Object.fromEntries(CATEGORIES.map(([, label, key]) => [label, key]));
 
 // Synodic month approximation anchored at the 2000-01-06 18:14 UTC new moon.
 const SYNODIC_DAYS = 29.53058867;
 const ANCHOR_NEW_MOON = Date.UTC(2000, 0, 6, 18, 14);
 
+// English phase names (kept in vm for API compat) → i18n key mapping for render()
 const PHASE_NAMES = [
-  'New Moon',
-  'Waxing Crescent',
-  'First Quarter',
-  'Waxing Gibbous',
-  'Full Moon',
-  'Waning Gibbous',
-  'Last Quarter',
-  'Waning Crescent',
+  'New Moon', 'Waxing Crescent', 'First Quarter', 'Waxing Gibbous',
+  'Full Moon', 'Waning Gibbous', 'Last Quarter', 'Waning Crescent',
 ];
+const PHASE_KEY = {
+  'New Moon': 'moon.new_moon', 'Waxing Crescent': 'moon.waxing_crescent',
+  'First Quarter': 'moon.first_quarter', 'Waxing Gibbous': 'moon.waxing_gibbous',
+  'Full Moon': 'moon.full_moon', 'Waning Gibbous': 'moon.waning_gibbous',
+  'Last Quarter': 'moon.last_quarter', 'Waning Crescent': 'moon.waning_crescent',
+};
+
+export function moonPhaseName(fraction) {
+  const name = PHASE_NAMES[Math.round(fraction * 8) % 8];
+  return t(PHASE_KEY[name] ?? name);
+}
 
 export function moonPhase(date) {
   const days = (date.getTime() - ANCHOR_NEW_MOON) / 86400000;

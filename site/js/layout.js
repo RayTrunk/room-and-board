@@ -54,6 +54,7 @@ export const MIN_SIZE = {
   substack: [3, 2],
   bsky: [3, 2],
   rss: [3, 2],
+  calendar: [2, 3], // date header + event rows; 2-wide min, 3 tall to show ≥2 events
   services: [3, 2],
 };
 
