@@ -1,0 +1,24 @@
+FROM node:20-alpine
+
+# wrangler (via workerd) needs glibc compat on Alpine
+RUN apk add --no-cache libc6-compat
+
+WORKDIR /app
+
+# Install dependencies (only production + wrangler)
+COPY package.json package-lock.json ./
+RUN npm ci --ignore-scripts
+
+# Copy worker source
+COPY worker/ ./worker/
+
+EXPOSE 8787
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
+  CMD wget -qO- http://localhost:8787/health | grep -q "ok" || exit 1
+
+# --local runs entirely offline (miniflare/workerd, no Cloudflare account needed)
+# --ip 0.0.0.0 makes the port reachable from the nginx container
+CMD ["npx", "wrangler", "dev", "worker/src/index.js", \
+     "--config", "worker/wrangler.toml", \
+     "--local", "--port", "8787", "--ip", "0.0.0.0"]

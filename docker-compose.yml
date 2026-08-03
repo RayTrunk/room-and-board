@@ -1,0 +1,35 @@
+services:
+  # Static site served by nginx; proxies /api/* to the worker
+  site:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.site
+    ports:
+      - "${PORT:-80}:80"
+    depends_on:
+      worker:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Cloudflare Worker runtime (wrangler dev --local, no Cloudflare account needed)
+  worker:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.worker
+    env_file:
+      # Copy worker/.dev.vars.example → worker/.dev.vars and fill in your secrets.
+      # The file is optional — the worker starts without it (NJT/Amtrak won't work).
+      - path: worker/.dev.vars
+        required: false
+    environment:
+      # Disable Cloudflare telemetry in the local runtime
+      - WRANGLER_SEND_METRICS=false
+    expose:
+      - "8787"
+    restart: unless-stopped
+    # Persist the local KV store across container restarts so setup codes survive
+    volumes:
+      - worker_kv:/app/.wrangler
+
+volumes:
+  worker_kv:

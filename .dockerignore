@@ -1,0 +1,12 @@
+node_modules/
+.wrangler/
+.dev.vars
+*.log
+.DS_Store
+.git/
+.claude/
+docs/
+test/
+graphify-out/
+*.md
+!worker/src/

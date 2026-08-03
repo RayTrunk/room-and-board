@@ -1,0 +1,10 @@
+# Copy this file to .dev.vars and fill in your credentials.
+# Only NJT_USER / NJT_PASS are needed for NJ Transit departures.
+# All other widgets work without any secrets.
+
+# NJ Transit API credentials (register free at https://www.njtransit.com/developer)
+NJT_USER=
+NJT_PASS=
+
+# Optional: Slack / ntfy.sh webhook for health alerts (leave blank to disable)
+ALERT_WEBHOOK=
