@@ -114,9 +114,14 @@ below, and **Settings → Widgets** is a signpost to the same place (it carried
 its own toggle list until 2026-08-01, which was a second, worse editor: minimum
 size only, and no way to say what fits). Each widget has a minimum size and
 shows more content as you make its card bigger (the edit screen tells you how
-many rows fit). The clock/greeting across the top is always on. Every widget
-degrades gracefully: a dead feed dims the card and stamps "as of …" rather than
-going blank, and long text taps to full screen.
+many rows fit). A few widgets have **two** legal minimums rather than one, via
+`MIN_ALTS` in `site/js/layout.js`: World Clock is canonically 2×3 (five cities)
+but 3×2 is equally legal and fits three, and Word of the Day works the same way,
+since neither fits a 2×2 square but both fit either rectangle. The edit tile
+names whichever minimum the card is actually in, so a perfectly legal 3×2 never
+reads "3×2 · min 2×3" and contradicts itself. The clock/greeting across the top
+is always on. Every widget degrades gracefully: a dead feed dims the card and
+stamps "as of …" rather than going blank, and long text taps to full screen.
 
 `WIDGET_IDS` in `site/js/config.js` is the list of every card that exists, and
 `WIDGET_GROUPS` is its exact partition into the categories below — the same
@@ -130,18 +135,44 @@ from your phone at `/setup`). Configurable list widgets (markets, sports, world
 clock, headlines, Substack, Bluesky) ship with sensible starter entries you can
 remove like any other.
 
-**Tap to expand.** Nine cards hold more than fits: **Markets**, **Subway**,
-**Weather** and **Surf**, plus the five rail boards (**LIRR**, **Metro-North**,
-**NJ Transit**, **Amtrak**, **Ferry**), open a full-screen view of everything
-they *already fetched* — the contents of the quiet "+N more" badge — with no
-extra request. The rail board sizes itself to its list: one grand centered
-column up to six departures, two balanced columns beyond. A service-alert
-banner on a rail card is its own tap target and opens that alert's full text,
-including details the two-line banner clamps away. Every overlay closes itself
-after 60 seconds without a touch, so a board someone walked away from returns
-to its resting state on its own (`site/js/expand.js`). Other long text (a
-headline, a quote, an incident detail) taps into the shared reader instead,
-which for a news story adds a QR code to the article.
+**Tap to expand.** The rule is that *almost every card opens full screen on a
+tap*, and the exceptions are shorter to list than the rule: 24 of the 35 widgets
+register an expand view; PATH, Air & Sky, Quote of the Day, Word of the Day and
+Live Video have nothing behind the tap; and the six image cards (Art,
+Landscapes, both Photos widgets, NASA Daily Photo, Chart of the Day) open the
+image viewer instead. Every expand view is built from the render the card is
+already holding, so it costs **no extra request** and shows exactly what the
+card had at the moment you touched it. By family:
+
+- **List cards** (Markets, Subway, Cloud Services, TfL Status, Citi Bike,
+  Express Bus, World Clock and the rail boards) show everything they fetched
+  rather than only what fit.
+- **Weather**, **Surf** and **Formula 1** open a fuller reading of the same data:
+  the wider forecast, the 48-hour marine picture, the whole season.
+- The **news family** (Headlines, Markets News, Sports News, Substack, Bluesky)
+  opens a reading list, whose rows tap through again to the story itself.
+- **My Teams**, **Golf** and **Tennis** open their boards, and **This Day in
+  History** opens the whole day.
+
+The rail board sizes itself to its list: one grand centered column up to six
+departures, two balanced columns beyond. A service-alert banner on a rail card
+is its own tap target and opens that alert's full text, including details the
+two-line banner clamps away.
+
+**The "+N" corner badge** is pure information: a count of what the card is *not*
+showing. It is never a glyph, and it is never the affordance. Expandability is a
+board-wide rule a viewer learns once (every card opens), not per-card chrome, so
+a badge never has to advertise it; when a badge looks like it needs a marker, the
+answer has always turned out to be that a view is missing, not a mark.
+
+**Idle dismissal is per surface**, not one blanket timeout. The expand overlay
+closes after 60 seconds untouched (`site/js/expand.js`), so a board someone
+walked away from returns to its resting state on its own. The shared text and
+story reader closes after 20 (`site/js/textviewer.js`). The image viewer has **no
+idle dismiss at all**, by explicit decision: a picture filling the glass is the
+one thing on this board that is fine to leave up (`site/js/imageshow.js`). Long
+text anywhere else (a headline, a quote, an incident detail) taps into that
+shared reader, which for a news story adds a QR code to the article.
 
 ### Commute
 
@@ -245,7 +276,14 @@ One location drives all three cards.
 - **Formula 1** — next Grand Prix, last race's podium, and the driver and
   constructor standings. Team-colour dots and driver country flags; the layout
   adapts to the card size (standings side-by-side when wide, stacked when
-  narrow). *Configure:* none.
+  narrow). Tap for the **three-pillar season view**: the next race with its whole
+  weekend session schedule and a countdown ("Lights out in 6 days", "Race under
+  way"); the last race in full rather than its podium (every classified finisher
+  with grid position, points, gap, retirements and the fastest lap); and both
+  championships. The next-race pillar draws a circuit map from a bundled outline
+  the moment it opens, then upgrades that map in place to Formula 1's own
+  detailed diagram once it decodes, so the view is never waiting on an image and
+  never blank if the CDN is unreachable. *Configure:* none.
 - **Golf (PGA)** — live PGA Tour leaderboard for the current tournament
   (majors included), with each player's total and today's round. Off weeks
   show the next event and start date. *Configure:* none.
@@ -331,16 +369,30 @@ whether the tools everyone depends on are up.
   next-day marker. *Configure:* Settings → World Clock (offices or any zone).
 - **Cloud Services** — subway-board rows for the cloud services your office
   depends on (Webex, Zoom, Slack, Ubiquiti, Cloudflare, GitHub, Microsoft 365,
-  Google Workspace, AWS, Claude, OpenAI) from their public status pages; tap a
-  degraded service for the full incident detail. Starts with Webex, Slack, and
+  Google Workspace, AWS, Claude, OpenAI) from their public status pages. A
+  degraded service prints **one line per incident**, not one summary line: when
+  Microsoft has Exchange, Teams and the suite all degraded, the card says all
+  three without a tap. Those lines arrive already ordered by the Worker (core
+  workloads first, then severity) and already capped there (6 for Microsoft 365,
+  3 elsewhere), so the card renders them as given. Starts with Webex, Slack, and
   Microsoft 365. **Trouble sorts to the top:** major outage, then minor issue,
   then a status page that could not be read at all (it *might* be a problem, so
   it outranks "Operational" — but it is not a confirmed one, so it stays below
   the other two), then everything healthy, with your own chosen order as the
   stable tiebreak so an all-quiet board looks exactly as you arranged it. The
   sort runs *before* the list is sliced to the card's capacity, so the row that
-  matters is never the one the "+N" badge eats. *Configure:* Settings → Cloud
-  Services (toggle services on/off). No API keys — all sources are public.
+  matters is never the one the "+N" badge eats. Whenever anything is hidden the
+  **whole card** taps into a full-screen ledger (shared with TfL Status,
+  `site/js/ledger.js`): the troubled services lead in reading type with their
+  status prose uncut, everything healthy settles underneath as two quiet columns.
+  A tap on one degraded row defers to it, because one card should have one
+  destination; on a card that is showing every service and has nothing to reveal,
+  that row tap opens the per-service reader instead. *Configure:* Settings →
+  Cloud Services (toggle services on/off). Every source is a **public status
+  page and needs no key**. The one option: the Microsoft 365 row can read *your
+  own* tenant live via Graph if you set three Worker secrets (see
+  [Your own Microsoft tenant](#2-worker)); unset, it reads the public sources,
+  exactly as a fork that never heard of it would.
 
 ## Local development
 
@@ -369,8 +421,8 @@ clone.
 
 | Harness | Renders | Useful query params |
 |---|---|---|
-| `site/_audit.html` | dashboard cards on the grid | `ids` (comma-separated widget ids), `mode` (`min`/`rep`), `w`/`h` size override, `page`, `freeze`, `vh`, `meta=0` |
-| `site/_settings-audit.html` | one Settings section at a time | `section`, `configured`, `freeze`, `vh` |
+| `site/_audit.html` | dashboard cards on the grid | `ids` (comma-separated widget ids), `mode` (`min`/`rep`), `w`/`h` size override, `sizes` (explicit `id:w:h` list, repeats allowed, paged across as many 12×8 grids as it takes, so it reaches the sizes a min/rep sweep never visits), `full=1` (top every list up to the pickers' maximum, so an over-promising capacity entry cannot hide behind thin data), `board=<encoded cfg>` (render one real board's layout, at its own coordinates, with its own lists), `page`, `freeze`, `vh`, `meta=0` |
+| `site/_settings-audit.html` | one Settings section at a time | `section`, `configured`, `build` (the version string the footer seats), `iptv` (place Live Video, the 15th and last-possible nav row), `tickers=N` (seed the Markets list, the one control whose height is user-driven), `markets=WxH\|off`, `whatsnew` (open the What's new pane, which `section` cannot reach) and `expand` (its earlier-updates drawer), `nometa`, `freeze`, `vh` |
 | `site/_overlay-audit.html` | the full-screen expand / reader overlays | `id`, `dense=1`, `len`, `src`, `metrics`, `fix=0`, `meta=0` |
 
 `vh` draws the device's real bottom edge across the page and measures every card
@@ -474,10 +526,10 @@ the route then accepts and discards pings so boards never see an error.
 > If a fork ships with the original `site/js/env.js`, its boards report their
 > widget adoption to *this* project's Worker, not yours — change `WORKER_URL`
 > (step 1 above) and deploy your own Worker so the pings land in your own
-> dataset (or nowhere, if you removed the binding). (The
-route and module are named `fleet`, not `beacon`/`analytics`, on purpose:
-ad-blocker filter lists match those keywords, and a blocked module import
-would take the whole dashboard down in a desktop preview.)
+> dataset (or nowhere, if you removed the binding). (The route and module are
+> named `fleet`, not `beacon`/`analytics`, on purpose: ad-blocker filter lists
+> match those keywords, and a blocked module import would take the whole
+> dashboard down in a desktop preview.)
 
 > **Verify on first live run:** the RailData response mapping in
 > `worker/src/njt.js` follows community clients; confirm the field names
@@ -489,12 +541,29 @@ would take the whole dashboard down in a desktop preview.)
 Day-to-day work happens on **`dev`**; **`main` is what ships**. Two GitHub
 Actions workflows in `.github/workflows/` do the rest:
 
-- `test.yml` runs `npm test` on every push and every pull request, and — on a
-  push to `main` only — then runs `npm run deploy:site` to publish the Pages
-  project.
+- `test.yml` runs `npm test` on **every pull request** and on **pushes to
+  `main`**, then (on a push to `main` only) runs `npm run deploy:site` to publish
+  the Pages project. Worth knowing before you rely on it: a push to `dev` runs
+  **no CI at all** unless a pull request is open for that branch, so `npm test`
+  locally is the real gate for day-to-day work. Opening the PR early is the
+  cheapest way to get the runner watching.
 - `deploy-worker.yml` is separate and **path-filtered to `worker/`** on `main`,
   because the API worker changes far less often than the site. It re-runs the
   worker suite before deploying.
+
+`dev` does deploy somewhere, just not through Actions: a separate Cloudflare
+Worker serves `site/` as static assets and is built from `dev` by Cloudflare
+Workers Builds, which is the beta board a change gets reviewed on before it is
+promoted. Its config is the `wrangler.jsonc` at the repo root (not
+`worker/wrangler.toml`, which is the API). `tools/stamp-version.js` reads the
+commit SHA from whichever platform is building, `CF_PAGES_COMMIT_SHA` on Pages or
+`WORKERS_CI_COMMIT_SHA` on Workers Builds, so both environments stamp
+`version.json` the same way and boards on either one self-refresh on the hourly
+check. Two things worth knowing if you fork this: builds for non-production
+branches should stay **off** (otherwise every branch build deploys and the newest
+wins, so a `main` build can land on the beta URL), and because that root config
+sits above everything, a bare `wrangler` command resolves to it rather than to
+the API Worker.
 
 Both need `CLOUDFLARE_API_TOKEN` (plus the account id, for the worker) in the
 repository secrets. Promote by fast-forwarding `main` to `dev`.
@@ -575,11 +644,17 @@ Clocks repaint once per minute, aligned to the minute boundary.
 Tap the ✎ pencil button: the 12×8 grid appears — drag widgets to move them
 (colliders are pushed aside live), drag the corner handle to resize (snaps to
 cells, per-widget minimums), ✕ removes, and the bottom tray re-adds anything
-removed. The tray flows most groups inline and folds the three largest —
-Commute, Images, Sports — into collapsible drawers, so the whole thing still
-fits above the grid. Invalid drops flash red and snap back. Done saves
-(localStorage); Cancel discards. Layouts live in config v3; v1/v2 configs
-migrate automatically on first load.
+removed. The tray flows most groups inline and folds the big ones into
+collapsible drawers so the whole thing still fits above the grid, and the
+threshold is a rule rather than a judgement call re-litigated at every
+regrouping: **a group collapses if and only if it offers four or more cards**,
+and the drawers render largest first with ties broken alphabetically. Today that
+is Commute (10), Images (5), Sports (5) and Daily (4); Weather & Air, News &
+Social, Markets and Reference all flow inline, because below four a drawer costs
+a tap to save one or two chips. `site/js/edit.js` holds the list and
+`test/edit.test.js` asserts it still matches the rule. Invalid drops flash red
+and snap back. Done saves (localStorage); Cancel discards. Layouts live in
+config v3; v1/v2 configs migrate automatically on first load.
 
 Widget notes: **LIRR** (Penn Station, Grand Central, or both) / **Metro-North**
 (Grand Central) are departure boards with a required stops-at-station filter
@@ -727,7 +802,8 @@ welcome screen; re-enter a setup code to restore.
 | MTA alert feeds (camsys) | Worker digest | raw subway feed ~800 KB → ~2 KB digest shared fleet-wide |
 | MTA BusTime SIRI | Worker + free key | `wrangler secret put MTA_BUS_KEY`; widget reports unconfigured until set |
 | Google Drive API | Worker + free key | `wrangler secret put GDRIVE_KEY` (free Cloud project, Drive API enabled, key restricted to it); the GDrive Photos widget reports unconfigured until set. The same route serves the built-in curated folders (Landscapes, the clock backdrop) — those folder ids are public and link-shared; only the key is secret. Lists images sitting directly in the folder — subfolders aren't traversed |
-| Service status pages | Worker proxy, no keys | Statuspage instances (Zoom/Ubiquiti/Cloudflare/GitHub/Claude) + OpenAI (incident.io compat) + Slack/Microsoft/Google/Webex/AWS public JSON; failures report "Unknown", never fake green. Several deliver incident prose as HTML, so the Worker reduces it to plain text at the data boundary (`worker/src/htmltext.js`) instead of letting the board's escape-on-render print the tags out literally. The Microsoft row is a composite: the consumer feed plus an enterprise source, since Microsoft publishes no keyless enterprise health (see the row below) |
+| Service status pages | Worker proxy, no keys | Statuspage instances (Zoom/Ubiquiti/Cloudflare/GitHub/Claude) + OpenAI (incident.io compat) + Slack/Microsoft/Google/Webex/AWS public JSON; failures report "Unknown", never fake green. Several deliver incident prose as HTML, so the Worker reduces it to plain text at the data boundary (`worker/src/htmltext.js`) instead of letting the board's escape-on-render print the tags out literally. Microsoft is the one row that is not a single feed (see the two rows below) |
+| Microsoft 365 (the composite row) | Worker, up to 3 sources | Microsoft publishes no single feed an office can read keylessly, so the row is assembled from up to three: `status.cloud.microsoft/api/posts/m365Consumer` (the consumer feed: Outlook.com, OneDrive, Teams Free), `www.aguidetocloud.com/data/service-health/latest.json` (a volunteer tenant's enterprise Graph health republished as static JSON on a ~2 h cadence), and optionally your own tenant via Graph (next row). Any one may be absent without blanking the row; only losing **all** of them reports unknown, and no source is ever assumed green. Two rules keep the signal worth reading: the mirror is **ignored past a 6 h staleness floor** (a frozen copy can claim neither green nor red honestly), and a **core-workload set** (Exchange, Teams, SharePoint, OneDrive, the M365 suite) decides the row's colour, so a Defender or Power BI blip lands in the incident list without ambering the board. The whole design exists because the old `portal.office.com/api/servicestatus/index` endpoint became a permanent 404 and the row read "Status unavailable" for weeks before anyone noticed (`worker/src/svcstatus.js`; the health monitor now checks this row specifically) |
 | Your Microsoft tenant (optional) | Worker + Entra app | `wrangler secret put MS_TENANT_ID` / `MS_CLIENT_ID` / `MS_CLIENT_SECRET` (an app registration with the `ServiceHealth.Read.All` **application** permission plus admin consent, read-only service health and nothing else); the Microsoft 365 row then reports your own tenant's Graph health live instead of a volunteer tenant's republished copy. All three or none. Unset, the row uses the public sources, and a tenant that is rejected, unconsented, or failing falls back to them rather than faking green |
 | NASA APOD | Worker + free key | `wrangler secret put NASA_KEY` (free key from api.nasa.gov); falls back to `DEMO_KEY` when unset — viable because the 1h fleet-shared cache stays under DEMO_KEY's daily cap, but the real key is preferred |
 | Health alerts (optional) | Worker webhook | `wrangler secret put ALERT_WEBHOOK` (a Slack incoming-webhook or ntfy.sh URL); the 20-minute health cron posts only state *changes*, so an ongoing outage pages once. Unset, alerts go to Workers Logs |
@@ -737,7 +813,9 @@ welcome screen; re-enter a setup code to restore.
 | Amtraker (Amtrak) | Worker, keyless | unofficial community API (no official public Amtrak feed); worker filters the all-trains feed to NYP departures, caches 60 s fleet-wide, empty/stale-tolerant; destination filter is client-side over each train's downstream stops (`worker/src/amtrak.js`) |
 | Your HLS stream (Live Video) | Browser, user-supplied | https .m3u8 the user provides; played via vendored hls.js light (Apache-2.0) over MSE, quality capped to card size; nothing bundled or defaulted (`site/js/widgets/iptv.js`, `site/js/vendor/hls.light.min.js`) |
 | ESPN scoreboard (Golf, Tennis) | Worker-first, keyless | Raw scoreboards run 0.6-2.4 MB, so the worker digests them to ~2 KB via the shared mappers (`site/js/espn-scores.js`, cached 5 min + 24h stale); the board falls back to the CORS-open feeds directly if the worker is unreachable (`worker/src/scores.js`) |
-| Jolpica-F1 (Formula 1) | Worker, keyless | Ergast successor, not CORS-open; worker fans out next race + last result + driver/constructor standings, merges + caches 1 h, serves partial on upstream failure (`worker/src/f1.js`) |
+| Jolpica-F1 (Formula 1) | Worker, keyless | Ergast successor, not CORS-open. The worker collects four endpoints (next race with the whole weekend's session schedule, the last race's **full classification**, driver standings, constructor standings), merges them into one digest and caches it 1 h. The calls are **strictly sequential, 250 ms apart, never parallel**: Jolpica's unauthenticated burst limit sits around four requests a second, so four parallel fetches land exactly on it and one to three draw a 429 depending on timing, which is how a board once spent a night showing a drivers-only card while every endpoint answered 200 to a polite client. A digest that came back partial is **mended from the 24 h backup** and caches for at most 120 s (`worker/src/f1.js`; see [Partial answers, mended](#partial-answers-mended)) |
+| F1 circuit outlines (`site/data/f1-tracks.json`) | build-time, bundled | Derived from [bacinger/f1-circuits](https://github.com/bacinger/f1-circuits) (MIT, © 2019-2025 Tomislav Bacinger) by `node tools/build-f1-tracks.js`: each closed WGS84 LineString projected, scaled, Douglas-Peucker simplified into one compact SVG path, keyed by the Ergast/Jolpica `circuitId` the digest already carries. The copyright notice travels **in the data**, under the file's `_source` key, and must stay there. This is the outline that draws first when the season view opens |
+| Runtime hotlinks (F1 track diagrams, driver flags, team logos) | Browser, keyless, never committed | Three sets of images load straight from their owners' CDNs rather than being mirrored into this repo, because **the artwork is not ours**: F1's own detailed circuit diagrams from `media.formula1.com` (which replace the bundled outline in place, once decoded), country flags from `flagcdn.com` (full ISO alpha-2 coverage; ESPN's set misses Monaco, so Leclerc would lose his flag), and team logos from `a.espncdn.com`. Deliberately hotlinks and not mirrors, and fragile by construction: if F1 reshuffles its URLs every diagram 404s at once, which is exactly why the bundled outlines exist as the tier below (`site/js/widgets/f1.js`, `site/js/widgets/sports.js`) |
 | NYT / Gothamist / NPR / BBC (headlines) | direct + Worker proxy | feed whitelist in `worker/src/news.js` — an id that isn't in the table 404s, so the route can't be aimed anywhere else |
 | Substack publications (latest posts) | Worker, keyless | `/posts/substack?pub=<slug>` digest; no CORS upstream |
 | Bluesky public AppView (latest posts) | direct, keyless | CORS-open; also validates handles when adding accounts |
@@ -748,9 +826,10 @@ welcome screen; re-enter a setup code to restore.
 | Wikimedia (history) | direct, keyless | |
 | PANYNJ RidePATH (PATH) | Worker, keyless | no CORS upstream; 30 s cached digest, projected epochs |
 | NYC Ferry GTFS-RT | Worker, keyless | protobuf decoded Worker-side; trip/route names from bundled `data/ferry.json` |
-| Citi Bike GBFS | Worker, keyless | live `station_status` proxied + cached 60 s; station names from bundled `data/citibike-stations.json` (rebuild via `tools/build-citibike-data.js`) |
+| Citi Bike GBFS | Worker, keyless | live `station_status` proxied + cached **90 s**. GBFS publishes on a 60 s ttl and the card polls every 60 s, so a TTL at the poll interval expires just before every request and a lone board never hits the cache; ~1.5x the poll is what makes the entry actually get used. Station names from bundled `data/citibike-stations.json` (rebuild via `tools/build-citibike-data.js`) |
 | TfL Unified API | Worker, keyless | `Line/Mode/.../Status` proxied + cached 120 s; line names/colours in `site/js/tfl-lines.js`; optional `TFL_KEY` only raises rate limits |
 | Bundled words.json (word of the day) | none | curated 366+ list, zero network — shares `dailyPick` with quotes |
+| QR codes (setup, story reader) | none, vendored | `site/js/vendor/qrcode.js`, Kazuhiko Arase's QR Code Generator (MIT, © 2009), vendored because the codes are rendered on the board itself and a CDN script would violate the page's `script-src 'self'` CSP |
 | iCloud Shared Streams (photos) | Worker, keyless (unofficial) | webstream + webasseturls endpoints; CORS-locked Worker-side; digest cached ~30 min; signed image URLs fetched by the board via `<img>` |
 
 **Resize-fit audit (standing policy):** widgets must fit their text at every
@@ -763,11 +842,68 @@ the board's real bottom edge (`vh=1040`, the default), not against the design
 canvas. Fix overflows with measured `data-w`/`data-h` compact CSS variants (no
 container queries on gen1 Chromium). Ship only at zero overflow.
 
-Rebuild station data after MTA changes: `node tools/build-stations.js`.
-Rebuild ferry landings/trips after NYC Ferry schedule changes:
-`node tools/build-ferry-data.js` (a stale trips map only degrades ferry
-destination labels — the widget falls back to each trip's last stop name).
-Refresh test fixtures: `node tools/record-fixtures.js`.
+**The builders in `tools/`.** Everything bundled under `site/data/` is generated,
+never hand-edited, and every builder is safe to re-run: a stale file degrades one
+card's labels rather than breaking it.
+
+| Command | Rebuilds | Re-run when |
+|---|---|---|
+| `node tools/build-stations.js` | subway / LIRR / Metro-North / Amtrak station lists | MTA or Amtrak changes stations |
+| `node tools/build-ferry-data.js` | NYC Ferry landings + trips | the ferry schedule changes (a stale trips map only degrades destination labels; the widget falls back to each trip's last stop name) |
+| `node tools/build-citibike-data.js` | Citi Bike station names | docks are added or renamed |
+| `node tools/build-express-bus-data.js` | express-bus routes + stops from MTA GTFS | MTA reworks the QM/BM/SIM/X network (rare; a stale file means an occasional stop returns empty) |
+| `node tools/build-teams.js` | the pickable teams per league, from ESPN | a league's team set changes |
+| `node tools/build-f1-tracks.js` | the bundled F1 circuit outlines | the calendar adds a circuit (an unknown id just drops the outline) |
+| `node tools/build-art-manifest.js` | the public-domain art manifest | you want fresh works, or a museum's API shifts |
+| `node tools/record-fixtures.js` | the test fixtures | an upstream payload shape changes |
+
+`tools/stamp-version.js` is the odd one out: it is not a data builder but the CI
+build command, and it writes `site/version.json` (see [Deployment](#1-static-site--cloudflare-pages)).
+
+### Partial answers, mended
+
+Some digests are assembled from several upstream calls, and a route that returns
+"whatever answered" has two failure modes worth naming: a gutted card, and a
+gutted card that *sticks*. The Worker's `cached()` helper takes an optional
+`mend` for exactly this (`worker/src/index.js`), and `/f1` and `/services/status`
+both use it:
+
+1. A fetcher that lost some of its upstreams flags the payload `partial`.
+2. `mend` fills the holes from the **24 h stale backup** that route already
+   keeps, per block for F1 and per service row for the status card. A day-old
+   constructors table is still the truth for a reader; a blank one is not.
+3. The mended payload **keeps `partial: true`**, which does two things: it caches
+   for at most **120 s** instead of the route's full TTL, so the next poll
+   retries the upstreams that failed; and it **never overwrites the backup it
+   borrowed from**, so the complete copy stays complete.
+
+The 120 s cap is the lesson of a live incident: a seconds-long Jolpica flake
+became an *hour* of a drivers-only F1 card on every board behind that colo,
+because the partial digest had been cached at the route's own 3600 s. `mended:
+true` rides along on the payload purely so the state is visible in a response.
+
+### What the health monitor checks
+
+The 20-minute cron (and the `/health` route) validates **content**, not status
+codes: a 200 carrying an empty array is the failure it exists to catch. The
+checks in `worker/src/health.js`:
+
+| Check | Asserts |
+|---|---|
+| `site` | `roomboard.app/version.json` returns a plausible version string |
+| `backup-site` | the same for `signage.rvc.tech`, probed **externally** on purpose, because DNS, TLS and routing are the failure modes under test, and a self-fetch would bypass all three |
+| `markets` | `/markets` returns indices with a finite price (Yahoo is unofficial and the flakiest dependency) |
+| `weather` | Open-Meteo answers with a populated hourly temperature series (browser-direct, so not covered by any proxy check) |
+| `gdrive` | `/gdrive/album` returns photos for a curated folder, which also proves `GDRIVE_KEY` still works |
+| `amtrak` | `/amtrak/departures` returns a station and a departures array |
+| `m365` | `/services/status?ids=m365` returns an m365 row whose state is **not** `unknown` |
+| `njt` | `/njt/departures` still has a *future* departure. NJT's schedule is a static daily timetable, so "old" is not "wrong", but a prior-day timetable is |
+
+The `m365` check earned its place: that row is the only one assembled from
+several feeds, and when its previous endpoint became a permanent 404 the card
+read "Status unavailable" for weeks with nothing pointing at it. So the check
+asserts the row's *state*, not merely that the route answered. Checks with a
+`maxStaleSec` also fail on an answer that is fresh-looking but stale underneath.
 
 ## Security
 
@@ -818,8 +954,9 @@ is written to keep it that way.
 correctness review (SSRF, XSS/injection, cache poisoning, secret handling, and
 long-running-device reliability); findings were fixed and are covered by the
 test suite. `npm test` runs both halves — the site suite under happy-dom and the
-Worker suite under the real `workerd` pool — and CI gates every push and pull
-request on it.
+Worker suite under the real `workerd` pool — and CI gates every pull request and
+every push to `main` on it (see [Branches and CI](#3-branches-and-ci) for what
+that does and does not cover on `dev`).
 
 **Reporting a vulnerability.** Please open a private security advisory via
 GitHub's *Report a vulnerability* rather than a public issue.
@@ -830,9 +967,26 @@ GitHub's *Report a vulnerability* rather than a public issue.
 site/       static app (no framework, no bundler; ES modules)
   _*-audit.html   browser harnesses that render cards, settings panes and
                   overlays at the real board geometry (see Local development)
+  data/           bundled data the app ships with (stations, ferry landings,
+                  Citi Bike docks, express-bus stops, teams, F1 track outlines,
+                  art manifest, quotes, words, changelog)
 worker/     Cloudflare Worker (code exchange + cached upstream digests)
 macro/      Dashboard RoomOS macro (paste-and-go device setup + signage)
-tools/      data builders (stations, ferry, Citi Bike, art manifest, fixtures)
+tools/      data builders (stations, ferry, Citi Bike, express bus, teams,
+            F1 tracks, art manifest, fixtures) + stamp-version.js, the CI
+            build command
 test/       vitest suites (+ worker pool project in worker/vitest.config.js)
 docs/       the screenshots this README uses
+assets/     the logo lockups and app icons (this README's header uses them)
+.github/    workflows: test.yml (CI + Pages deploy), deploy-worker.yml
+wrangler.jsonc  NOT the API Worker (that config lives in worker/wrangler.toml).
+            This one belongs to a separate Worker that serves site/ as static
+            assets, built from the dev branch by Cloudflare Workers Builds, and
+            it is how the beta board gets deployed. It sits at the repo root, so
+            a bare `wrangler` command run anywhere in the tree resolves to THIS
+            config: pass `--name` explicitly when you mean the API Worker.
+DESIGN.md   the visual language and the rules a card is built to
+PRODUCT.md  what the product is for, and what it deliberately is not
+SECURITY.md how to report a vulnerability
+LICENSE
 ```
