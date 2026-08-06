@@ -1,5 +1,14 @@
 [
   {
+    "date": "August 6",
+    "items": [
+      {
+        "lead": "The screen cannot be zoomed by accident",
+        "text": "Pinching the board with two fingers used to blow the dashboard up, and it stayed that way. Even reloading did not clear it, so a board could be left sitting at double size until someone stood in front of it and pinched it back. The board now ignores the gesture entirely. Swiping through pictures, scrolling a long list, and dragging and resizing cards in Edit mode all work exactly as they did."
+      }
+    ]
+  },
+  {
     "date": "August 5",
     "items": [
       {

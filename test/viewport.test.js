@@ -23,11 +23,12 @@
  * no layout engine, so (as in overlay-chrome.test.js) the stylesheet is read
  * back as text and the rules are asserted directly.
  */
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeAll } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { OVERLAY_BODY_H, BOARD_VIEWPORT_H } from '../site/js/expand.js';
+import { blockZoomGestures } from '../site/js/zoomguard.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const read = (p) => readFileSync(join(here, p), 'utf8');
@@ -112,6 +113,97 @@ describe('the dashboard canvas is viewport-INDEPENDENT', () => {
     expect(BOARD_VIEWPORT_H).toBe(BOARD);
     expect(OVERLAY_BODY_H).toBe(814);
     expect(Math.min(...VIEWPORTS)).toBe(BOARD_VIEWPORT_H);
+  });
+});
+
+describe('the page cannot be zoomed, and the fix is not in the viewport meta', () => {
+  // A pinch on a live board zoomed the dashboard to ~200%. Browser zoom is
+  // engine state, so it outlived the reload Save does after a layout edit and
+  // the board stayed unusable until a person undid it by hand. Two halves,
+  // pinned here together because either one alone leaves a way in.
+
+  it('refuses pinch-zoom at the root while still allowing panning', () => {
+    // Touch behaviour is the intersection of the touched element's touch-action
+    // with every ancestor's, so the root is where a document-wide refusal goes.
+    const value = decl('html, body', 'touch-action', bare);
+    const tokens = value.split(/\s+/);
+    expect(tokens).not.toContain('pinch-zoom');
+    expect(tokens).not.toContain('auto');
+    // NOT `manipulation`: it still carries pinch-zoom, it only gives up
+    // double-tap zoom. NOT `none`: it would take panning with it and the
+    // settings rail and the reading views scroll to be read.
+    expect(tokens).not.toContain('manipulation');
+    expect(tokens).not.toContain('none');
+    expect(tokens).toContain('pan-x');
+    expect(tokens).toContain('pan-y');
+  });
+
+  it.each(['.slideshow', '.edit-block', '.edit-handle', '.tk-grip'])(
+    'leaves %s claiming every touch that starts on it', (sel) => {
+      // These claim their own touches outright: the swipe classifier and the
+      // drag/resize pointer handlers only run if the browser never arbitrates.
+      // Intersecting none with the root's pan-x pan-y is still none, so the
+      // root rule cannot have weakened them; this asserts they were not
+      // "simplified" away into it either.
+      expect(decl(sel, 'touch-action', bare)).toBe('none');
+    });
+
+  it('never puts a scale constraint back in the viewport meta (regression: 2026-07-25)', () => {
+    // The landmine. `initial-scale=1` was removed on 2026-07-25 because it
+    // pinned zoom at 1:1 on EVERY device, so a Room Navigator rendered only the
+    // top-left ~1280px of the 1920 page and needed a pinch to read. Any of
+    // these four, however well intentioned, brings that back on live hardware.
+    // Zoom is refused in CSS and JS instead, which costs no device its fit.
+    const html = read('../site/index.html');
+    const meta = /<meta\s+name="viewport"\s+content="([^"]*)"/i.exec(html);
+    expect(meta, 'no viewport meta in index.html').not.toBeNull();
+    expect(meta[1]).toBe('width=1920');
+    for (const banned of ['user-scalable', 'maximum-scale', 'minimum-scale', 'initial-scale']) {
+      expect(meta[1]).not.toContain(banned);
+    }
+  });
+});
+
+describe('the zoom guard blocks the pointer paths CSS cannot reach', () => {
+  // touch-action says nothing about a wheel or a WebKit gesture event, and a
+  // Desk or a Navigator can have a trackpad paired to it.
+  const wheel = (ctrlKey) => {
+    // happy-dom's WheelEvent extends UIEvent, where a real engine's extends
+    // MouseEvent, so it silently drops ctrlKey out of the init dict and every
+    // wheel event it builds reads `undefined`. Set it on the instance instead:
+    // the listener reads the same property either way, and the browser check
+    // in the ship notes covers the real engine.
+    const e = new window.WheelEvent('wheel', { bubbles: true, cancelable: true, deltaY: 120 });
+    Object.defineProperty(e, 'ctrlKey', { value: ctrlKey });
+    window.dispatchEvent(e);
+    return e;
+  };
+
+  beforeAll(() => blockZoomGestures(window));
+
+  it('prevents ctrl+wheel, which is how a trackpad pinch arrives', () => {
+    expect(wheel(true).defaultPrevented).toBe(true);
+  });
+
+  it('leaves a plain wheel alone, so the overlays still scroll', () => {
+    // The half that would go unnoticed: a guard that ate every wheel event
+    // would make the settings rail and the reading views unscrollable.
+    expect(wheel(false).defaultPrevented).toBe(false);
+  });
+
+  it('prevents the WebKit gesture events too, whatever engine RoomOS ships', () => {
+    for (const type of ['gesturestart', 'gesturechange', 'gestureend']) {
+      const e = new window.Event(type, { bubbles: true, cancelable: true });
+      window.dispatchEvent(e);
+      expect(e.defaultPrevented, type).toBe(true);
+    }
+  });
+
+  it('is a no-op on a target that cannot listen, rather than a boot crash', () => {
+    // It runs as top-level setup in main.js, ahead of the __signageLoaded flag
+    // bootguard.js watches. A throw here would look like a broken deploy.
+    expect(() => blockZoomGestures(undefined)).not.toThrow();
+    expect(() => blockZoomGestures({})).not.toThrow();
   });
 });
 

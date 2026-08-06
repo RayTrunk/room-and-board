@@ -4,6 +4,7 @@ import { normalizeConfig, decodeConfig, CURATED_SOURCES, imageFit } from './conf
 import { loadConfig, saveConfig, loadCache, saveCache, takePendingEdit } from './store.js';
 import { fetchJSON, fetchBuffer, fetchText } from './net.js';
 import { fmtClock, fitViewport } from './util.js';
+import { blockZoomGestures } from './zoomguard.js';
 import { schedule } from './scheduler.js';
 import { resolveMode, ambientSource } from './modes.js';
 import { registerWidget, getWidget } from './registry.js';
@@ -79,6 +80,14 @@ const loadFixtures = () =>
 // Navigator). No-op on the Board Pro. See fitViewport in util.js for why.
 fitViewport();
 window.addEventListener('resize', () => fitViewport());
+
+// …and having sized the page for the device, refuse to let anyone resize it by
+// hand. An accidental pinch on a board zoomed the dashboard to ~200% and the
+// zoom survived the reload that Save does, so the board sat unusable until
+// someone undid it by hand. The touch gesture is refused in main.css
+// (`touch-action` on the root); this covers the pointer paths, which CSS has no
+// say over. See zoomguard.js for the full account.
+blockZoomGestures(window);
 
 let cfg = null;
 // Liveness heartbeat for the watchdog: bumped on every clock tick, NOT on

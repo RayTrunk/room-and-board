@@ -89,7 +89,26 @@
    viewport; js/expand.js BOARD_VIEWPORT_H is the number they model against.
    This page height is deliberately NOT viewport-derived and must stay that way:
    coupling it to the glass would put every future capacity change on a
-   per-device matrix. test/viewport.test.js is the guard. */
+   per-device matrix. test/viewport.test.js is the guard.
+
+   `touch-action` on the root is what makes a pinch-zoom impossible, and it is
+   here because a fixed page has no business being zoomable. Someone at a board
+   pinched the dashboard by accident; browser zoom is ENGINE state, not page
+   state, so it outlived the reload that Save does after a layout edit and the
+   board came back still at roughly 200%, unusable until a person zoomed it out
+   by hand. Nothing in the page can undo an applied zoom from script, so the
+   gesture has to be stopped before it starts. Touch behaviour is the
+   INTERSECTION of the touched element's touch-action with every ancestor's,
+   which is why declaring it once at the root covers the whole document.
+   The value is `pan-x pan-y` rather than `manipulation`, which still carries
+   the pinch-zoom token (it only gives up double-tap zoom), and rather than
+   `none`, which would take panning with it and leave the settings rail, the
+   reading views and every scrollable overlay unable to scroll. The stricter
+   rules further down (the edit-mode drag and resize handles, the slideshow)
+   keep winning on their own elements: intersecting anything with none is none.
+   The viewport meta deliberately CANNOT do this job. Read the comment above
+   the meta tag in index.html: a scale constraint there is a verified past
+   regression that showed a Room Navigator only the top-left ~1280px. */
 html, body {
   width: 1920px;
   height: 1080px;
@@ -98,6 +117,7 @@ html, body {
   color: var(--ink);
   font-family: var(--font-board);
   -webkit-font-smoothing: antialiased;
+  touch-action: pan-x pan-y;
 }
 
 /* …and on a viewport TALLER than the page (a Room Navigator's 1200), the
