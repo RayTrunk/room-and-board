@@ -3,17 +3,20 @@
   *
   *
   * Date Created:            July 17, 2026
-  * Revised:                 July 21, 2026
-  * Version:                 1.2.1
+  * Revised:                 August 5, 2026
+  * Version:                 1.3.0
   *
   * Description:             Self-contained signage provisioning + Control
   *                          Panel button for the Room & Board dashboard.
   *                          init() configures the device for interactive
   *                          web signage (WebEngine, Standby Signage mode/
-  *                          interaction/URL/audio, standby delay, macro
-  *                          autostart) and deploys a "Dashboard" Action
-  *                          Button that drops the device into half-wake,
-  *                          where the signage displays.
+  *                          interaction/URL/audio, standby delay, meeting-
+  *                          start wakeup, macro autostart) and deploys a
+  *                          "Dashboard" Action Button that drops the device
+  *                          into half-wake, where the signage displays. It
+  *                          then watches the device's time zone and restarts
+  *                          the web engine when it changes, so the dashboard
+  *                          clock follows the room.
   *                          Standalone: no storage/vault macro, no bridge
   *                          account — the URL carries the board's config.
   *
@@ -26,7 +29,8 @@
   * Code Dependencies:       None
   *
   * AI Generation:           ~90%
-  *                          Claude Fable 5 (claude-fable-5)
+  *                          Claude Fable 5 (claude-fable-5) — through 1.2.1
+  *                          Claude Opus 5 (claude-opus-5) — 1.3.0
   *                          Instruction file: RoomOS.md
   *                          AI-generated code — review and test on the
   *                          target device before production deployment.
@@ -45,7 +49,9 @@ import xapi from 'xapi';
  * display's configuration in the #cfg fragment).
  *
  * NOTE: don't run a second signage macro that also sets Standby Signage Url
- * alongside this one — they will fight over the value.
+ * alongside this one — they will fight over the value. This macro also toggles
+ * WebEngine Mode off and on when the device's time zone changes, so anything
+ * else driving that node will fight too.
  */
 const SIGNAGE_URL = 'https://roomboard.app';
 
@@ -64,7 +70,37 @@ const STANDBY_DELAY_MINUTES = 480;
 // RoomOS defaults this to 'Off'.
 const SIGNAGE_AUDIO = 'On';
 
+// Whether the device may wake itself when a scheduled meeting is about to start.
+// RoomOS defaults this to 'Auto', which pulls the board out of signage to show the
+// join prompt and holds it awake until a few minutes past the start time — so the
+// dashboard vanishes for a stretch of every booking on the room's calendar. 'Off'
+// leaves the board in signage right through the meeting. Set it back to 'Auto' to
+// restore Cisco's default join prompt, at the cost of the dashboard for that
+// stretch. Note the value space is 'Auto'/'Off', not the 'On'/'Off' of the toggles
+// above.
+const WAKE_AT_MEETING_START = 'Off';
+
+// Whether a change to the device's time zone restarts the web engine. The browser
+// engine reads the OS time zone once, when it starts, and RoomOS does not appear to
+// act on the time-zone-change notification, so the dashboard keeps drawing the old
+// zone until something restarts the engine. `false` leaves the engine alone, and the
+// clock then stays wrong until the codec reboots.
+// UNVERIFIED: none of this has been confirmed on a physical device. A lighter touch
+// may well be enough — re-setting Standby Signage Url to force a page reload — which
+// would make the full engine restart overkill. If you have a board in front of you,
+// try the reload first and simplify this once you know.
+const RESTART_WEBENGINE_ON_TIMEZONE_CHANGE = true;
+
 const PANEL_ID = 'dashboard';
+
+// How long the web engine stays off during a restart: long enough for RoomOS to tear
+// the renderer down, short enough that a board in half-wake barely blinks.
+const WEBENGINE_RESTART_PAUSE_MS = 3000;
+
+// The device's time zone as this macro last saw it. Seeded in init() so a
+// subscription that fires with the current value can't read as a change; stays null
+// until something establishes a baseline.
+let lastTimeZone = null;
 
 // Base64-encoded PNG for the button icon.
 const ICON_BASE64 =
@@ -110,18 +146,36 @@ async function ensureConfig(node, label, value) {
 }
 
 /**
+  * ensureConfig for nodes we'd like but can't insist on: not every RoomOS version or
+  * device model exposes every setting, and a rejected write here must not abort the
+  * run before the signage URL is set. Logs and carries on instead of throwing.
+  * @param {Object} node - A proxied xapi.Config node exposing get()/set().
+  * @param {string} label - Human-readable config path for logs.
+  * @param {string} value - The desired value.
+  * @roomosxapi [xConfiguration](https://roomos.cisco.com/xapi/domain/?domain=Configuration)
+  */
+async function ensureOptionalConfig(node, label, value) {
+  try {
+    await ensureConfig(node, label, value);
+  } catch (err) {
+    console.warn(`[Dashboard] optional setting skipped — ${err.Context ?? err.message ?? err}`);
+  }
+}
+
+/**
   * Applies every device setting interactive web signage needs. Macros
   * Mode/AutoStart are included so a hand-uploaded copy of this macro survives
   * reboots.
   * The default URL opens the Room & Board welcome screen, so an untouched
   * install still lands somewhere useful.
-  * @roomosxapi [xConfiguration Standby Delay](https://roomos.cisco.com/xapi/Config.Standby.Delay/)
-  * @roomosxapi [xConfiguration Standby Signage Url](https://roomos.cisco.com/xapi/Config.Standby.Signage.Url/)
-  * @roomosxapi [xConfiguration Standby Signage Mode](https://roomos.cisco.com/xapi/Config.Standby.Signage.Mode/)
-  * @roomosxapi [xConfiguration Standby Signage InteractionMode](https://roomos.cisco.com/xapi/Config.Standby.Signage.InteractionMode/)
-  * @roomosxapi [xConfiguration Standby Signage Audio](https://roomos.cisco.com/xapi/Config.Standby.Signage.Audio/)
-  * @roomosxapi [xConfiguration WebEngine Mode](https://roomos.cisco.com/xapi/Config.WebEngine.Mode/)
-  * @roomosxapi [xConfiguration Macros AutoStart](https://roomos.cisco.com/xapi/Config.Macros.AutoStart/)
+  * @roomosxapi [xConfiguration Standby Delay](https://roomos.cisco.com/xapi/Configuration.Standby.Delay/)
+  * @roomosxapi [xConfiguration Standby WakeupAtMeetingStart](https://roomos.cisco.com/xapi/Configuration.Standby.WakeupAtMeetingStart/)
+  * @roomosxapi [xConfiguration Standby Signage Url](https://roomos.cisco.com/xapi/Configuration.Standby.Signage.Url/)
+  * @roomosxapi [xConfiguration Standby Signage Mode](https://roomos.cisco.com/xapi/Configuration.Standby.Signage.Mode/)
+  * @roomosxapi [xConfiguration Standby Signage InteractionMode](https://roomos.cisco.com/xapi/Configuration.Standby.Signage.InteractionMode/)
+  * @roomosxapi [xConfiguration Standby Signage Audio](https://roomos.cisco.com/xapi/Configuration.Standby.Signage.Audio/)
+  * @roomosxapi [xConfiguration WebEngine Mode](https://roomos.cisco.com/xapi/Configuration.WebEngine.Mode/)
+  * @roomosxapi [xConfiguration Macros AutoStart](https://roomos.cisco.com/xapi/Configuration.Macros.AutoStart/)
   */
 async function configureSignage() {
   await ensureConfig(xapi.Config.Macros.Mode, 'Macros Mode', 'On');
@@ -136,7 +190,15 @@ async function configureSignage() {
   if (delay !== Number(STANDBY_DELAY_MINUTES)) console.warn(`[Dashboard] STANDBY_DELAY_MINUTES '${STANDBY_DELAY_MINUTES}' out of range 1-480 — using ${delay}`);
   const audio = /^on$/i.test(String(SIGNAGE_AUDIO).trim()) ? 'On' : 'Off';
   if (audio !== SIGNAGE_AUDIO) console.warn(`[Dashboard] SIGNAGE_AUDIO '${SIGNAGE_AUDIO}' normalized to '${audio}'`);
+  // WakeupAtMeetingStart's value space is 'Auto'/'Off', unlike every other toggle
+  // here — so accept 'On' as a synonym for 'Auto' rather than let the natural typo
+  // become a rejected write.
+  const wakeAtMeetingStart = /^(auto|on)$/i.test(String(WAKE_AT_MEETING_START).trim()) ? 'Auto' : 'Off';
+  if (wakeAtMeetingStart !== WAKE_AT_MEETING_START) console.warn(`[Dashboard] WAKE_AT_MEETING_START '${WAKE_AT_MEETING_START}' normalized to '${wakeAtMeetingStart}'`);
   await ensureConfig(xapi.Config.Standby.Delay, 'Standby Delay', delay);
+  // Optional, not required: older RoomOS versions and some models don't expose this
+  // node, and losing the dashboard to a meeting prompt beats losing it entirely.
+  await ensureOptionalConfig(xapi.Config.Standby.WakeupAtMeetingStart, 'Standby WakeupAtMeetingStart', wakeAtMeetingStart);
   await ensureConfig(xapi.Config.Standby.Signage.Mode, 'Standby Signage Mode', 'On');
   await ensureConfig(xapi.Config.Standby.Signage.InteractionMode, 'Standby Signage InteractionMode', 'Interactive');
   await ensureConfig(xapi.Config.Standby.Signage.Audio, 'Standby Signage Audio', audio);
@@ -157,13 +219,15 @@ async function deployPanel() {
 }
 
 /**
-  * Drops the device into half-wake, where the configured signage displays.
+  * Drops the device into half-wake, where the configured signage displays. Called
+  * both from the panel button and after a web engine restart, so the log stays
+  * neutral about who asked.
   * @roomosxapi [xCommand Standby Halfwake](https://roomos.cisco.com/xapi/Command.Standby.Halfwake/)
   */
 async function activateSignage() {
   try {
     await xapi.Command.Standby.Halfwake();
-    console.log('[Dashboard] button pressed -> Standby Halfwake (signage up)');
+    console.log('[Dashboard] Standby Halfwake (signage up)');
   } catch (err) {
     console.error('[Dashboard] could not enter half-wake:', err.message ?? err);
   }
@@ -175,18 +239,114 @@ async function activateSignage() {
   */
 function onPanelClicked({ PanelId }) {
   if (PanelId !== PANEL_ID) return;
+  console.log(`[Dashboard] button '${PANEL_ID}' pressed`);
   activateSignage();
+}
+
+/**
+  * Restarts the web engine, then puts signage back if that's where the board was.
+  * The browser reads the OS time zone once, at process start, and a page reload
+  * typically reuses the same renderer — so only restarting the engine picks up a new
+  * zone. See RESTART_WEBENGINE_ON_TIMEZONE_CHANGE for what is still unverified here.
+  * Sets WebEngine Mode directly rather than through ensureConfig: that helper writes
+  * only on difference, which is exactly the guard a deliberate Off/On toggle of an
+  * already-'On' node has to bypass.
+  * Skipped while the device is in a call — pulling the engine out from under an
+  * active call is worse than a stale clock, and the zone lands at the next restart.
+  * @param {string} zone - The new time zone, for the log line.
+  * @roomosxapi [xStatus SystemUnit State NumberOfActiveCalls](https://roomos.cisco.com/xapi/Status.SystemUnit.State.NumberOfActiveCalls/)
+  * @roomosxapi [xStatus Standby State](https://roomos.cisco.com/xapi/Status.Standby.State/)
+  * @roomosxapi [xConfiguration WebEngine Mode](https://roomos.cisco.com/xapi/Configuration.WebEngine.Mode/)
+  */
+async function restartWebEngine(zone) {
+  let activeCalls = 0;
+  try {
+    activeCalls = Number(await xapi.Status.SystemUnit.State.NumberOfActiveCalls.get()) || 0;
+  } catch (err) {
+    // Couldn't confirm the device is idle, so don't risk it — a stale clock is a far
+    // smaller problem than an engine restart in the middle of someone's call.
+    console.warn(`[Dashboard] active calls unreadable -> web engine restart skipped, '${zone}' applies at the next restart:`, err.message ?? err);
+    return;
+  }
+  if (activeCalls > 0) {
+    console.warn(`[Dashboard] ${activeCalls} active call(s) -> web engine restart skipped, '${zone}' applies at the next restart`);
+    return;
+  }
+  // Remember whether signage was on screen before the engine goes down: the half-wake
+  // view goes with it, and the board should land back where it was. A failed read here
+  // only costs us that restore; it must not block the restart itself.
+  let wasShowingSignage = false;
+  try {
+    wasShowingSignage = String(await xapi.Status.Standby.State.get()) === 'Halfwake';
+  } catch (err) {
+    console.warn('[Dashboard] Standby State unreadable — half-wake will not be re-asserted:', err.message ?? err);
+  }
+  try {
+    console.log(`[Dashboard] restarting the web engine so the dashboard picks up '${zone}'`);
+    await xapi.Config.WebEngine.Mode.set('Off');
+    await new Promise((resolve) => setTimeout(resolve, WEBENGINE_RESTART_PAUSE_MS));
+    await xapi.Config.WebEngine.Mode.set('On');
+    console.log('[Dashboard] web engine restarted');
+    if (wasShowingSignage) await activateSignage();
+  } catch (err) {
+    console.error('[Dashboard] web engine restart failed:', err.message ?? err);
+    // Never leave the engine off: that is a black board, which is worse than the
+    // stale clock this was trying to fix.
+    try {
+      await xapi.Config.WebEngine.Mode.set('On');
+      console.log('[Dashboard] WebEngine Mode forced back to On');
+    } catch (recoveryErr) {
+      console.error('[Dashboard] WebEngine Mode could not be restored to On:', recoveryErr.message ?? recoveryErr);
+    }
+  }
+}
+
+/**
+  * Time Zone change handler. A config subscription can deliver the current value
+  * once when it is registered, so compare against the baseline init() captured and
+  * act only on a real change; the first value seen seeds that baseline if init()'s
+  * read failed, which costs one missed change but never a spurious restart.
+  * @param {string|Object} payload - The new Time Zone. roomos.cisco.com documents
+  *   the callback as receiving the value itself; a {Value} wrapper is accepted too,
+  *   so a different runtime shape can't stringify to garbage and read as a change.
+  */
+function onTimeZoneChanged(payload) {
+  const raw = payload && typeof payload === 'object' ? payload.Value : payload;
+  const zone = String(raw ?? '').trim();
+  if (!zone) return;
+  if (lastTimeZone === null) {
+    lastTimeZone = zone;
+    return;
+  }
+  if (zone === lastTimeZone) return;
+  const previous = lastTimeZone;
+  lastTimeZone = zone;
+  console.log(`[Dashboard] time zone '${previous}' -> '${zone}'`);
+  if (!RESTART_WEBENGINE_ON_TIMEZONE_CHANGE) {
+    console.log('[Dashboard] web engine restart disabled — the dashboard keeps the old zone until the codec reboots');
+    return;
+  }
+  restartWebEngine(zone);
 }
 
 /**
   * Provision the device, deploy the button, then subscribe (registered once
   * here, never inside re-callable functions, so no duplicate handlers).
+  * Reads Time Zone before subscribing so the watcher has a baseline the moment its
+  * subscription can fire.
   * @roomosxapi [xEvent UserInterface Extensions Panel Clicked](https://roomos.cisco.com/xapi/Event.UserInterface.Extensions.Panel.Clicked/)
+  * @roomosxapi [xConfiguration Time Zone](https://roomos.cisco.com/xapi/Configuration.Time.Zone/)
   */
 async function init() {
   await configureSignage();
   await deployPanel();
+  try {
+    lastTimeZone = String(await xapi.Config.Time.Zone.get()).trim() || null;
+  } catch (err) {
+    console.warn('[Dashboard] could not read Time Zone — the watcher seeds itself on the first value it sees:', err.message ?? err);
+  }
   xapi.Event.UserInterface.Extensions.Panel.Clicked.on(onPanelClicked);
+  xapi.Config.Time.Zone.on(onTimeZoneChanged);
   console.log('[Dashboard] ready');
 }
 

@@ -580,15 +580,42 @@ Install the signage macro on each touch board:
 1. On the board (or Control Hub → Macro Editor) open **Settings → Macros**.
 2. Create a macro, paste in `macro/Dashboard.js`, **Save**, and enable it.
 3. On load it self-configures the device (WebEngine, interactive signage, macro
-   autostart, standby delay/audio) and adds a **Dashboard** button to the
-   Control Panel that drops the board into the signage view.
+   autostart, standby delay/audio, meeting-start wakeup) and adds a
+   **Dashboard** button to the Control Panel that drops the board into the
+   signage view. It then watches the device's time zone and restarts the web
+   engine when it changes.
 
-The overridable defaults sit at the top of the file: the signage URL plus
-`STANDBY_DELAY_MINUTES` and `SIGNAGE_AUDIO`. Leave the URL on
-`https://roomboard.app` for the welcome screen, or paste a board's own URL from
-`/setup` → "Get signage URL" to load a saved configuration. Pilot on one board
-first. Recommended extra per Cisco guidance: configure `Time OfficeHours` so
-signage runs ≤ 12 h/day.
+The overridable defaults sit at the top of the file: the signage URL plus four
+settings.
+
+- `STANDBY_DELAY_MINUTES` — minutes of inactivity before the board sleeps to
+  full standby. 480 (8 hours) is the most RoomOS allows.
+- `SIGNAGE_AUDIO` — whether signage web content may play sound, e.g. the Live
+  Video widget opened full screen. `'On'` or `'Off'`.
+- `WAKE_AT_MEETING_START` — defaults to `'Off'`, which is a deliberate change
+  from RoomOS's own default of `'Auto'`. Left at `'Auto'`, the board wakes
+  itself just before a booking starts to show the join prompt and stays awake
+  until a few minutes past the start time, so the dashboard disappears for a
+  stretch of every meeting on the room's calendar. That is what people mean
+  when they report that the dashboard "goes away on its own" during the day.
+  Set it back to `'Auto'` if you want Cisco's join prompt and can live without
+  the dashboard for those minutes. The value space is `'Auto'`/`'Off'`, not
+  `'On'`/`'Off'`.
+- `RESTART_WEBENGINE_ON_TIMEZONE_CHANGE` — defaults to `true`. The browser
+  engine reads the OS time zone once, when it starts, so moving a board to a
+  new zone leaves the dashboard drawing the old one until something restarts
+  the engine. With this on, the macro watches `xConfiguration Time Zone` and
+  cycles `WebEngine Mode` off and on when it changes, skipping the restart if
+  the device is in a call and putting signage back afterwards if that is where
+  the board was. Caveat: this has not yet been confirmed on a physical device.
+  A page reload alone may turn out to be enough, in which case the restart is
+  heavier than it needs to be. If you are testing on a board, try re-setting
+  the signage URL first and simplify the macro if that works.
+
+Leave the URL on `https://roomboard.app` for the welcome screen, or paste a
+board's own URL from `/setup` → "Get signage URL" to load a saved
+configuration. Pilot on one board first. Recommended extra per Cisco guidance:
+configure `Time OfficeHours` so signage runs ≤ 12 h/day.
 
 ### 5. Non-touch devices (Room series driving a TV)
 
