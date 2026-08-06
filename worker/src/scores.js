@@ -4,15 +4,17 @@
 // the route, with cached()'s 24h stale fallback on upstream failure.
 
 import { mapGolf, mapTennis } from '../../site/js/espn-scores.js';
+import { ESPN_UA } from './espn.js';
 
 const ESPN = 'https://site.api.espn.com/apis/site/v2/sports';
-// Full browser UA — thin datacenter agents get bounced by some hosts.
-const UA =
-  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36';
 
+// scoreboard() is the ONLY thing in this file that reaches ESPN — golf and both
+// tennis tours all come through here — so the shared ESPN_UA belongs on this one
+// fetch. This used to send a full browser UA; ESPN's edge started 403ing that on
+// 2026-08-05 and took golf and tennis down with it. See worker/src/espn.js.
 async function scoreboard(path) {
   const res = await fetch(`${ESPN}/${path}/scoreboard`, {
-    headers: { 'User-Agent': UA },
+    headers: { 'User-Agent': ESPN_UA },
     signal: AbortSignal.timeout(10000),
   });
   if (!res.ok) throw new Error(`espn ${path} ${res.status}`);

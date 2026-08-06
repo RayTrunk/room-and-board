@@ -1,6 +1,7 @@
 import { fetchGolf, fetchTennis } from '../../worker/src/scores.js';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { digestNext, digestSchedule, mapTeamSummary } from '../../worker/src/sports.js';
+import { digestNext, digestSchedule, fetchTeamSummary, mapTeamSummary } from '../../worker/src/sports.js';
+import { ESPN_UA } from '../../worker/src/espn.js';
 import { env } from 'cloudflare:test';
 import worker, { guardFetch } from '../../worker/src/index.js';
 import { resetNjtToken, resetNjtSchedule, nyDate } from '../../worker/src/njt.js';
@@ -621,6 +622,90 @@ describe('golf/tennis digest routes (scores.js)', () => {
       { match: /tennis\/wta\/scoreboard/, body: 'down', status: 500 },
     ]);
     await expect(fetchTennis()).rejects.toThrow('both tours failed');
+  });
+});
+
+// ESPN's edge answers 403 to a request whose User-Agent is missing, a browser
+// impostor, or an unknown custom string — it wants a value starting 'curl/'.
+// That took My Teams, Golf and Tennis down together on 2026-08-05, and the
+// header is invisible in every other test here (they assert URLs, not headers),
+// so these assert the header itself. Rationale: worker/src/espn.js.
+describe('ESPN User-Agent', () => {
+  // Same route matching as stubFetch, but records the outgoing headers so a
+  // test can assert what was actually SENT, not just where.
+  function stubFetchHeaders(routes) {
+    const reqs = [];
+    vi.stubGlobal('fetch', vi.fn(async (input, init) => {
+      const url = typeof input === 'string' ? input : input.url;
+      reqs.push({ url, ua: new Headers(init?.headers ?? {}).get('user-agent') });
+      const route = routes.find((r) => r.match.test(url) && (r.times ?? 1) > 0);
+      if (!route) throw new Error(`unmocked fetch: ${url}`);
+      route.times = (route.times ?? 1) - 1;
+      return new Response(JSON.stringify(route.body), {
+        status: route.status ?? 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }));
+    return reqs;
+  }
+
+  // nextEvent state 'in' is what makes fetchTeamSummary reach for the league
+  // scoreboard, so one call exercises all three of its fetches.
+  const TEAM_IN_GAME = { team: {
+    id: '10', abbreviation: 'NYY', shortDisplayName: 'Yankees', logos: [],
+    nextEvent: [{ id: '401816004', competitions: [{
+      status: { type: { state: 'in', shortDetail: 'Mid 5th' } },
+      competitors: [
+        { homeAway: 'home', team: { abbreviation: 'NYY' }, score: null },
+        { homeAway: 'away', team: { abbreviation: 'MIN' }, score: null },
+      ],
+    }] }],
+  } };
+
+  it('rides all three sports.js fetches: team, schedule and the live scoreboard', async () => {
+    const reqs = stubFetchHeaders([
+      { match: /teams\/10$/, body: TEAM_IN_GAME },
+      { match: /teams\/10\/schedule$/, body: { events: [] } },
+      { match: /mlb\/scoreboard$/, body: { events: [] } },
+    ]);
+    // No origin on purpose: cachedSchedLines then skips the Cache API, so the
+    // schedule fetch really happens here instead of being served from a hit.
+    await fetchTeamSummary('mlb', '10', null);
+    expect(reqs).toHaveLength(3);
+    expect(reqs.filter((r) => /teams\/10$/.test(r.url))).toHaveLength(1);
+    expect(reqs.filter((r) => /schedule$/.test(r.url))).toHaveLength(1);
+    expect(reqs.filter((r) => /scoreboard$/.test(r.url))).toHaveLength(1);
+    for (const r of reqs) expect(r.ua).toBe(ESPN_UA);
+  });
+
+  it('rides the scores.js scoreboard fetch (golf)', async () => {
+    const reqs = stubFetchHeaders([{ match: /golf\/pga\/scoreboard/, body: { events: [] } }]);
+    await fetchGolf();
+    expect(reqs).toHaveLength(1);
+    expect(reqs[0].ua).toBe(ESPN_UA);
+  });
+
+  it('rides the scores.js scoreboard fetch for BOTH tennis tours', async () => {
+    const reqs = stubFetchHeaders([
+      { match: /tennis\/atp\/scoreboard/, body: { events: [] } },
+      { match: /tennis\/wta\/scoreboard/, body: { events: [] } },
+    ]);
+    await fetchTennis();
+    expect(reqs).toHaveLength(2);
+    for (const r of reqs) expect(r.ua).toBe(ESPN_UA);
+  });
+
+  it('starts with the curl token, because ESPN matches the PREFIX (tidying the order = 403)', () => {
+    // Verified from Cloudflare egress: 'curl/8.7.1 (RoomBoard; ...)' -> 200,
+    // but 'RoomBoard/1.0 curl/8.7.1' -> 403. The product name may only follow.
+    expect(ESPN_UA.startsWith('curl/')).toBe(true);
+    expect(ESPN_UA).toContain('roomboard.app'); // stays honest about who is calling
+  });
+
+  it('does NOT leak into svcstatus, whose host wants the opposite (a browser UA)', () => {
+    // AWS's CloudFront bounces thin datacenter agents, ESPN bounces browsers.
+    // Two hosts, two opposite rules — unifying them breaks one of the two.
+    expect(ESPN_UA).not.toContain('Mozilla');
   });
 });
 

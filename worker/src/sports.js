@@ -2,6 +2,11 @@
 // plus the last completed game from the schedule endpoint. The schedule runs
 // ~2 MB — far too heavy for gen1 boards — so it's digested here and cached
 // long (results change at most a few times a day).
+//
+// Every fetch here MUST carry ESPN_UA — ESPN's edge 403s a request without it.
+// See worker/src/espn.js for why the string looks the way it does.
+
+import { ESPN_UA } from './espn.js';
 
 export const LEAGUE_PATHS = {
   mlb: 'baseball/mlb',
@@ -107,7 +112,10 @@ async function cachedSchedLines(origin, lg, id, abbr, base) {
   let lastLine = null;
   let nextLine = null;
   try {
-    const schedRes = await fetch(`${base}/schedule`, { signal: AbortSignal.timeout(10000) });
+    const schedRes = await fetch(`${base}/schedule`, {
+      headers: { 'User-Agent': ESPN_UA },
+      signal: AbortSignal.timeout(10000),
+    });
     if (schedRes.ok) {
       const sched = await schedRes.json();
       lastLine = digestSchedule(sched, abbr);
@@ -129,7 +137,10 @@ async function cachedSchedLines(origin, lg, id, abbr, base) {
 
 export async function fetchTeamSummary(lg, id, origin) {
   const base = `https://site.api.espn.com/apis/site/v2/sports/${LEAGUE_PATHS[lg]}/teams/${id}`;
-  const teamRes = await fetch(base, { signal: AbortSignal.timeout(10000) });
+  const teamRes = await fetch(base, {
+    headers: { 'User-Agent': ESPN_UA },
+    signal: AbortSignal.timeout(10000),
+  });
   if (!teamRes.ok) throw new Error(`espn team ${teamRes.status}`);
   const teamJson = await teamRes.json();
   const abbr = teamJson?.team?.abbreviation ?? '';
@@ -143,7 +154,10 @@ export async function fetchTeamSummary(lg, id, origin) {
   const nextEv = teamJson?.team?.nextEvent?.[0];
   if (nextEv?.competitions?.[0]?.status?.type?.state === 'in') {
     try {
-      const sbRes = await fetch(`https://site.api.espn.com/apis/site/v2/sports/${LEAGUE_PATHS[lg]}/scoreboard`, { signal: AbortSignal.timeout(10000) });
+      const sbRes = await fetch(`https://site.api.espn.com/apis/site/v2/sports/${LEAGUE_PATHS[lg]}/scoreboard`, {
+        headers: { 'User-Agent': ESPN_UA },
+        signal: AbortSignal.timeout(10000),
+      });
       if (sbRes.ok) {
         const sb = await sbRes.json();
         liveComp = (sb.events ?? []).find((e) => e.id === nextEv.id)?.competitions?.[0] ?? null;

@@ -1,6 +1,11 @@
 // Builds site/data/teams.json: pickable teams per league from ESPN's public
 // API (keyless). Run: node tools/build-teams.js
+//
+// Same UA rule as the worker: without ESPN_UA every request below 403s, so a
+// rebuild would fail outright. Imported rather than copied so there is one
+// source of truth (worker/src/espn.js), which is also where the reasoning lives.
 import { writeFile } from 'node:fs/promises';
+import { ESPN_UA } from '../worker/src/espn.js';
 
 const LEAGUES = {
   mlb: ['baseball', 'mlb', 'MLB'],
@@ -14,7 +19,9 @@ const LEAGUES = {
 const out = { leagues: [] };
 for (const [lg, [sport, slug, label]] of Object.entries(LEAGUES)) {
   const json = await (
-    await fetch(`https://site.api.espn.com/apis/site/v2/sports/${sport}/${slug}/teams?limit=100`)
+    await fetch(`https://site.api.espn.com/apis/site/v2/sports/${sport}/${slug}/teams?limit=100`, {
+      headers: { 'User-Agent': ESPN_UA },
+    })
   ).json();
   const teams = (json.sports?.[0]?.leagues?.[0]?.teams ?? [])
     // nick is ESPN's shortDisplayName: the form a headline actually prints

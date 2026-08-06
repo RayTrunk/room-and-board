@@ -78,6 +78,22 @@ export const CHECKS = [
       && j.services.some((s) => s?.id === 'm365' && s.state !== 'unknown'),
   },
   {
+    // ESPN is one upstream behind three cards: My Teams, Golf and Tennis all
+    // read from site.api.espn.com, so this single check covers all three — if
+    // the team row can be built, the golf and tennis scoreboards are reachable
+    // too. It exists because ESPN's edge started 403ing the board's requests
+    // and the row sat on yesterday's game for days before a person noticed;
+    // the routes were 502ing the whole time and nothing paged. Checks the
+    // CONTENT — a row with a real abbreviation — because the shape is what
+    // rots: a 200 with a row that lost its team is the failure worth paging
+    // for. A fixed, always-in-season team (the Yankees) so an offseason
+    // league can never make the check flap.
+    name: 'espn',
+    path: '/sports/team?lg=mlb&id=nyy',
+    maxStaleSec: STALE_MAX,
+    ok: (j) => typeof j.row?.abbr === 'string' && j.row.abbr.length > 0,
+  },
+  {
     name: 'njt', // NJTransit — getStationSchedule is a STATIC daily timetable, so
     // "old" is not "wrong": healthy = the schedule still has a future departure.
     // A prior-day timetable (every train already in the past) is the real

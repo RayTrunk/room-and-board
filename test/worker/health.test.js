@@ -11,6 +11,7 @@ const OK_BODIES = {
   'amtrak': { station: 'New York Penn', departures: [] }, // empty at night is still healthy
   '/njt': { station: 'NY', trains: [{ time: 9999999999, dest: 'Trenton' }] }, // far-future = an upcoming departure exists
   '/services/status': { services: [{ id: 'm365', label: 'Microsoft 365', state: 'ok', note: 'All systems operational', incidents: [] }] },
+  '/sports/team': { row: { lg: 'mlb', abbr: 'NYY', name: 'Yankees', record: '48-38', line: 'vs MIN · 7:05 PM' } },
 };
 const bodyFor = (url) => OK_BODIES[Object.keys(OK_BODIES).find((k) => url.includes(k))];
 
@@ -66,6 +67,17 @@ describe('health CHECKS validators', () => {
     expect(byName.m365({ services: [] })).toBe(false);
     expect(byName.m365({})).toBe(false);
     expect(byName.m365({ services: [{ id: 'slack', state: 'ok' }] })).toBe(false); // wrong service
+  });
+  it('espn: needs a real team row, since one upstream feeds three cards', () => {
+    // My Teams, Golf and Tennis all read site.api.espn.com. ESPN's edge began
+    // refusing the board's requests on 2026-08-05 and all three sat on old data
+    // for days with nothing paging, so this asserts the row's CONTENT: a 200
+    // carrying a row that lost its team is exactly the failure worth paging for.
+    expect(byName.espn({ row: { abbr: 'NYY', name: 'Yankees' } })).toBe(true);
+    expect(byName.espn({ row: { abbr: '' } })).toBe(false); // shape kept, team lost
+    expect(byName.espn({ row: {} })).toBe(false);
+    expect(byName.espn({ row: null })).toBe(false); // mapTeamSummary returns null on an unusable payload
+    expect(byName.espn({})).toBe(false);
   });
   it('njt: healthy only with an upcoming departure (static daily schedule)', () => {
     const now = Date.now() / 1000;
