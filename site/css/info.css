@@ -114,18 +114,34 @@ button:focus-visible {
    placed around it. */
 .hero__field {
   --cell: 30px;
+  /* The gutter a placed module keeps from the rules around it — the same idea
+     as the icon masters' constant gutter, and the edit view's card inset. */
+  --g: 3px;
   position: relative; overflow: hidden; border-radius: 16px;
   background-color: #05070a;
+  /* The keyline is the outermost rule: same weight, same ink as the ruling,
+     so the edge cells read bounded instead of cropped — the icon tile's move
+     at hero scale. background-position hides the gradient's own first line
+     under the keyline so the left/top edges are not drawn twice (rule lines
+     must never compound). info.js snaps the box to whole cells so the right
+     and bottom keylines land on the grid too; without JS the keyline still
+     closes the edge cells. */
+  border: 1px solid rgba(255, 255, 255, 0.085);
   background-image:
     linear-gradient(to right, rgba(255, 255, 255, 0.085) 1px, transparent 1px),
     linear-gradient(to bottom, rgba(255, 255, 255, 0.085) 1px, transparent 1px);
   background-size: var(--cell) var(--cell);
+  background-position: -1px -1px;
   padding: calc(var(--cell) * 2) calc(var(--cell) * 1.5);
 }
 .hero__mod { position: absolute; border-radius: 3px; }
+/* The solid bar rides with the wordmark and keeps its composed position; the
+   two translucent modules sit INSIDE cells — whole-cell spans, inset by the
+   gutter on every side — so they read as placed cards, exactly like the edit
+   view. Their offsets are whole cells from the snapped right/bottom edges. */
 .hero__mod--a { left: calc(var(--cell) * 1.5); top: calc(var(--cell) * 0.5); width: calc(var(--cell) * 3); height: var(--cell); background: var(--accent); }
-.hero__mod--b { right: calc(var(--cell) * 1.5); top: calc(var(--cell) * 0.5); width: var(--cell); height: calc(var(--cell) * 2); background: rgba(100, 180, 250, 0.30); }
-.hero__mod--c { right: calc(var(--cell) * 3.5); bottom: calc(var(--cell) * 0.5); width: calc(var(--cell) * 2); height: var(--cell); background: rgba(100, 180, 250, 0.18); }
+.hero__mod--b { right: calc(var(--cell) + var(--g)); top: var(--g); width: calc(var(--cell) - var(--g) * 2); height: calc(var(--cell) * 2 - var(--g) * 2); background: rgba(100, 180, 250, 0.30); }
+.hero__mod--c { right: calc(var(--cell) * 3 + var(--g)); bottom: var(--g); width: calc(var(--cell) * 2 - var(--g) * 2); height: calc(var(--cell) - var(--g) * 2); background: rgba(100, 180, 250, 0.18); }
 /* position:relative lifts the text above the ruling's background layers only
    in the sense of paint order clarity; the field is one stacking context. */
 .hero__title { position: relative; margin: 0; font-size: clamp(40px, 5vw, 64px); line-height: 1; }
@@ -406,7 +422,7 @@ button:focus-visible {
      closer to the edge; the bottom-right module goes entirely — at phone
      widths it starts crowding the sub line. */
   .hero__field { --cell: 24px; }
-  .hero__mod--b { right: var(--cell); }
+  .hero__mod--b { right: var(--g); }
   .hero__mod--c { display: none; }
   .section { padding-top: 56px; }
   .h2 { font-size: 26px; }
@@ -487,7 +503,7 @@ button:focus-visible {
   /* The hero field is a dark panel and would print as a slab of ink. On paper
      the masthead is just the name: field chrome off, modules gone, word black
      (the accent acute keeps its blue; it prints as a readable mid-gray). */
-  .hero__field { background: none; border: 1px solid #c8c8c8; padding: 18px 22px; }
+  .hero__field { background: none; border: 1px solid #c8c8c8; padding: 18px 22px; width: auto !important; height: auto !important; }
   .hero__mod { display: none; }
   .hero__title, .nav__brand { color: #000; }
   .hero { padding-top: 0; display: block; }
