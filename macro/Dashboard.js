@@ -20,7 +20,7 @@
   *                          Standalone: no storage/vault macro, no bridge
   *                          account — the URL carries the board's config.
   *
-  * Documentation:           https://github.com/scotty83/room-and-board
+  * Documentation:           https://github.com/scotty83/quadrille
   *
   * Software Platforms:      RoomOS 11+
   *

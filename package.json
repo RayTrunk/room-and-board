@@ -1,10 +1,10 @@
 {
-  "name": "room-and-board",
+  "name": "quadrille",
   "version": "1.0.0",
   "description": "Lightweight signage dashboard for Cisco Board Pro / RoomOS devices — widgets, photo frame, zero-auth setup",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/scotty83/room-and-board.git"
+    "url": "git+https://github.com/scotty83/quadrille.git"
   },
   "scripts": {
     "test": "vitest run && vitest run -c worker/vitest.config.js",
