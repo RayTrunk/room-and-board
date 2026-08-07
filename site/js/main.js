@@ -393,7 +393,7 @@ function showWelcome() {
           <rect x="46.25" y="25.75" width="12.5" height="12.5" rx="3.5" fill="rgba(100,180,250,.38)"/>
           <rect x="25.75" y="46.25" width="12.5" height="12.5" rx="3.5" fill="rgba(100,180,250,.20)"/>
         </svg>
-        <span class="qmark welcome__word"><span class="qmark__lt">Quad</span>rill<span class="qmark__e">é<i>é</i></span></span>
+        <span class="qmark welcome__word"><span class="qmark__lt">Quad</span>rill<span class="qmark__e">é<i hidden>é</i></span></span>
       </div>
       <h1>Welcome to your office display</h1>
       <p>Set it up from your phone or desktop, or start with sensible defaults and fine-tune later.</p>

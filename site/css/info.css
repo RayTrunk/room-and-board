@@ -94,6 +94,13 @@ button:focus-visible {
 .qmark__lt { font-weight: 300; }
 .qmark__e { position: relative; display: inline-block; }
 .qmark__e > i {
+  /* The overlay carries the `hidden` attribute, so before this stylesheet
+     lands the browser's own styles suppress it and the raw page reads
+     "Quadrillé", not "Quadrilléé" (seen for real when a fresh deploy served
+     the HTML while the CSS request was still failing). This author rule
+     out-cascades the UA's [hidden]{display:none} and restores the overlay
+     the moment the styling that positions it exists. */
+  display: inline;
   position: absolute; left: 0; top: 0;
   font-style: normal; color: var(--accent);
   clip-path: inset(0 0 76% 0);

@@ -294,5 +294,9 @@ describe('the rail-footer entry point', () => {
     expect(lockup.querySelector('.qmark__e').textContent).toBe('éé');
     expect(lockup.querySelector('.qmark__e i').textContent).toBe('é');
     expect(lockup.textContent).toBe('Quadrilléé');
+    // The overlay must carry `hidden`: before the stylesheet lands, the UA's
+    // [hidden]{display:none} is the only thing keeping the raw page from
+    // reading "Quadrilléé" (the CSS restores it with an explicit display).
+    expect(lockup.querySelector('.qmark__e i').hasAttribute('hidden')).toBe(true);
   });
 });
