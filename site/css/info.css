@@ -117,7 +117,12 @@ button:focus-visible {
   /* The gutter a placed module keeps from the rules around it — the same idea
      as the icon masters' constant gutter, and the edit view's card inset. */
   --g: 3px;
-  position: relative; overflow: hidden; border-radius: 16px;
+  position: relative; overflow: hidden;
+  /* The corner radius is exactly ONE CELL: the arc's endpoints land on the
+     first interior rules, so each corner cell is a quarter-round bounded by
+     the arc and two rules — a corner OF the grid, not a curve clipping
+     through it. An arbitrary radius (the old 16px) cut cells mid-way. */
+  border-radius: var(--cell);
   background-color: #05070a;
   /* The keyline is the outermost rule: same weight, same ink as the ruling,
      so the edge cells read bounded instead of cropped — the icon tile's move
