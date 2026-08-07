@@ -1,5 +1,5 @@
 // Settings → What's new. The board's own copy of the release notes that
-// roomboard.app/info publishes: the SAME data file (site/data/changelog.json),
+// quadrille.io publishes: the SAME data file (site/data/changelog.json),
 // the same rhythm — a date gutter, lead + prose to its right, one hairline per
 // dated group — retuned for a 6 ft reading distance.
 //
@@ -17,7 +17,7 @@ import { escapeHtml } from '../util.js';
 export const MIN_OPEN_GROUPS = 1;
 
 // Relative, so it resolves against the board's own origin whatever host it is
-// served from (roomboard.app, beta., a preview deploy).
+// served from (roomboard.app, app.quadrille.io, beta., a preview deploy).
 export const CHANGELOG_URL = 'data/changelog.json';
 
 // Same shape guard /info applies: a group needs a date and at least one item
@@ -112,7 +112,7 @@ export function fitChangelog(pane) {
 // purpose: it is an absence, not an error, and it names the place the reader
 // can always get them (their phone, which is where a board with no browser
 // sends you).
-export const EMPTY_COPY = 'Couldn’t load the update notes just now. They are always at roomboard.app/info.';
+export const EMPTY_COPY = 'Couldn’t load the update notes just now. They are always at quadrille.io.';
 
 export function emptyHtml(copy = EMPTY_COPY) {
   return `<div class="log"><p class="log__empty">${escapeHtml(copy)}</p></div>`;
@@ -172,7 +172,7 @@ export function paneHtml(groups, { build = '' } = {}) {
       </div>
       <p class="pane__hint">Updates to this board, newest first. It keeps itself up to date, so there is nothing to install.</p>
       ${list || emptyHtml()}
-      <p class="log__foot">Quadrillé${build ? ` · version ${escapeHtml(build)}` : ''} · full guide at roomboard.app/info</p>
+      <p class="log__foot">Quadrillé${build ? ` · version ${escapeHtml(build)}` : ''} · full guide at quadrille.io</p>
     </div>`;
 }
 

@@ -3,7 +3,7 @@
 </p>
 <h1 align="center">Quadrillé</h1>
 
-A lightweight, personal signage dashboard — **Quadrillé** (`roomboard.app`) —
+A lightweight, personal signage dashboard — **Quadrillé** (`quadrille.io`) —
 for touch enabled Cisco RoomOS endpoints such as the Board Pro and Desk Pro:
 worldwide weather and surf, transit boards (NYC Subway status, LIRR,
 Metro-North, NJ Transit, Amtrak, PATH, NYC Ferry, Express Bus, Citi Bike;
@@ -610,7 +610,7 @@ settings.
   heavier than it needs to be. If you are testing on a board, try re-setting
   the signage URL first and simplify the macro if that works.
 
-Leave the URL on `https://roomboard.app` for the welcome screen, or paste a
+Leave the URL on `https://app.quadrille.io` (or the original `https://roomboard.app`, which keeps working) for the welcome screen, or paste a
 board's own URL from `/setup` → "Get signage URL" to load a saved
 configuration. Pilot on one board first. Recommended extra per Cisco guidance:
 configure `Time OfficeHours` so signage runs ≤ 12 h/day.

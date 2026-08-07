@@ -217,24 +217,24 @@ describe('paneHtml', () => {
     expect(html).toContain('aria-label="Back to settings"');
     expect(html).toContain('nothing to install');
     expect(html).toContain('version fa395c8b41d2');
-    expect(html).toContain('roomboard.app/info');
+    expect(html).toContain('quadrille.io');
   });
 
   it('shows one quiet line, still under its own heading, when the notes are missing', () => {
     for (const groups of [null, undefined]) {
       const html = paneHtml(groups);
       expect(html).toContain('log__empty');
-      expect(html).toContain('roomboard.app/info');
+      expect(html).toContain('quadrille.io');
       expect(html).toContain('What’s new'); // the pane never renders bare
       expect(html).not.toContain('data-log-more');
     }
-    expect(EMPTY_COPY).toContain('roomboard.app/info');
+    expect(EMPTY_COPY).toContain('quadrille.io');
   });
 
   it('drops the version clause rather than printing an empty one', () => {
     // Scoped to the colophon: the notes themselves may well say "version".
     const foot = /<p class="log__foot">(.*?)<\/p>/.exec(paneHtml(shipped))[1];
-    expect(foot).toBe('Quadrillé · full guide at roomboard.app/info');
+    expect(foot).toBe('Quadrillé · full guide at quadrille.io');
     expect(foot).not.toMatch(/·\s*·/);
   });
 
