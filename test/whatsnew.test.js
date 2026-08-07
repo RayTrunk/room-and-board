@@ -234,7 +234,7 @@ describe('paneHtml', () => {
   it('drops the version clause rather than printing an empty one', () => {
     // Scoped to the colophon: the notes themselves may well say "version".
     const foot = /<p class="log__foot">(.*?)<\/p>/.exec(paneHtml(shipped))[1];
-    expect(foot).toBe('Room &amp; Board · full guide at roomboard.app/info');
+    expect(foot).toBe('Quadrillé · full guide at roomboard.app/info');
     expect(foot).not.toMatch(/·\s*·/);
   });
 
@@ -273,8 +273,24 @@ describe('the rail-footer entry point', () => {
   });
 
   it('keeps the wordmark decorative inside the control, not a second label', () => {
-    // The lockup is the button's face; its alt is empty so the accessible name
-    // is the caption, not "Room & Board Room & Board".
-    expect(railFootHtml()).toContain('alt=""');
+    // The lockup is the button's face; it is hidden from the accessibility tree
+    // so the accessible name is the caption, not "Quadrillé Quadrillé". The
+    // wordmark is now set in text rather than drawn as an image, which is why
+    // hiding it takes aria-hidden instead of an empty alt.
+    const html = railFootHtml();
+    expect(html).toMatch(/<span class="settings__lockup qmark" aria-hidden="true">/);
+    expect(html).not.toContain('<img');
+    const host = document.createElement('div');
+    host.innerHTML = html;
+    const lockup = host.querySelector('.settings__lockup');
+    expect(lockup.getAttribute('aria-hidden')).toBe('true');
+    // The name is set in text, in three pieces the stylesheet treats
+    // differently: the lit "Quad", the plain "rill", and a final e that carries
+    // its accent in a nested <i> so the mark can be drawn on its own. Both
+    // glyphs are in the markup, which is why the raw text reads "…lleé".
+    expect(lockup.querySelector('.qmark__lt').textContent).toBe('Quad');
+    expect(lockup.querySelector('.qmark__e').textContent).toBe('eé');
+    expect(lockup.querySelector('.qmark__e i').textContent).toBe('é');
+    expect(lockup.textContent).toBe('Quadrilleé');
   });
 });

@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Quadrillé">
+  <!-- The full master: a ruled tile at true thirds with three placed cards.
+       Geometry rules (do not eyeball-edit): tile rx 9 and module rx 3.5 are
+       CONCENTRIC (inner = outer minus inset); every module keeps a constant
+       gutter of 3 to each neighboring rule and to the tile's inner face; the
+       ruling lives in ONE group with opacity on the GROUP so crossings do not
+       compound brighter. The favicon does NOT scale this down — small sizes
+       use quadrille-quad.svg, the same drawing reduced to one card on one
+       crossing. -->
+  <title>Quadrillé</title>
+  <rect x="1.5" y="1.5" width="61" height="61" rx="9" fill="#0d1218" stroke="rgba(255,255,255,.14)" stroke-width="1.5"/>
+  <g opacity=".15" stroke="#fff" stroke-width="2">
+    <line x1="21.75" y1="2" x2="21.75" y2="62"/>
+    <line x1="42.25" y1="2" x2="42.25" y2="62"/>
+    <line x1="2" y1="21.75" x2="62" y2="21.75"/>
+    <line x1="2" y1="42.25" x2="62" y2="42.25"/>
+  </g>
+  <rect x="5.25" y="5.25" width="33" height="12.5" rx="3.5" fill="#64b4fa"/>
+  <rect x="46.25" y="25.75" width="12.5" height="12.5" rx="3.5" fill="rgba(100,180,250,.38)"/>
+  <rect x="25.75" y="46.25" width="12.5" height="12.5" rx="3.5" fill="rgba(100,180,250,.20)"/>
+</svg>

@@ -182,10 +182,10 @@ export function alertPlan(report, prevFailing = []) {
   const recovered = prevFailing.filter((n) => !names.includes(n));
   let text;
   if (failing.length) {
-    text = `🔴 Room & Board health: ${failing.map((r) => `${r.name} (${r.detail})`).join(', ')}`;
+    text = `🔴 Quadrillé health: ${failing.map((r) => `${r.name} (${r.detail})`).join(', ')}`;
     if (recovered.length) text += ` (recovered: ${recovered.join(', ')})`;
   } else {
-    text = `✅ Room & Board health: all clear (recovered: ${recovered.join(', ')})`;
+    text = `✅ Quadrillé health: all clear (recovered: ${recovered.join(', ')})`;
   }
   return { changed: true, failing: names, text: `${text} — ${report.at}` };
 }
@@ -235,7 +235,7 @@ export async function notify(env, text, fetchImpl = fetch) {
   try {
     const res = await fetchImpl(url, {
       method: 'POST',
-      headers: ntfy ? { Title: 'Room & Board health' } : { 'content-type': 'application/json' },
+      headers: ntfy ? { Title: 'Quadrillé health' } : { 'content-type': 'application/json' },
       body: ntfy ? text : JSON.stringify({ text }),
       signal: AbortSignal.timeout(8000),
     });

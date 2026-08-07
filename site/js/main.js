@@ -380,7 +380,21 @@ function showWelcome() {
   $('#grid').hidden = true;
   welcome.innerHTML = `
     <div class="welcome__inner">
-      <img class="welcome__logo" src="assets/room-and-board-lockup-dark.svg" alt="Room & Board" width="340" height="88">
+      <div class="welcome__brand" aria-hidden="true">
+        <svg class="welcome__mark" viewBox="0 0 64 64" width="72" height="72">
+          <rect x="1.5" y="1.5" width="61" height="61" rx="9" fill="#0d1218" stroke="rgba(255,255,255,.14)" stroke-width="1.5"/>
+          <g opacity=".15" stroke="#fff" stroke-width="2">
+            <line x1="21.75" y1="2" x2="21.75" y2="62"/>
+            <line x1="42.25" y1="2" x2="42.25" y2="62"/>
+            <line x1="2" y1="21.75" x2="62" y2="21.75"/>
+            <line x1="2" y1="42.25" x2="62" y2="42.25"/>
+          </g>
+          <rect x="5.25" y="5.25" width="33" height="12.5" rx="3.5" fill="#64b4fa"/>
+          <rect x="46.25" y="25.75" width="12.5" height="12.5" rx="3.5" fill="rgba(100,180,250,.38)"/>
+          <rect x="25.75" y="46.25" width="12.5" height="12.5" rx="3.5" fill="rgba(100,180,250,.20)"/>
+        </svg>
+        <span class="qmark welcome__word"><span class="qmark__lt">Quad</span>rill<span class="qmark__e">e<i>é</i></span></span>
+      </div>
       <h1>Welcome to your office display</h1>
       <p>Set it up from your phone or desktop, or start with sensible defaults and fine-tune later.</p>
       <div class="qr welcome__qr"></div>

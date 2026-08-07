@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Quadrillé">
+  <!-- The small master: the full mark (quadrille-mark.svg) reduced to one card
+       on one crossing, for favicon sizes (32 and below) where the thirds
+       ruling and small modules soften into texture. The lit cell sits
+       top-right, the corner the é wears its accent. Same tile, same
+       concentric radii, same group-opacity ruling rule as the full master. -->
+  <title>Quadrillé</title>
+  <rect x="1.5" y="1.5" width="61" height="61" rx="9" fill="#0d1218" stroke="rgba(255,255,255,.14)" stroke-width="1.5"/>
+  <g opacity=".22" stroke="#fff" stroke-width="2.5">
+    <line x1="32" y1="2" x2="32" y2="62"/>
+    <line x1="2" y1="32" x2="62" y2="32"/>
+  </g>
+  <rect x="37.25" y="6.25" width="20.5" height="20.5" rx="3.5" fill="#64b4fa"/>
+</svg>

@@ -9,10 +9,10 @@
 <meta charset="utf-8">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https: data: blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Room &amp; Board — Widget Guide</title>
-<meta name="description" content="Every widget card the Room &amp; Board signage dashboard can show: commute, weather, markets, news, images, and the daily reads.">
-<link rel="icon" href="assets/room-and-board-favicon-32.png" sizes="32x32">
-<link rel="apple-touch-icon" href="assets/room-and-board-icon-180.png">
+<title>Quadrillé · Widget Guide</title>
+<meta name="description" content="Every widget card the Quadrillé signage dashboard can show: commute, weather, markets, news, images, and the daily reads.">
+<link rel="icon" href="assets/quadrille-favicon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="assets/quadrille-icon-180.png">
 <link rel="stylesheet" href="css/info.css">
 </head>
 <body>
@@ -25,7 +25,7 @@
      inside it and nothing up here. -->
 <nav class="nav">
   <div class="nav__inner">
-    <a class="nav__brand" href="#top"><img src="assets/room-and-board-wordmark-dark.svg" alt="Room &amp; Board" width="152" height="35"></a>
+    <a class="nav__brand" href="#top" aria-label="Quadrillé"><span class="qmark" aria-hidden="true"><span class="qmark__lt">Quad</span>rill<span class="qmark__e">e<i>é</i></span></span></a>
     <a class="nav__link" href="#yours">Making it yours</a>
     <a class="nav__link" href="#widgets">The widgets</a>
     <a class="nav__link" href="#screensavers">Screensavers</a>
@@ -35,12 +35,19 @@
 
 <header id="top" class="wrap hero">
   <div class="hero__text">
-    <!-- The lockup is the whole masthead. It stays inside the h1 so the page
-         keeps exactly one h1 and its accessible name is still "Room & Board";
-         width/height are on the tag so the hero does not reflow once the SVG
-         lands. CSS scales it from there. -->
-    <h1 class="hero__title"><img class="hero__lockup" src="assets/room-and-board-lockup-dark.svg" alt="Room &amp; Board" width="373" height="96" fetchpriority="high"></h1>
-    <p class="hero__lede">A glanceable dashboard for your personal screen: your commute, your weather, your markets, your images.</p>
+    <!-- The masthead is the wordmark set on a ruled field: the name drawn as
+         the thing it names. The page keeps exactly one h1 and its accessible
+         name is still the product name, carried by the sr-only text; the
+         visual construction (weight seam, blue acute overlay) is aria-hidden
+         because a screen reader spelling out the overlay would read
+         "Quadrilleé". -->
+    <div class="hero__field">
+      <span class="hero__mod hero__mod--a"></span>
+      <span class="hero__mod hero__mod--b"></span>
+      <span class="hero__mod hero__mod--c"></span>
+      <h1 class="hero__title"><span class="sr-only">Quadrillé</span><span class="qmark" aria-hidden="true"><span class="qmark__lt">Quad</span>rill<span class="qmark__e">e<i>é</i></span></span></h1>
+      <p class="hero__sub">A glanceable dashboard for your personal screen: your commute, your weather, your markets, your images.</p>
+    </div>
     <!-- 33 = every widget a reader of this page can actually add today: the 34
          ids in config.js less the one still behind the beta gate (Live Video).
          (It was 35 less a retired World Cup less Live Video until the World Cup
@@ -59,8 +66,8 @@
        activating it DOES; the image's alt still describes the board itself and
        travels with it into the lightbox. -->
   <figure class="hero__shot">
-    <button class="shot__btn" type="button" aria-label="Enlarge the Room &amp; Board dashboard screenshot">
-      <img src="assets/info/hero-board.webp" data-zoom data-caption="The Room &amp; Board dashboard" alt="A Room &amp; Board display showing Weather with hourly rain chances, Landscapes, World Clock, Cloud Services, Markets, Headlines, and Subway Status." width="1920" height="1080" loading="eager" fetchpriority="high" decoding="async">
+    <button class="shot__btn" type="button" aria-label="Enlarge the Quadrillé dashboard screenshot">
+      <img src="assets/info/hero-board.webp" data-zoom data-caption="The Quadrillé dashboard" alt="A Quadrillé display showing Weather with hourly rain chances, Landscapes, World Clock, Cloud Services, Markets, Headlines, and Subway Status." width="1920" height="1080" loading="eager" fetchpriority="high" decoding="async">
     </button>
   </figure>
 </header>

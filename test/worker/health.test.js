@@ -237,7 +237,7 @@ describe('notify', () => {
     const fetchImpl = mockFetch();
     await notify({ ALERT_WEBHOOK: 'https://ntfy.sh/roomboard-alerts' }, 'markets (HTTP 503)', fetchImpl);
     const [, init] = fetchImpl.mock.calls[0];
-    expect(init.headers.Title).toBe('Room & Board health');
+    expect(init.headers.Title).toBe('Quadrillé health');
     expect(init.body).toBe('markets (HTTP 503)');
   });
   // Delivery signal drives at-least-once persistence (see nextFailingState).

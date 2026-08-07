@@ -1076,7 +1076,10 @@ describe('Settings → What’s new', () => {
 
   it('names itself and nothing else; the version stays in the pane’s colophon', async () => {
     await open();
-    expect(entry().textContent.trim()).toBe('What’s new');
+    // The wordmark face is decorative text now (it was an img): it must stay
+    // out of the control's accessible name, and the caption alone names it.
+    expect(entry().querySelector('.settings__lockup').getAttribute('aria-hidden')).toBe('true');
+    expect(entry().querySelector('.settings__wnline').textContent.trim()).toBe('What’s new');
     expect(entry().textContent).not.toMatch(/[0-9a-f]{7}/); // no build id on the rail
     entry().click();
     await settle();

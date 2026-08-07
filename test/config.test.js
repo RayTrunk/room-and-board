@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   isAddable,
   isAdvancedHidden,
+  isBetaHost,
   isLaunched,
   isRetired,
   DEFAULT_CONFIG,
@@ -450,10 +451,25 @@ describe('staged rollout (BETA_ONLY widgets)', () => {
   it('iptv hides on prod hosts only; launched widgets show everywhere', () => {
     expect(isLaunched('iptv', 'roomboard.app')).toBe(false);
     expect(isLaunched('iptv', 'www.roomboard.app')).toBe(false);
+    expect(isLaunched('iptv', 'app.quadrille.io')).toBe(false);
     expect(isLaunched('iptv', 'beta.roomboard.app')).toBe(true);
+    expect(isLaunched('iptv', 'beta.quadrille.io')).toBe(true);
     expect(isLaunched('iptv', 'signage.rvc.tech')).toBe(true);
     expect(isLaunched('iptv', 'localhost')).toBe(true);
     expect(isLaunched('weather', 'roomboard.app')).toBe(true);
+    expect(isLaunched('weather', 'app.quadrille.io')).toBe(true);
+  });
+
+  // The production host list is what the gate is actually made of: both
+  // production domains serve the same board, so neither may read as staging.
+  it('isBetaHost treats both production domains as prod and everything else as beta', () => {
+    expect(isBetaHost('roomboard.app')).toBe(false);
+    expect(isBetaHost('www.roomboard.app')).toBe(false);
+    expect(isBetaHost('app.quadrille.io')).toBe(false);
+    expect(isBetaHost('beta.roomboard.app')).toBe(true);
+    expect(isBetaHost('beta.quadrille.io')).toBe(true);
+    expect(isBetaHost('signage.rvc.tech')).toBe(true);
+    expect(isBetaHost('localhost')).toBe(true);
   });
 });
 

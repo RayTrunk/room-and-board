@@ -172,7 +172,7 @@ export function paneHtml(groups, { build = '' } = {}) {
       </div>
       <p class="pane__hint">Updates to this board, newest first. It keeps itself up to date, so there is nothing to install.</p>
       ${list || emptyHtml()}
-      <p class="log__foot">Room &amp; Board${build ? ` · version ${escapeHtml(build)}` : ''} · full guide at roomboard.app/info</p>
+      <p class="log__foot">Quadrillé${build ? ` · version ${escapeHtml(build)}` : ''} · full guide at roomboard.app/info</p>
     </div>`;
 }
 
@@ -192,7 +192,7 @@ export function paneHtml(groups, { build = '' } = {}) {
 // wants it will look.
 export function railFootHtml() {
   return `<button class="settings__whatsnew" type="button" data-whatsnew>
-      <img class="settings__lockup" src="assets/room-and-board-wordmark-dark.svg" alt="" width="216" height="50">
+      <span class="settings__lockup qmark" aria-hidden="true"><span class="qmark__lt">Quad</span>rill<span class="qmark__e">e<i>é</i></span></span>
       <span class="settings__wnline">What’s new</span>
     </button>`;
 }

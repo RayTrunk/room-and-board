@@ -57,7 +57,6 @@ button:focus-visible {
 }
 .nav__inner::-webkit-scrollbar { display: none; }
 .nav__brand { margin-right: auto; padding: 9px 0; display: flex; align-items: center; flex: none; }
-.nav__brand img { display: block; height: 26px; width: auto; }
 /* 22px line + 11px top and bottom = a 44px target, the floor for a thumb. */
 .nav__link {
   font-size: 15px; line-height: 22px; padding: 11px 14px; border-radius: 999px; white-space: nowrap;
@@ -82,30 +81,58 @@ button:focus-visible {
   mask-image: linear-gradient(to right, transparent, #000 48px, #000 calc(100% - 48px), transparent);
 }
 
+/* ---------- the wordmark ----------
+   Quadrillé is set as live text, one family, two weights: Quad light, rillé
+   semibold. The acute is the ONLY blue thing in the word, and it is still the
+   FONT'S OWN acute, not a drawn shape: the base renders a plain "e" and the
+   overlay renders a full "é" clipped to its top quarter, so the accent's shape
+   and position are glyph-metric-exact at every size. The overlay is the same
+   character in the same font at the same origin — it cannot drift. */
+.qmark { font-weight: 600; letter-spacing: -0.035em; }
+.qmark__lt { font-weight: 300; }
+.qmark__e { position: relative; display: inline-block; }
+.qmark__e > i {
+  position: absolute; left: 0; top: 0;
+  font-style: normal; color: var(--accent);
+  clip-path: inset(0 0 76% 0);
+  pointer-events: none;
+}
+/* Screen-reader text for constructions whose visual form is aria-hidden. */
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0;
+}
+
 /* ---------- hero ---------- */
 .hero { padding-top: 84px; padding-bottom: 12px; }
-/* The masthead IS the logo: the h1 holds the lockup and nothing else, so the
-   mark has to sit on the same optical left edge and vertical rhythm as the
-   prose beneath it. Its own box does not give you that, because the SVG carries
-   3.5/373 of empty bearing to the left of the icon's stroked rect and 13.5/373
-   above and below it. The negative margins cancel exactly those bearings, which
-   is why they are ratios of --lockup-w and not fixed pixels: they have to track
-   the mark as it scales. */
-.hero__title {
-  --lockup-w: min(540px, 92vw);
-  --lockup-bleed: calc(var(--lockup-w) * 0.0362);
-  line-height: 0;
-  margin: calc(0px - var(--lockup-bleed)) 0 calc(30px - var(--lockup-bleed));
+/* The masthead is the name ON the product: the wordmark sits directly on a
+   field ruled into squares (what "quadrillé" means), with three cards placed
+   around it. The ruling is snapped to --cell so every module lands exactly on
+   cells, the same discipline the dashboard itself uses, and it is held at
+   8.5% white so the field never vibrates behind the letters. Nothing sits
+   BEHIND the word — legibility is untouched; the modules read as widgets
+   placed around it. */
+.hero__field {
+  --cell: 30px;
+  position: relative; overflow: hidden; border-radius: 16px;
+  background-color: #05070a;
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.085) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.085) 1px, transparent 1px);
+  background-size: var(--cell) var(--cell);
+  padding: calc(var(--cell) * 2) calc(var(--cell) * 1.5);
 }
-.hero__lockup {
-  display: block;
-  width: var(--lockup-w);
-  max-width: 100%;
-  height: auto;
-  margin-left: calc(var(--lockup-w) * -0.00938);
-}
-.hero__lede { font-size: clamp(19px, 2.2vw, 23px); line-height: 1.45; color: var(--ink-mid); margin: 0 0 14px; max-width: var(--measure); text-wrap: pretty; }
-.hero__note { font-size: 16px; color: var(--ink-dim); margin: 0; max-width: var(--measure); }
+.hero__mod { position: absolute; border-radius: 3px; }
+.hero__mod--a { left: calc(var(--cell) * 1.5); top: calc(var(--cell) * 0.5); width: calc(var(--cell) * 3); height: var(--cell); background: var(--accent); }
+.hero__mod--b { right: calc(var(--cell) * 1.5); top: calc(var(--cell) * 0.5); width: var(--cell); height: calc(var(--cell) * 2); background: rgba(100, 180, 250, 0.30); }
+.hero__mod--c { right: calc(var(--cell) * 3.5); bottom: calc(var(--cell) * 0.5); width: calc(var(--cell) * 2); height: var(--cell); background: rgba(100, 180, 250, 0.18); }
+/* position:relative lifts the text above the ruling's background layers only
+   in the sense of paint order clarity; the field is one stacking context. */
+.hero__title { position: relative; margin: 0; font-size: clamp(40px, 5vw, 64px); line-height: 1; }
+.hero__sub { position: relative; font-size: clamp(15px, 1.6vw, 17px); line-height: 1.45; color: var(--ink-mid); margin: 12px 0 0; text-wrap: pretty; }
+.hero__note { font-size: 16px; color: var(--ink-dim); margin: 18px 0 0; max-width: var(--measure); }
+/* Nav brand is the same wordmark at rail scale. */
+.nav__brand { font-size: 21px; color: var(--ink); }
 
 /* The hero shows the product: the board sits beside the lede once there is room
    for both to stay legible, and drops below it before either gets squeezed.
@@ -375,9 +402,12 @@ button:focus-visible {
 @media (max-width: 900px) {
   :root { --pad: 20px; }
   .hero { padding-top: 56px; }
-  /* 100% is the 350px measure the lede wraps to at a 390px viewport, so the
-     mark never outruns the text block it heads. */
-  .hero__title { --lockup-w: min(380px, 100%); margin-bottom: calc(24px - var(--lockup-bleed)); }
+  /* The field's cell shrinks with the viewport and the right-hand module tucks
+     closer to the edge; the bottom-right module goes entirely — at phone
+     widths it starts crowding the sub line. */
+  .hero__field { --cell: 24px; }
+  .hero__mod--b { right: var(--cell); }
+  .hero__mod--c { display: none; }
   .section { padding-top: 56px; }
   .h2 { font-size: 26px; }
   /* One column: the two-column ::after balancer has no empty cell to fill. */
@@ -454,10 +484,12 @@ button:focus-visible {
   .fold__caret { display: none !important; }
   .wrap { max-width: none; padding-left: 0; padding-right: 0; }
   a { color: #000; text-decoration: underline; }
-  /* The lockup is white-on-transparent and would print as nothing at all.
-     Inverting alone turns the brand blue orange, so the hue-rotate puts the hue
-     back where it started and only the lightness flips. */
-  .hero__lockup { filter: invert(1) hue-rotate(180deg); }
+  /* The hero field is a dark panel and would print as a slab of ink. On paper
+     the masthead is just the name: field chrome off, modules gone, word black
+     (the accent acute keeps its blue; it prints as a readable mid-gray). */
+  .hero__field { background: none; border: 1px solid #c8c8c8; padding: 18px 22px; }
+  .hero__mod { display: none; }
+  .hero__title, .nav__brand { color: #000; }
   .hero { padding-top: 0; display: block; }
   .hero__shot { margin-top: 24px; }
   .section { padding-top: 28px; }

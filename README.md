@@ -1,11 +1,9 @@
 <p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="assets/room-and-board-lockup-dark.png">
-    <img alt="Room &amp; Board" src="assets/room-and-board-lockup-mono.png" width="380">
-  </picture>
+  <img alt="Quadrillé" src="site/assets/quadrille-mark.svg" width="96">
 </p>
+<h1 align="center">Quadrillé</h1>
 
-A lightweight, personal signage dashboard — **Room & Board** (`roomboard.app`) —
+A lightweight, personal signage dashboard — **Quadrillé** (`roomboard.app`) —
 for touch enabled Cisco RoomOS endpoints such as the Board Pro and Desk Pro:
 worldwide weather and surf, transit boards (NYC Subway status, LIRR,
 Metro-North, NJ Transit, Amtrak, PATH, NYC Ferry, Express Bus, Citi Bike;
@@ -15,7 +13,7 @@ the day, Statista's chart of the day, and more). Hosted entirely on the
 public internet, personalized per device **without authentication**, with
 preferences that survive reboots and RoomOS upgrades.
 
-![A Room & Board dashboard in the Momentum theme: weather, public-domain art, world clock, subway status, markets, quote of the day, and cloud-service status](docs/screenshots/dashboard-classic.png)
+![A Quadrillé dashboard in the Momentum theme: weather, public-domain art, world clock, subway status, markets, quote of the day, and cloud-service status](docs/screenshots/dashboard-classic.png)
 
 <table>
   <tr>
@@ -934,7 +932,7 @@ asserts the row's *state*, not merely that the route answered. Checks with a
 
 ## Security
 
-Room & Board is a **read-only** signage app that renders **public** data feeds.
+Quadrillé is a **read-only** signage app that renders **public** data feeds.
 It has no user accounts, no passwords, and holds no personal data beyond an
 optional first-name greeting — a deliberately small attack surface, and the code
 is written to keep it that way.

@@ -787,17 +787,34 @@ body { position: relative; top: max(0px, calc((100dvh - 1080px) / 2)); }
 .strip__transit b { color: var(--ink); font-weight: 300; font-variant-numeric: tabular-nums; }
 body.mode-ambient .topbar, body.mode-ambient #grid { visibility: hidden; }
 
+/* ---------- the wordmark ----------
+   Quadrillé as live text: Quad light, rillé semibold, and the acute is the
+   only blue in the word. The base renders a plain "e"; the overlay renders the
+   font's own "é" clipped to its top quarter, so the accent is glyph-metric
+   exact at every size and cannot drift. Shared by the welcome screen and the
+   settings rail; info.css carries its own copy for the standalone guide. */
+.qmark { font-weight: 600; letter-spacing: -0.035em; }
+.qmark__lt { font-weight: 300; }
+.qmark__e { position: relative; display: inline-block; }
+.qmark__e > i {
+  position: absolute; left: 0; top: 0;
+  font-style: normal; color: var(--accent);
+  clip-path: inset(0 0 76% 0);
+  pointer-events: none;
+}
+
 /* ---------- welcome ---------- */
 .welcome { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: var(--bg); }
 .welcome__inner {
   max-width: 760px; text-align: center; display: flex; flex-direction: column; gap: 22px;
   background: var(--bg-card); border-radius: var(--radius); padding: 48px 56px;
 }
-/* Onboarding brand lockup. Pivot the composition on the wordmark's "&" (~12.5%
-   right of the lockup's own centre) so the wordmark reads centred under the
-   heading while the board glyph anchors to the left; %-based so it's
-   scale-independent. */
-.welcome__logo { align-self: center; width: 340px; max-width: 70%; height: auto; transform: translateX(-12.5%); }
+/* Onboarding brand lockup: the mark and the wordmark on one centered row. The
+   old SVG lockup needed a translateX pivot hack to look centered; a flex row
+   of two real elements just is. */
+.welcome__brand { align-self: center; display: flex; align-items: center; gap: 20px; }
+.welcome__mark { display: block; flex: none; }
+.welcome__word { font-size: 54px; line-height: 1; }
 /* 40px keeps the heading on one line in the 760px card, with margin to spare for
    the board's system-font metrics. */
 .welcome__inner h1 { font-size: 40px; }
@@ -916,7 +933,7 @@ body.mode-ambient .gear--edit { display: none; }
    (calm-utility — no divider needed). It used to be purely decorative; it is
    now the face of the What's new control below, which is what lets that
    control cost the rail ~24px instead of a whole row. */
-.settings__lockup { align-self: center; width: 180px; max-width: 100%; height: auto; }
+.settings__lockup { align-self: center; font-size: 27px; line-height: 1.2; color: var(--ink-mid); }
 /* The rail footer's What's new entry: the wordmark, and one line that opens the
    release notes. It lives in the FOOTER, which is `flex: none` and never
    scrolls, rather than in the nav, which is the list that grows with every

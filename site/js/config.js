@@ -49,7 +49,7 @@ export const WIDGET_GROUPS = [
   // slot Ambient vacated, which had become a rump of leftovers once Images was
   // carved out of it.
   // NAMING — decided with Sean, 2026-07-29: this group is "Reference", never
-  // "Work". RoomBoard is his personal project and a "Work" label would imply an
+  // "Work". Quadrillé is his personal project and a "Work" label would imply an
   // employer sponsors it. Do not rename it back.
   { label: 'Reference', ids: ['worldclock', 'services'] },
 ];
@@ -637,13 +637,17 @@ export const isRetired = (id, nowMs = Date.now(), table = RETIRED_AFTER) =>
   (table[id] ?? Infinity) < nowMs;
 
 // Staged rollout: ids listed here surface only on staging hosts (beta.
-// roomboard.app, the rvc.tech fallback, local dev) — prod ships the code
-// dark and the pickers/settings nav hide the id until launch. A card that
-// is already PLACED still renders everywhere, so a beta-configured board
-// never breaks by visiting prod.
+// roomboard.app, beta.quadrille.io, the rvc.tech fallback, local dev) — prod
+// ships the code dark and the pickers/settings nav hide the id until launch.
+// A card that is already PLACED still renders everywhere, so a beta-configured
+// board never breaks by visiting prod.
 const BETA_ONLY = Object.freeze(['iptv']);
+// The list is of PRODUCTION hosts, and everything else is staging by default.
+// app.quadrille.io now serves production alongside roomboard.app, so it must
+// not count as a staging host; the beta hosts (beta.roomboard.app,
+// beta.quadrille.io) fall through to the default and stay beta.
 export const isBetaHost = (host = (typeof location !== 'undefined' ? location.hostname : 'localhost')) =>
-  host !== 'roomboard.app' && host !== 'www.roomboard.app';
+  host !== 'roomboard.app' && host !== 'www.roomboard.app' && host !== 'app.quadrille.io';
 export const isLaunched = (id, host) => !BETA_ONLY.includes(id) || isBetaHost(host);
 
 // "Nerd mode": cards that need self-hosted infrastructure (live streams,
