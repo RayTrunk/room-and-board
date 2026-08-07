@@ -130,7 +130,12 @@ button:focus-visible {
      must never compound). info.js snaps the box to whole cells so the right
      and bottom keylines land on the grid too; without JS the keyline still
      closes the edge cells. */
-  border: 1px solid rgba(255, 255, 255, 0.085);
+  /* Firmer than the interior ruling (.085) on purpose: anti-aliasing feathers
+     a 1px stroke across ~2px on the corner arcs, diluting their apparent ink,
+     so at equal alpha the curves read fainter than the straight rules. The
+     extra ink brings the arcs up to par and gives the straight runs the
+     slightly-firmer frame the icon tile's keyline already has. */
+  border: 1px solid rgba(255, 255, 255, 0.13);
   background-image:
     linear-gradient(to right, rgba(255, 255, 255, 0.085) 1px, transparent 1px),
     linear-gradient(to bottom, rgba(255, 255, 255, 0.085) 1px, transparent 1px);
