@@ -284,19 +284,21 @@ describe('the rail-footer entry point', () => {
     host.innerHTML = html;
     const lockup = host.querySelector('.settings__lockup');
     expect(lockup.getAttribute('aria-hidden')).toBe('true');
-    // The name is set in text, in three pieces the stylesheet treats
-    // differently: the lit "Quad", the plain "rill", and a REAL trailing "é"
-    // whose blue accent is a second, clipped, unselectable é in a nested <i>
-    // painted exactly over it. The base é is the one that must carry meaning:
-    // an earlier construction used a bare "e" under the overlay and put
-    // "Quadrilleé" on the clipboard when the wordmark was copied.
+    // The name is set in text: the lit "Quad", the plain "rill", and a REAL
+    // trailing é (the <b>, painted accent blue) under an accent-less overlay
+    // "e" (the <i>) drawn in the context ink — the letter body is covered by
+    // its own glyph outline so only the accent stays blue, with no clip-path
+    // and therefore no size-dependent boundary to bleed or clip. The base é
+    // carries meaning; the <i> is aria-hidden and unselectable, so copy and
+    // screen readers see "Quadrillé" even though raw textContent reads "…ée".
     expect(lockup.querySelector('.qmark__lt').textContent).toBe('Quad');
-    expect(lockup.querySelector('.qmark__e').textContent).toBe('éé');
-    expect(lockup.querySelector('.qmark__e i').textContent).toBe('é');
-    expect(lockup.textContent).toBe('Quadrilléé');
+    expect(lockup.querySelector('.qmark__e').textContent).toBe('ée');
+    expect(lockup.querySelector('.qmark__e b').textContent).toBe('é');
+    expect(lockup.querySelector('.qmark__e i').textContent).toBe('e');
+    expect(lockup.textContent).toBe('Quadrillée');
     // The overlay must carry `hidden`: before the stylesheet lands, the UA's
     // [hidden]{display:none} is the only thing keeping the raw page from
-    // reading "Quadrilléé" (the CSS restores it with an explicit display).
+    // showing a doubled letter (the CSS restores it with display !important).
     expect(lockup.querySelector('.qmark__e i').hasAttribute('hidden')).toBe(true);
   });
 });

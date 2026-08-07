@@ -192,7 +192,7 @@ export function paneHtml(groups, { build = '' } = {}) {
 // wants it will look.
 export function railFootHtml() {
   return `<button class="settings__whatsnew" type="button" data-whatsnew>
-      <span class="settings__lockup qmark" aria-hidden="true"><span class="qmark__lt">Quad</span>rill<span class="qmark__e">é<i hidden>é</i></span></span>
+      <span class="settings__lockup qmark" aria-hidden="true"><span class="qmark__lt">Quad</span>rill<span class="qmark__e"><b>é</b><i hidden>e</i></span></span>
       <span class="settings__wnline">What’s new</span>
     </button>`;
 }

@@ -798,15 +798,17 @@ body.mode-ambient .topbar, body.mode-ambient #grid { visibility: hidden; }
 .qmark { font-weight: 600; letter-spacing: -0.035em; }
 .qmark__lt { font-weight: 300; }
 .qmark__e { position: relative; display: inline-block; line-height: 1; }
+/* Blue base é + accent-less overlay e in the context ink: the letter body is
+   covered by its own glyph outline so ONLY the accent stays blue — no
+   clip-path, no size-dependent boundary. See info.css for the full story. */
+.qmark__e > b { font-weight: inherit; color: var(--accent); }
 .qmark__e > i {
-  /* `hidden` on the overlay keeps the unstyled page reading "Quadrillé";
-     the restore MUST be !important because this sheet's own
-     `[hidden]{display:none !important}` utility otherwise wins and the
-     accent silently loses its blue. See info.css for the full incident. */
+  /* `hidden` keeps the unstyled page reading "Quadrillé" in plain ink; the
+     restore MUST be !important because this sheet's own
+     `[hidden]{display:none !important}` utility otherwise wins. */
   display: inline !important;
   position: absolute; left: 0; top: 0;
-  font-style: normal; color: var(--accent);
-  clip-path: inset(0 0 68% 0);
+  font-style: normal; color: inherit;
   pointer-events: none;
   -webkit-user-select: none;
   user-select: none;

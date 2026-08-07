@@ -83,28 +83,30 @@ button:focus-visible {
 
 /* ---------- the wordmark ----------
    Quadrillé is set as live text, one family, two weights: Quad light, rillé
-   semibold. The acute is the ONLY blue thing in the word, and it is still the
-   FONT'S OWN acute, not a drawn shape: the base text is the real "é" and the
-   overlay is a second "é" clipped to its top quarter and recolored, painted
-   exactly over the first — same character, same font, same origin, so it
-   cannot drift. The base carries meaning (copy, find, screen readers all see
-   "Quadrillé"); the overlay is aria-hidden and unselectable so none of them
-   see it twice. */
+   semibold, and the acute is the ONLY blue thing in the word. Construction
+   (the FOURTH iteration — do not regress to a clip): the real text é (the <b>,
+   selectable, what copy/find/screen readers see) is painted accent blue, and
+   an accent-less "e" overlays it in the surrounding text color, covering the
+   letter body with its own glyph outline. Only the accent survives uncovered,
+   so only the accent is blue. NO clip-path: every horizontal-cut variant bled
+   into the crown or clipped the accent's foot at SOME size, because optical
+   sizing moves the accent-to-letter gap with the font size. The overlay
+   inherits `color`, so the construction works on any ink (nav, rail, pane). */
 .qmark { font-weight: 600; letter-spacing: -0.035em; }
 .qmark__lt { font-weight: 300; }
 .qmark__e { position: relative; display: inline-block; line-height: 1; }
+.qmark__e > b { font-weight: inherit; color: var(--accent); }
 .qmark__e > i {
   /* The overlay carries the `hidden` attribute, so before this stylesheet
      lands the browser's own styles suppress it and the raw page reads
-     "Quadrillé", not "Quadrilléé" (seen for real when a fresh deploy served
-     the HTML while the CSS request was still failing). The restore MUST be
-     !important: this sheet's own `[hidden]{display:none !important}` utility
-     (line ~26) otherwise wins and the accent silently loses its blue — which
-     shipped, briefly. Same counter-override idiom as `.log__more[hidden]`. */
+     "Quadrillé" in plain ink (the blue <b> rule is also absent then, so
+     nothing is half-styled). The restore MUST be !important: this sheet's own
+     `[hidden]{display:none !important}` utility (line ~26) otherwise wins and
+     the overlay dies — which shipped, briefly. Same counter-override idiom
+     as `.log__more[hidden]`. */
   display: inline !important;
   position: absolute; left: 0; top: 0;
-  font-style: normal; color: var(--accent);
-  clip-path: inset(0 0 68% 0);
+  font-style: normal; color: inherit;
   pointer-events: none;
   -webkit-user-select: none;
   user-select: none;
