@@ -800,9 +800,10 @@ body.mode-ambient .topbar, body.mode-ambient #grid { visibility: hidden; }
 .qmark__e { position: relative; display: inline-block; line-height: 1; }
 .qmark__e > i {
   /* `hidden` on the overlay keeps the unstyled page reading "Quadrillé";
-     this display out-cascades the UA's [hidden]{display:none} once the
-     positioning rules exist. See info.css for the incident that taught it. */
-  display: inline;
+     the restore MUST be !important because this sheet's own
+     `[hidden]{display:none !important}` utility otherwise wins and the
+     accent silently loses its blue. See info.css for the full incident. */
+  display: inline !important;
   position: absolute; left: 0; top: 0;
   font-style: normal; color: var(--accent);
   clip-path: inset(0 0 76% 0);
