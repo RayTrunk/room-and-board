@@ -1,7 +1,6 @@
 <p align="center">
-  <img alt="Quadrillé" src="site/assets/quadrille-mark.svg" width="96">
+  <a href="https://quadrille.io"><img alt="Quadrillé — a glanceable dashboard for your personal screen" src="docs/screenshots/quadrille-hero.png" width="720"></a>
 </p>
-<h1 align="center">Quadrillé</h1>
 
 A lightweight, personal signage dashboard — **Quadrillé** (`quadrille.io`) —
 for touch enabled Cisco RoomOS endpoints such as the Board Pro and Desk Pro:
