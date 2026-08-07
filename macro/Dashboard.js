@@ -53,7 +53,7 @@ import xapi from 'xapi';
  * WebEngine Mode off and on when the device's time zone changes, so anything
  * else driving that node will fight too.
  */
-const SIGNAGE_URL = 'https://roomboard.app';
+const SIGNAGE_URL = 'https://app.quadrille.io';
 
 /*
  * Overridable defaults — safe to edit for your room. Everything else init()
