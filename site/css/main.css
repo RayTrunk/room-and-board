@@ -806,7 +806,7 @@ body.mode-ambient .topbar, body.mode-ambient #grid { visibility: hidden; }
   display: inline !important;
   position: absolute; left: 0; top: 0;
   font-style: normal; color: var(--accent);
-  clip-path: inset(0 0 76% 0);
+  clip-path: inset(0 0 68% 0);
   pointer-events: none;
   -webkit-user-select: none;
   user-select: none;
