@@ -450,9 +450,9 @@ Two values are specific to this deployment and **must be changed in a fork**:
   export const WORKER_URL = 'https://signage-api.yourdomain.com';
   ```
 
-  (The shipped file routes to this project's own `api.roomboard.app` plus a
-  backup domain; a fork that keeps it would send every board's requests — and
-  the anonymous usage pings below — to the original operator's Worker.)
+  (The shipped file routes to this project's own `api.roomboard.app` and
+  `api.quadrille.io`; a fork that keeps it would send every board's requests —
+  and the anonymous usage pings below — to the original operator's Worker.)
 - **`package.json` `deploy:site`** — the script hardcodes
   `--project-name signage`; replace it with your Pages project's name.
 
@@ -916,7 +916,7 @@ checks in `worker/src/health.js`:
 | Check | Asserts |
 |---|---|
 | `site` | `roomboard.app/version.json` returns a plausible version string |
-| `backup-site` | the same for `signage.rvc.tech`, probed **externally** on purpose, because DNS, TLS and routing are the failure modes under test, and a self-fetch would bypass all three |
+| `frontdoor` | `quadrille.io/data/changelog.json` returns a non-empty JSON array — the public guide is a separate Pages project with its own deploy job, probed **externally** on purpose, because DNS, TLS and routing are the failure modes under test, and a self-fetch would bypass all three |
 | `markets` | `/markets` returns indices with a finite price (Yahoo is unofficial and the flakiest dependency) |
 | `weather` | Open-Meteo answers with a populated hourly temperature series (browser-direct, so not covered by any proxy check) |
 | `gdrive` | `/gdrive/album` returns photos for a curated folder, which also proves `GDRIVE_KEY` still works |

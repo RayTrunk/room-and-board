@@ -5,6 +5,7 @@ import { CHECKS, runHealthChecks, notify, alertPlan, nextFailingState, heartbeat
 // mock fetch can answer every probe with a shape its validator accepts.
 const OK_BODIES = {
   'version.json': { version: '2026.07.22-abc1234' },
+  'changelog.json': [{ date: 'August 7', items: [{ lead: 'A new name', text: 'Now called Quadrillé.' }] }],
   '/markets': { indices: [{ symbol: '^DJI', price: 52376.73 }] },
   'open-meteo': { hourly: { temperature_2m: [70, 71, 69] } },
   'gdrive': { photos: [{ id: 'a' }, { id: 'b' }] },
@@ -88,24 +89,27 @@ describe('health CHECKS validators', () => {
   });
 });
 
-describe('backup domain check (the failover nobody would notice broken)', () => {
+describe('front-door check (the separate origin nobody would notice broken)', () => {
   const byName = Object.fromEntries(CHECKS.map((c) => [c.name, c]));
-  it('probes the site alias externally (url, not path)', () => {
-    expect(byName['backup-site'].url).toContain('signage.rvc.tech');
-    expect(byName['backup-site'].path).toBeUndefined();
+  it('probes quadrille.io externally (url, not path) via its changelog', () => {
+    expect(byName['frontdoor'].url).toContain('quadrille.io/data/changelog.json');
+    expect(byName['frontdoor'].path).toBeUndefined();
   });
-  it('never probes the worker\'s own api alias: that check cannot exist', () => {
-    // Proven live 2026-07-31 07:20Z: the worker fetching signage-api.rvc.tech
-    // — its own custom domain — gets a Cloudflare 522 every run, custom_domain
-    // binding or not. The alias was healthy from outside the whole time. A
-    // check that can only measure Cloudflare's own-alias restriction is worse
-    // than no check, so it must never come back.
+  it('never probes the worker\'s own custom domains: that check cannot exist', () => {
+    // Proven live 2026-07-31 07:20Z (on the retired rvc.tech alias): the
+    // worker fetching its OWN custom domain gets a Cloudflare 522 every run,
+    // custom_domain binding or not, while the domain serves perfectly from
+    // outside. A check that can only measure Cloudflare's own-alias
+    // restriction is worse than no check, so neither api.roomboard.app nor
+    // api.quadrille.io may ever appear in CHECKS.
     expect(byName['backup-api']).toBeUndefined();
+    expect(CHECKS.some((c) => (c.url || '').includes('api.roomboard.app'))).toBe(false);
+    expect(CHECKS.some((c) => (c.url || '').includes('api.quadrille.io'))).toBe(false);
   });
-  it('a broken site alias fails its own check without touching the primary', async () => {
-    const m = mockFetch({ 'signage.rvc': { throw: 'TypeError' } });
+  it('a broken front door fails its own check without touching the primary', async () => {
+    const m = mockFetch({ 'quadrille.io': { throw: 'TypeError' } });
     const report = await runHealthChecks({}, m, m);
-    expect(report.results.find((r) => r.name === 'backup-site').ok).toBe(false);
+    expect(report.results.find((r) => r.name === 'frontdoor').ok).toBe(false);
     expect(report.results.find((r) => r.name === 'site').ok).toBe(true);
   });
 });

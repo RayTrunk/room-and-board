@@ -1,7 +1,7 @@
 {
   "name": "quadrille",
   "version": "1.0.0",
-  "description": "Lightweight signage dashboard for Cisco Board Pro / RoomOS devices — widgets, photo frame, zero-auth setup",
+  "description": "Lightweight signage dashboard for Cisco Board Pro / RoomOS devices \u2014 widgets, photo frame, zero-auth setup",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/scotty83/quadrille.git"
@@ -14,7 +14,8 @@
     "deploy:worker": "wrangler deploy --config worker/wrangler.toml",
     "deploy:site": "CF_PAGES_COMMIT_SHA=$(git rev-parse HEAD) node tools/stamp-version.js && wrangler pages deploy site --project-name signage --branch main --commit-dirty=true && git checkout site/version.json",
     "deploy": "wrangler deploy",
-    "preview": "wrangler dev"
+    "preview": "wrangler dev",
+    "deploy:frontdoor": "node tools/build-frontdoor.js && wrangler pages deploy dist/frontdoor --project-name quadrille-site --branch main --commit-dirty=true"
   },
   "keywords": [
     "signage",

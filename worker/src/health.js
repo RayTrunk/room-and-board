@@ -47,18 +47,21 @@ export const CHECKS = [
     ok: (j) => typeof j.station === 'string' && Array.isArray(j.departures),
   },
   {
-    // The rvc.tech failover site alias exists precisely for the moment nobody
-    // would notice it silently broken (cert lapse, custom-domain removal).
+    // The public front door (quadrille.io, a SEPARATE Pages project deployed
+    // by its own CI job) exists precisely for the moment nobody would notice
+    // it silently broken (cert lapse, custom-domain removal, a build that
+    // stopped shipping). changelog.json is the probe because the health
+    // framework parses JSON and that file rides every front-door deploy.
     // Probed EXTERNALLY on purpose: DNS + TLS + routing are the failure modes
-    // under test, which selfFetch would bypass. The MATCHING api-alias check
-    // (signage-api.rvc.tech) must never be added: the worker fetching its own
-    // custom domain gets a Cloudflare 522 every time — proven live 2026-07-31
-    // 07:20Z after one night of false paging, custom_domain binding or not —
-    // while the alias serves perfectly from outside. Validator is
-    // presence-only so a site outage pages once via the primary site check.
-    name: 'backup-site',
-    url: 'https://signage.rvc.tech/version.json',
-    ok: (j) => typeof j.version === 'string' && j.version.length > 3,
+    // under test, which selfFetch would bypass. An api.quadrille.io or
+    // api.roomboard.app check must NEVER be added here: the worker fetching
+    // its OWN custom domain gets a Cloudflare 522 every time — proven live
+    // 2026-07-31 after one night of false paging — while the domain serves
+    // perfectly from outside. (Replaced backup-site 2026-08-07 when rvc.tech
+    // was retired.)
+    name: 'frontdoor',
+    url: 'https://quadrille.io/data/changelog.json',
+    ok: (j) => Array.isArray(j) && j.length > 0,
   },
   {
     // Microsoft 365 is the status row most likely to rot silently: it is the
