@@ -789,10 +789,12 @@ body.mode-ambient .topbar, body.mode-ambient #grid { visibility: hidden; }
 
 /* ---------- the wordmark ----------
    Quadrillé as live text: Quad light, rillé semibold, and the acute is the
-   only blue in the word. The base renders a plain "e"; the overlay renders the
-   font's own "é" clipped to its top quarter, so the accent is glyph-metric
-   exact at every size and cannot drift. Shared by the welcome screen and the
-   settings rail; info.css carries its own copy for the standalone guide. */
+   only blue in the word. The base text is the real "é"; the overlay is a
+   second "é" clipped to its top quarter and recolored, painted exactly over
+   the first — glyph-metric exact at every size, and unselectable/aria-hidden
+   so copy, find, and screen readers see "Quadrillé" once, correctly. Shared
+   by the welcome screen and the settings rail; info.css carries its own copy
+   for the standalone guide. */
 .qmark { font-weight: 600; letter-spacing: -0.035em; }
 .qmark__lt { font-weight: 300; }
 .qmark__e { position: relative; display: inline-block; }
@@ -801,6 +803,8 @@ body.mode-ambient .topbar, body.mode-ambient #grid { visibility: hidden; }
   font-style: normal; color: var(--accent);
   clip-path: inset(0 0 76% 0);
   pointer-events: none;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 /* ---------- welcome ---------- */

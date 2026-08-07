@@ -25,7 +25,7 @@
      inside it and nothing up here. -->
 <nav class="nav">
   <div class="nav__inner">
-    <a class="nav__brand" href="#top" aria-label="Quadrillé"><span class="qmark" aria-hidden="true"><span class="qmark__lt">Quad</span>rill<span class="qmark__e">e<i>é</i></span></span></a>
+    <a class="nav__brand" href="#top"><span class="qmark"><span class="qmark__lt">Quad</span>rill<span class="qmark__e">é<i aria-hidden="true">é</i></span></span></a>
     <a class="nav__link" href="#yours">Making it yours</a>
     <a class="nav__link" href="#widgets">The widgets</a>
     <a class="nav__link" href="#screensavers">Screensavers</a>
@@ -36,16 +36,16 @@
 <header id="top" class="wrap hero">
   <div class="hero__text">
     <!-- The masthead is the wordmark set on a ruled field: the name drawn as
-         the thing it names. The page keeps exactly one h1 and its accessible
-         name is still the product name, carried by the sr-only text; the
-         visual construction (weight seam, blue acute overlay) is aria-hidden
-         because a screen reader spelling out the overlay would read
-         "Quadrilleé". -->
+         the thing it names. The word is REAL text reading "Quadrillé"; the
+         blue acute is a second, aria-hidden, unselectable é clipped to its
+         accent and painted exactly over the first, so screen readers, find,
+         and copy all see the true word. (An earlier construction used a base
+         "e" under the overlay and put "Quadrilleé" on the clipboard.) -->
     <div class="hero__field">
       <span class="hero__mod hero__mod--a"></span>
       <span class="hero__mod hero__mod--b"></span>
       <span class="hero__mod hero__mod--c"></span>
-      <h1 class="hero__title"><span class="sr-only">Quadrillé</span><span class="qmark" aria-hidden="true"><span class="qmark__lt">Quad</span>rill<span class="qmark__e">e<i>é</i></span></span></h1>
+      <h1 class="hero__title"><span class="qmark"><span class="qmark__lt">Quad</span>rill<span class="qmark__e">é<i aria-hidden="true">é</i></span></span></h1>
       <p class="hero__sub">A glanceable dashboard for your personal screen: your commute, your weather, your markets, your images.</p>
     </div>
     <!-- 33 = every widget a reader of this page can actually add today: the 34

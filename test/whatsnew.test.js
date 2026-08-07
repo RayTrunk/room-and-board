@@ -285,12 +285,14 @@ describe('the rail-footer entry point', () => {
     const lockup = host.querySelector('.settings__lockup');
     expect(lockup.getAttribute('aria-hidden')).toBe('true');
     // The name is set in text, in three pieces the stylesheet treats
-    // differently: the lit "Quad", the plain "rill", and a final e that carries
-    // its accent in a nested <i> so the mark can be drawn on its own. Both
-    // glyphs are in the markup, which is why the raw text reads "…lleé".
+    // differently: the lit "Quad", the plain "rill", and a REAL trailing "é"
+    // whose blue accent is a second, clipped, unselectable é in a nested <i>
+    // painted exactly over it. The base é is the one that must carry meaning:
+    // an earlier construction used a bare "e" under the overlay and put
+    // "Quadrilleé" on the clipboard when the wordmark was copied.
     expect(lockup.querySelector('.qmark__lt').textContent).toBe('Quad');
-    expect(lockup.querySelector('.qmark__e').textContent).toBe('eé');
+    expect(lockup.querySelector('.qmark__e').textContent).toBe('éé');
     expect(lockup.querySelector('.qmark__e i').textContent).toBe('é');
-    expect(lockup.textContent).toBe('Quadrilleé');
+    expect(lockup.textContent).toBe('Quadrilléé');
   });
 });
