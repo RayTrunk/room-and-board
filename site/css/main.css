@@ -797,7 +797,7 @@ body.mode-ambient .topbar, body.mode-ambient #grid { visibility: hidden; }
    for the standalone guide. */
 .qmark { font-weight: 600; letter-spacing: -0.035em; }
 .qmark__lt { font-weight: 300; }
-.qmark__e { position: relative; display: inline-block; }
+.qmark__e { position: relative; display: inline-block; line-height: 1; }
 .qmark__e > i {
   /* `hidden` on the overlay keeps the unstyled page reading "Quadrillé";
      this display out-cascades the UA's [hidden]{display:none} once the

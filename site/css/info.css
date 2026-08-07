@@ -92,7 +92,7 @@ button:focus-visible {
    see it twice. */
 .qmark { font-weight: 600; letter-spacing: -0.035em; }
 .qmark__lt { font-weight: 300; }
-.qmark__e { position: relative; display: inline-block; }
+.qmark__e { position: relative; display: inline-block; line-height: 1; }
 .qmark__e > i {
   /* The overlay carries the `hidden` attribute, so before this stylesheet
      lands the browser's own styles suppress it and the raw page reads
