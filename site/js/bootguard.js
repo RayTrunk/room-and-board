@@ -68,6 +68,19 @@
     }
   }
   function clearState() {
+    // Hand the count we are about to throw away to the hourly beacon
+    // (js/fleet.js reads window.__bootRetries) — it is the only record that
+    // this board needed N attempts before it came up, and it dies with this
+    // removeItem. Absent, junk or unparseable state reads 0: "booted first
+    // try" and "we cannot tell" are the same non-event. Never throws, like
+    // everything else in here.
+    try {
+      var prev = readState();
+      var n = prev && prev.n;
+      window.__bootRetries = (typeof n === 'number' && isFinite(n) && n > 0) ? n : 0;
+    } catch (e) {
+      /* ignore */
+    }
     try {
       window.localStorage.removeItem(KEY);
     } catch (e) {

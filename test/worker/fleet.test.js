@@ -15,10 +15,18 @@ const VALID = {
   tz: 'America/New_York',
 };
 
+// What an OLD board's payload normalizes to: every optional field empty or 0.
+// Kept as one object because "absent means unknown, never a default" is the
+// whole contract with the stats app, and it is easiest to see in one place.
+const ABSENT = {
+  health: '', channel: '', viewport: '', saver: '', units: '',
+  bootMs: 0, bootRetries: 0, taps: 0, wkrMs: 0,
+};
+
 describe('parseBeacon', () => {
   it('accepts a valid payload and normalizes it', () => {
     const p = parseBeacon(JSON.stringify(VALID));
-    expect(p).toEqual({ ...VALID, health: '' }); // absent health normalizes empty (old boards)
+    expect(p).toEqual({ ...VALID, ...ABSENT }); // an old board omits every optional field
   });
 
   it('bounds the widget-health field: well-formed passes, junk and oversize empty out', () => {
@@ -69,6 +77,99 @@ describe('parseBeacon', () => {
     const p = parseBeacon(JSON.stringify({ ...VALID, mode: 'evil', version: '<script>', tz: 'a'.repeat(99) }));
     expect(p).toMatchObject({ mode: 'unknown', version: 'unknown', tz: '' });
   });
+
+  // -------------------------------------------------------------------------
+  // Runtime fields (site fleet.js, 2026-08-10). Each is optional and bounded;
+  // junk NEVER reaches Analytics Engine, where an unbounded double would poison
+  // a fleet median permanently.
+  // -------------------------------------------------------------------------
+  const field = (name, value) => parseBeacon(JSON.stringify({ ...VALID, [name]: value }))[name];
+
+  it('bounds the serving channel to the three real deployments', () => {
+    expect(field('channel', 'prod')).toBe('prod');
+    expect(field('channel', 'beta')).toBe('beta');
+    expect(field('channel', 'dev')).toBe('dev');
+    // '' and NOT 'prod': a default here would tell the stats app that every
+    // old board is definitely production and switch off its lineage fallback.
+    expect(field('channel', 'staging')).toBe('');
+    expect(field('channel', 'PROD')).toBe('');
+    expect(field('channel', '<b>prod</b>')).toBe('');
+    expect(field('channel', 7)).toBe('');
+    expect(parseBeacon(JSON.stringify(VALID)).channel).toBe('');
+  });
+
+  it('bounds the viewport to a plain WxH of plausible size', () => {
+    expect(field('viewport', '1920x1040')).toBe('1920x1040'); // Board Pro
+    expect(field('viewport', '1920x1200')).toBe('1920x1200'); // Navigator
+    expect(field('viewport', '800x600')).toBe('800x600');
+    expect(field('viewport', '19200x10400')).toBe('');        // 5 digits: out of bounds
+    expect(field('viewport', '19x10')).toBe('');
+    expect(field('viewport', '1920X1040')).toBe('');          // lowercase x only
+    expect(field('viewport', '1920x1040; drop table')).toBe('');
+    expect(field('viewport', 1920)).toBe('');
+  });
+
+  it('bounds the screensaver id exactly like a widget id, and takes none', () => {
+    expect(field('saver', 'none')).toBe('none'); // "screensaver off" is data
+    expect(field('saver', 'art')).toBe('art');
+    expect(field('saver', 'gdrivephotos')).toBe('gdrivephotos');
+    expect(field('saver', 'worldclocks')).toBe('worldclocks');
+    expect(field('saver', 'Art')).toBe('');       // lowercase only
+    expect(field('saver', '2clocks')).toBe('');   // must start with a letter
+    expect(field('saver', 'x'.repeat(21))).toBe(''); // 20 chars max
+    expect(field('saver', '<script>')).toBe('');
+  });
+
+  it('bounds the units code to the four real combinations', () => {
+    for (const u of ['F12', 'F24', 'C12', 'C24']) expect(field('units', u)).toBe(u);
+    expect(field('units', 'K12')).toBe('');
+    expect(field('units', 'F13')).toBe('');
+    expect(field('units', 'f12')).toBe('');
+    expect(field('units', 'F1224')).toBe('');
+  });
+
+  it('bounds every counter, with 0 for absent, junk and out-of-range alike', () => {
+    expect(field('bootMs', 2482)).toBe(2482);
+    expect(field('bootMs', 2481.7)).toBe(2482);      // rounded to an integer
+    expect(field('bootMs', 600000)).toBe(600000);    // the ceiling itself passes
+    expect(field('bootMs', 600001)).toBe(0);
+    expect(field('bootMs', -1)).toBe(0);
+    expect(field('bootMs', 'soon')).toBe(0);         // Number() -> NaN -> 0
+    expect(field('bootMs', Infinity)).toBe(0);       // JSON turns this into null
+    expect(field('bootMs', null)).toBe(0);
+    expect(field('bootMs', [])).toBe(0);
+
+    expect(field('bootRetries', 3)).toBe(3);
+    expect(field('bootRetries', 99)).toBe(99);
+    expect(field('bootRetries', 100)).toBe(0);
+
+    expect(field('taps', 42)).toBe(42);
+    expect(field('taps', 10000)).toBe(10000);
+    expect(field('taps', 10001)).toBe(0);
+
+    expect(field('wkrMs', 180)).toBe(180);
+    expect(field('wkrMs', 60000)).toBe(60000);
+    expect(field('wkrMs', 60001)).toBe(0);
+    expect(field('wkrMs', 9e99)).toBe(0);
+  });
+
+  it('accepts a full modern payload untouched', () => {
+    const modern = {
+      ...VALID, health: 'lirr=stale', channel: 'beta', viewport: '1920x1040',
+      saver: 'art', units: 'C24', bootMs: 2482, bootRetries: 1, taps: 17, wkrMs: 180,
+    };
+    expect(parseBeacon(JSON.stringify(modern))).toEqual(modern);
+  });
+
+  it('still fits the body cap with every field populated', () => {
+    const modern = JSON.stringify({
+      ...VALID, widgets: Array.from({ length: 32 }, (_, i) => `widget${i}`),
+      health: 'x'.repeat(200), channel: 'prod', viewport: '1920x1040',
+      saver: 'gdrivephotos', units: 'F12', bootMs: 600000, bootRetries: 99, taps: 10000, wkrMs: 60000,
+    });
+    expect(modern.length).toBeLessThan(2048);
+    expect(parseBeacon(modern)).not.toBeNull();
+  });
 });
 
 describe('deviceModel', () => {
@@ -93,18 +194,63 @@ describe('beaconDataPoint', () => {
     const p = { ...parseBeacon(JSON.stringify(VALID)), country: 'US', model: 'Cisco Board Pro' };
     expect(beaconDataPoint(p)).toEqual({
       indexes: [VALID.deviceId],
-      // blob8 (index 7) stays '' — reserved for the channel field (backlog
-      // item 32); widget health rides blob9 (index 8).
-      blobs: [VALID.deviceId, VALID.version, VALID.mode, VALID.tz, 'weather,subway,markets', 'US', 'Cisco Board Pro', '', ''],
-      doubles: [3],
+      // An old board's row: the dimensions it does report, then empty runtime
+      // slots. blob8 (index 7) is the channel — reserved-and-empty until
+      // 2026-08-10, and widget health has stayed on blob9 (index 8) throughout.
+      blobs: [VALID.deviceId, VALID.version, VALID.mode, VALID.tz, 'weather,subway,markets', 'US', 'Cisco Board Pro', '', '', '', '', ''],
+      doubles: [3, 0, 0, 0, 0],
     });
   });
 
-  it('carries the widget-health vector in blob9, leaving blob8 for the channel', () => {
-    const p = { ...parseBeacon(JSON.stringify({ ...VALID, health: 'lirr=stale' })), country: 'US', model: 'x' };
+  // -------------------------------------------------------------------------
+  // POSITIONS ARE THE SCHEMA. Analytics Engine columns have no names — the
+  // stats app reads blob8/blob10/double4 by position — so a reshuffle silently
+  // rewrites every row already stored. These assertions exist to fail loudly if
+  // anyone inserts a field in the middle.
+  // -------------------------------------------------------------------------
+  it('pins every column position for a fully-populated payload', () => {
+    const modern = {
+      ...VALID, health: 'lirr=stale', channel: 'beta', viewport: '1920x1040',
+      saver: 'art', units: 'C24', bootMs: 2482, bootRetries: 1, taps: 17, wkrMs: 180,
+    };
+    const dp = beaconDataPoint({ ...parseBeacon(JSON.stringify(modern)), country: 'US', model: 'Cisco Board Pro' });
+    expect(dp.blobs[0]).toBe(VALID.deviceId);            // blob1
+    expect(dp.blobs[1]).toBe(VALID.version);             // blob2
+    expect(dp.blobs[2]).toBe(VALID.mode);                // blob3
+    expect(dp.blobs[3]).toBe(VALID.tz);                  // blob4
+    expect(dp.blobs[4]).toBe('weather,subway,markets');  // blob5
+    expect(dp.blobs[5]).toBe('US');                      // blob6
+    expect(dp.blobs[6]).toBe('Cisco Board Pro');         // blob7
+    expect(dp.blobs[7]).toBe('beta');                    // blob8  channel
+    expect(dp.blobs[8]).toBe('lirr=stale');              // blob9  health
+    expect(dp.blobs[9]).toBe('1920x1040');               // blob10 viewport
+    expect(dp.blobs[10]).toBe('art');                    // blob11 saver
+    expect(dp.blobs[11]).toBe('C24');                    // blob12 units
+    expect(dp.blobs).toHaveLength(12);
+    expect(dp.doubles).toEqual([3, 2482, 1, 17, 180]);   // count, bootMs, retries, taps, wkrMs
+  });
+
+  it('carries the widget-health vector in blob9, with the channel now live in blob8', () => {
+    const p = { ...parseBeacon(JSON.stringify({ ...VALID, health: 'lirr=stale', channel: 'prod' })), country: 'US', model: 'x' };
     const dp = beaconDataPoint(p);
-    expect(dp.blobs[7]).toBe('');
+    expect(dp.blobs[7]).toBe('prod');
     expect(dp.blobs[8]).toBe('lirr=stale');
+  });
+
+  it('leaves the runtime slots empty for a board that reports none of them', () => {
+    // Old builds must produce columns that read as UNKNOWN, not as a value: ''
+    // for the enums and 0 for the counters, in their own positions.
+    const dp = beaconDataPoint({ ...parseBeacon(JSON.stringify(VALID)), country: 'US', model: 'x' });
+    expect([dp.blobs[7], dp.blobs[9], dp.blobs[10], dp.blobs[11]]).toEqual(['', '', '', '']);
+    expect(dp.doubles.slice(1)).toEqual([0, 0, 0, 0]);
+  });
+
+  it('never mints an undefined column from a raw payload that predates the fields', () => {
+    // The route hands over parseBeacon output, but a caller (and the test just
+    // below) may pass a raw body; undefined in a blob is an AE write error.
+    const dp = beaconDataPoint({ ...VALID, country: 'US', model: 'x' });
+    expect(dp.blobs.every((b) => typeof b === 'string')).toBe(true);
+    expect(dp.doubles.every((n) => Number.isFinite(n))).toBe(true);
   });
   it('defaults country to XX and model to other when absent (never trusts the payload)', () => {
     const base = parseBeacon(JSON.stringify(VALID));

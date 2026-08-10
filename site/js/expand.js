@@ -10,6 +10,7 @@
 
 import { escapeHtml, markExpandable, isOverlayOpen } from './util.js';
 import { swipeAction } from './imageshow.js';
+import { reportTap } from './fleet.js';
 
 // Mandatory auto-close. Long enough to read a full ticker wall, short enough
 // that an abandoned board is canonical again before anyone else walks up.
@@ -150,6 +151,11 @@ export { isOverlayOpen };
 export function openExpand({ title = '', note = '', stamp = '', bodyHtml = '', hint = 'Tap anywhere to close', onRowTap = null, onFit = null } = {}) {
   if (isExpandOpen()) return false; // single instance: opening while open is a no-op
   if (isEditing()) return false;
+  // Counted here, past the guards: an expansion that actually opened is a tap
+  // that DID something, which is the number worth having. A refused open (a
+  // second tap while a view is up, a tap in the editor) is not usage. The
+  // counter is anonymous and content-free — how many, never of what.
+  reportTap();
   const host = overlayEl();
   rowTap = onRowTap;
   // A stale-stamped card hands its stamp through: the overlay must not read

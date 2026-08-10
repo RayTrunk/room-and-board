@@ -63,6 +63,40 @@ describe('bootguard', () => {
     expect(notice()).toBeNull();
     // Counter reset, so a future failure gets a full retry budget.
     expect(store.get('sgn.bootfail')).toBeUndefined();
+    // ...but the count is handed to the hourly beacon on its way out (fleet.js
+    // reads window.__bootRetries): removeItem is the only moment that number
+    // exists, and "this board needed 2 attempts" is worth a fleet-wide look.
+    expect(window.__bootRetries).toBe(2);
+  });
+
+  it('reports zero retries for a board that came up first try', () => {
+    delete window.__bootRetries;
+    loadGuard(); // no persisted state at all
+    window.__signageLoaded = true;
+    vi.advanceTimersByTime(60_000);
+    expect(window.__bootRetries).toBe(0);
+  });
+
+  it('reports zero rather than junk when the persisted state is unreadable', () => {
+    // A half-written or hand-edited entry must not put a string (or NaN) on
+    // window for the beacon to send — "cannot tell" and "first try" are the
+    // same non-event.
+    for (const bad of ['not json', JSON.stringify({ n: 'lots' }), JSON.stringify({}), JSON.stringify(null)]) {
+      delete window.__bootRetries;
+      const { store } = loadGuard();
+      store.set('sgn.bootfail', bad);
+      window.__signageLoaded = true;
+      vi.advanceTimersByTime(60_000);
+      expect(window.__bootRetries).toBe(0);
+    }
+  });
+
+  it('reports zero when storage is blocked entirely', () => {
+    delete window.__bootRetries;
+    loadGuard({ storage: false });
+    window.__signageLoaded = true;
+    vi.advanceTimersByTime(60_000);
+    expect(window.__bootRetries).toBe(0); // never left undefined, never throws
   });
 
   it('shows a notice and reloads when the module graph never executes', () => {

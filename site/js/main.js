@@ -653,6 +653,11 @@ $('#edit').addEventListener('click', async () => {
 // a broken/stale import or a throw during setup then leaves the flag unset and
 // the guard recovers. An async boot() failure past this point is handled by the
 // catch below, not by the guard.
+//
+// How long the module graph took to load and run, read by the hourly beacon
+// (js/fleet.js) and constant for the page's life. It is written HERE, one
+// statement early, because this is the point the boot it measures is over.
+window.__bootMs = Math.round(performance.now());
 window.__signageLoaded = true;
 
 // A boot crash means no runtime and therefore no watchdog — reload is the

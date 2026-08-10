@@ -1,10 +1,20 @@
 // Anonymous usage beacon (Tier 2 metrics): boards POST a tiny heartbeat to
-// /beacon hourly; the route writes one Analytics Engine data point per ping.
+// /fleet hourly; the route writes one Analytics Engine data point per ping.
 // No KV (write caps), no caching, no PII — the device id is a random UUID the
 // board generates locally, and tz is the coarse IANA zone name.
 
 const MAX_BODY = 2048;
 const MODES = new Set(['scheduled', 'dashboard', 'ambient']);
+
+// Numeric beacon fields: a plain count with a sane ceiling. Anything that is
+// not a finite number in range — absent (an old board), a string, NaN,
+// Infinity, negative, or an absurd value from a broken clock — reads 0, which
+// is also the legitimate "nothing to report" value. The ceiling matters as
+// much as the floor: an unbounded double poisons a fleet-wide median forever.
+const bounded = (v, max) => {
+  const n = Math.round(Number(v));
+  return Number.isFinite(n) && n >= 0 && n <= max ? n : 0;
+};
 
 // Parse + validate a beacon body. Returns the normalized payload, or null for
 // anything malformed (the route answers 400 — boards never retry beacons).
@@ -37,6 +47,27 @@ export function parseBeacon(text) {
     // truncation mark. Optional and shape-bounded like version/tz — old
     // boards send nothing and normalize to ''.
     health: typeof b.health === 'string' && /^[a-z0-9=,…]{1,200}$/u.test(b.health) ? b.health : '',
+    // ---- runtime fields (site fleet.js, 2026-08-10) --------------------------
+    // Every one of these is OPTIONAL: boards on older builds omit them all, and
+    // the empty string / 0 they normalize to means "this build does not report
+    // it", never "the value is off". The stats app treats '' as unknown and
+    // falls back to its own heuristics, so a mixed fleet reads correctly while
+    // it self-updates.
+    //
+    // Serving channel — '' rather than a 'prod' default ON PURPOSE: defaulting
+    // would tell the stats app "this board is definitely production" about
+    // every old board that never said anything, disabling the version-lineage
+    // fallback that is currently the only way it spots a beta rig.
+    channel: typeof b.channel === 'string' && /^(prod|beta|dev)$/.test(b.channel) ? b.channel : '',
+    viewport: typeof b.viewport === 'string' && /^\d{3,4}x\d{3,4}$/.test(b.viewport) ? b.viewport : '',
+    // Same shape as a widget id (leading letter, lowercase alphanumerics), so
+    // 'none' — the site's word for a screensaver that is off — passes as data.
+    saver: typeof b.saver === 'string' && /^[a-z][a-z0-9]{0,19}$/.test(b.saver) ? b.saver : '',
+    units: typeof b.units === 'string' && /^[FC](12|24)$/.test(b.units) ? b.units : '',
+    bootMs: bounded(b.bootMs, 600000),   // 10 min: past that it is not a boot
+    bootRetries: bounded(b.bootRetries, 99),
+    taps: bounded(b.taps, 10000),        // per hour-ish window, so generous
+    wkrMs: bounded(b.wkrMs, 60000),      // the site's own fetch timeout is 15s
   };
 }
 
@@ -55,15 +86,36 @@ export function deviceModel(ua) {
 }
 
 // Analytics Engine shape. The index is the device id so AE's sampling keys on
-// devices, not pings; blobs carry the dimensions, doubles the widget count.
-// p.country and p.model are stamped by the route from the request, not the payload.
+// devices, not pings; blobs carry the dimensions, doubles the counters.
+//
+// THE COLUMNS ARE POSITIONAL AND THE SCHEMA IS APPEND-ONLY. Analytics Engine
+// has no column names — the stats app reads blob1..blobN / double1..doubleN by
+// position — so reordering or reusing a slot silently rewrites the meaning of
+// every row already stored. New fields go on the END, and a retired field
+// leaves its slot behind as dead space rather than letting the ones after it
+// shift up.
+//
+//   blob1  deviceId   blob5  widgets   blob9   health
+//   blob2  version    blob6  country   blob10  viewport
+//   blob3  mode       blob7  model     blob11  saver
+//   blob4  tz         blob8  channel   blob12  units
+//   double1 widget count   double2 bootMs   double3 bootRetries
+//   double4 taps           double5 wkrMs
+//
+// blob8 was reserved-and-empty from the beacon's first day for exactly this
+// (backlog item 32); the serving channel LANDED there 2026-08-10, so the slot
+// is now live and blob9's health has never had to move.
+//
+// p.country and p.model are stamped by the route from the request, not the
+// payload. The `|| ''` / `|| 0` fallbacks let a caller hand over a raw payload
+// that predates these fields without minting undefined columns.
 export function beaconDataPoint(p) {
   return {
     indexes: [p.deviceId],
-    // blob8 (index 7) is deliberately '' — RESERVED for the serving-channel
-    // field (backlog item 32) so its eventual arrival never reshuffles the
-    // stats app's queries. Widget health rides blob9.
-    blobs: [p.deviceId, p.version, p.mode, p.tz, p.widgets.join(','), country(p.country), p.model || 'other', '', p.health || ''],
-    doubles: [p.widgets.length],
+    blobs: [
+      p.deviceId, p.version, p.mode, p.tz, p.widgets.join(','), country(p.country), p.model || 'other',
+      p.channel || '', p.health || '', p.viewport || '', p.saver || '', p.units || '',
+    ],
+    doubles: [p.widgets.length, p.bootMs || 0, p.bootRetries || 0, p.taps || 0, p.wkrMs || 0],
   };
 }

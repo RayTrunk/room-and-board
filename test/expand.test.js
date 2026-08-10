@@ -31,6 +31,8 @@ import {
   fitStatusBoard,
 } from '../site/js/widgets/subway.js';
 import { render as renderWeather } from '../site/js/widgets/weather.js';
+import { beaconPayload, resetUsage } from '../site/js/fleet.js';
+import { normalizeConfig } from '../site/js/config.js';
 import { fmtClock, setMoreBadge } from '../site/js/util.js';
 import { icon } from '../site/js/icons.js';
 import { DEMO_VMS } from '../site/demo/fixtures.js';
@@ -1397,5 +1399,55 @@ describe('the corner badge: one form, a plain "+N", everywhere', () => {
       expect(decls, 'no artwork reserve for a mark that is not painted')
         .not.toMatch(/\.card\.is-expandable \.artwork/);
     });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Tap counting (Tier 2 usage, 2026-08-10). The hourly beacon carries HOW MANY
+// expansions a board opened in the last window and never what was in them, so
+// "is anyone actually tapping these cards?" has an answer that is not a guess.
+// ---------------------------------------------------------------------------
+describe('tap counter feeds the beacon', () => {
+  const cfg = () => normalizeConfig({});
+  const taps = () => beaconPayload(cfg(), 'abc-123', 'v1').taps;
+
+  beforeEach(() => {
+    resetUsage();
+    closeExpand();
+    document.body.innerHTML = '';
+  });
+
+  it('counts each expansion that actually opened', () => {
+    openExpand({ title: 'Markets', bodyHtml: '<p>x</p>' });
+    closeExpand();
+    openExpand({ title: 'Subway', bodyHtml: '<p>x</p>' });
+    closeExpand();
+    openExpand({ title: 'LIRR', bodyHtml: '<p>x</p>' });
+    expect(taps()).toBe(3);
+  });
+
+  it('does not count a tap the engine refused', () => {
+    // A second tap while a view is up, and a tap inside the editor, are not
+    // usage — nothing opened.
+    openExpand({ title: 'Markets', bodyHtml: '<p>first</p>' });
+    expect(openExpand({ title: 'Other', bodyHtml: '<p>second</p>' })).toBe(false);
+    closeExpand();
+    document.body.innerHTML = '<div id="edit-root"><div class="editor"></div></div>';
+    expect(openExpand({ title: 'Markets', bodyHtml: '<p>x</p>' })).toBe(false);
+    expect(taps()).toBe(1);
+  });
+
+  it('counts per beacon window, not per page life', () => {
+    openExpand({ title: 'Markets', bodyHtml: '<p>x</p>' });
+    expect(taps()).toBe(1);
+    expect(taps()).toBe(0); // drained by the payload before it
+  });
+
+  it('carries no trace of WHAT was tapped', () => {
+    openExpand({ title: 'Sean’s Markets', bodyHtml: '<p>NVDA 182.11</p>' });
+    const p = beaconPayload(cfg(), 'abc-123', 'v1');
+    expect(p.taps).toBe(1);
+    expect(JSON.stringify(p)).not.toContain('Markets');
+    expect(JSON.stringify(p)).not.toContain('NVDA');
   });
 });
