@@ -1,5 +1,14 @@
 [
   {
+    "date": "August 10",
+    "items": [
+      {
+        "lead": "No more broken-picture flash at startup",
+        "text": "Cards that show pictures used to flash a broken-image icon for a second when the board started up, before the real photo appeared. That flash is gone: a picture now either shows finished or not at all, and if one ever fails to load the card quietly keeps what it was showing and tries again on the next refresh."
+      }
+    ]
+  },
+  {
     "date": "August 7",
     "items": [
       {

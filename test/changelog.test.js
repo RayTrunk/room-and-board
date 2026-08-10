@@ -47,7 +47,7 @@ describe('changelog.json', () => {
   });
 
   it('reads newest first, and starts at the latest shipped day', () => {
-    expect(groups[0].date).toBe('August 7');
+    expect(groups[0].date).toBe('August 10');
     expect(groups[groups.length - 1].date).toBe('Early July');
   });
 });
