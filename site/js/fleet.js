@@ -15,6 +15,17 @@ const HOUR_MS = 60 * 60 * 1000;
 
 // Stable random device id, persisted in localStorage. Regenerated if storage
 // was wiped (Diagnostics "Clear web storage") — anonymity-preserving.
+//
+// When the id CANNOT be persisted it is tagged with an `e-` prefix so the
+// stats side can count it as a session, not a device: a storage-blocked kiosk
+// otherwise mints a fresh "device" on every reload and paints the daily-actives
+// chart with phantom first-seens (diagnosed 2026-08-10 — the chronic half of
+// the inflation; the other half was the quadrille.io domain adds, where a new
+// origin means a new localStorage and a legitimate one-time re-identity).
+// The write is verified by reading back, because private-mode storage can
+// accept a write and persist nothing without throwing. The prefix still
+// matches the worker's parseBeacon bound (`e` is a hex character), so old
+// workers pass it through unchanged.
 export function deviceId(storage) {
   let id = null;
   try {
@@ -26,10 +37,11 @@ export function deviceId(storage) {
   id = crypto.randomUUID();
   try {
     storage.setItem(DEVICE_KEY, id);
+    if (storage.getItem(DEVICE_KEY) === id) return id;
   } catch {
     // best effort
   }
-  return id;
+  return `e-${id}`;
 }
 
 // Widget-level health (Tier 2, backlog item 9): exceptions only. The runtime

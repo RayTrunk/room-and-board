@@ -19,9 +19,19 @@ describe('deviceId', () => {
     const s = memStorage({ 'sgn.device': '<script>alert(1)</script>' });
     expect(deviceId(s)).toMatch(/^[a-f0-9-]{36}$/);
   });
-  it('still returns an id when storage throws', () => {
+  it('tags the id ephemeral when storage throws — sessions, not devices', () => {
     const broken = { getItem() { throw new Error('nope'); }, setItem() { throw new Error('nope'); } };
-    expect(deviceId(broken)).toMatch(/^[a-f0-9-]{36}$/);
+    expect(deviceId(broken)).toMatch(/^e-[a-f0-9-]{36}$/);
+  });
+  it('tags the id ephemeral when storage lies — accepts the write, keeps nothing', () => {
+    // Private-mode behaviour: setItem does not throw, but nothing persists.
+    const liar = { getItem() { return null; }, setItem() { /* swallowed */ } };
+    expect(deviceId(liar)).toMatch(/^e-[a-f0-9-]{36}$/);
+  });
+  it('never persists the ephemeral prefix — a working store gets a plain uuid', () => {
+    const s = memStorage();
+    expect(deviceId(s)).not.toMatch(/^e-/);
+    expect(s.map.get('sgn.device')).not.toMatch(/^e-/);
   });
 });
 
