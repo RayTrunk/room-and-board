@@ -62,21 +62,29 @@ export function swipeAction(dx, dy) {
 export function loadImage(img, src) {
   return new Promise((resolve) => {
     let settled = false;
-    const done = () => {
+    // Resolves `true` when a bitmap actually exists, `false` when it never
+    // will (dead URL, 403 on an expired signed link). Never rejects — the
+    // CALLER decides what a failure looks like, and for the in-card surface
+    // the answer is "the card's own face", never the broken-image glyph
+    // (which used to flash on every boot: the cached digest's signed Google
+    // URL had expired overnight, errored, and was revealed anyway for the
+    // ~1 s the healing fetch took — Sean saw it on boards and on a Mac).
+    const done = (ok) => {
       if (settled) return;
       settled = true;
-      resolve(img);
+      resolve(ok);
     };
     // Property handlers rather than addEventListener: this also runs against the
     // bare `Image` stubs the ambient/viewer tests install, which only fire onload.
-    img.onload = done;
-    img.onerror = done;
+    img.onload = () => done(true);
+    img.onerror = () => done(false);
     img.src = src;
-    // decode() only means anything once src is set, and it rejects for a broken
-    // or empty source — treat that as "as ready as it will ever be" so a failed
-    // decode can never block the swap.
-    if (typeof img.decode === 'function') img.decode().then(done, done);
-    else if (img.complete) done();
+    // decode() only means anything once src is set. It rejects for a broken or
+    // empty source, but ALSO (rarely) for a perfectly good bitmap under memory
+    // pressure — naturalWidth is what separates the two, so a failed decode can
+    // never block the swap of an image that did load.
+    if (typeof img.decode === 'function') img.decode().then(() => done(true), () => done(img.naturalWidth > 0));
+    else if (img.complete) done(true);
   });
 }
 
@@ -155,16 +163,31 @@ function paintImage(frame, src, alt, state) {
     // First paint: the <img> joins the DOM immediately (callers and tests read
     // the markup synchronously) but stays transparent until its bitmap is ready,
     // so the card fades up from its own surface instead of drawing in bands.
+    // A FAILED load stays invisible and comes out of the DOM: the glyph is
+    // never the right pixel on a wall, and the usual cause heals itself —
+    // boot renders the cached digest whose signed URL expired overnight, the
+    // fresh fetch replaces it within a second. Forgetting state.src is what
+    // arms the retry: the next 60 s render sees a "new" src and tries again
+    // even when the URL text is identical (art/APOD URLs are stable).
     frame.appendChild(next);
-    loadImage(next, src).then(() => {
-      if (state.gen === gen) enter(next);
+    loadImage(next, src).then((ok) => {
+      if (state.gen !== gen) return;
+      if (ok) { enter(next); return; }
+      next.remove();
+      state.src = '';
     });
     return;
   }
   // Rotation: decode off-screen first and only then stack the new layer over the
-  // old one.  Nothing half-drawn ever reaches the glass.
-  loadImage(next, src).then(() => {
+  // old one.  Nothing half-drawn ever reaches the glass — and a photo that
+  // FAILS to load never evicts the one the card already shows; the card keeps
+  // what it has and the forgotten state.src retries the newcomer next tick.
+  loadImage(next, src).then((ok) => {
     if (state.gen !== gen) return;
+    if (!ok) {
+      state.src = current.getAttribute('src') ?? '';
+      return;
+    }
     frame.appendChild(next);
     crossfade(current, next);
   });

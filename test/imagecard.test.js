@@ -104,22 +104,48 @@ describe('renderImageCard: decode before swap', () => {
     expect(imgs(el)[1]).toBe(decoded);
   });
 
-  it('still swaps when decode rejects (a broken photo shows its alt, it does not freeze the card)', async () => {
+  // CONTRACT INVERTED 2026-08-10 (Sean): a failed load must never reach the
+  // glass. The old behaviour revealed the errored <img> — which is the browser's
+  // broken-image glyph, and it flashed on every boot when the cached digest's
+  // expired signed URL errored a second before the fresh fetch healed it. Now a
+  // failure keeps whatever the card already shows (or its bare surface on first
+  // paint) and forgets state.src so the next render retries.
+  it('keeps the current photo when the incoming one fails — a broken newcomer evicts nothing', async () => {
     const el = host();
     paint(el, 'https://x.test/a.jpg');
     await settle();
     paint(el, 'https://x.test/b.jpg');
     await settle('reject');
-    expect(shown(el)).toContain('https://x.test/b.jpg');
+    expect(shown(el)).toEqual(['https://x.test/a.jpg']); // b never stacked
+  });
+
+  it('retries a failed rotation on the next render instead of short-circuiting on the remembered src', async () => {
+    const el = host();
+    paint(el, 'https://x.test/a.jpg');
+    await settle();
+    paint(el, 'https://x.test/b.jpg');
+    await settle('reject');
+    paint(el, 'https://x.test/b.jpg'); // 60 s later: same URL must be attempted again
+    await settle();
     endTransition(imgs(el).at(-1));
     expect(shown(el)).toEqual(['https://x.test/b.jpg']);
   });
 
-  it('reveals the first photo even when its decode rejects, so the card is never left blank', async () => {
+  it('shows nothing — not the broken-image glyph — when the first photo fails', async () => {
     const el = host();
     paint(el, 'https://x.test/bad.jpg');
     await settle('reject');
-    expect(el.querySelector('.artwork__img').classList.contains('is-entering')).toBe(false);
+    expect(imgs(el)).toEqual([]); // the errored layer left the DOM entirely
+  });
+
+  it('retries a failed first paint on the next render, even with the identical URL', async () => {
+    const el = host();
+    paint(el, 'https://x.test/flaky.jpg');
+    await settle('reject');
+    paint(el, 'https://x.test/flaky.jpg');
+    await settle();
+    expect(shown(el)).toEqual(['https://x.test/flaky.jpg']);
+    expect(imgs(el)[0].classList.contains('is-entering')).toBe(false);
   });
 
   it('drops a superseded load: the last requested photo wins', async () => {
