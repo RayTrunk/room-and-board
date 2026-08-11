@@ -7,6 +7,7 @@ import { escapeHtml, fmtClock, chaikin } from '../util.js';
 import { setCardNote } from '../card.js';
 import { fitList, cardSize } from '../capacity.js';
 import { setExpandSource, OVERLAY_BODY_H } from '../expand.js';
+import { dealColumns, gridStyle } from '../columns.js';
 
 export const meta = { id: 'markets', title: 'Markets', refreshMs: 5 * 60 * 1000 };
 
@@ -187,10 +188,17 @@ export function wallHeight(nShelf, nRest) {
 // eats the canvas, so the grid then trades columns for rows rather than
 // squeezing tiles below the height their four lines need.
 export function tileCols(n, shelfRows = 0) {
-  let cols = n <= 3 ? Math.max(n, 1) : n <= 4 ? 2 : n <= 6 ? 3 : n <= 8 ? 4 : 5;
-  const rows = maxRows(shelfRows);
-  while (Math.ceil(n / cols) > rows && cols < MAX_COLS) cols++;
-  return cols;
+  // The wall's PREFERRED shape at each ticker count, browser-measured: three
+  // across is right for six tiles, four for eight. The wall's own row cost
+  // (maxRows, the tile floor against what the shelf left) can only push that
+  // wider from there, never narrower, which is the `from` the shared deal grows
+  // out of.
+  const preferred = n <= 3 ? Math.max(n, 1) : n <= 4 ? 2 : n <= 6 ? 3 : n <= 8 ? 4 : 5;
+  return dealColumns(n, {
+    fitsOneColumn: maxRows(shelfRows),
+    maxColumns: MAX_COLS,
+    from: preferred,
+  }).columns;
 }
 
 // Whether the watchlist grid still clears the tile floor with the shelf in place.
@@ -256,7 +264,7 @@ export function tileWall(indices) {
   const sCols = shelfCols(shelf.length);
   const shelfRows = shelf.length ? Math.ceil(shelf.length / sCols) : 0;
   if (shelf.length) {
-    bands.push(`<div class="wall__shelf" style="--cols:${sCols}">${shelf.map(tile).join('')}</div>`);
+    bands.push(`<div class="wall__shelf"${gridStyle('--cols', sCols)}>${shelf.map(tile).join('')}</div>`);
   }
   if (shelf.length && rest.length) bands.push('<div class="wall__rule"></div>');
   if (rest.length) {
@@ -264,7 +272,7 @@ export function tileWall(indices) {
     // A six-across grid drops to the denser tile type (see main.css): the extra
     // column is only legible if the tile buys the width back.
     bands.push(
-      `<div class="wall__grid${gCols >= MAX_COLS ? ' wall__grid--dense' : ''}" style="--cols:${gCols}">${rest.map(tile).join('')}</div>`,
+      `<div class="wall__grid${gCols >= MAX_COLS ? ' wall__grid--dense' : ''}"${gridStyle('--cols', gCols)}>${rest.map(tile).join('')}</div>`,
     );
   }
   // A lone shelf centers instead of stranding itself at the top edge.

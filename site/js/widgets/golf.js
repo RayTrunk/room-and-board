@@ -8,6 +8,7 @@ import { setCardNote, setMoreBadge } from '../card.js';
 import { fitList } from '../capacity.js';
 import { WORKER_URL } from '../env.js';
 import { setExpandSource } from '../expand.js';
+import { dealColumns, gridStyle } from '../columns.js';
 import { mapGolf } from '../espn-scores.js';
 
 export { mapGolf }; // single shared mapper (site fallback + worker digest + tests)
@@ -26,17 +27,18 @@ export const BOARD_PLAYERS = BOARD_ROWS * 2;
 
 function golfBoard(players) {
   const shown = players.slice(0, BOARD_PLAYERS);
-  const split = shown.length > BOARD_ROWS;
   // Rows PER COLUMN: a field that fits one column stays one column, and a
   // longer one balances (ceil, so the left column is the fuller of the two).
-  const rows = split ? Math.ceil(shown.length / 2) : shown.length;
+  // BOARD_ROWS is this view's own row cost; the split is the shared one.
+  const { columns, rows } = dealColumns(shown.length, { fitsOneColumn: BOARD_ROWS });
+  const split = columns > 1;
   const one = (p) => `<div class="golf-board__row">
       <span class="golf-row__pos">${p.pos ?? ''}</span>
       <span class="golf-row__name">${escapeHtml(p.name)}</span>
       <span class="golf-row__today">${escapeHtml(p.today || '')}</span>
       <span class="golf-row__score ${p.score.startsWith('-') ? 'golf-row__score--under' : ''}">${escapeHtml(p.score)}</span>
     </div>`;
-  return `<div class="golf-board ${split ? 'golf-board--split' : ''}" style="--board-rows:${rows}">${shown
+  return `<div class="golf-board ${split ? 'golf-board--split' : ''}"${gridStyle('--board-rows', rows)}>${shown
     .map(one)
     .join('')}</div>`;
 }

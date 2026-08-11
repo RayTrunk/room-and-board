@@ -4,6 +4,7 @@
 // no seconds anywhere by design, so everything repaints once per minute.
 
 import { escapeHtml } from './util.js';
+import { dealInto } from './columns.js';
 
 export const CLOCK_SOURCES = new Set(['clock', 'worldclocks', 'clockrow']);
 
@@ -55,14 +56,15 @@ function worldCities(cfg, now, localZone) {
     .slice(0, MAX_DIALS);
 }
 
-// Split n items into balanced rows so a wrapped grid is symmetric: one row up
-// to `solo`, otherwise two rows with the extra on TOP for odd counts
-// (9 -> [5,4], 7 -> [4,3], 10 -> [5,5]).
-function planRows(n, solo) {
-  if (n <= solo) return [n];
-  const top = Math.ceil(n / 2);
-  return [top, n - top];
-}
+// Balanced bands so a wrapped grid is symmetric: one band up to five, otherwise
+// two with the extra on TOP for odd counts (9 -> 5 + 4, 7 -> 4 + 3, 10 -> 5+5).
+// Five is this face's own row cost: five dials is what a 1920px row holds.
+//
+// These bands are ROWS of dials where the other full-screen boards deal
+// columns, but it is the same split either way, so it comes from the same
+// module (columns.js) and reads down the first band before it crosses to the
+// second, exactly as the ledger's columns do.
+const DIAL_BANDS = { fitsOneColumn: 5, maxColumns: 2 };
 
 // Dial diameter + column gap keyed to the BUSIEST row, so rows stay a
 // consistent size and up to five dials fit a 1920px row.
@@ -134,8 +136,10 @@ export function clockFaceHtml(source, cfg, now = new Date(), localZone = localZo
   if (source === 'worldclocks') {
     const local = zoneParts(now, localZone);
     const list = worldCities(cfg, now, localZone);
-    const rows = planRows(list.length, 5);
-    const { dial, gap } = gridScale(Math.max(...rows));
+    const bands = dealInto(list, DIAL_BANDS);
+    // Keyed to the BUSIEST band, which is always the first: the deal fills it
+    // before it crosses to the second.
+    const { dial, gap } = gridScale(bands[0].length);
     const showMarkers = cfg?.screensaver?.markers !== false; // 2a dots by default; false = 2b markerless
     const dialCell = ({ label, zone, home }) => {
       const t = zoneParts(now, zone);
@@ -146,12 +150,9 @@ export function clockFaceHtml(source, cfg, now = new Date(), localZone = localZo
         <div class="cf-dial__time">${fmtTime(t.h, t.m, cfg?.clock24)}${cfg?.clock24 ? '' : ` ${ampm(t.h)}`}${t.day !== local.day ? `<span class="cf-dial__sub"> ${dayDiff(t.day, local.day)}d</span>` : ''}</div>
       </div>`;
     };
-    let i = 0;
-    const rowsHtml = rows.map((count) => {
-      const cells = list.slice(i, i + count).map(dialCell).join('');
-      i += count;
-      return `<div class="cf-drow">${cells}</div>`;
-    }).join('');
+    const rowsHtml = bands
+      .map((band) => `<div class="cf-drow">${band.map(dialCell).join('')}</div>`)
+      .join('');
     return `<div class="cf cf--world"><div class="cf-dials" style="--dial:${dial}px;--dgap:${gap}px">${rowsHtml}</div></div>`;
   }
   if (source === 'clockrow') {
@@ -172,12 +173,9 @@ export function clockFaceHtml(source, cfg, now = new Date(), localZone = localZo
         ${t.day !== local.day ? `<div class="cf-city__sub">${dayDiff(t.day, local.day)} day</div>` : ''}
       </div>`;
     };
-    let j = 0;
-    const rowsHtml = planRows(list.length, 5).map((count) => {
-      const cells = list.slice(j, j + count).map(cityCell).join('');
-      j += count;
-      return `<div class="cf-crow">${cells}</div>`;
-    }).join('');
+    const rowsHtml = dealInto(list, DIAL_BANDS)
+      .map((band) => `<div class="cf-crow">${band.map(cityCell).join('')}</div>`)
+      .join('');
     return `<div class="cf cf--row">${heroHtml(now, cfg, 'cf-time--row')}<div class="cf-cities">${rowsHtml}</div></div>`;
   }
   // 'clock' — the digital hero (also the universal fallback face).

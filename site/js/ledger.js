@@ -19,15 +19,19 @@
 // inside each group without a second sort.
 
 import { escapeHtml } from './util.js';
+import { dealInto } from './columns.js';
 
 // Two balanced columns, filled DOWN the first and then down the second — the
 // reading order subway's wall deals its wells in (seven splits 4 + 3, never
-// 6 + 1). A single item gets one column rather than a lonely pair.
-export const ledgerColumns = (rows) => {
-  if (rows.length < 2) return rows.length ? [rows] : [];
-  const first = Math.ceil(rows.length / 2);
-  return [rows.slice(0, first), rows.slice(first)];
-};
+// 6 + 1). A single item gets one column rather than a lonely pair, which is
+// this view's row cost stated as a number: one row is all a lone column is
+// allowed before the board would rather balance.
+//
+// No rows at all means no columns at all, and that part is the ledger's own
+// rule rather than the shared deal's: dealInto answers "one empty column" so a
+// view with a box to draw still gets one, and this view draws no box.
+export const ledgerColumns = (rows) =>
+  (rows.length ? dealInto(rows, { fitsOneColumn: 1, maxColumns: 2 }) : []);
 
 const dotHtml = (color) =>
   (color ? `<span class="ledger__dot" style="background:${escapeHtml(color)}"></span>` : '');

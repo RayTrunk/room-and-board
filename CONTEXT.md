@@ -55,7 +55,9 @@ holds the nouns.
   as tap, next, prev, or nothing (site/js/gesture.js); a second finger or a
   resting palm never moves the origin.
 - **Canvas**: the fixed pixel budget a full-screen view lays out into
-  (the overlay body height below the title).
+  (the overlay body height below the title). How a view splits that canvas into
+  columns, and which custom property carries the answer to CSS, is one shared
+  deal in site/js/columns.js; what a row of that view COSTS stays with the view.
 
 ## Ambient
 

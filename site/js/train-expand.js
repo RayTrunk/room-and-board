@@ -18,6 +18,13 @@ import { escapeHtml } from './util.js';
 import { setMoreBadge } from './card.js';
 import { setExpandSource } from './expand.js';
 import { fitTrainRows } from './capacity.js';
+import { dealColumns, gridStyle } from './columns.js';
+
+// The rail board's row cost, stated rather than left in a comment: six trains
+// is what one grand centered column carries. It is an aesthetic floor, not a
+// pixel one (six 68px rows on 40px gaps are only 608px of the 814px body), so
+// it belongs to this view and only the split it feeds is shared.
+const TRAINS_ONE_COLUMN = 6;
 
 // `rows` is the FULL departure list's markup, built by the caller's own row
 // template — the overlay shows exactly the rows the card would, uncapped. The
@@ -55,9 +62,12 @@ export function wireTrainExpand(el, { title, note = '', rows, alerts = [] }) {
           // trains fill one grand centered column; beyond that the same rows
           // split into two balanced centered columns a step smaller. rows is
           // snapshot-at-open, so the shape is fixed for the overlay's life.
-          const split = rows.length > 6;
+          const { columns, rows: perColumn } = dealColumns(rows.length, { fitsOneColumn: TRAINS_ONE_COLUMN });
+          const split = columns > 1;
           const cls = `trains trains--board trains--board--${split ? 'split' : 'grand'}`;
-          const style = split ? ` style="--board-rows:${Math.ceil(rows.length / 2)}"` : '';
+          // The grand column is a flex stack and never reads the property, so
+          // the unsplit board goes out without it, as it always has.
+          const style = split ? gridStyle('--board-rows', perColumn) : '';
           return { title, note, bodyHtml: `<div class="${cls}"${style}>${rows.join('')}</div>` };
         }
       : null,

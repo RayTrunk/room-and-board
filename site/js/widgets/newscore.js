@@ -5,6 +5,7 @@ import { setMoreBadge } from '../card.js';
 import { WORKER_URL } from '../env.js';
 import { fitList } from '../capacity.js';
 import { setExpandSource, OVERLAY_BODY_H } from '../expand.js';
+import { dealColumns, gridStyle } from '../columns.js';
 import { openStoryViewer } from '../textviewer.js';
 
 // Common named HTML entities seen in news feeds (numeric refs handled inline).
@@ -187,17 +188,26 @@ export function listRows(bodyH = LIST_BODY_H) {
 export const LIST_MAX_COLS = { news: 3, marketsnews: 3, sportsnews: 3, substack: 2, bsky: 2 };
 
 // Few items stay in one grand centered column (the history day-view grammar),
-// then two, then the family's maximum. Driven by the item count the card HOLDS,
-// which never grows after the cap is applied, so the choice cannot oscillate
-// between the capacity it implies and the count that implied it.
-export function listColumns(n, maxCols) {
-  if (n <= 6) return 1;
-  if (n <= 12) return Math.min(2, maxCols);
-  return maxCols;
+// then two, then the family's maximum. Six is where that grand column stops
+// being grand: it is an aesthetic floor rather than the seven listRows() would
+// allow, and it is this view's half of the shared split.
+const LIST_SOLO = 6;
+const listSplit = (maxColumns) => ({ fitsOneColumn: LIST_SOLO, maxColumns });
+
+// The reading list's whole shape: columns, the rows each one carries, and the
+// seats those make. Driven by the item count the card HOLDS, which never grows
+// after the cap is applied, so the choice cannot oscillate between the capacity
+// it implies and the count that implied it.
+export function listBoard(n, widgetId) {
+  return dealColumns(n, { ...listSplit(LIST_MAX_COLS[widgetId] ?? 3), rowsPerColumn: listRows() });
 }
 
+// The column count alone, for a caller naming the family's width rather than
+// the family.
+export const listColumns = (n, maxCols) => dealColumns(n, listSplit(maxCols)).columns;
+
 export function listCapacity(n, widgetId) {
-  return listRows() * listColumns(n, LIST_MAX_COLS[widgetId] ?? 3);
+  return listBoard(n, widgetId).seats;
 }
 
 // Bluesky posts and Substack essays are not "headlines", and the hint line is
@@ -257,7 +267,9 @@ export function renderHeadlines(el, vm, { widgetId, emptyHint, title = '' }) {
   // a "+26" that opens onto 21 rows. Every other card's overlay shows
   // everything it holds, which is why the cap lives here and not in
   // setMoreBadge.
-  const viewCap = listCapacity(vm.items.length, widgetId);
+  // One deal answers the badge cap and the overlay's layout both, so the count
+  // the corner promises and the board that has to deliver it cannot disagree.
+  const { columns: cols, rows: perCol, seats: viewCap } = listBoard(vm.items.length, widgetId);
   setMoreBadge(el, Math.max(0, Math.min(vm.items.length - n, viewCap - n)));
 
   // Whole-card tap for the whole list, EXCEPT on a headline row: the rows
@@ -267,8 +279,6 @@ export function renderHeadlines(el, vm, { widgetId, emptyHint, title = '' }) {
   // items all fit still owes a tap the bigger reading view. Only the badge
   // tracks what is hidden.
   const shown = Math.min(vm.items.length, viewCap);
-  const cols = listColumns(vm.items.length, LIST_MAX_COLS[widgetId] ?? 3);
-  const perCol = Math.ceil(shown / cols);
   // The last row of each column carries no rule: a separator under the final
   // row divides it from nothing, and it is also what makes the height model
   // above exact (the tail row costs 96px, not 96 + padding + hairline).
@@ -284,7 +294,7 @@ export function renderHeadlines(el, vm, { widgetId, emptyHint, title = '' }) {
       // Column-first, so the freshest story is top-left and the list reads down
       // one column before crossing to the next (the rail split board's grammar).
       // --list-rows balances the columns; the markup is snapshot-at-open.
-      bodyHtml: `<div class="news-board news-board--c${cols}" style="--list-rows:${perCol}">${listHtml}</div>`,
+      bodyHtml: `<div class="news-board news-board--c${cols}"${gridStyle('--list-rows', perCol)}>${listHtml}</div>`,
       // The overlay lives outside #grid, so the text viewer's delegated listener
       // never sees these rows — this is the only handler in play, and the story
       // view stacks above the list rather than replacing it.
