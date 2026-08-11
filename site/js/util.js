@@ -89,9 +89,12 @@ export function fmtClock(epochSec, clock24 = false) {
 // tap that CLOSES an overlay must never open another.
 //
 // It lives here, not in expand.js where it was written, because the image
-// surface needs the same answer and cannot import the expand engine — expand.js
-// already imports imageshow.js for the gesture classifier. expand.js re-exports
-// it, so every existing importer is unchanged.
+// surface needs the same answer. The import cycle that first forced it out has
+// since gone (expand.js no longer reaches into imageshow.js for the gesture
+// classifier; that rule is gesture.js now), but the reason to keep it here is
+// unchanged: imageshow.js would otherwise import the whole expand engine to ask
+// a one-line DOM question. expand.js re-exports it, so every existing importer
+// is unchanged.
 const OVERLAYS = '#expand-view, #text-viewer, #art-viewer';
 
 export function isOverlayOpen(doc = document) {

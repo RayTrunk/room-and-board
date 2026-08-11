@@ -10,6 +10,7 @@
 
 import { escapeHtml, isOverlayOpen } from './util.js';
 import { markExpandable } from './card.js';
+import { attachGesture } from './gesture.js';
 import { stripData, stripHtml } from './ambient.js';
 import { loadCache } from './store.js';
 
@@ -45,14 +46,6 @@ export function captionHtml(item) {
   if (meta) parts.push(`<span class="slide-caption__meta">${meta}</span>`);
   parts.push(captionDesc(item));
   return parts.filter(Boolean).join('');
-}
-
-// Pointer-gesture classifier for the viewer: horizontal drags navigate,
-// small movements are taps (close), anything ambiguous is ignored.
-export function swipeAction(dx, dy) {
-  if (Math.abs(dx) >= 60 && Math.abs(dx) >= 2 * Math.abs(dy)) return dx < 0 ? 'next' : 'prev';
-  if (Math.abs(dx) < 10 && Math.abs(dy) < 10) return 'tap';
-  return null;
 }
 
 // Ready-to-paint promise for an image.  decode() is the real guarantee (the
@@ -317,21 +310,20 @@ export function openImageViewer(current, cfg, { list = [], caption = true, strip
     // Close on tap, navigate on swipe.  The trailing click is classified by
     // its own coordinates against the gesture origin — no suppression state,
     // so a swipe that never produces a click can't swallow the next tap.
-    let downX = 0;
-    let downY = 0;
-    viewer.addEventListener('pointerdown', (e) => {
-      downX = e.clientX;
-      downY = e.clientY;
-    });
-    viewer.addEventListener('pointerup', (e) => {
-      const action = swipeAction(e.clientX - downX, e.clientY - downY);
-      if (action === 'next' || action === 'prev') step(viewer, action === 'next' ? 1 : -1);
-    });
-    viewer.addEventListener('click', (e) => {
-      if (swipeAction(e.clientX - downX, e.clientY - downY) !== 'tap') return;
-      viewer.hidden = true;
-      clearInterval(stripTimer);
-      viewerList = null; // release the album; reopen passes a fresh list
+    //
+    // This surface used to keep a bare pair of coordinates with no notion of
+    // whose finger they belonged to, which on a 55" panel is the one place that
+    // really matters: a palm resting on the glass beside the photo moved the
+    // origin under the gesture already in flight. The shared record
+    // (gesture.js) only lets the first pointer of a gesture set it.
+    attachGesture(viewer, {
+      onNext: () => step(viewer, 1),
+      onPrev: () => step(viewer, -1),
+      onTap: () => {
+        viewer.hidden = true;
+        clearInterval(stripTimer);
+        viewerList = null; // release the album; reopen passes a fresh list
+      },
     });
     document.body.appendChild(viewer);
   }

@@ -5,6 +5,10 @@
       {
         "lead": "Setup codes say what went wrong",
         "text": "A setup code that did not go through used to say the same thing whatever had happened: code not found. So the natural move was to go back to your phone for a fresh code, even when a fresh code could not have helped. The board now tells those apart. A code that has run out still reads as not found, a code service the board cannot reach says so and points you at the network instead, and if the service is asking you to slow down for a moment it says that too. It reads the same way in all three places you can type a code: Setup code, Photos, and Live Video."
+      },
+      {
+        "lead": "Photos answer the finger you meant",
+        "text": "Standing close to the board with a hand resting on the glass, a tap or a swipe on a full screen photo could do nothing at all, or turn into a swipe you never made. The picture viewer now follows the finger that started the gesture and ignores whatever else lands while it is still going, so a palm on the panel, or a second hand alongside yours, no longer takes the tap or the swipe you meant."
       }
     ]
   },

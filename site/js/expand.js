@@ -10,7 +10,7 @@
 
 import { escapeHtml, isOverlayOpen } from './util.js';
 import { markExpandable } from './card.js';
-import { swipeAction } from './imageshow.js';
+import { swipeAction, attachGesture, pressRecord } from './gesture.js';
 import { reportTap } from './fleet.js';
 
 // Mandatory auto-close. Long enough to read a full ticker wall, short enough
@@ -90,33 +90,24 @@ function overlayEl() {
   host.id = 'expand-view';
   host.className = 'expand';
   host.hidden = true;
-  // Press-not-drag, same classifier as the image viewer: the click is judged by
-  // its own coordinates against the gesture origin, so a swipe that scrolled a
-  // long list can't be mistaken for the tap that closes. Only the FIRST pointer
-  // of a gesture sets the origin — a second finger (or a palm on a wall panel)
-  // must not move it under the click that is already on its way.
-  let down = null;
-  host.addEventListener('pointerdown', (e) => {
-    down ??= { id: e.pointerId, x: e.clientX, y: e.clientY };
-    resetIdle();
-  });
-  host.addEventListener('pointerup', (e) => {
-    if (!down || e.pointerId === down.id) resetIdle();
-  });
-  host.addEventListener('pointercancel', () => { down = null; });
-  host.addEventListener('click', (e) => {
-    const gesture = down;
-    down = null;
-    if (gesture && swipeAction(e.clientX - gesture.x, e.clientY - gesture.y) !== 'tap') return;
-    resetIdle();
-    // Interactive rows keep the overlay open (a tapped headline stacks its
-    // story view above); everything else is "tap anywhere to close".
-    const row = e.target.closest?.('[data-expand-row]');
-    if (row && rowTap) {
-      rowTap(row);
-      return;
-    }
-    closeExpand();
+  // Press-not-drag, on the board's one gesture record (gesture.js): the click
+  // is judged by its own coordinates against the gesture origin, so a swipe
+  // that scrolled a long list can't be mistaken for the tap that closes, and
+  // only the FIRST pointer of a gesture sets that origin. Any touch at all
+  // restarts the idle window, which is what onPress is for.
+  attachGesture(host, {
+    onPress: resetIdle,
+    onTap: (e) => {
+      resetIdle();
+      // Interactive rows keep the overlay open (a tapped headline stacks its
+      // story view above); everything else is "tap anywhere to close".
+      const row = e.target.closest?.('[data-expand-row]');
+      if (row && rowTap) {
+        rowTap(row);
+        return;
+      }
+      closeExpand();
+    },
   });
   document.body.appendChild(host);
   return host;
@@ -127,9 +118,13 @@ export function isExpandOpen() {
   return Boolean(host) && !host.hidden;
 }
 
-// "Is any full-screen view up?" moved to util.js so the image surface can ask
-// it too (imageshow.js cannot import this module — this module imports it).
-// Re-exported here because this is where every caller already looks for it.
+// "Is any full-screen view up?" lives in util.js so the image surface can ask
+// it too. The cycle that forced it out of here is gone (the gesture classifier
+// this module used to import from imageshow.js now belongs to gesture.js), but
+// moving it back would only trade one dependency for another: imageshow.js
+// would then import the whole expand engine to ask a one-line DOM question.
+// Where it finally belongs is a question for the refactor that owns the
+// overlays. It is re-exported here because this is where every caller looks.
 export { isOverlayOpen };
 
 // Opens the overlay on a content SNAPSHOT: bodyHtml is built by the caller at
@@ -245,54 +240,36 @@ function staleStamp(card) {
 // whatever card now sits under the finger. Knowing where the finger went DOWN,
 // and what was on screen at that moment, is what tells a real card tap from
 // that leaked one.
-let press = null;
-
-// A press only owns the clicks of its own gesture. Real hardware fires
-// pointerdown → pointerup → click inside a few hundred ms; past this window we
-// assume the record was orphaned (a pointerup lost to an element pulled out
-// from under the finger, a gesture that produced no click at all) and let the
-// next pointerdown take over. Deliberately generous-but-tight: expiring means
-// the guards below are skipped, which is the pre-existing behaviour for
-// synthesised clicks, never a board that refuses to open.
-const PRESS_MS = 1200;
-
-const fresh = (p) => Boolean(p) && Date.now() - p.t < PRESS_MS;
+//
+// The same record every touchable surface keeps (gesture.js), wired by hand
+// here rather than through attachGesture because this one listens in the
+// CAPTURE phase on the document and carries two extra facts about the moment
+// the finger landed. The freshness window and the first-pointer guard come with
+// the record.
+const press = pressRecord();
 
 let pressWired = false;
 function wirePress(doc) {
   if (pressWired) return;
   pressWired = true;
   doc.addEventListener('pointerdown', (e) => {
-    // Only the FIRST pointer of a gesture sets the origin — a second finger (or
-    // a palm on a wall panel) must not move it under a click already on its way.
-    // A gesture whose pointer has already lifted is over, so the next tap always
-    // gets its own origin even if it lands within the window.
-    if (fresh(press) && !press.done) return;
-    press = {
-      id: e.pointerId,
-      x: e.clientX,
-      y: e.clientY,
-      t: Date.now(),
+    press.down(e, {
       card: e.target?.closest?.('.card') ?? null,
       overlay: isOverlayOpen(doc),
-    };
+    });
   }, true);
-  // The gesture is over at pointerup, but the record outlives it: the click that
-  // matters is dispatched afterwards and still needs the origin on hand.
-  doc.addEventListener('pointerup', (e) => {
-    if (press && e.pointerId === press.id) press.done = true;
-  }, true);
-  doc.addEventListener('pointercancel', () => { press = null; }, true);
+  doc.addEventListener('pointerup', (e) => press.up(e), true);
+  doc.addEventListener('pointercancel', () => press.clear(), true);
   // Bubble phase, so the grid's handler below still sees the record: one press
   // answers for exactly one click, and a later synthesised click cannot reuse it.
-  doc.addEventListener('click', () => { press = null; });
+  doc.addEventListener('click', () => press.clear());
 }
 
 // Delegated: one listener on the grid covers every card and survives every
 // widget re-render (same idiom as the text viewer).
 export function initExpand(host) {
   wirePress(host.ownerDocument ?? document);
-  press = null; // a freshly wired board has no gesture in flight
+  press.clear(); // a freshly wired board has no gesture in flight
   host.addEventListener('click', (e) => {
     const card = e.target.closest?.('.card');
     const source = card && sources.get(card);
@@ -307,7 +284,7 @@ export function initExpand(host) {
     // handler may have opened its viewer earlier in this very click (the art
     // and chart cards do), so this reads the DOM, not just the press record.
     if (isOverlayOpen()) return;
-    const gesture = fresh(press) ? press : null;
+    const gesture = press.fresh();
     if (gesture) {
       // Both checks are about the tap's ORIGIN, which is the only thing a
       // retargeted click gets wrong: it keeps the coordinates but arrives with
@@ -330,7 +307,7 @@ export function initExpand(host) {
     const source = card && sources.get(card);
     if (!source?.build) return;
     e.preventDefault(); // Space must not scroll the page under the board
-    press = null;
+    press.clear();
     (source.trigger ? card.querySelector(source.trigger) ?? card : card).click();
   });
 }

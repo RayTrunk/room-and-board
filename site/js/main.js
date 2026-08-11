@@ -12,7 +12,8 @@ import { registerWidget, getWidget } from './registry.js';
 import { chooseBootConfig } from './boot.js';
 import { parseFragment } from './bridge.js';
 import { stripData, stripHtml } from './ambient.js';
-import { createSlideshow, swipeAction, swipeFadeThrough, loadImage } from './imageshow.js';
+import { createSlideshow, swipeFadeThrough, loadImage } from './imageshow.js';
+import { attachGesture } from './gesture.js';
 import { startBeacon, reportWidgetHealth } from './fleet.js';
 import { initTextViewer } from './textviewer.js';
 import { initExpand } from './expand.js';
@@ -520,52 +521,25 @@ async function boot() {
   }
 }
 
-// Ambient slideshow swipe: left/right steps the photo/art slideshow using the
-// same gesture classifier as the full-screen viewer. Handlers live on the
-// static #slideshow host (they survive createSlideshow re-rendering its
-// innerHTML) and read the module-level `slideshow`, so every ambient session
-// is covered without re-wiring.
-{
-  const host = $('#slideshow');
-  let downX = 0;
-  let downY = 0;
-  // Match pointerup to the SAME pointer that went down: a palm or 2nd finger on
-  // the wall panel fires its own pointerup and would otherwise fabricate a swipe.
-  let downId = null;
-  host.addEventListener('pointerdown', (e) => {
-    downX = e.clientX;
-    downY = e.clientY;
-    downId = e.pointerId;
-  });
-  host.addEventListener('pointerup', (e) => {
-    if (e.pointerId !== downId) return;
-    downId = null;
-    const action = swipeAction(e.clientX - downX, e.clientY - downY);
-    if (action === 'next' || action === 'prev') slideshow?.step(action === 'next' ? 1 : -1);
-  });
-}
+// Ambient slideshow swipe: left/right steps the photo/art slideshow, on the
+// board's one gesture record (gesture.js), which matches each pointerup to the
+// pointer that went down so a palm on the wall panel cannot fabricate a swipe.
+// The handler lives on the static #slideshow host (it survives createSlideshow
+// re-rendering its innerHTML) and reads the module-level `slideshow`, so every
+// ambient session is covered without re-wiring.
+attachGesture($('#slideshow'), {
+  onNext: () => slideshow?.step(1),
+  onPrev: () => slideshow?.step(-1),
+});
 
 // Clock-backdrop swipe: over a clock face the photo slideshow is hidden, so a
 // parallel handler on the ambient container steps the backdrop ahead of the
 // daily schedule. stepBackdrop no-ops unless a backdrop is actually showing, so
 // this is inert during photo slideshows (which keep their own handler above).
-{
-  const host = $('#ambient');
-  let downX = 0;
-  let downY = 0;
-  let downId = null;
-  host.addEventListener('pointerdown', (e) => {
-    downX = e.clientX;
-    downY = e.clientY;
-    downId = e.pointerId;
-  });
-  host.addEventListener('pointerup', (e) => {
-    if (e.pointerId !== downId) return;
-    downId = null;
-    const action = swipeAction(e.clientX - downX, e.clientY - downY);
-    if (action === 'next' || action === 'prev') stepBackdrop(action === 'next' ? 1 : -1);
-  });
-}
+attachGesture($('#ambient'), {
+  onNext: () => stepBackdrop(1),
+  onPrev: () => stepBackdrop(-1),
+});
 
 $('#gear').addEventListener('click', async () => {
   const settings = await import('./settings/settings.js');

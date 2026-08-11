@@ -1163,7 +1163,9 @@ describe('imageshow module', () => {
     const m = await import('../site/js/imageshow.js');
     expect(typeof m.createSlideshow).toBe('function');
     expect(typeof m.openImageViewer).toBe('function');
-    expect(typeof m.swipeAction).toBe('function');
+    // swipeAction is NOT here any more: the gesture rule belongs to gesture.js,
+    // and the image surface is one of its callers like everybody else.
+    expect(m.swipeAction).toBeUndefined();
   });
 });
 

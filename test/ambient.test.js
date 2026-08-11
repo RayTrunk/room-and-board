@@ -2,7 +2,7 @@
  * @vitest-environment happy-dom
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { createSlideshow, swipeAction, swipeFadeThrough, SWIPE_OUT_MS } from '../site/js/imageshow.js';
+import { createSlideshow, swipeFadeThrough, SWIPE_OUT_MS } from '../site/js/imageshow.js';
 import { stripData, stripHtml } from '../site/js/ambient.js';
 import { ambientSource } from '../site/js/modes.js';
 import { resolvePhotosManifest } from '../site/js/photos-manifest.js';
@@ -315,17 +315,6 @@ describe('stripHtml', () => {
     const out = stripHtml({ temp: null, cond: null, transit: [{ label: 'NJT · <img src=x onerror=1>', min: 3 }] }, now);
     expect(out).not.toContain('<img');
     expect(out).toContain('&#60;img');
-  });
-});
-
-describe('swipeAction', () => {
-  it('classifies swipes, taps and ambiguous drags', () => {
-    expect(swipeAction(-80, 10)).toBe('next');
-    expect(swipeAction(120, -20)).toBe('prev');
-    expect(swipeAction(-59, 0)).toBe(null);   // under distance threshold
-    expect(swipeAction(-80, 50)).toBe(null);  // too diagonal (|dx| < 2|dy|)
-    expect(swipeAction(4, -6)).toBe('tap');
-    expect(swipeAction(30, 4)).toBe(null);    // drag, neither tap nor swipe
   });
 });
 
