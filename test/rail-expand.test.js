@@ -2,7 +2,7 @@
  * @vitest-environment happy-dom
  */
 import { describe, it, expect, beforeEach } from 'vitest';
-import { closeExpand, isExpandOpen, initExpand, setExpandSource, openExpand } from '../site/js/expand.js';
+import { closeExpand, isExpandOpen, openExpand } from '../site/js/expand.js';
 // Namespaces, so the scaffold can mount each widget's REAL card off its own
 // meta instead of a placeholder title.
 import * as lirr from '../site/js/widgets/lirr.js';
@@ -223,33 +223,5 @@ describe('rail +N on the other boards', () => {
     expect(card.querySelector('.card__more').textContent).toBe('+3');
     card.querySelector('.card__more').click();
     expect(overlay().querySelectorAll('.train').length).toBe(5);
-  });
-});
-
-describe('expand engine trigger option', () => {
-  it('narrows the tap target to the selector when one is registered', () => {
-    document.body.innerHTML = `
-      <div id="grid"><article class="card"><div class="card__body"><i class="go"></i></div></article></div>
-      <div id="settings-root"></div><div id="edit-root"></div>`;
-    const grid = document.querySelector('#grid');
-    initExpand(grid);
-    const card = grid.querySelector('.card');
-    setExpandSource(card.querySelector('.card__body'), () => ({ title: 'T', bodyHtml: '<p>x</p>' }), { trigger: '.go' });
-    card.querySelector('.card__body').click();
-    expect(isExpandOpen()).toBe(false);
-    card.querySelector('.go').click();
-    expect(isExpandOpen()).toBe(true);
-  });
-
-  it('keeps whole-card taps for sources registered without one (markets contract)', () => {
-    document.body.innerHTML = `
-      <div id="grid"><article class="card"><div class="card__body"></div></article></div>
-      <div id="settings-root"></div><div id="edit-root"></div>`;
-    const grid = document.querySelector('#grid');
-    initExpand(grid);
-    const card = grid.querySelector('.card');
-    setExpandSource(card.querySelector('.card__body'), () => ({ title: 'T', bodyHtml: '<p>x</p>' }));
-    card.querySelector('.card__body').click();
-    expect(isExpandOpen()).toBe(true);
   });
 });

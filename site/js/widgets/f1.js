@@ -436,11 +436,11 @@ export function render(el, vm, cfg) {
     title: meta.title,
     note: vm.season ? `${vm.season} season` : '',
     bodyHtml: f1Board(vm, cfg),
-    // onFit hands over the LIVE body, which is the only way to reach the DOM a
-    // snapshot became. Used here for the map's tier-1 upgrade rather than for a
-    // fit: the outline is already drawn and correct, and F1's image replaces it
-    // in place if and when it decodes. Nothing waits on it and nothing moves.
-    onFit: (body) => { upgradeTrackImage(body); },
+    // The live body is the only way to reach the DOM a snapshot became. No fit
+    // here: the outline is already drawn and correct, and the tier-1 image
+    // replaces it in place if and when it decodes. Nothing waits on it and
+    // nothing moves.
+    onOpen: (body) => { upgradeTrackImage(body); },
   }) : null);
 }
 

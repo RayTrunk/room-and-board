@@ -6,7 +6,7 @@
 // these four earned their taps back when the badge still carried an expand
 // glyph that promised a destination they did not have. The glyph is gone
 // (2026-08-02); the destinations it forced are the lasting part.
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { closeExpand, isExpandOpen } from '../site/js/expand.js';
 import { closeTextViewer, defersToExpand } from '../site/js/textviewer.js';
 import { ledgerColumns, ledgerBody } from '../site/js/ledger.js';
@@ -414,41 +414,62 @@ describe('World Clock expand', () => {
   });
 
   describe('the minute-aligned repaint', () => {
+    // A fake clock: `schedule` hands back an id the way setTimeout does, and
+    // `cancel` records the id it was asked to drop.
+    const fakeTimers = () => {
+      const armed = [];
+      const cancelled = [];
+      return {
+        armed,
+        cancelled,
+        schedule: (fn, ms) => armed.push({ fn, ms }), // push returns the new length: the id
+        cancel: (id) => cancelled.push(id),
+      };
+    };
+
     it('repaints on the minute boundary and re-arms itself', () => {
       const body = document.createElement('div');
       document.body.appendChild(body);
       body.innerHTML = '<div class="cf cf--world"><div class="cf-dials"></div></div>';
-      const calls = [];
-      const schedule = (fn, ms) => { calls.push({ fn, ms }); return calls.length; };
-      startWorldFaceRepaint(body, wcCfg(CITIES.slice(0, 2)), schedule);
-      expect(calls).toHaveLength(1);
+      const t = fakeTimers();
+      startWorldFaceRepaint(body, wcCfg(CITIES.slice(0, 2)), t.schedule, t.cancel);
+      expect(t.armed).toHaveLength(1);
       // Aligned to the next minute, plus the engine's 80ms of slack.
-      expect(calls[0].ms).toBeGreaterThan(80);
-      expect(calls[0].ms).toBeLessThanOrEqual(60080);
-      calls[0].fn();
+      expect(t.armed[0].ms).toBeGreaterThan(80);
+      expect(t.armed[0].ms).toBeLessThanOrEqual(60080);
+      t.armed[0].fn();
       expect(body.querySelectorAll('.cf-dial').length).toBe(3); // repainted from cfg
-      expect(calls).toHaveLength(2);                            // and re-armed
+      expect(t.armed).toHaveLength(2);                          // and re-armed
     });
 
-    it('stops itself when the overlay closes, with no engine close hook', () => {
-      // closeExpand empties the overlay, which detaches the body element it
-      // handed to onFit — isConnected is the whole liveness signal.
+    it('hands back the stop, and the stop cancels the tick that is armed', () => {
+      // No liveness poll any more: the view is TOLD it is going away (the
+      // engine's onClose) instead of deducing it from a detached element.
       const body = document.createElement('div');
       document.body.appendChild(body);
-      const calls = [];
-      const schedule = (fn, ms) => { calls.push({ fn, ms }); return calls.length; };
-      startWorldFaceRepaint(body, wcCfg(CITIES), schedule);
-      expect(calls).toHaveLength(1);
-      body.remove(); // the reader tapped away
-      calls[0].fn();
-      expect(calls).toHaveLength(1); // never armed again
+      const t = fakeTimers();
+      const stop = startWorldFaceRepaint(body, wcCfg(CITIES), t.schedule, t.cancel);
+      expect(t.armed).toHaveLength(1);
+      t.armed[0].fn();          // one minute passes, so the timer id moves on
+      expect(t.armed).toHaveLength(2);
+      stop();
+      expect(t.cancelled).toEqual([2]); // the tick currently armed, not the first one
     });
 
-    it('never arms against a body that was already detached', () => {
-      const orphan = document.createElement('div');
-      const calls = [];
-      startWorldFaceRepaint(orphan, wcCfg(CITIES), (fn, ms) => calls.push({ fn, ms }));
-      expect(calls).toHaveLength(0);
+    it('leaves no timer running once the engine closes the view', () => {
+      // The whole point, wired end to end: tap the card, the face starts
+      // repainting; close the view and NOTHING of it is still scheduled. Before
+      // the close hook this timer outlived the overlay and only stopped at the
+      // next tick, once it noticed its body had been detached.
+      vi.useFakeTimers();
+      const { card } = board('worldclock', renderWorldclock, wcVm(CITIES), wcCfg(CITIES), [3, 2]);
+      card.querySelector('.card__body').click();
+      expect(isExpandOpen()).toBe(true);
+      // The idle auto-close and the minute repaint, both live.
+      expect(vi.getTimerCount()).toBe(2);
+      closeExpand();
+      expect(vi.getTimerCount()).toBe(0);
+      vi.useRealTimers();
     });
   });
 });

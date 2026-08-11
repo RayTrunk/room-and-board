@@ -106,7 +106,7 @@ describe('the dashboard canvas is viewport-INDEPENDENT', () => {
 
   it('models the overlays against the SMALLEST viewport as a constant, not a measurement', () => {
     // Deliberately left alone in the viewport ship: markets' ticker wall has no
-    // measured fit backstop (only subway registers an onFit), so a canvas that
+    // measured fit backstop (only subway fits itself on open), so a canvas that
     // grew on a Navigator would be unverified layout there — exactly the
     // ongoing per-device test burden this file exists to prevent. The models
     // get the floor; the 160px a Navigator has spare stays unspent.

@@ -122,21 +122,25 @@ export function fitWorldFace(body) {
 // repaints on the minute boundary, the same alignment (and the same no-seconds
 // calm) as the screensaver engine.
 //
-// It stops itself, which is why the engine needs no close hook: closeExpand
-// empties the overlay, detaching this very body element, so `isConnected` is
-// the liveness signal. The 60s idle auto-close bounds the whole thing anyway —
-// a reader sees at most one repaint.
-export function startWorldFaceRepaint(body, cfg, schedule = setTimeout) {
+// Returns the stop. The engine tells the view when it is going away
+// (openExpand's `onClose`) and that call is what ends this, on the one event
+// that actually means it. The first cut had no such seam, so it watched
+// body.isConnected instead and deduced its own closure from the fact that
+// closeExpand had detached the element under it. That worked, and the comment
+// here read it as a feature, but a repaint that has to infer whether anyone is
+// still watching is a view doing the engine's job. The 60s idle auto-close
+// bounds the whole thing either way: a reader sees at most one repaint.
+export function startWorldFaceRepaint(body, cfg, schedule = setTimeout, cancel = clearTimeout) {
+  let timer = null;
   const arm = () => {
-    if (!body?.isConnected) return null;
-    return schedule(() => {
-      if (!body.isConnected) return; // closed between the arm and the tick
+    timer = schedule(() => {
       body.innerHTML = clockFaceHtml('worldclocks', cfg);
       fitWorldFace(body);
       arm();
     }, 60000 - (Date.now() % 60000) + 80);
   };
-  return arm();
+  arm();
+  return () => cancel(timer);
 }
 
 export function render(el, vm, cfg) {
@@ -169,13 +173,19 @@ export function render(el, vm, cfg) {
     },
   });
   // Built at TAP time, not here: the face must read the clock the moment it is
-  // opened, not the clock at the last card refresh.
-  setExpandSource(el, () => ({
-    title: meta.title,
-    bodyHtml: clockFaceHtml('worldclocks', cfg),
-    onFit: (bodyEl) => {
-      fitWorldFace(bodyEl);
-      startWorldFaceRepaint(bodyEl, cfg);
-    },
-  }));
+  // opened, not the clock at the last card refresh. The repaint is per view,
+  // so the stop lives in the build's own closure and one open can never cancel
+  // another's timer.
+  setExpandSource(el, () => {
+    let stopRepaint = null;
+    return {
+      title: meta.title,
+      bodyHtml: clockFaceHtml('worldclocks', cfg),
+      onOpen: (bodyEl) => {
+        fitWorldFace(bodyEl);
+        stopRepaint = startWorldFaceRepaint(bodyEl, cfg);
+      },
+      onClose: () => stopRepaint?.(),
+    };
+  });
 }

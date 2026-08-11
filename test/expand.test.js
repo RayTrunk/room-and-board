@@ -188,6 +188,71 @@ describe('expand engine', () => {
   });
 });
 
+describe('the view hears its own lifetime', () => {
+  it('tells the view when its body is on screen, once, and again when it goes away', () => {
+    const heard = [];
+    openExpand({
+      title: 'x',
+      bodyHtml: '<div class="wall"></div>',
+      onOpen: (b) => heard.push(`open ${b?.className}`),
+      onClose: () => heard.push('close'),
+    });
+    // The LIVE body, not the snapshot string: `hidden` has already cleared, so
+    // there is something to measure.
+    expect(heard).toEqual(['open expand__body']);
+    closeExpand();
+    expect(heard).toEqual(['open expand__body', 'close']);
+    closeExpand(); // told once: a second close has nothing left to tell
+    expect(heard).toEqual(['open expand__body', 'close']);
+  });
+
+  it('tells the view it is going away when the idle window is what closes it', () => {
+    // Every ending goes through the same seam, which is the whole point of
+    // owning the lifecycle: the world clock's repaint has to stop whether the
+    // reader tapped away or simply walked off.
+    vi.useFakeTimers();
+    const heard = [];
+    openExpand({ title: 'x', bodyHtml: '<p>x</p>', onClose: () => heard.push('close') });
+    vi.advanceTimersByTime(EXPAND_IDLE_MS + 1);
+    expect(isExpandOpen()).toBe(false);
+    expect(heard).toEqual(['close']);
+  });
+
+  it('never displaces a live view without telling it', () => {
+    // Single instance is the standing rule, so the only handover is
+    // close-then-open, and a view B that is refused must not be charged against
+    // A: A is still on screen and has heard nothing.
+    const heard = [];
+    openExpand({ title: 'A', bodyHtml: '<p>a</p>', onOpen: () => heard.push('A open'), onClose: () => heard.push('A close') });
+    expect(openExpand({ title: 'B', bodyHtml: '<p>b</p>', onOpen: () => heard.push('B open'), onClose: () => heard.push('B close') })).toBe(false);
+    expect(heard).toEqual(['A open']);
+    expect(isExpandOpen()).toBe(true);
+
+    closeExpand();
+    openExpand({ title: 'B', bodyHtml: '<p>b</p>', onOpen: () => heard.push('B open'), onClose: () => heard.push('B close') });
+    expect(heard).toEqual(['A open', 'A close', 'B open']);
+    closeExpand();
+    expect(heard).toEqual(['A open', 'A close', 'B open', 'B close']);
+  });
+
+  it('opens for a view that wants neither hook', () => {
+    expect(openExpand({ title: 'x', bodyHtml: '<p>x</p>' })).toBe(true);
+    expect(() => closeExpand()).not.toThrow();
+  });
+
+  it('is armed before the body goes live, so a view that closes on the way in still hears it', () => {
+    const heard = [];
+    openExpand({
+      title: 'x',
+      bodyHtml: '<p>x</p>',
+      onOpen: () => { heard.push('open'); closeExpand(); },
+      onClose: () => heard.push('close'),
+    });
+    expect(heard).toEqual(['open', 'close']);
+    expect(isExpandOpen()).toBe(false);
+  });
+});
+
 describe('markets card tap', () => {
   it('opens every configured ticker when the +N badge is showing', () => {
     const symbols = ['^DJI', '^IXIC', '^GSPC', 'AAPL', 'MSFT', 'NVDA', 'GOOGL', 'AMZN'];
@@ -809,11 +874,11 @@ describe('subway adaptive columns', () => {
     expect(() => fitStatusBoard(null, twelve())).not.toThrow();
   });
 
-  it('hands the fitter through to the overlay that opened it', () => {
-    // The card registers onFit alongside its bodyHtml, and openExpand runs it on
-    // the LIVE body — after `hidden` clears, so there is something to measure.
+  it('is the fit the subway view runs when its body goes live', () => {
+    // The card registers the fitter as its onOpen alongside the bodyHtml, so
+    // the ladder is measured against the real canvas before the reader sees it.
     const seen = [];
-    openExpand({ title: 'x', bodyHtml: '<div class="wall"></div>', onFit: (b) => seen.push(b?.className) });
+    openExpand({ title: 'x', bodyHtml: '<div class="wall"></div>', onOpen: (b) => seen.push(b?.className) });
     expect(seen).toEqual(['expand__body']);
     closeExpand();
   });

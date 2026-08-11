@@ -9,8 +9,10 @@
 // first cut used a pill-only trigger whose touch-target reserve cost a
 // visible train row on exactly-filled cards, a worse trade than reserving
 // rail rows for a hypothetical future row tap. The badge's "more" is the tap
-// invitation; the engine's trigger selector remains available for the news
-// wave, where rows really are tappable.
+// invitation. The news wave, whose rows really ARE tappable, then went the
+// other way and punched its live rows out of the card target (the engine's
+// `except`), so no narrowing selector was ever wanted and the engine no longer
+// carries one.
 
 import { escapeHtml } from './util.js';
 import { setMoreBadge } from './card.js';

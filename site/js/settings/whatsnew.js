@@ -45,7 +45,7 @@ function groupHtml(g) {
 //
 // Optimistic static build, then a measured trim: the same contract the cards
 // and the full-screen overlays already run on (fitTrainRows, subway's row loop,
-// expand.js's `onFit`). A fixed "open the newest N" like /info's OPEN_GROUPS
+// expand.js's `onOpen`). A fixed "open the newest N" like /info's OPEN_GROUPS
 // cannot be right here — /info's groups are 16px prose in a page that scrolls
 // for free, the board's are 24px in a fixed pane, and the groups themselves
 // range from one item to seven. Two groups fills the pane one week and

@@ -355,7 +355,7 @@ export function render(el, vm, cfg) {
         title: meta.title,
         note,
         bodyHtml: statusBoard(vm.lines),
-        onFit: (bodyEl) => fitStatusBoard(bodyEl, vm.lines),
+        onOpen: (bodyEl) => fitStatusBoard(bodyEl, vm.lines),
       })
       : null,
   );

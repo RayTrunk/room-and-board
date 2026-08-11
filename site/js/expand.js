@@ -52,7 +52,7 @@ export const BOARD_VIEWPORT_H = 1040;
 // safe on a board (viewportH - 226 is exactly 814 at 1040), but it would hand a
 // Navigator a 974px canvas that no model has ever been checked at — and of the
 // two overlays that model their own fit, only subway has a measured backstop
-// (its onFit/fitStatusBoard); markets' ticker wall ships whatever wallHeight()
+// (its onOpen/fitStatusBoard); markets' ticker wall ships whatever wallHeight()
 // believes. So a taller canvas would mean every future change to that wall needs
 // verifying on a live Room Navigator as well as on a board, which is the ongoing
 // per-device test burden this project will not take on to win one more row on a
@@ -61,6 +61,7 @@ export const OVERLAY_BODY_H = BOARD_VIEWPORT_H - 56 - 34 - 36 - 100; // 814
 
 let idleTimer = null;
 let rowTap = null; // per-session interactive-row handler (news family, wave 3)
+let closing = null; // the live view's onClose, until it is told
 
 // card element -> () => view. Weak so a re-rendered/removed card is collectable.
 const sources = new WeakMap();
@@ -127,24 +128,46 @@ export function isExpandOpen() {
 // overlays. It is re-exported here because this is where every caller looks.
 export { isOverlayOpen };
 
+// One seam for "the view on screen is going away", so a view is told exactly
+// once however it ends: a tap, the idle timer, or a handover to the next view.
+// The hook is cleared BEFORE it is called, so a hook that closes again (or
+// throws) cannot be told twice and cannot leave a second view holding it.
+function tellClosing() {
+  const hook = closing;
+  closing = null;
+  if (hook) hook();
+}
+
 // Opens the overlay on a content SNAPSHOT: bodyHtml is built by the caller at
 // open time and never re-read, so a widget refresh mid-view cannot yank the DOM
 // out from under a reader (the idle cap bounds how stale it can get).
 // bodyHtml is trusted markup — widgets escape their own values, as they do for
 // the card body itself. Returns false when the overlay refuses to open.
 //
-// `onFit` is handed the live .expand__body once it is on screen and may rewrite
-// it. It is the same contract the CARDS have had all along — an optimistic
-// static estimate, then a measured trim (fitTrainRows, subway's own row loop,
-// services') — extended to the overlays, which had no way to check their work
-// and so shipped whatever their model believed. Fit, not content: it runs once,
-// before the reader sees anything, and must converge.
+// A view has a LIFETIME, and the engine is the only thing that knows it.
+// `onOpen` is handed the live .expand__body the moment it is on screen, and
+// `onClose` is told when that view is going away. Between them a view can do
+// the three things a snapshot alone cannot:
+//
+//   fit    subway measures its alert ladder against the real canvas and sheds
+//          rungs until it converges, the same estimate-then-measure contract
+//          the CARDS have always run (fitTrainRows, services');
+//   fill   F1 swaps its outline map for the tier-1 image when that decodes,
+//          in place, with nothing waiting on it and nothing moving;
+//   live   the world clock face repaints on the minute and clears that timer
+//          on close, because a face reading 9:14 at 9:31 is simply wrong.
+//
+// The engine tells the view; a view never has to work it out. The single hook
+// this pair replaces was documented as fit-only, and the two views that were
+// not fits each said so themselves: F1 in a note apologising for the name, the
+// clock face by polling body.isConnected to deduce, from the fact that its own
+// element had been detached, that closeExpand must have run.
 //
 // `hint` is the closing line. It defaults to the board-wide "Tap anywhere to
 // close" and every view that IS just a canvas keeps that default; a view whose
 // rows are themselves tappable (the news reading list) overrides it, because
 // "tap anywhere" is a lie once one region does something else.
-export function openExpand({ title = '', note = '', stamp = '', bodyHtml = '', hint = 'Tap anywhere to close', onRowTap = null, onFit = null } = {}) {
+export function openExpand({ title = '', note = '', stamp = '', bodyHtml = '', hint = 'Tap anywhere to close', onRowTap = null, onOpen = null, onClose = null } = {}) {
   if (isExpandOpen()) return false; // single instance: opening while open is a no-op
   if (isEditing()) return false;
   // Counted here, past the guards: an expansion that actually opened is a tap
@@ -153,6 +176,10 @@ export function openExpand({ title = '', note = '', stamp = '', bodyHtml = '', h
   // counter is anonymous and content-free — how many, never of what.
   reportTap();
   const host = overlayEl();
+  // Nothing should be live here (the single-instance guard above is what makes
+  // that true), but the handover runs through the one seam regardless: whatever
+  // this open displaces hears about it.
+  tellClosing();
   rowTap = onRowTap;
   // A stale-stamped card hands its stamp through: the overlay must not read
   // fresher than the card it came from.
@@ -166,8 +193,11 @@ export function openExpand({ title = '', note = '', stamp = '', bodyHtml = '', h
     <div class="expand__body">${bodyHtml}</div>
     <p class="expand__hint">${escapeHtml(hint)}</p>`;
   host.hidden = false;
+  // Armed before onOpen runs, so a view that closes itself on the way in still
+  // hears its own goodbye.
+  closing = onClose;
   // After `hidden` clears, so the body has a real clientHeight to measure.
-  if (onFit) onFit(host.querySelector('.expand__body'));
+  if (onOpen) onOpen(host.querySelector('.expand__body'));
   resetIdle();
   return true;
 }
@@ -182,6 +212,9 @@ export function closeExpand() {
   clearTimeout(idleTimer);
   idleTimer = null;
   rowTap = null;
+  // Last, and past every teardown step: the view is told once the screen is
+  // already the board's again, and a hook that throws cannot strand the overlay.
+  tellClosing();
 }
 
 // Registers (or clears) a card's expansion. `build` returns the view to open —
@@ -189,17 +222,18 @@ export function closeExpand() {
 // showing when it was tapped. Pass null/undefined when nothing is hidden: the
 // card is then inert, matching the absent "+N" badge.
 //
-// `trigger` narrows the tap target to a selector INSIDE the card. Without it
-// the whole card is the target, which is right for cards whose rows are not
-// tappable (markets, weather, the rail boards).
+// The whole card is the target. That is the one-tap rule as the board actually
+// ships it, and there is no option to narrow it: the engine carried a `trigger`
+// selector for two waves and neither wave wanted it. Rail tried a pill-only
+// target first and gave it up because the touch reserve cost a train row
+// (train-expand.js), and the news family needed the opposite thing entirely.
 //
-// `except` is the inverse of `trigger`: a tap landing inside it is NOT the
-// card's. It exists because the news family's rows already own their taps (a
-// headline opens its story) while the card around them owes the reader the
-// whole list, and `trigger` cannot express that — closest() walks UP, so a
-// ":not(.headline)" trigger still matches the row's parent and fires anyway.
-// The two compose: `trigger` narrows to a region, `except` punches the live
-// rows back out of it. Without this the news wave double-fires by
+// `except` is that opposite thing: a tap landing inside it is NOT the card's.
+// The news rows already own their taps (a headline opens its story) while the
+// card around them owes the reader the whole list, and a narrowing selector
+// cannot express that, because closest() walks UP: a ":not(.headline)" trigger
+// still matches the row's parent and fires anyway. Punching the live rows out
+// is the only shape that works. Without it the news wave double-fires by
 // construction, since initExpand's listener is registered BEFORE the text
 // viewer's and would open the list underneath every story view.
 //
@@ -210,12 +244,12 @@ export function closeExpand() {
 // several banners. A card with subviews but no card build is legal — the
 // banner still reads on a card with nothing hidden — and only a card build
 // earns the is-expandable affordance.
-export function setExpandSource(el, build, { trigger = null, except = null, subviews = null } = {}) {
+export function setExpandSource(el, build, { except = null, subviews = null } = {}) {
   const card = el?.closest?.('.card');
   if (!card) return; // test fakes without closest(): no-op, like setMoreBadge
   const hasBuild = typeof build === 'function';
   if (hasBuild || subviews?.length) {
-    sources.set(card, { build: hasBuild ? build : null, trigger, except, subviews });
+    sources.set(card, { build: hasBuild ? build : null, except, subviews });
   } else {
     sources.delete(card);
   }
@@ -274,10 +308,9 @@ export function initExpand(host) {
     const card = e.target.closest?.('.card');
     const source = card && sources.get(card);
     if (!source) return; // nothing hidden on this card (or not an expandable one)
-    // A subview tap outranks the card view and ignores the trigger narrowing:
-    // the banner IS its own trigger.
+    // A subview tap outranks the card view and outranks `except` with it: the
+    // banner IS its own target.
     const sub = source.subviews?.find((s) => e.target.closest?.(s.selector));
-    if (!sub && source.trigger && !e.target.closest?.(source.trigger)) return; // tap missed the trigger
     if (!sub && source.except && e.target.closest?.(source.except)) return; // the row owns this tap, not the card
     if (!sub && !source.build) return; // subviews only: the card surface stays inert
     // Never stack a second full-screen view on a live one. A widget's own
@@ -308,6 +341,6 @@ export function initExpand(host) {
     if (!source?.build) return;
     e.preventDefault(); // Space must not scroll the page under the board
     press.clear();
-    (source.trigger ? card.querySelector(source.trigger) ?? card : card).click();
+    card.click();
   });
 }
