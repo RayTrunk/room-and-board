@@ -16,7 +16,7 @@ export function mapSubstackPosts(json) {
       t: Math.floor((Date.parse(p?.post_date ?? '') || 0) / 1000),
     }))
     .filter((p) => p.title);
-  return { updatedAt: Math.floor(Date.now() / 1000), stale: false, posts: posts.slice(0, 12) };
+  return { posts: posts.slice(0, 12) };
 }
 
 export async function fetchSubstackPosts(slug) {

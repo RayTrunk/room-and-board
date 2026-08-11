@@ -2,17 +2,21 @@ import { describe, it, expect, vi } from 'vitest';
 import { CHECKS, runHealthChecks, notify, alertPlan, nextFailingState, heartbeat } from '../../worker/src/health.js';
 
 // Valid response bodies keyed by a unique substring of each check's URL, so a
-// mock fetch can answer every probe with a shape its validator accepts.
+// mock fetch can answer every probe with a shape its validator accepts. The
+// worker's OWN routes (the `path` checks) all answer through cached(), which
+// stamps the digest envelope on every payload, so their bodies carry it here
+// too: a `path` body without updatedAt now fails its check on purpose.
+const STAMP = () => ({ updatedAt: Math.floor(Date.now() / 1000), stale: false });
 const OK_BODIES = {
   'version.json': { version: '2026.07.22-abc1234' },
   'changelog.json': [{ date: 'August 7', items: [{ lead: 'A new name', text: 'Now called Quadrillé.' }] }],
-  '/markets': { indices: [{ symbol: '^DJI', price: 52376.73 }] },
+  '/markets': { ...STAMP(), indices: [{ symbol: '^DJI', price: 52376.73 }] },
   'open-meteo': { hourly: { temperature_2m: [70, 71, 69] } },
-  'gdrive': { photos: [{ id: 'a' }, { id: 'b' }] },
-  'amtrak': { station: 'New York Penn', departures: [] }, // empty at night is still healthy
-  '/njt': { station: 'NY', trains: [{ time: 9999999999, dest: 'Trenton' }] }, // far-future = an upcoming departure exists
-  '/services/status': { services: [{ id: 'm365', label: 'Microsoft 365', state: 'ok', note: 'All systems operational', incidents: [] }] },
-  '/sports/team': { row: { lg: 'mlb', abbr: 'NYY', name: 'Yankees', record: '48-38', line: 'vs MIN · 7:05 PM' } },
+  'gdrive': { ...STAMP(), photos: [{ id: 'a' }, { id: 'b' }] },
+  'amtrak': { ...STAMP(), station: 'New York Penn', departures: [] }, // empty at night is still healthy
+  '/njt': { ...STAMP(), station: 'NY', trains: [{ time: 9999999999, dest: 'Trenton' }] }, // far-future = an upcoming departure exists
+  '/services/status': { ...STAMP(), services: [{ id: 'm365', label: 'Microsoft 365', state: 'ok', note: 'All systems operational', incidents: [] }] },
+  '/sports/team': { ...STAMP(), row: { lg: 'mlb', abbr: 'NYY', name: 'Yankees', record: '48-38', line: 'vs MIN · 7:05 PM' } },
 };
 const bodyFor = (url) => OK_BODIES[Object.keys(OK_BODIES).find((k) => url.includes(k))];
 
@@ -191,6 +195,25 @@ describe('stale-age (cached routes serving old data)', () => {
     const markets = byName(report, 'markets');
     expect(markets.ok).toBe(true);
     expect(markets.detail).toMatch(/ok \(stale \d+ min\)/);
+  });
+
+  it('FAILS an own route whose payload carries no updatedAt', async () => {
+    // The silent-exemption bug: a feed that stopped stamping got a null age, the
+    // staleness test skipped on null, and the check reported ok. The feed least
+    // able to describe itself was the one nothing could catch, so this is loud now.
+    const body = JSON.stringify({ indices: [{ price: 100 }] }); // valid shape, no stamp
+    const report = await run({ '/markets': { body } });
+    expect(byName(report, 'markets')).toMatchObject({ ok: false, detail: 'no updatedAt (unstamped payload)' });
+    expect(report.ok).toBe(false);
+  });
+
+  it('leaves external checks alone: third-party JSON never promised a stamp', async () => {
+    // version.json and the front door's changelog carry no envelope and never
+    // will; only our own routes are held to it.
+    const report = await run();
+    expect(byName(report, 'site').ok).toBe(true);
+    expect(byName(report, 'frontdoor').ok).toBe(true);
+    expect(byName(report, 'weather').ok).toBe(true);
   });
 
   it('treats a 503 not-configured route as skipped, not failed', async () => {

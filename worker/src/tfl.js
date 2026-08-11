@@ -16,7 +16,7 @@ export function mapTfl(json) {
       ok: status === 'Good Service', status, reason: String(st.reason ?? '').slice(0, 500),
     };
   });
-  return { updatedAt: Math.floor(Date.now() / 1000), stale: false, lines };
+  return { lines };
 }
 
 export async function fetchTfl(env) {

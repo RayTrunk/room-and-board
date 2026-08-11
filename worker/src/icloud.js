@@ -52,7 +52,7 @@ export function mapIcloudAlbum(ws, au, maxBytes) {
     });
   }
   photos.sort((a, b) => (b.date > a.date ? 1 : b.date < a.date ? -1 : 0)); // newest first
-  return { updatedAt: Math.floor(Date.now() / 1000), stale: false, photos: photos.slice(0, MAX_PHOTOS) };
+  return { photos: photos.slice(0, MAX_PHOTOS) };
 }
 
 export async function fetchIcloudAlbum(token, maxBytes = 3_000_000) {

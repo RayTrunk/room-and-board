@@ -166,5 +166,5 @@ export async function fetchTeamSummary(lg, id, origin) {
       liveComp = null; // scoreless live line still renders cleanly
     }
   }
-  return { updatedAt: Math.floor(Date.now() / 1000), stale: false, row: mapTeamSummary(teamJson, lastLine || null, lg, liveComp, nextLine || null) };
+  return { row: mapTeamSummary(teamJson, lastLine || null, lg, liveComp, nextLine || null) };
 }

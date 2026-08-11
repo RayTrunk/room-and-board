@@ -132,6 +132,23 @@ const STALE_TTL_S = 24 * 3600;
 // (see below) instead of restarting the clock on the board.
 const FRESH_UNTIL = 'X-Fresh-Until';
 
+// Every digest this worker serves carries the same envelope: `updatedAt` (epoch
+// seconds) for when the data was obtained, `stale` for whether it is last-good
+// rather than current. Plenty reads it: the health monitor pages on a feed that
+// is stale and no longer recovering, the board dims that card and prints its "as
+// of" clock, mendServiceStatuses weighs a backup row's age before reusing it.
+// Remembering to stamp used to be each mapper's job, and forgetting failed
+// silently in the worst direction: with no updatedAt the monitor skipped its age
+// test entirely and called the feed ok, so the one feed that had lost the plot
+// was also the one exempt from being caught. The stamp belongs here instead, at
+// the single place that knows a fetch just happened. A fetcher whose updatedAt
+// MEANS something (the ferry feed's own header clock, the NJT timetable's fetch
+// time) keeps it: the spread order below fills in only what was left unsaid.
+const stamped = (digest) =>
+  (digest && typeof digest === 'object' && !Array.isArray(digest)
+    ? { updatedAt: Math.floor(Date.now() / 1000), stale: false, ...digest }
+    : digest);
+
 async function cached(origin, key, ttlS, fetcher, { mend, failBackoffS = 0 } = {}) {
   const cache = caches.default;
   const freshKey = new Request(`${origin}/__cache/fresh/${encodeURIComponent(key)}`);
@@ -181,7 +198,7 @@ async function cached(origin, key, ttlS, fetcher, { mend, failBackoffS = 0 } = {
     if (failed) return lastGoodOrError(await failed.text());
   }
   try {
-    let fresh = await fetcher();
+    let fresh = stamped(await fetcher());
     // A route may hand in a mend(): when the fetch came back partial and a
     // complete 24h backup exists, the backup fills the holes. The mended
     // payload keeps partial: true, so it still caches briefly and still never
@@ -293,7 +310,7 @@ async function fetchMarkets(symbols) {
   // Mark an incomplete batch so cached() won't promote it over a complete 24h
   // stale backup (a later total outage should serve the full list, not this).
   const partial = indices.length < symbols.length;
-  return { updatedAt: Math.floor(Date.now() / 1000), stale: false, indices, ...(partial && { partial: true }) };
+  return { indices, ...(partial && { partial: true }) };
 }
 
 // In-process dispatcher for the health monitor. A Worker fetching its OWN

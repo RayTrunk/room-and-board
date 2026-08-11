@@ -49,8 +49,6 @@ export function mapAmtrak(trainsJson, nowMs) {
   departures.sort((a, b) => a.t - b.t);
   return {
     station: NYP,
-    updatedAt: nowSec,
-    stale: false,
     departures: departures.slice(0, 25),
     alerts: [...alertSet].slice(0, 3).map((header) => ({ header })),
   };

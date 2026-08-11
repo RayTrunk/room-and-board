@@ -15,6 +15,8 @@ import { parseLegs, siriUrl } from '../../worker/src/bus.js';
 import { njtDateToEpoch } from '../../worker/src/njt.js';
 import { mapMtaAlerts } from '../../worker/src/alerts.js';
 import { resetGraphToken } from '../../worker/src/svcstatus.js';
+import STATISTA from './fixtures/statista-cotd.html?raw';
+import WORKER_SOURCE from '../../worker/src/index.js?raw';
 
 const ctx = { waitUntil() {}, passThroughOnException() {} };
 const call = (path, init, extraEnv = {}) =>
@@ -621,7 +623,6 @@ describe('golf/tennis digest routes (scores.js)', () => {
   it('fetchGolf digests the scoreboard through the shared mapper', async () => {
     stubFetch([{ match: /golf\/pga\/scoreboard/, body: golfBody }]);
     const d = await fetchGolf();
-    expect(d.stale).toBe(false);
     expect(d.name).toBe('The Open');
     expect(d.players[0]).toMatchObject({ pos: 1, name: 'S. Burns', score: '-10' });
   });
@@ -1200,7 +1201,6 @@ import gdriveFixture from './fixtures/gdrive-files.json';
 describe('mapGdriveAlbum', () => {
   it('maps the drive listing to the photo digest', () => {
     const out = mapGdriveAlbum(gdriveFixture);
-    expect(out.stale).toBe(false);
     expect(out.photos).toHaveLength(3); // no-thumb + no-dims entries skipped
     expect(out.photos[0]).toEqual({
       url: 'https://lh3.googleusercontent.com/drive-storage/FAKE1=s2048',
@@ -2105,5 +2105,72 @@ describe('review batch-2 worker fixes', () => {
     const out = mapMtaAlerts(feed, 1000);
     expect(out).toHaveLength(1);
     expect(out[0].routes.sort()).toEqual(['A', 'C']);
+  });
+});
+
+// The envelope is a property of having FETCHED, not of a mapper having
+// remembered, so it has to hold for every feed route rather than for the ones
+// whose test happened to check. Each row is a route, its cache key, and the
+// least upstream that still gets a 200 back; the assertion is only ever the
+// envelope. A route added without a stamp fails here on its first run.
+describe('every feed route carries the digest envelope', () => {
+  const YAHOO = { chart: { result: [{
+    meta: { symbol: 'AAPL', regularMarketPrice: 200, chartPreviousClose: 190 },
+    timestamp: [1, 2], indicators: { quote: [{ close: [190, 200] }] },
+  }] } };
+  // A header-only feed: its timestamp is a SEMANTIC updatedAt and has to survive
+  // the chokepoint rather than be overwritten with "now".
+  const FERRY = GtfsRt.transit_realtime.FeedMessage.encode(
+    GtfsRt.transit_realtime.FeedMessage.create({
+      header: { gtfsRealtimeVersion: '2.0', timestamp: 1783123914 }, entity: [],
+    }),
+  ).finish();
+  const TEAM = { team: { abbreviation: 'NYY', shortDisplayName: 'Yankees', record: { items: [{ summary: '48-37' }] }, nextEvent: [] } };
+  const STATUSPAGE = { status: { indicator: 'none', description: 'All Systems Operational' } };
+  // One catch-all stub per route: these cases are about the envelope, not the
+  // mapping, so every upstream a route touches may answer with the same body.
+  const any = (body, extra = {}) => [{ match: /./, body, times: 12, ...extra }];
+
+  const ROUTES = [
+    ['/markets?symbols=aapl', 'markets:AAPL', any(YAHOO), {}],
+    ['/path/realtime', 'path', any({}), {}],
+    ['/ferry/departures', 'ferry', any(FERRY, { raw: true }), {}],
+    ['/posts/substack?pub=acx', 'sub:acx', any([]), {}],
+    ['/services/status?ids=zoom', 'svc:zoom', any(STATUSPAGE), {}],
+    ['/golf', 'golf', any({}), {}],
+    ['/tennis', 'tennis', any({}), {}],
+    ['/f1', 'f1', any({}), {}],
+    ['/amtrak/departures', 'amtrak', any({}), {}],
+    ['/chart', 'chart', any(STATISTA), {}],
+    ['/apod', 'apod', any([]), {}],
+    ['/citibike/status?ids=4703', 'citibike:4703', any({}), {}],
+    ['/tfl/status', 'tfl', any([]), {}],
+    ['/gdrive/album?folder=testfolder123', 'gdrive:testfolder123', any({ files: [] }), { GDRIVE_KEY: 'k' }],
+    ['/icloud/album?token=B0dGe1KmGE7CVj', 'icloud:B0dGe1KmGE7CVj', any({}), {}],
+    ['/alerts/subway', 'alerts:subway', any({ entity: [] }), {}],
+    ['/sports/team?lg=mlb&id=nyy', 'sports:mlb:nyy', any(TEAM), {}],
+    ['/news/npr', 'news:npr', any('<rss><channel></channel></rss>'), {}],
+    ['/bus/stops?legs=550789:MTA%20NYCT_X27', 'bus:550789:MTA NYCT_X27', any({}), { MTA_BUS_KEY: 'k' }],
+    ['/njt/departures', njtKey(), [
+      { match: /getToken/, body: TOKEN_RESPONSE, times: 2 },
+      { match: /getStation/, body: [], times: 4 },
+    ], NJT_ENV],
+  ];
+
+  it.each(ROUTES)('%s', async (path, key, routes, extraEnv) => {
+    await clearCache(key);
+    stubFetch(routes);
+    const res = await call(path, {}, extraEnv);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(Number.isInteger(body.updatedAt)).toBe(true);
+    expect(typeof body.stale).toBe('boolean');
+    await clearCache(key);
+  });
+
+  it('sweeps every route that goes through cached(), with none left out', () => {
+    // The value of the sweep is that it is exhaustive: a feed route added
+    // without a row above would otherwise slip past it in silence.
+    expect(ROUTES).toHaveLength([...WORKER_SOURCE.matchAll(/cached\(url\.origin,/g)].length);
   });
 });

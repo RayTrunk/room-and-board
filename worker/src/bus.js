@@ -68,5 +68,5 @@ export async function fetchBusStops(env, legs) {
       return { ...mapSiriStop(await res.json(), leg.stopId), lineRef: leg.lineRef };
     }),
   );
-  return { updatedAt: Math.floor(Date.now() / 1000), stale: false, stops };
+  return { stops };
 }

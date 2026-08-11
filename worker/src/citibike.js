@@ -16,7 +16,7 @@ export function mapCitibike(json, ids) {
       docks: Number(s.num_docks_available ?? 0),
       ok: s.is_renting === 1 && s.is_installed === 1,
     }));
-  return { updatedAt: Math.floor(Date.now() / 1000), stale: false, stations };
+  return { stations };
 }
 
 export async function fetchCitibike(ids) {

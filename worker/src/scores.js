@@ -22,7 +22,7 @@ async function scoreboard(path) {
 }
 
 export async function fetchGolf() {
-  return { updatedAt: Math.floor(Date.now() / 1000), stale: false, ...mapGolf(await scoreboard('golf/pga')) };
+  return mapGolf(await scoreboard('golf/pga'));
 }
 
 export async function fetchTennis() {
@@ -30,12 +30,8 @@ export async function fetchTennis() {
   // throws so cached() serves its stale copy instead of an empty card.
   const [atp, wta] = await Promise.allSettled([scoreboard('tennis/atp'), scoreboard('tennis/wta')]);
   if (atp.status === 'rejected' && wta.status === 'rejected') throw new Error('tennis: both tours failed');
-  return {
-    updatedAt: Math.floor(Date.now() / 1000),
-    stale: false,
-    ...mapTennis(
-      atp.status === 'fulfilled' ? atp.value : null,
-      wta.status === 'fulfilled' ? wta.value : null,
-    ),
-  };
+  return mapTennis(
+    atp.status === 'fulfilled' ? atp.value : null,
+    wta.status === 'fulfilled' ? wta.value : null,
+  );
 }

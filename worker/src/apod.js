@@ -17,7 +17,7 @@ export function mapApod(json) {
     credit: String(pick.copyright ?? '').trim(),
     date: String(pick.date ?? ''),
   } : null;
-  return { updatedAt: Math.floor(Date.now() / 1000), stale: false, photo };
+  return { photo };
 }
 
 export async function fetchApod(env) {

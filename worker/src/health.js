@@ -109,8 +109,10 @@ export const CHECKS = [
   },
 ];
 
-// Age of a payload in seconds. All worker routes stamp updatedAt as epoch
-// seconds (Math.floor(Date.now()/1000)). null when absent/unparseable.
+// Age of a payload in seconds. Every one of our own routes answers through
+// cached(), which stamps updatedAt as epoch seconds on the way out, so on a
+// `path` check this is never legitimately null (see probe). null when
+// absent/unparseable.
 function ageSeconds(updatedAt) {
   const n = Number(updatedAt);
   if (!Number.isFinite(n)) return null;
@@ -147,11 +149,21 @@ async function probe(check, selfFetch, extFetch) {
     let json;
     try { json = JSON.parse(body); } catch { return { name: check.name, ok: false, detail: 'unparseable response' }; }
     if (!check.ok(json)) return { name: check.name, ok: false, detail: 'unexpected shape/content' };
+    const age = ageSeconds(json.updatedAt);
+    // A body from one of OUR routes without a readable updatedAt is a broken
+    // route, not a shrug. The old code let it pass: age came back null, the
+    // staleness test below skipped on null, and the check reported ok. That
+    // exempted precisely the feed that had stopped telling the truth about
+    // itself from the one test built to catch it. External checks (`url`) are
+    // third-party JSON that never agreed to carry a stamp, so they are judged by
+    // their own validator alone.
+    if (check.path && age === null) {
+      return { name: check.name, ok: false, detail: 'no updatedAt (unstamped payload)' };
+    }
     // stale=true means the worker served last-good cache because the upstream
     // refresh failed. Tolerate a brief blip; FAIL once it's older than
     // maxStaleSec (the upstream has been down a while and the data is misleading).
     if (json.stale === true) {
-      const age = ageSeconds(json.updatedAt);
       const mins = age === null ? null : Math.round(age / 60);
       if (check.maxStaleSec && age !== null && age > check.maxStaleSec) {
         return { name: check.name, ok: false, detail: `stale ${mins} min old`, stale: true, ageSec: age };

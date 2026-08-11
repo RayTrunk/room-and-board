@@ -157,8 +157,6 @@ function mapConstructors(j) {
 // failed to fetch). Null blocks degrade to null/[] rather than throwing.
 export function mapF1(nextJson, lastJson, driversJson, teamsJson) {
   return {
-    updatedAt: Math.floor(Date.now() / 1000),
-    stale: false,
     season: seasonOf(nextJson, driversJson, teamsJson, lastJson),
     next: mapNext(nextJson),
     ...mapLast(lastJson),

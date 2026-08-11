@@ -32,7 +32,7 @@ export function mapGdriveAlbum(json) {
   }
   // The query orders by createdTime desc, so the newest photos are already
   // first — no re-sort (and the cap keeps the newest 60 of larger folders).
-  return { updatedAt: Math.floor(Date.now() / 1000), stale: false, photos };
+  return { photos };
 }
 
 export async function fetchGdriveAlbum(env, folderId) {

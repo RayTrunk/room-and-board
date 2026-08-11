@@ -566,7 +566,7 @@ export async function fetchServiceStatuses(ids, env) {
   // copy carrying an unknown row, so a single flaky provider erased the very
   // history the mend below borrows from (same failure the F1 card hit).
   const partial = services.some((s) => s.state === 'unknown');
-  return { updatedAt: Math.floor(Date.now() / 1000), stale: false, services, ...(partial && { partial: true }) };
+  return { services, ...(partial && { partial: true }) };
 }
 
 // How old a backup row may be and still stand in for an unknown one. NOT the

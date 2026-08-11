@@ -28,7 +28,7 @@ export function mapRidePath(json, nowSec) {
     }
     stations[code] = dirs;
   }
-  return { updatedAt: nowSec, stale: false, stations };
+  return { stations };
 }
 
 export async function fetchPathRealtime() {
