@@ -5,7 +5,8 @@
 // trip's final stop name and the route chip is omitted — labels degrade,
 // correctness doesn't.
 
-import { escapeHtml, fmtMin, fmtTime, setCardNote } from '../util.js';
+import { escapeHtml, fmtMin, fmtTime } from '../util.js';
+import { setCardNote } from '../card.js';
 import { WORKER_URL } from '../env.js';
 import { itemCapacity, cardSize } from '../capacity.js';
 import { wireTrainExpand } from '../train-expand.js';

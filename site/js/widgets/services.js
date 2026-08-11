@@ -4,7 +4,8 @@
 // full-screen text viewer shows the incident detail. Rows sort worst-first
 // (see SEVERITY) so a problem survives the capacity slice.
 
-import { escapeHtml, fmtClock, setCardNote, setMoreBadge, setupPrompt } from '../util.js';
+import { escapeHtml, fmtClock, setupPrompt } from '../util.js';
+import { setCardNote, setMoreBadge } from '../card.js';
 import { WORKER_URL } from '../env.js';
 import { itemCapacity, cardSize } from '../capacity.js';
 import { openTextViewer, defersToExpand } from '../textviewer.js';

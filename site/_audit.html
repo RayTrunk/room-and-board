@@ -56,6 +56,7 @@
   import { normalizeConfig, decodeConfig, DEFAULT_CONFIG } from './js/config.js';
   import { MIN_SIZE, DEFAULT_LAYOUT, firstFit } from './js/layout.js';
   import { itemCapacity } from './js/capacity.js';
+  import { buildCard, applyCardRect } from './js/card.js';
   import { DEMO_VMS } from './demo/fixtures.js';
   import { fullVMs, FULL_CFG } from './demo/fixtures-full.js';
   import * as clock from './js/widgets/clock.js';
@@ -177,16 +178,14 @@
   for (const r of shown) {
     const mod = byId[r.id];
     if (!mod) { console.error('[audit] no renderer module for', r.id); continue; }
-    const card = document.createElement('article');
-    card.className = `card card--${r.id}`;
-    card.setAttribute('data-widget', r.id);
-    card.innerHTML = `<h2 class="card__title">${mod.meta.title}</h2><div class="card__body"></div><div class="card__stamp" hidden></div>`;
-    card.style.gridColumn = `${r.x + 1} / span ${r.w}`;
-    card.style.gridRow = `${r.y + 1} / span ${r.h}`;
-    card.dataset.w = r.w; card.dataset.h = r.h;
-    card.classList.add(`t-${r.h <= 2 ? 's' : r.h <= 4 ? 'm' : 'l'}`);
-    if (r.w <= 4) card.classList.add('t-narrow');
+    // The board's own card, built and sized by card.js: this harness exists to
+    // measure what the wall shows, so a card of its own construction would be
+    // measuring something else. buildCard rather than cardFor because ?sizes=
+    // may name the same widget several times on one page, and cardFor's
+    // identity-by-widget-id would fold those repeats into a single card.
+    const card = buildCard(mod);
     grid.appendChild(card);
+    applyCardRect(card, r);
     try { mod.render(card.querySelector('.card__body'), VMS[r.id], cfg); }
     catch (e) { card.querySelector('.card__body').textContent = `RENDER ERROR: ${e.message}`; }
   }

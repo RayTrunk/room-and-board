@@ -3,7 +3,8 @@
 import { normalizeConfig, decodeConfig, CURATED_SOURCES, imageFit } from './config.js';
 import { loadConfig, saveConfig, loadCache, saveCache, takePendingEdit } from './store.js';
 import { fetchJSON, fetchBuffer, fetchText } from './net.js';
-import { fmtClock, fitViewport } from './util.js';
+import { fitViewport } from './util.js';
+import { cardFor, markFresh, markStale, setCardConfigSource } from './card.js';
 import { blockZoomGestures } from './zoomguard.js';
 import { schedule } from './scheduler.js';
 import { resolveMode, ambientSource } from './modes.js';
@@ -90,6 +91,10 @@ window.addEventListener('resize', () => fitViewport());
 blockZoomGestures(window);
 
 let cfg = null;
+// card.js reads the config it needs (the stamp's 12/24-hour format, the section
+// an unconfigured card taps into) through this getter rather than a copy, since
+// every save REPLACES cfg with a fresh object.
+setCardConfigSource(() => cfg);
 // Liveness heartbeat for the watchdog: bumped on every clock tick, NOT on
 // widget freshness. A board showing only stale data (upstream outage) or only
 // daily-refresh widgets is still alive — the clock proves the page isn't
@@ -103,64 +108,6 @@ let backdropList = []; // full curated backdrop set, for swipe-to-next
 let backdropIndex = 0; // which backdrop is showing (starts at the daily pick)
 let backdropDay = 0; // local day the index was computed for (rollover detection)
 const cancels = [];
-
-function cardFor(mod, rect) {
-  let card = document.querySelector(`[data-widget="${mod.meta.id}"]`);
-  if (!card) {
-    card = document.createElement('article');
-    card.className = `card card--${mod.meta.id}`;
-    card.setAttribute('data-widget', mod.meta.id);
-    card.innerHTML = `
-      <h2 class="card__title">${mod.meta.title}</h2>
-      <div class="card__body"></div>
-      <div class="card__stamp" hidden></div>`;
-    // Unconfigured cards tap straight into their Settings section — the
-    // prompt names the destination; the tap saves the trip. Card-level and
-    // inert unless a data-setup prompt is currently showing.
-    card.addEventListener('click', async () => {
-      // Retired-card prompt: straight into edit mode to swap the widget.
-      if (card.querySelector('[data-edit]')) { $('#edit').click(); return; }
-      const prompt = card.querySelector('[data-setup]');
-      if (!prompt) return;
-      const settings = await import('./settings/settings.js');
-      settings.openSettings(cfg ?? normalizeConfig({}), { focus: prompt.dataset.setup });
-    });
-    $('#grid').appendChild(card);
-  }
-  if (rect) {
-    card.style.gridColumn = `${rect.x + 1} / span ${rect.w}`;
-    card.style.gridRow = `${rect.y + 1} / span ${rect.h}`;
-    // Size hooks for per-size compact styling (container queries need a newer
-    // Chromium than gen1 boards have). Tier classes: t-s/t-m/t-l by height,
-    // t-narrow when 4 or fewer columns wide.
-    card.dataset.w = rect.w;
-    card.dataset.h = rect.h;
-    card.classList.remove('t-s', 't-m', 't-l', 't-narrow');
-    card.classList.add(`t-${rect.h <= 2 ? 's' : rect.h <= 4 ? 'm' : 'l'}`);
-    if (rect.w <= 4) card.classList.add('t-narrow');
-  }
-  return card;
-}
-
-function stampOf(card) {
-  return card.querySelector('.card__stamp');
-}
-
-function markFresh(card) {
-  card.classList.remove('is-stale');
-  stampOf(card).hidden = true;
-}
-
-function markStale(card, cachedAtSec) {
-  card.classList.add('is-stale');
-  const stamp = stampOf(card);
-  if (cachedAtSec) {
-    // Freshness stamp is a clock reading, so it follows cfg.clock24 (unlike
-    // the transit schedule times in the card body).
-    stamp.textContent = `as of ${fmtClock(cachedAtSec, cfg?.clock24)}`;
-    stamp.hidden = false;
-  }
-}
 
 function renderWidget(mod, vm, rect) {
   const card = cardFor(mod, rect);

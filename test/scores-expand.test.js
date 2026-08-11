@@ -17,35 +17,27 @@
  *      counts down from now rather than from the last fetch.
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { closeExpand, isExpandOpen, initExpand } from '../site/js/expand.js';
-import { render as renderSports, BOARD_TEAMS } from '../site/js/widgets/sports.js';
-import { render as renderGolf, BOARD_ROWS, BOARD_PLAYERS } from '../site/js/widgets/golf.js';
-import { render as renderTennis, BOARD_MATCHES, boardDay } from '../site/js/widgets/tennis.js';
-import { render as renderBus, mapBus, busMin } from '../site/js/widgets/bus.js';
+import { closeExpand, isExpandOpen } from '../site/js/expand.js';
+// Namespaces, so the scaffold can mount each widget's REAL card off its own
+// meta instead of labelling it with the bare widget id.
+import * as sports from '../site/js/widgets/sports.js';
+import * as golf from '../site/js/widgets/golf.js';
+import * as tennis from '../site/js/widgets/tennis.js';
+import * as bus from '../site/js/widgets/bus.js';
+import { board as mountBoard } from './helpers/board.js';
+
+const { render: renderSports, BOARD_TEAMS } = sports;
+const { render: renderGolf, BOARD_ROWS, BOARD_PLAYERS } = golf;
+const { render: renderTennis, BOARD_MATCHES, boardDay } = tennis;
+const { render: renderBus, mapBus, busMin } = bus;
+const MODS = { sports, golf, tennis, bus };
 
 const overlay = () => document.querySelector('#expand-view');
 const text = () => overlay().textContent.replace(/\s+/g, ' ').trim();
 
 // A one-card board with the delegated expand listener wired, as main.js does.
-function board(widget, renderFn, vm, { size = [4, 4], cfg = {} } = {}) {
-  const [w, h] = size;
-  document.body.innerHTML = `
-    <div id="grid">
-      <article class="card card--${widget}" data-widget="${widget}" data-w="${w}" data-h="${h}">
-        <h2 class="card__title">${widget}</h2>
-        <div class="card__body"></div>
-        <div class="card__stamp" hidden></div>
-      </article>
-    </div>
-    <div id="settings-root"></div>
-    <div id="edit-root"></div>`;
-  const grid = document.querySelector('#grid');
-  initExpand(grid);
-  const card = grid.querySelector('.card');
-  const body = card.querySelector('.card__body');
-  renderFn(body, vm, cfg);
-  return { grid, card, body, render: (next, c = cfg) => renderFn(body, next, c) };
-}
+const board = (widget, renderFn, vm, { size = [4, 4], cfg = {} } = {}) =>
+  mountBoard(MODS[widget], { rect: { w: size[0], h: size[1] }, vm, cfg, render: renderFn });
 
 beforeEach(() => {
   closeExpand();

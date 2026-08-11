@@ -2,7 +2,8 @@
 // plus NWS active-alert banner. All time strings stay in the device-local
 // timezone Open-Meteo returns (timezone=auto) — no Date parsing of API times.
 
-import { escapeHtml, setCardNote, chaikin } from '../util.js';
+import { escapeHtml, chaikin } from '../util.js';
+import { setCardNote } from '../card.js';
 import { icon } from '../icons.js';
 import { setExpandSource } from '../expand.js';
 

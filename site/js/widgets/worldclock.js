@@ -2,7 +2,8 @@
 // in order of current local time (earliest -> latest). Presets are the
 // D. E. Shaw offices; any IANA zone can be added. Pure Intl math, no network.
 
-import { escapeHtml, clockTimeOpts, setMoreBadge } from '../util.js';
+import { escapeHtml, clockTimeOpts } from '../util.js';
+import { setMoreBadge } from '../card.js';
 import { itemCapacity, cardSize } from '../capacity.js';
 import { setExpandSource } from '../expand.js';
 import { clockFaceHtml } from '../clockfaces.js';

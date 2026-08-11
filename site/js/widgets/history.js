@@ -1,7 +1,8 @@
 // "This Day in History" from Wikimedia's on-this-day feed (browser-direct,
 // CORS-open, keyless). Picks five events spread across the centuries.
 
-import { escapeHtml, setMoreBadge } from '../util.js';
+import { escapeHtml } from '../util.js';
+import { setMoreBadge } from '../card.js';
 import { itemCapacity, cardSize } from '../capacity.js';
 import { setExpandSource } from '../expand.js';
 

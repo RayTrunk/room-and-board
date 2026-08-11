@@ -8,7 +8,8 @@
 // Cards register a builder via setExpandSource; a card with nothing hidden
 // registers nothing and its taps stay inert.
 
-import { escapeHtml, markExpandable, isOverlayOpen } from './util.js';
+import { escapeHtml, isOverlayOpen } from './util.js';
+import { markExpandable } from './card.js';
 import { swipeAction } from './imageshow.js';
 import { reportTap } from './fleet.js';
 

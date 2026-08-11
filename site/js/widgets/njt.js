@@ -5,7 +5,8 @@
 // [] = all lines).
 
 import { WORKER_URL } from '../env.js';
-import { escapeHtml, fmtMin, fmtTime, setCardNote } from '../util.js';
+import { escapeHtml, fmtMin, fmtTime } from '../util.js';
+import { setCardNote } from '../card.js';
 import { renderAlertRows } from '../transit-alerts.js';
 import { lineChipPrefix } from '../lines.js';
 import { itemCapacity, cardSize } from '../capacity.js';

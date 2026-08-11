@@ -2,7 +2,8 @@
 // the worker's /tfl/status digest. Colour dot + name + status; tap a disrupted
 // line for the full reason.
 
-import { escapeHtml, setMoreBadge, setupPrompt } from '../util.js';
+import { escapeHtml, setupPrompt } from '../util.js';
+import { setMoreBadge } from '../card.js';
 import { WORKER_URL } from '../env.js';
 import { itemCapacity, cardSize } from '../capacity.js';
 import { openTextViewer, defersToExpand } from '../textviewer.js';

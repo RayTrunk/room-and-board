@@ -3,7 +3,8 @@
 // to Grand Central, optional destination filter, branch shown per train.
 
 import { decodeGtfsRt } from '../gtfs.js';
-import { escapeHtml, fmtMin, fmtTime, setCardNote, setupPrompt } from '../util.js';
+import { escapeHtml, fmtMin, fmtTime, setupPrompt } from '../util.js';
+import { setCardNote } from '../card.js';
 import { lineChipPrefix } from '../lines.js';
 import { WORKER_URL } from '../env.js';
 import { cardAlerts, renderAlertRows } from '../transit-alerts.js';

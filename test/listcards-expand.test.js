@@ -7,15 +7,22 @@
 // glyph that promised a destination they did not have. The glyph is gone
 // (2026-08-02); the destinations it forced are the lasting part.
 import { describe, it, expect, beforeEach } from 'vitest';
-import { closeExpand, isExpandOpen, initExpand } from '../site/js/expand.js';
-import { initTextViewer, closeTextViewer, defersToExpand } from '../site/js/textviewer.js';
+import { closeExpand, isExpandOpen } from '../site/js/expand.js';
+import { closeTextViewer, defersToExpand } from '../site/js/textviewer.js';
 import { ledgerColumns, ledgerBody } from '../site/js/ledger.js';
-import { render as renderServices, serviceItems, serviceNotes } from '../site/js/widgets/services.js';
-import { render as renderTfl, tflItems } from '../site/js/widgets/tfl.js';
-import {
-  render as renderWorldclock, worldTimes, fitWorldFace, startWorldFaceRepaint,
-} from '../site/js/widgets/worldclock.js';
-import { render as renderCitibike, bikeWells } from '../site/js/widgets/citibike.js';
+// Namespaces, so the scaffold can mount each widget's REAL card off its own
+// meta instead of labelling it with the bare widget id.
+import * as services from '../site/js/widgets/services.js';
+import * as tfl from '../site/js/widgets/tfl.js';
+import * as worldclock from '../site/js/widgets/worldclock.js';
+import * as citibike from '../site/js/widgets/citibike.js';
+import { board as mountBoard } from './helpers/board.js';
+
+const { render: renderServices, serviceItems, serviceNotes } = services;
+const { render: renderTfl, tflItems } = tfl;
+const { render: renderWorldclock, worldTimes, fitWorldFace, startWorldFaceRepaint } = worldclock;
+const { render: renderCitibike, bikeWells } = citibike;
+const MODS = { services, tfl, worldclock, citibike };
 
 const overlay = () => document.querySelector('#expand-view');
 const reader = () => document.querySelector('#text-viewer');
@@ -24,24 +31,8 @@ const readerOpen = () => reader()?.hidden === false;
 // A one-card board with BOTH delegated listeners wired, exactly as main.js does
 // — the deferral only means anything when the reader and the expand engine are
 // both listening on the same grid.
-function board(widget, renderFn, vm, cfg = {}, [w, h] = [3, 3]) {
-  document.body.innerHTML = `
-    <div id="grid">
-      <article class="card card--${widget}" data-widget="${widget}" data-w="${w}" data-h="${h}">
-        <h2 class="card__title">${widget}</h2>
-        <div class="card__body"></div>
-        <div class="card__stamp" hidden></div>
-      </article>
-    </div>
-    <div id="settings-root"></div>
-    <div id="edit-root"></div>`;
-  const grid = document.querySelector('#grid');
-  initExpand(grid);
-  initTextViewer(grid);
-  const card = grid.querySelector('.card');
-  renderFn(card.querySelector('.card__body'), vm, cfg);
-  return { grid, card, body: card.querySelector('.card__body') };
-}
+const board = (widget, renderFn, vm, cfg = {}, [w, h] = [3, 3]) =>
+  mountBoard(MODS[widget], { rect: { w, h }, vm, cfg, render: renderFn, textviewer: true });
 
 const svc = (id, state, extra = {}) => ({
   id, label: id.toUpperCase(), state, note: `${id} note`, incidents: [], ...extra,

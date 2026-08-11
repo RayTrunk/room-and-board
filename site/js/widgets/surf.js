@@ -14,7 +14,8 @@
 // no water temperature. Everything below therefore goes through num/orDash, the
 // same idioms weather.js uses for its optional readings.
 
-import { escapeHtml, setCardNote, chaikin } from '../util.js';
+import { escapeHtml, chaikin } from '../util.js';
+import { setCardNote } from '../card.js';
 import { setExpandSource } from '../expand.js';
 import { cardSize } from '../capacity.js';
 import { compass, fmtTemp, fmtWind, hourLabel, timeLabel } from './weather.js';

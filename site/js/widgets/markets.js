@@ -3,7 +3,8 @@
 // widget hides itself when the payload is unusable).
 
 import { WORKER_URL } from '../env.js';
-import { escapeHtml, fmtClock, setCardNote, setMoreBadge, chaikin } from '../util.js';
+import { escapeHtml, fmtClock, chaikin } from '../util.js';
+import { setCardNote, setMoreBadge } from '../card.js';
 import { itemCapacity, cardSize } from '../capacity.js';
 import { setExpandSource, OVERLAY_BODY_H } from '../expand.js';
 

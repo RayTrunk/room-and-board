@@ -8,7 +8,8 @@
 // the picture band by band as the bytes arrive — the "drawing in from the top"
 // that made a rotating card yank the eye across the room.
 
-import { escapeHtml, isOverlayOpen, markExpandable } from './util.js';
+import { escapeHtml, isOverlayOpen } from './util.js';
+import { markExpandable } from './card.js';
 import { stripData, stripHtml } from './ambient.js';
 import { loadCache } from './store.js';
 

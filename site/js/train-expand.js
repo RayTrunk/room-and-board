@@ -12,7 +12,8 @@
 // invitation; the engine's trigger selector remains available for the news
 // wave, where rows really are tappable.
 
-import { escapeHtml, setMoreBadge } from './util.js';
+import { escapeHtml } from './util.js';
+import { setMoreBadge } from './card.js';
 import { setExpandSource } from './expand.js';
 import { fitTrainRows } from './capacity.js';
 

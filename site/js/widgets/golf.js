@@ -3,7 +3,8 @@
 // the feed's current event IS the card. Majors (Masters/PGA/US Open/The
 // Open) ride the pga scoreboard, so they appear automatically.
 
-import { escapeHtml, setCardNote, setMoreBadge } from '../util.js';
+import { escapeHtml } from '../util.js';
+import { setCardNote, setMoreBadge } from '../card.js';
 import { itemCapacity, cardSize } from '../capacity.js';
 import { WORKER_URL } from '../env.js';
 import { setExpandSource } from '../expand.js';

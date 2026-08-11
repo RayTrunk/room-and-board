@@ -3,7 +3,8 @@
 // live counts and shows bikes (e-bikes called out) + open docks.
 
 import { WORKER_URL } from '../env.js';
-import { escapeHtml, setMoreBadge, setupPrompt } from '../util.js';
+import { escapeHtml, setupPrompt } from '../util.js';
+import { setMoreBadge } from '../card.js';
 import { itemCapacity, cardSize } from '../capacity.js';
 import { setExpandSource } from '../expand.js';
 

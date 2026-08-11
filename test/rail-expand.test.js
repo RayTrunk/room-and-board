@@ -3,33 +3,26 @@
  */
 import { describe, it, expect, beforeEach } from 'vitest';
 import { closeExpand, isExpandOpen, initExpand, setExpandSource, openExpand } from '../site/js/expand.js';
-import { render as renderLirr } from '../site/js/widgets/lirr.js';
-import { render as renderMnr } from '../site/js/widgets/mnr.js';
-import { render as renderNjt } from '../site/js/widgets/njt.js';
-import { render as renderFerry } from '../site/js/widgets/ferry.js';
+// Namespaces, so the scaffold can mount each widget's REAL card off its own
+// meta instead of a placeholder title.
+import * as lirr from '../site/js/widgets/lirr.js';
+import * as mnr from '../site/js/widgets/mnr.js';
+import * as njt from '../site/js/widgets/njt.js';
+import * as ferry from '../site/js/widgets/ferry.js';
+import { board as mountBoard } from './helpers/board.js';
+
+const { render: renderLirr } = lirr;
+const { render: renderMnr } = mnr;
+const { render: renderNjt } = njt;
+const { render: renderFerry } = ferry;
+const MODS = { lirr, mnr, njt, ferry };
 
 const overlay = () => document.querySelector('#expand-view');
 
 // A one-card board with the delegated expand listener wired, as main.js does.
 // Rail capacity at 3x2 is two rows (RAIL_ROWS), so five departures hide three.
-function railBoard(widget, renderFn, vm, cfg = {}, [w, h] = [3, 2]) {
-  document.body.innerHTML = `
-    <div id="grid">
-      <article class="card card--${widget}" data-widget="${widget}" data-w="${w}" data-h="${h}">
-        <h2 class="card__title">x</h2>
-        <span class="card__note"></span>
-        <div class="card__body"></div>
-        <div class="card__stamp" hidden></div>
-      </article>
-    </div>
-    <div id="settings-root"></div>
-    <div id="edit-root"></div>`;
-  const grid = document.querySelector('#grid');
-  initExpand(grid);
-  const card = grid.querySelector('.card');
-  renderFn(card.querySelector('.card__body'), vm, cfg);
-  return { grid, card };
-}
+const railBoard = (widget, renderFn, vm, cfg = {}, [w, h] = [3, 2]) =>
+  mountBoard(MODS[widget], { rect: { w, h }, vm, cfg, render: renderFn });
 
 const lirrDep = (i) => ({
   t: 1000 + i * 600, min: 10 + i * 10, dest: `Stop ${i}`, destId: String(i),

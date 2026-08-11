@@ -4,7 +4,8 @@
 // stop at the chosen station — matched client-side against each departure's
 // downstream stops, showing the arrival time there; unfiltered rows show the
 // train's terminus.
-import { escapeHtml, fmtMin, fmtTime, fmtClock, setCardNote, setupPrompt } from '../util.js';
+import { escapeHtml, fmtMin, fmtTime, fmtClock, setupPrompt } from '../util.js';
+import { setCardNote } from '../card.js';
 import { WORKER_URL } from '../env.js';
 import { renderAlertRows } from '../transit-alerts.js';
 import { itemCapacity, cardSize } from '../capacity.js';

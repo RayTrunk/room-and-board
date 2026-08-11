@@ -7,16 +7,30 @@ import {
   closeExpand,
   isExpandOpen,
   isEditing,
-  initExpand,
   setExpandSource,
   EXPAND_IDLE_MS,
 } from '../site/js/expand.js';
-import { render as renderHistory } from '../site/js/widgets/history.js';
-import {
-  render as renderMarkets, tileWall, tileCols, shelfCols, shelfFits, wallHeight, WALL_H,
-} from '../site/js/widgets/markets.js';
-import {
-  render as renderSubway,
+// Namespace imports: the scaffold mounts each widget's REAL card, which needs
+// the module's own meta (its id and title) rather than a hand-typed one.
+import * as history from '../site/js/widgets/history.js';
+import * as markets from '../site/js/widgets/markets.js';
+import * as subway from '../site/js/widgets/subway.js';
+import * as weather from '../site/js/widgets/weather.js';
+import { board as mountBoard, tap as pointer } from './helpers/board.js';
+import { beaconPayload, resetUsage } from '../site/js/fleet.js';
+import { normalizeConfig } from '../site/js/config.js';
+import { fmtClock } from '../site/js/util.js';
+import { setMoreBadge } from '../site/js/card.js';
+import { icon } from '../site/js/icons.js';
+import { DEMO_VMS } from '../site/demo/fixtures.js';
+import { readFileSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const { render: renderHistory } = history;
+const { render: renderMarkets, tileWall, tileCols, shelfCols, shelfFits, wallHeight, WALL_H } = markets;
+const {
+  render: renderSubway,
   statusBoard,
   alertStep,
   alertColumns,
@@ -29,16 +43,8 @@ import {
   STATUS_FALLBACK,
   ALERT_STEPS,
   fitStatusBoard,
-} from '../site/js/widgets/subway.js';
-import { render as renderWeather } from '../site/js/widgets/weather.js';
-import { beaconPayload, resetUsage } from '../site/js/fleet.js';
-import { normalizeConfig } from '../site/js/config.js';
-import { fmtClock, setMoreBadge } from '../site/js/util.js';
-import { icon } from '../site/js/icons.js';
-import { DEMO_VMS } from '../site/demo/fixtures.js';
-import { readFileSync } from 'node:fs';
-import { join, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
+} = subway;
+const { render: renderWeather } = weather;
 
 // The freshness stamp every card writes is an EPOCH rendered in the runner's
 // local timezone, so a literal ("as of 9:55 AM") only holds on a New York
@@ -78,33 +84,9 @@ const vmOf = (symbols, price = 100) => ({
   })),
 });
 
-// PointerEvent is not universally constructible under happy-dom; fall back to a
-// MouseEvent carrying a pointerId, which is all the guards read.
-function pointer(el, type, x = 0, y = 0, pointerId = 1) {
-  const Ctor = globalThis.PointerEvent ?? globalThis.MouseEvent;
-  const ev = new Ctor(type, { bubbles: true, clientX: x, clientY: y, pointerId });
-  if (ev.pointerId === undefined) Object.defineProperty(ev, 'pointerId', { value: pointerId });
-  el.dispatchEvent(ev);
-}
-
 // A one-card board with the delegated expand listener wired, as main.js does.
-function board(vm, [w, h] = [3, 2]) {
-  document.body.innerHTML = `
-    <div id="grid">
-      <article class="card card--markets" data-widget="markets" data-w="${w}" data-h="${h}">
-        <h2 class="card__title">Markets</h2>
-        <div class="card__body"></div>
-        <div class="card__stamp" hidden></div>
-      </article>
-    </div>
-    <div id="settings-root"></div>
-    <div id="edit-root"></div>`;
-  const grid = document.querySelector('#grid');
-  initExpand(grid);
-  const card = grid.querySelector('.card');
-  renderMarkets(card.querySelector('.card__body'), vm, { clock24: false });
-  return { grid, card };
-}
+const board = (vm, [w, h] = [3, 2]) =>
+  mountBoard(markets, { rect: { w, h }, vm, cfg: { clock24: false } });
 
 const overlay = () => document.querySelector('#expand-view');
 
@@ -482,23 +464,8 @@ const subwayVm = (alerts, good, headers = [SHORT]) => ({
 
 const alerting = (n, headers = [SHORT]) => subwayVm(n, 0, headers).lines;
 
-function subwayBoard(vm, [w, h] = [3, 4]) {
-  document.body.innerHTML = `
-    <div id="grid">
-      <article class="card card--subway" data-widget="subway" data-w="${w}" data-h="${h}">
-        <h2 class="card__title">Subway Status</h2>
-        <div class="card__body"></div>
-        <div class="card__stamp" hidden></div>
-      </article>
-    </div>
-    <div id="settings-root"></div>
-    <div id="edit-root"></div>`;
-  const grid = document.querySelector('#grid');
-  initExpand(grid);
-  const card = grid.querySelector('.card');
-  renderSubway(card.querySelector('.card__body'), vm, { clock24: false });
-  return { grid, card };
-}
+const subwayBoard = (vm, [w, h] = [3, 4]) =>
+  mountBoard(subway, { rect: { w, h }, vm, cfg: { clock24: false } });
 
 const wallOf = (html) => {
   const host = document.createElement('div');
@@ -948,24 +915,8 @@ describe('subway status pill', () => {
 // something richer to open, and since 2026-08-01 it says so with nothing but
 // the press tint: a mark that would appear on nearly every card eventually
 // tells a viewer nothing, so only a count keeps the corner.
-function weatherBoard(vm, cfg = { loc: { label: 'New York 10001', units: 'F' } }, [w, h] = [3, 5]) {
-  document.body.innerHTML = `
-    <div id="grid">
-      <article class="card card--weather t-l t-narrow" data-widget="weather" data-w="${w}" data-h="${h}">
-        <h2 class="card__title">Weather</h2>
-        <span class="card__note"></span>
-        <div class="card__body"></div>
-        <div class="card__stamp" hidden></div>
-      </article>
-    </div>
-    <div id="settings-root"></div>
-    <div id="edit-root"></div>`;
-  const grid = document.querySelector('#grid');
-  initExpand(grid);
-  const card = grid.querySelector('.card');
-  renderWeather(card.querySelector('.card__body'), vm, cfg);
-  return { grid, card };
-}
+const weatherBoard = (vm, cfg = { loc: { label: 'New York 10001', units: 'F' } }, [w, h] = [3, 5]) =>
+  mountBoard(weather, { rect: { w, h }, vm, cfg });
 
 describe('weather card tap', () => {
   it('always expands, and wears NO badge doing it: nothing to count', () => {
@@ -1047,23 +998,7 @@ describe('history card tap', () => {
   const histVm = (n) => ({
     events: Array.from({ length: n }, (_, i) => ({ year: 1800 + i * 20, text: `Event number ${i} happened on this day.` })),
   });
-  function histBoard(vm, [w, h] = [6, 2]) {
-    document.body.innerHTML = `
-      <div id="grid">
-        <article class="card card--history" data-widget="history" data-w="${w}" data-h="${h}">
-          <h2 class="card__title">This Day in History</h2>
-          <div class="card__body"></div>
-          <div class="card__stamp" hidden></div>
-        </article>
-      </div>
-      <div id="settings-root"></div>
-      <div id="edit-root"></div>`;
-    const grid = document.querySelector('#grid');
-    initExpand(grid);
-    const card = grid.querySelector('.card');
-    renderHistory(card.querySelector('.card__body'), vm, {});
-    return { grid, card };
-  }
+  const histBoard = (vm, [w, h] = [6, 2]) => mountBoard(history, { rect: { w, h }, vm });
 
   it('taps into the whole day: every event in the grand reading list', () => {
     const { card } = histBoard(histVm(9)); // a 6x2 card fits two events
@@ -1114,21 +1049,9 @@ describe('history card tap', () => {
  * semantics, and the badge neither states it nor depends on it.
  */
 describe('the corner badge: one form, a plain "+N", everywhere', () => {
-  // A bare card, no widget: the badge's input driven directly.
-  function bareCard(title = 'Headlines') {
-    document.body.innerHTML = `
-      <div id="grid">
-        <article class="card card--news" data-widget="news">
-          <h2 class="card__title">${title}</h2>
-          <div class="card__body"></div>
-          <div class="card__stamp" hidden></div>
-        </article>
-      </div>`;
-    const grid = document.querySelector('#grid');
-    initExpand(grid);
-    const card = grid.querySelector('.card');
-    return { grid, card, body: card.querySelector('.card__body') };
-  }
+  // A bare card, no widget behind it and no size: the badge's input driven
+  // directly, so the meta is invented rather than a module's.
+  const bareCard = (title = 'Headlines') => mountBoard({ id: 'news', title });
 
   const badge = (card) => card.querySelector('.card__more');
   // No glyph may return to the corner: the badge is digits, not iconography.

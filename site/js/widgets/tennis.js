@@ -3,7 +3,8 @@
 // on IS the card — live singles matches first, then today's upcoming, then
 // the freshest finals. Doubles are skipped (no athlete names in the feed).
 
-import { escapeHtml, setCardNote, setMoreBadge } from '../util.js';
+import { escapeHtml } from '../util.js';
+import { setCardNote, setMoreBadge } from '../card.js';
 import { itemCapacity, cardSize } from '../capacity.js';
 import { WORKER_URL } from '../env.js';
 import { setExpandSource } from '../expand.js';

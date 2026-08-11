@@ -6,7 +6,8 @@
 // card prompts for a station until one is picked (no all-trains mode).
 
 import { decodeGtfsRt } from '../gtfs.js';
-import { escapeHtml, fmtMin, fmtTime, setCardNote, setupPrompt } from '../util.js';
+import { escapeHtml, fmtMin, fmtTime, setupPrompt } from '../util.js';
+import { setCardNote } from '../card.js';
 import { lineChipPrefix } from '../lines.js';
 import { WORKER_URL } from '../env.js';
 import { cardAlerts, renderAlertRows } from '../transit-alerts.js';

@@ -1,6 +1,7 @@
 // Shared news engine: RSS parse + merge, and a parameterized headline
 // render/fetch reused by the Headlines and Markets-news widgets.
-import { escapeHtml, setMoreBadge } from '../util.js';
+import { escapeHtml } from '../util.js';
+import { setMoreBadge } from '../card.js';
 import { WORKER_URL } from '../env.js';
 import { itemCapacity, cardSize } from '../capacity.js';
 import { setExpandSource, OVERLAY_BODY_H } from '../expand.js';

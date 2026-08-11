@@ -3,7 +3,8 @@
 // from the Worker, which combines ESPN's team endpoint with a digest of the
 // heavyweight schedule payload (recent result) that boards must never fetch.
 
-import { escapeHtml, setMoreBadge, setupPrompt } from '../util.js';
+import { escapeHtml, setupPrompt } from '../util.js';
+import { setMoreBadge } from '../card.js';
 import { WORKER_URL } from '../env.js';
 import { itemCapacity, cardSize } from '../capacity.js';
 import { setExpandSource } from '../expand.js';

@@ -41,6 +41,10 @@ import * as iptv from '../site/js/widgets/iptv.js';
 import * as amtrak from '../site/js/widgets/amtrak.js';
 import * as clock from '../site/js/widgets/clock.js';
 import { fmtClock, editPrompt } from '../site/js/util.js';
+// Every card below is the REAL card the board mounts, tier classes and all,
+// which is the point: these renderers branch on the card they are handed.
+import { applyCardRect } from '../site/js/card.js';
+import { mountCard } from './helpers/board.js';
 import { sparkPath, sparkDividerX, yForValue, colorSplit, splitAtX, normalizeSymbol } from '../site/js/widgets/markets.js';
 import { chaikin } from '../site/js/util.js';
 
@@ -89,9 +93,7 @@ describe('fmtClock ("as of"/freshness reading, honors clock24)', () => {
 
 describe('card "as of" freshness note honors clock24 (via render → fmtClock)', () => {
   const noteFor = (clock24) => {
-    const c = document.createElement('article');
-    c.className = 'card';
-    c.innerHTML = '<div class="card__title"></div><div class="card__body"></div>';
+    const c = mountCard(amtrak, null, { parent: null });
     amtrak.render(
       c.querySelector('.card__body'),
       { updatedAt: Math.floor(new Date('2026-01-15T15:45:00').getTime() / 1000), departures: [] },
@@ -293,22 +295,15 @@ describe('widget renderers', () => {
 
 
   it('news and history surface overflow as a title badge, not an in-flow row', () => {
-    const mkCard = (id) => {
-      const c = document.createElement('article');
-      c.className = `card card--${id} t-s t-narrow`;
-      c.dataset.w = '3'; c.dataset.h = '2';
-      c.innerHTML = '<h2 class="card__title">T</h2><div class="card__body"></div>';
-      document.body.appendChild(c);
-      return c;
-    };
-    const nc = mkCard('news');
+    const mkCard = (mod) => mountCard(mod, { w: 3, h: 2 });
+    const nc = mkCard(news);
     news.render(nc.querySelector('.card__body'), { nowMs: Date.now(), items: Array.from({ length: 20 }, (_, i) => ({ title: `Story ${i}`, t: Date.now() - i * 1000, source: 'X' })) }, CFG);
     expect(nc.querySelector('.card__more')?.textContent).toBe('+18'); // cap 2 at 3x2
     expect(nc.querySelector('.card__more svg')).toBeNull(); // the count alone
     expect(nc.classList.contains('has-more')).toBe(true);
     expect(nc.querySelector('.more-hint')).toBeNull();
     nc.remove();
-    const hc = mkCard('history');
+    const hc = mkCard(history);
     history.render(hc.querySelector('.card__body'), { events: Array.from({ length: 20 }, (_, i) => ({ year: 1900 + i, text: `Event ${i}` })) }, CFG);
     // History expands and news does not, and the corner says exactly the same
     // thing on both: one form board-wide (2026-08-01), text only (2026-08-02).
@@ -318,11 +313,7 @@ describe('widget renderers', () => {
     hc.remove();
   });
   it('setMoreBadge removes the badge and fade class when nothing is hidden', () => {
-    const c = document.createElement('article');
-    c.className = 'card card--news';
-    c.dataset.w = '4'; c.dataset.h = '8';
-    c.innerHTML = '<h2 class="card__title">T</h2><div class="card__body"></div>';
-    document.body.appendChild(c);
+    const c = mountCard(news, { w: 4, h: 8 });
     const body = c.querySelector('.card__body');
     const items = (n) => ({ nowMs: Date.now(), items: Array.from({ length: n }, (_, i) => ({ title: `S${i}`, t: 0, source: 'X' })) });
     news.render(body, items(20), CFG); // overflows → badge on
@@ -356,12 +347,7 @@ describe('widget renderers', () => {
   });
 
   it('weather adds the hourly precip row only on tall cards, and only with data', () => {
-    const card = document.createElement('article');
-    card.className = 'card card--weather';
-    card.dataset.w = '4';
-    card.dataset.h = '5';
-    card.innerHTML = '<h2 class="card__title">Weather</h2><div class="card__body"></div>';
-    document.body.appendChild(card);
+    const card = mountCard(weather, { w: 4, h: 5 });
     const body = card.querySelector('.card__body');
 
     weather.render(body, DEMO_VMS.weather, CFG);
@@ -394,13 +380,13 @@ describe('widget renderers', () => {
     expect(card.querySelector('.wx-trend').classList.contains('wx-trend--banner')).toBe(false);
 
     // Shorter cards keep their existing layout.
-    card.dataset.h = '4';
+    applyCardRect(card, { w: 4, h: 4 });
     weather.render(body, DEMO_VMS.weather, CFG);
     expect(card.querySelector('.wx-trend__row--precip')).toBeNull();
     expect(card.querySelector('.wx-trend').classList.contains('wx-trend--banner')).toBe(false);
 
     // No readings (older cached payload) → no row of blanks.
-    card.dataset.h = '5';
+    applyCardRect(card, { w: 4, h: 5 });
     weather.render(body, { ...DEMO_VMS.weather, hourly: DEMO_VMS.weather.hourly.map((x) => ({ ...x, pp: null })) }, CFG);
     expect(card.querySelector('.wx-trend__row--precip')).toBeNull();
 
@@ -415,18 +401,14 @@ describe('widget renderers', () => {
   });
 
   it('weather widens the trend domain with the card height, not the width', () => {
-    const card = document.createElement('article');
-    card.className = 'card card--weather';
-    card.innerHTML = '<h2 class="card__title">Weather</h2><div class="card__body"></div>';
-    document.body.appendChild(card);
+    const card = mountCard(weather);
     const body = card.querySelector('.card__body');
     // A 4-degree overnight drift: the case that looked like a plunge once the
     // chart grew to 420px at h=8.
     const flat = [69, 68, 68, 67, 66, 66, 65, 67];
     const vm = { ...DEMO_VMS.weather, alert: null, hourly: DEMO_VMS.weather.hourly.map((x, i) => ({ ...x, temp: flat[i] })) };
     const extentAt = (w, h) => {
-      card.dataset.w = String(w);
-      card.dataset.h = String(h);
+      applyCardRect(card, { w, h });
       weather.render(body, vm, CFG);
       const d = card.querySelector('.wx-trend__line').getAttribute('d');
       const ys = d.replace(/[ML]/g, ' ').trim().split(/\s+/).map(Number).filter((_, i) => i % 2 === 1);
@@ -562,10 +544,7 @@ describe('widget renderers', () => {
   });
 
   it('lirr/mnr title-note the destination filter, and clear it when unset', () => {
-    const card = document.createElement('article');
-    card.className = 'card card--lirr';
-    card.innerHTML = '<h2 class="card__title">LIRR</h2><div class="card__body"></div>';
-    document.body.appendChild(card);
+    const card = mountCard(lirr);
     const body = card.querySelector('.card__body');
     lirr.render(body, { ...DEMO_VMS.lirr, destName: 'Mineola' }, CFG);
     expect(card.querySelector('.card__asof').textContent).toBe('stops at Mineola');
@@ -577,10 +556,7 @@ describe('widget renderers', () => {
   });
 
   it('path and ferry title-note their station/landing', () => {
-    const card = document.createElement('article');
-    card.className = 'card card--path';
-    card.innerHTML = '<h2 class="card__title">PATH</h2><div class="card__body"></div>';
-    document.body.appendChild(card);
+    const card = mountCard(pathw);
     const body = card.querySelector('.card__body');
     pathw.render(body, DEMO_VMS.path, CFG);
     expect(card.querySelector('.card__asof').textContent).toBe('33rd Street');
@@ -592,12 +568,7 @@ describe('widget renderers', () => {
   });
 
   it('mnr slices departures to card capacity like lirr (regression)', () => {
-    const card = document.createElement('article');
-    card.className = 'card card--mnr';
-    card.dataset.w = '3';
-    card.dataset.h = '2';
-    card.innerHTML = '<div class="card__body"></div>';
-    document.body.appendChild(card);
+    const card = mountCard(mnr, { w: 3, h: 2 });
     const many = { departures: Array.from({ length: 12 }, (_, i) => ({ min: i + 2, t: 1783000000 + i * 300, dest: `D${i}`, branch: 'Harlem', track: null })) };
     mnr.render(card.querySelector('.card__body'), many, CFG);
     expect(card.querySelectorAll('.train').length).toBe(2); // itemCapacity('mnr', 3, 2)
@@ -620,12 +591,7 @@ describe('widget renderers', () => {
     };
     for (const [id, mod] of [['lirr', lirr], ['mnr', mnr], ['njt', njt], ['amtrak', amtrak], ['ferry', ferry]]) {
       for (const [w, h, want] of [[6, 3, 4], [6, 4, 5], [6, 6, 9], [6, 8, 12]]) {
-        const card = document.createElement('article');
-        card.className = `card card--${id}`;
-        card.dataset.w = String(w);
-        card.dataset.h = String(h);
-        card.innerHTML = '<h2 class="card__title"></h2><div class="card__body"></div>';
-        document.body.appendChild(card);
+        const card = mountCard(mod, { w, h });
         mod.render(card.querySelector('.card__body'), structuredClone(vms[id]), CFG);
         expect(card.querySelectorAll('.train').length, `${id} ${w}x${h}`).toBe(want);
         card.remove();
@@ -634,12 +600,7 @@ describe('widget renderers', () => {
   });
 
   it('path flattens both directions into a timed list in shallow cards', () => {
-    const card = document.createElement('article');
-    card.className = 'card card--path';
-    card.dataset.w = '6';
-    card.dataset.h = '2';
-    card.innerHTML = '<div class="card__body"></div>';
-    document.body.appendChild(card);
+    const card = mountCard(pathw, { w: 6, h: 2 });
     const body = card.querySelector('.card__body');
     const vmBoth = { station: '33S', sections: [
       { dir: 'ToNY', label: 'To New York', rows: [{ min: 4, t: 1783000240, dest: '33rd Street', colors: [] }] },
@@ -650,19 +611,14 @@ describe('widget renderers', () => {
     expect(body.textContent).toContain('To NJ ·');
     // Sorted by time across directions: the sooner NJ-bound train leads.
     expect(body.querySelector('.train__dest').textContent).toContain('Journal Square');
-    card.dataset.h = '4';
+    applyCardRect(card, { w: 6, h: 4 });
     pathw.render(body, vmBoth, {});
     expect(body.querySelectorAll('.path-section__label')).toHaveLength(2);
     card.remove();
   });
 
   it('wotd hides the example sentence in 2-wide portrait cards', () => {
-    const card = document.createElement('article');
-    card.className = 'card card--wotd';
-    card.dataset.w = '2';
-    card.dataset.h = '3';
-    card.innerHTML = '<div class="card__body"></div>';
-    document.body.appendChild(card);
+    const card = mountCard(wotd, { w: 2, h: 3 });
     const body = card.querySelector('.card__body');
     wotd.render(body, DEMO_VMS.wotd, CFG);
     expect(body.querySelector('.wotd__ex')).toBeNull();
@@ -671,16 +627,11 @@ describe('widget renderers', () => {
   });
 
   it('wotd hides the example sentence in shallow cards', () => {
-    const card = document.createElement('article');
-    card.className = 'card card--wotd';
-    card.dataset.w = '3';
-    card.dataset.h = '2';
-    card.innerHTML = '<div class="card__body"></div>';
-    document.body.appendChild(card);
+    const card = mountCard(wotd, { w: 3, h: 2 });
     const body = card.querySelector('.card__body');
     wotd.render(body, DEMO_VMS.wotd, CFG);
     expect(body.textContent).not.toContain('first storm');
-    card.dataset.h = '4';
+    applyCardRect(card, { w: 3, h: 4 });
     wotd.render(body, DEMO_VMS.wotd, CFG);
     expect(body.textContent).toContain('first storm');
     card.remove();
@@ -704,12 +655,7 @@ describe('widget renderers', () => {
     // Seed the module-side pool the way a board does, then render the Quick
     // Start card (3x2): only the short saying can be whole on two lines.
     await quote.fetchData({}, { fetchJSON: async () => [SHORT, LONG] });
-    const card = document.createElement('article');
-    card.className = 'card card--quote t-s t-narrow';
-    card.dataset.w = '3';
-    card.dataset.h = '2';
-    card.innerHTML = '<h2 class="card__title">Quote of the Day</h2><div class="card__body"></div>';
-    document.body.appendChild(card);
+    const card = mountCard(quote, { w: 3, h: 2 });
     const body = card.querySelector('.card__body');
     quote.render(body, LONG, CFG);
     expect(body.querySelector('.quote__text').textContent).toContain(SHORT.text);
@@ -717,7 +663,7 @@ describe('widget renderers', () => {
     // The clamp is stamped with the same line count the pick was measured
     // against, and a deeper card is allowed more of them.
     expect(body.style.getPropertyValue('--quote-lines')).toBe('2');
-    card.dataset.h = '4';
+    applyCardRect(card, { w: 3, h: 4 });
     quote.render(body, LONG, CFG);
     expect(Number(body.style.getPropertyValue('--quote-lines'))).toBeGreaterThan(2);
     card.remove();
@@ -740,15 +686,9 @@ describe('widget renderers', () => {
 describe('services severity ordering', () => {
   const svc = (id, state) => ({ id, label: id.toUpperCase(), state, note: `${id} note`, incidents: [] });
   // A card the size the widget actually reads (data-w/h → cardSize), with the
-  // title element setMoreBadge hangs the +N off.
-  const card = (w, h) => {
-    const c = document.createElement('article');
-    c.className = 'card card--services';
-    c.dataset.w = String(w);
-    c.dataset.h = String(h);
-    c.innerHTML = '<h2 class="card__title">Cloud Services</h2><div class="card__body"></div>';
-    return c;
-  };
+  // title element setMoreBadge hangs the +N off. Out of the document on
+  // purpose: nothing here needs it there.
+  const card = (w, h) => mountCard(services, { w, h }, { parent: null });
   const labels = (host) => [...host.querySelectorAll('.svc__name')].map((n) => n.textContent);
 
   it('ranks major outages first, then minor, then unknown, then operational', () => {
@@ -834,15 +774,7 @@ describe('services severity ordering', () => {
 // summary line. Green services yield the space; the severity sort, the
 // fill-to-fit loops and the corner +N already handle the bumping.
 describe('services incident lines', () => {
-  const card = (w, h) => {
-    const c = document.createElement('article');
-    c.className = 'card card--services';
-    c.dataset.w = String(w);
-    c.dataset.h = String(h);
-    c.innerHTML = '<h2 class="card__title">Cloud Services</h2><div class="card__body"></div>';
-    document.body.appendChild(c);
-    return c;
-  };
+  const card = (w, h) => mountCard(services, { w, h });
   const notes = (host) => [...host.querySelectorAll('.svc__note')].map((n) => n.textContent);
   const rowNotes = (host, i) => [...host.querySelectorAll('.svc')[i].querySelectorAll('.svc__note')]
     .map((n) => n.textContent);
@@ -1051,10 +983,7 @@ describe('art viewer strip + swipes', () => {
 
 describe('markets freshness note', () => {
   it('writes an as-of time into the card header', () => {
-    const card = document.createElement('article');
-    card.className = 'card card--markets';
-    card.innerHTML = '<h2 class="card__title">Markets</h2><div class="card__body"></div>';
-    document.body.appendChild(card);
+    const card = mountCard(markets);
     markets.render(card.querySelector('.card__body'), DEMO_VMS.markets, CFG);
     const asof = card.querySelector('.card__title .card__asof');
     expect(asof).not.toBeNull();
@@ -1097,12 +1026,8 @@ describe('orderBySymbols — config order reaches the screen', () => {
   });
 
   it('renders the card and the wall behind the tap in the SAME config order', () => {
-    const card = document.createElement('article');
-    card.className = 'card card--markets';
-    card.dataset.w = '4';
-    card.dataset.h = '2'; // shallow: capacity 3, so a 4th falls behind the tap
-    card.innerHTML = '<h2 class="card__title">Markets</h2><div class="card__body"></div>';
-    document.body.appendChild(card);
+    // Shallow: capacity 3, so a 4th falls behind the tap.
+    const card = mountCard(markets, { w: 4, h: 2 });
     const body = card.querySelector('.card__body');
     const vm = { updatedAt: null, stale: false, indices: syms(['^DJI', 'AAPL', 'MSFT', 'CSCO']) };
     markets.render(body, vm, { markets: { symbols: ['CSCO', '^DJI', 'MSFT', 'AAPL'] } });
@@ -1121,11 +1046,10 @@ describe('orderBySymbols — config order reaches the screen', () => {
 
 describe('setCardNote', () => {
   it('creates, updates and removes the title note', async () => {
-    const { setCardNote } = await import('../site/js/util.js');
-    const card = document.createElement('article');
-    card.className = 'card';
-    card.innerHTML = '<h2 class="card__title">X</h2><div class="card__body"></div>';
-    document.body.appendChild(card);
+    const { setCardNote } = await import('../site/js/card.js');
+    // No widget behind this one: the operation is what is under test, so the
+    // meta is invented.
+    const card = mountCard({ id: 'note', title: 'X' });
     const body = card.querySelector('.card__body');
     setCardNote(body, 'stops at Mineola');
     expect(card.querySelector('.card__title .card__asof').textContent).toBe('stops at Mineola');
@@ -1174,11 +1098,7 @@ describe('markets 2-day sparkline', () => {
   });
   it('draws the divider only on wide cards that carry two sessions', () => {
     const mk = (w) => {
-      const card = document.createElement('article');
-      card.className = 'card card--markets';
-      card.dataset.w = String(w); card.dataset.h = '3';
-      card.innerHTML = '<h2 class="card__title">Markets</h2><div class="card__body"></div>';
-      document.body.appendChild(card);
+      const card = mountCard(markets, { w, h: 3 });
       markets.render(card.querySelector('.card__body'), DEMO_VMS.markets, CFG);
       return card;
     };

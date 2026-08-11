@@ -16,15 +16,7 @@ import {
   isOverlayOpen,
   closeExpand,
 } from '../site/js/expand.js';
-
-// PointerEvent is not universally constructible under happy-dom; fall back to a
-// MouseEvent carrying a pointerId, which is all the guards read.
-function pointer(el, type, x = 0, y = 0, pointerId = 1) {
-  const Ctor = globalThis.PointerEvent ?? globalThis.MouseEvent;
-  const ev = new Ctor(type, { bubbles: true, clientX: x, clientY: y, pointerId });
-  if (ev.pointerId === undefined) Object.defineProperty(ev, 'pointerId', { value: pointerId });
-  el.dispatchEvent(ev);
-}
+import { tap as pointer } from './helpers/board.js';
 
 const LINESTATUS =
   '<div class="linestatus"><span class="linestatus__text">Downtown [1][2][3] trains are running with delays after severe weather</span></div>';

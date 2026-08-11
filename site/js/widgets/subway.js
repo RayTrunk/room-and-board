@@ -3,7 +3,8 @@
 // for the lines you pick). Data is the Worker's cached digest of the MTA
 // alert feed — the raw feed runs ~800 KB, the digest ~2 KB.
 
-import { escapeHtml, fmtClock, setMoreBadge, setupPrompt } from '../util.js';
+import { escapeHtml, fmtClock, setupPrompt } from '../util.js';
+import { setMoreBadge } from '../card.js';
 import { routeBullets } from '../transit-alerts.js';
 import { WORKER_URL } from '../env.js';
 import { itemCapacity, cardSize } from '../capacity.js';

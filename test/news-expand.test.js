@@ -8,7 +8,7 @@
 // is genuinely per-card (the title and the hint's noun).
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { closeExpand, isExpandOpen, initExpand, setExpandSource, openExpand } from '../site/js/expand.js';
-import { initTextViewer, closeTextViewer } from '../site/js/textviewer.js';
+import { closeTextViewer } from '../site/js/textviewer.js';
 import {
   renderHeadlines,
   listRows,
@@ -23,6 +23,7 @@ import * as sportsnews from '../site/js/widgets/sportsnews.js';
 import * as marketsnews from '../site/js/widgets/marketsnews.js';
 import * as substack from '../site/js/widgets/substack.js';
 import * as bsky from '../site/js/widgets/bsky.js';
+import { board as mountBoard } from './helpers/board.js';
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -45,24 +46,12 @@ const items = (n, { withStory = true } = {}) =>
 // expand FIRST, then the text viewer. That order is the whole reason the row
 // exception has to exist, so the tests must reproduce it rather than a
 // convenient one.
-function board(mod, n, { w = 3, h = 2, withStory = true, vm: vmOverride } = {}) {
-  document.body.innerHTML = `
-    <div id="grid">
-      <article class="card card--${mod.meta.id}" data-widget="${mod.meta.id}" data-w="${w}" data-h="${h}">
-        <h2 class="card__title">${mod.meta.title}</h2>
-        <div class="card__body"></div>
-        <div class="card__stamp" hidden></div>
-      </article>
-    </div>
-    <div id="settings-root"></div>
-    <div id="edit-root"></div>`;
-  const grid = document.querySelector('#grid');
-  initExpand(grid);
-  initTextViewer(grid, { truncated: () => true });
-  const card = grid.querySelector('.card');
-  mod.render(card.querySelector('.card__body'), vmOverride ?? { nowMs: Date.now(), items: items(n, { withStory }) }, CFG);
-  return { grid, card, body: card.querySelector('.card__body') };
-}
+const board = (mod, n, { w = 3, h = 2, withStory = true, vm: vmOverride } = {}) => mountBoard(mod, {
+  rect: { w, h },
+  vm: vmOverride ?? { nowMs: Date.now(), items: items(n, { withStory }) },
+  cfg: CFG,
+  textviewer: { truncated: () => true },
+});
 
 const FAMILY = [news, sportsnews, marketsnews, substack, bsky];
 

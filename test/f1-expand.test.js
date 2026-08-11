@@ -19,15 +19,20 @@ import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { readFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { closeExpand, initExpand } from '../site/js/expand.js';
+import { closeExpand } from '../site/js/expand.js';
 import { clockTimeOpts } from '../site/js/util.js';
 import { mapF1 } from '../worker/src/f1.js';
-import {
+// Namespace, so the scaffold can mount the REAL f1 card off the module's own
+// meta instead of a hand-typed title.
+import * as f1 from '../site/js/widgets/f1.js';
+import { board as mountBoard } from './helpers/board.js';
+import { simplify, circuitPath, buildTracks, ERGAST_ID } from '../tools/build-f1-tracks.js';
+
+const {
   render, fetchData, f1Board, gapCell, gridCell, classification, scheduleRows,
   sessionWhen, sessionAt, lightsOut, lastWhen, trackImageUrl, upgradeTrackImage,
   BOARD_DRIVERS,
-} from '../site/js/widgets/f1.js';
-import { simplify, circuitPath, buildTracks, ERGAST_ID } from '../tools/build-f1-tracks.js';
+} = f1;
 
 import nextFx from './worker/fixtures/f1-next.json';
 import nextSprintFx from './worker/fixtures/f1-next-sprint.json';
@@ -202,24 +207,7 @@ const stubImage = ({ ok = true } = {}) => {
 };
 
 // A one-card board with the delegated expand listener wired, as main.js does.
-function board(vm, cfg = {}) {
-  document.body.innerHTML = `
-    <div id="grid">
-      <article class="card card--f1" data-widget="f1" data-w="4" data-h="4">
-        <h2 class="card__title">Formula 1</h2>
-        <div class="card__body"></div>
-        <div class="card__stamp" hidden></div>
-      </article>
-    </div>
-    <div id="settings-root"></div>
-    <div id="edit-root"></div>`;
-  const grid = document.querySelector('#grid');
-  initExpand(grid);
-  const card = grid.querySelector('.card');
-  const body = card.querySelector('.card__body');
-  render(body, vm, cfg);
-  return { grid, card, body, render: (next, c = cfg) => render(body, next, c) };
-}
+const board = (vm, cfg = {}) => mountBoard(f1, { rect: { w: 4, h: 4 }, vm, cfg });
 
 const overlay = () => document.querySelector('#expand-view');
 const text = () => overlay().textContent.replace(/\s+/g, ' ').trim();

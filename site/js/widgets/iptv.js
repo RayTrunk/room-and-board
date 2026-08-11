@@ -4,7 +4,8 @@
 // Muted always — signage never makes sound, and muted is what allows
 // autoplay. No stream is bundled or defaulted; the URL is the user's.
 
-import { setupPrompt, setCardNote, escapeHtml } from '../util.js';
+import { setupPrompt, escapeHtml } from '../util.js';
+import { setCardNote } from '../card.js';
 
 export const meta = { id: 'iptv', title: 'Live Video', refreshMs: 60 * 1000 };
 

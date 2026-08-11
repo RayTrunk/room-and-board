@@ -3,7 +3,8 @@
 // (two colors = a train serving a joint line, e.g. HOB-33 via JSQ). The
 // direction filter 'both' renders two labeled sections.
 
-import { escapeHtml, fmtMin, fmtTime, setCardNote } from '../util.js';
+import { escapeHtml, fmtMin, fmtTime } from '../util.js';
+import { setCardNote } from '../card.js';
 import { WORKER_URL } from '../env.js';
 import { itemCapacity, cardSize, sizeTier } from '../capacity.js';
 

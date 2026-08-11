@@ -3,7 +3,8 @@
 // Bus Time's distance ("approaching", "2 stops away").
 
 import { WORKER_URL } from '../env.js';
-import { escapeHtml, fmtMin, setMoreBadge, setupPrompt } from '../util.js';
+import { escapeHtml, fmtMin, setupPrompt } from '../util.js';
+import { setMoreBadge } from '../card.js';
 import { itemCapacity, cardSize } from '../capacity.js';
 import { setExpandSource } from '../expand.js';
 
