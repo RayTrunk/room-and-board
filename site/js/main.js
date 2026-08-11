@@ -1,6 +1,6 @@
 // Boot and runtime orchestration for the signage dashboard.
 
-import { normalizeConfig, decodeConfig, CURATED_SOURCES, imageFit } from './config.js';
+import { normalizeConfig, decodeConfig, CURATED_SOURCES } from './config.js';
 import { loadConfig, saveConfig, loadCache, saveCache, takePendingEdit } from './store.js';
 import { fetchJSON, fetchBuffer, fetchText } from './net.js';
 import { fitViewport } from './util.js';
@@ -12,12 +12,11 @@ import { registerWidget, getWidget } from './registry.js';
 import { chooseBootConfig } from './boot.js';
 import { parseFragment } from './bridge.js';
 import { stripData, stripHtml } from './ambient.js';
-import { createSlideshow, swipeFadeThrough, loadImage } from './imageshow.js';
-import { attachGesture } from './gesture.js';
+import { initScreensaver, setMode, isAmbient } from './screensaver.js';
 import { startBeacon, reportWidgetHealth } from './fleet.js';
 import { initTextViewer } from './textviewer.js';
 import { initExpand } from './expand.js';
-import { startClockFace, CLOCK_SOURCES } from './clockfaces.js';
+import { CLOCK_SOURCES } from './clockfaces.js';
 import { icon } from './icons.js';
 import { ensureOceanProbe } from './surf-gate.js';
 
@@ -58,7 +57,7 @@ import * as chart from './widgets/chart.js';
 import * as citibike from './widgets/citibike.js';
 import * as tfl from './widgets/tfl.js';
 import { resolvePhotosManifest } from './photos-manifest.js';
-import { fetchCuratedManifest, fetchBackdropList, backdropDayIndex, localDayNumber } from './curated.js';
+import { fetchCuratedManifest, fetchBackdropList } from './curated.js';
 
 const MODULES = [weather, subway, lirr, mnr, njt, amtrak, pathw, ferry, bus, art, history, aqi, surf, quote, wotd, markets, marketsnews, worldclock, sports, sportsnews, news, substack, bsky, photos, gdrivephotos, landscapes, services, apod, chart, citibike, tfl, f1, golf, tennis, iptv];
 for (const m of MODULES) registerWidget(m);
@@ -101,13 +100,6 @@ setCardConfigSource(() => cfg);
 // daily-refresh widgets is still alive — the clock proves the page isn't
 // wedged, so it must not trigger a reload loop.
 let lastRender = Date.now();
-let slideshow = null;
-let clockface = null; // minute-tick clock screensaver engine (clockfaces.js)
-let slideshowStarting = false; // guards the await gap in startSlideshow
-let backdropGen = 0; // guards the await gap in applyBackdrop (mode can flip mid-fetch)
-let backdropList = []; // full curated backdrop set, for swipe-to-next
-let backdropIndex = 0; // which backdrop is showing (starts at the daily pick)
-let backdropDay = 0; // local day the index was computed for (rollover detection)
 const cancels = [];
 
 function renderWidget(mod, vm, rect) {
@@ -158,7 +150,7 @@ function startWidget(mod, rect, startDelayMs = 0) {
 function renderStrip() {
   // The strip only shows in ambient mode; skip the cache reads + DOM rebuild
   // on the 30 s schedule while the dashboard grid is up.
-  if (!DEMO && !document.body.classList.contains('mode-ambient')) return;
+  if (!DEMO && !isAmbient()) return;
   if (cfg?.screensaver?.strip === false) return; // Screensaver page turned the band off
   const caches = {};
   for (const id of ['weather', 'lirr', 'mnr', 'njt']) caches[id] = loadCache(id)?.data;
@@ -183,134 +175,26 @@ function renderStrip() {
   $('#strip').innerHTML = stripHtml(data, new Date(), { showTime });
 }
 
-async function startSlideshow() {
-  // `slideshow` is only assigned after the manifest await, so two near-
-  // simultaneous calls (applyMode runs once directly + once from schedule's
-  // immediate first tick) would both pass a `slideshow`-only guard and spawn a
-  // second, un-stoppable engine. The synchronous in-flight flag closes that gap.
-  if (slideshow || slideshowStarting) return;
-  slideshowStarting = true;
-  try {
-    const src = ambientSource(cfg);
-    let manifest;
-    if (DEMO) manifest = [(await loadFixtures()).DEMO_VMS.art];
-    else if (src === 'photos') manifest = await resolvePhotosManifest(cfg, net, photos);
-    else if (src === 'gdrivephotos') manifest = await resolvePhotosManifest(cfg, net, gdrivephotos);
-    else if (CURATED_SOURCES[src]) manifest = await fetchCuratedManifest(src, net);
-    else manifest = art.filterByCats(await fetchJSON('data/art-manifest.json'), cfg.art?.cats);
-    if (!manifest.length) return; // don't lock an empty slideshow; retry next applyMode
-    // Each ambient source owns its interval: the chosen photo widget's every for
-    // its slideshow, the curated source's user rotation (its own default), art's
-    // every for art (art's setting used to leak into photos).
-    const everyMin = (src === 'photos' ? cfg.photos?.every
-      : src === 'gdrivephotos' ? cfg.gdrivephotos?.every
-      : CURATED_SOURCES[src] ? (cfg[src]?.every ?? CURATED_SOURCES[src].every)
-      : cfg.art?.every) ?? 30;
-    // Curated photo sources (Landscapes) fill the screen; art/personal photos
-    // letterbox to never crop the canvas. Same rule the tapped-open viewer asks.
-    const fit = imageFit(src);
-    slideshow = createSlideshow(manifest, $('#slideshow'), { intervalMs: everyMin * 60 * 1000, fit });
-    slideshow.start();
-  } catch (err) { console.error('[signage] slideshow unavailable', err); }
-  finally { slideshowStarting = false; }
+// Which pictures the ambient slideshow shows for a given source. It stays in
+// the boot script rather than moving into the engine because every branch of it
+// is boot-script knowledge: the demo fixtures, the photo widgets' own album
+// resolution, and the art manifest that ships with the site.
+async function ambientPhotos(src) {
+  if (DEMO) return [(await loadFixtures()).DEMO_VMS.art];
+  if (src === 'photos') return resolvePhotosManifest(cfg, net, photos);
+  if (src === 'gdrivephotos') return resolvePhotosManifest(cfg, net, gdrivephotos);
+  if (CURATED_SOURCES[src]) return fetchCuratedManifest(src, net);
+  return art.filterByCats(await fetchJSON('data/art-manifest.json'), cfg.art?.cats);
 }
 
-// CSS url() escaping for externally-sourced image URLs: quotes and backslashes
-// would otherwise terminate the url string (style-injection surface).
-const cssUrl = (u) => `url("${String(u).replaceAll('\\', '%5C').replaceAll('"', '%22')}")`;
-
-// Paints the current backdrop image into #backdrop.
-function showBackdrop() {
-  const el = $('#backdrop');
-  el.style.backgroundImage = cssUrl(backdropList[backdropIndex].img);
-  el.hidden = false;
-}
-
-// Swipe ahead of schedule: step to the next/prev backdrop. No-ops unless a clock
-// backdrop is currently showing, so it's safe to wire to the whole ambient area.
-// Preload before swapping (the slideshow's step() pattern) so the swipe never
-// flashes the fallback background while the next image streams in.
-function stepBackdrop(dir) {
-  if (backdropList.length < 2 || $('#backdrop').hidden) return;
-  backdropIndex = (backdropIndex + dir + backdropList.length) % backdropList.length;
-  // Fade-to-dark, swap, fade back — the initial-load grammar on every device
-  // (see swipeFadeThrough). The fade-out starts NOW as the acknowledgment;
-  // the decode (loadImage: decode-gated, never rejects) rides the dark beat.
-  swipeFadeThrough($('#backdrop'), loadImage(new Image(), backdropList[backdropIndex].img), showBackdrop);
-}
-
-// Shows/hides the daily photo behind a clock face. Async (folder fetch), so a
-// generation guard drops a stale result if the mode flips mid-fetch. Loads the
-// full set (for swipe-to-next) and opens on the day's deterministic pick. body's
-// .ss-backdrop class drives the clock's legibility treatment (text-shadow +
-// dial discs); a failed/empty fetch falls back to the plain dark background.
-async function applyBackdrop(on) {
-  const el = $('#backdrop');
-  const gen = ++backdropGen;
-  if (!on) { el.hidden = true; el.style.backgroundImage = ''; document.body.classList.remove('ss-backdrop'); backdropList = []; return; }
-  if (backdropList.length) {
-    // Already loaded; keep the shown image — EXCEPT across local midnight.
-    // Screensaver stretches span midnight (scheduled boards are ambient all
-    // night), so the daily rotation must advance here, not only on a reload.
-    // A new day also supersedes yesterday's manual swipe.
-    const day = localDayNumber(new Date());
-    if (day !== backdropDay) {
-      backdropDay = day;
-      backdropIndex = backdropDayIndex(new Date(), backdropList.length);
-    }
-    document.body.classList.add('ss-backdrop');
-    showBackdrop();
-    return;
-  }
-  try {
-    const list = await fetchBackdropList(net);
-    if (gen !== backdropGen) return; // mode changed while fetching — abandon
-    if (!list.length) { el.hidden = true; document.body.classList.remove('ss-backdrop'); return; }
-    backdropList = list;
-    backdropDay = localDayNumber(new Date());
-    backdropIndex = backdropDayIndex(new Date(), list.length);
-    document.body.classList.add('ss-backdrop');
-    showBackdrop();
-  } catch (err) {
-    if (gen !== backdropGen) return;
-    console.error('[signage] backdrop unavailable', err);
-    el.hidden = true;
-    document.body.classList.remove('ss-backdrop');
-  }
-}
-
+// The mode DECISION, which is all that is left here: the ?mode= override for
+// the audit harness, otherwise modes.js policy against the clock. What the
+// ambient screen then does is screensaver.js's, ladder and guards and all.
 function applyMode() {
   const forced = params.get('mode');
   const mode = forced === 'ambient' || forced === 'dashboard' ? forced : resolveMode(cfg, new Date());
-  const src = ambientSource(cfg);
-  const ambient = mode === 'ambient' && src !== null;
-  document.body.classList.toggle('mode-ambient', ambient);
-  // Clock faces reserve extra bottom space when the info strip is showing, so a
-  // wrapped (two-row) world-clock grid centers above the strip instead of
-  // colliding with it.
-  document.body.classList.toggle('has-strip', ambient && cfg.screensaver?.strip !== false);
-  $('#ambient').hidden = !ambient;
-  $('#grid').hidden = ambient;
-  if (ambient) {
-    const isClock = CLOCK_SOURCES.has(src);
-    $('#slideshow').hidden = isClock;
-    $('#clockface').hidden = !isClock;
-    $('#strip').hidden = cfg.screensaver?.strip === false;
-    if (isClock) {
-      if (slideshow) { slideshow.stop(); slideshow = null; }
-      clockface ??= startClockFace($('#clockface'), src, cfg);
-      applyBackdrop(cfg.screensaver?.backdrop === true);
-    } else {
-      if (clockface) { clockface.stop(); clockface = null; }
-      applyBackdrop(false); // photo slideshows own the full screen themselves
-      startSlideshow();
-    }
-    renderStrip();
-  } else {
-    if (slideshow) { slideshow.stop(); slideshow = null; }
-    if (clockface) { clockface.stop(); clockface = null; }
-    applyBackdrop(false);
-  }
+  setMode(mode, cfg);
+  if (isAmbient()) renderStrip();
 }
 
 function startClock() {
@@ -521,24 +405,12 @@ async function boot() {
   }
 }
 
-// Ambient slideshow swipe: left/right steps the photo/art slideshow, on the
-// board's one gesture record (gesture.js), which matches each pointerup to the
-// pointer that went down so a palm on the wall panel cannot fabricate a swipe.
-// The handler lives on the static #slideshow host (it survives createSlideshow
-// re-rendering its innerHTML) and reads the module-level `slideshow`, so every
-// ambient session is covered without re-wiring.
-attachGesture($('#slideshow'), {
-  onNext: () => slideshow?.step(1),
-  onPrev: () => slideshow?.step(-1),
-});
-
-// Clock-backdrop swipe: over a clock face the photo slideshow is hidden, so a
-// parallel handler on the ambient container steps the backdrop ahead of the
-// daily schedule. stepBackdrop no-ops unless a backdrop is actually showing, so
-// this is inert during photo slideshows (which keep their own handler above).
-attachGesture($('#ambient'), {
-  onNext: () => stepBackdrop(1),
-  onPrev: () => stepBackdrop(-1),
+// Hand the ambient engine the two content lookups it does not own, and let it
+// wire its own swipe. Top-level setup, where the swipe handlers themselves used
+// to be: the ambient nodes are in index.html, so they exist by now.
+initScreensaver({
+  photos: ambientPhotos,
+  backdrops: () => fetchBackdropList(net),
 });
 
 $('#gear').addEventListener('click', async () => {

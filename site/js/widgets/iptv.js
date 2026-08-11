@@ -6,6 +6,7 @@
 
 import { setupPrompt, escapeHtml } from '../util.js';
 import { setCardNote } from '../card.js';
+import { isAmbient } from '../screensaver.js';
 
 export const meta = { id: 'iptv', title: 'Live Video', refreshMs: 60 * 1000 };
 
@@ -248,7 +249,7 @@ export function render(el, vm, _cfg) {
   // Ambient mode hides the grid but schedules keep ticking — don't stream and
   // decode video behind the slideshow all night. The next tick after the
   // dashboard returns remounts automatically.
-  if (document.body.classList.contains('mode-ambient')) {
+  if (isAmbient()) {
     destroyMount(el);
     el.innerHTML = '';
     return;

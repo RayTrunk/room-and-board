@@ -46,7 +46,9 @@ holds the nouns.
 
 - **Ambient mode**: the screensaver state: backdrop or slideshow or clock face
   plus the info strip. The ambient engine owns entering, leaving, stepping,
-  and the midnight rollover of the daily pick.
+  and the midnight rollover of the daily pick; it lives in
+  site/js/screensaver.js and publishes the mode through isAmbient(). Which
+  mode APPLIES is main.js's decision (modes.js policy), not the engine's.
 - **Backdrop**: the full-bleed daily artwork behind ambient.
 - **Ambient strip**: the compact digest (temperature, next departures) shown in
   ambient mode (site/js/ambient.js).

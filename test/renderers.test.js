@@ -41,6 +41,7 @@ import * as iptv from '../site/js/widgets/iptv.js';
 import * as amtrak from '../site/js/widgets/amtrak.js';
 import * as clock from '../site/js/widgets/clock.js';
 import { fmtClock, editPrompt } from '../site/js/util.js';
+import { setMode } from '../site/js/screensaver.js';
 // Every card below is the REAL card the board mounts, tier classes and all,
 // which is the point: these renderers branch on the card they are handed.
 import { applyCardRect } from '../site/js/card.js';
@@ -1563,20 +1564,36 @@ describe('iptv render', () => {
   });
 
   it('tears the stream down in ambient mode and remounts on return', () => {
+    // Driven through the ambient engine rather than by faking the body class:
+    // the mode is the engine's to publish and the widget's to ask about. The
+    // shell is index.html's ambient nodes, which the engine addresses by id;
+    // the clock face is the source that needs no manifest and no network.
+    const shell = document.createElement('div');
+    shell.innerHTML = `
+      <section id="grid"></section>
+      <section id="ambient" hidden>
+        <div id="backdrop" hidden></div>
+        <div id="slideshow"></div>
+        <div id="clockface" hidden></div>
+        <div id="strip"></div>
+      </section>`;
+    document.body.appendChild(shell);
+    const ambientCfg = { screensaver: { source: 'clock', strip: false, backdrop: false } };
     const el = document.createElement('div');
     document.body.appendChild(el);
     try {
       iptv.render(el, { url: 'https://x.test/b.m3u8', label: '' }, CFG);
       expect(el.querySelector('video')).toBeTruthy();
-      document.body.classList.add('mode-ambient');
+      setMode('ambient', ambientCfg);
       iptv.render(el, { url: 'https://x.test/b.m3u8', label: '' }, CFG);
       expect(el.querySelector('video')).toBeNull();
-      document.body.classList.remove('mode-ambient');
+      setMode('dashboard', ambientCfg);
       iptv.render(el, { url: 'https://x.test/b.m3u8', label: '' }, CFG);
       expect(el.querySelector('video')).toBeTruthy();
     } finally {
+      setMode('dashboard', ambientCfg);
       el.remove();
-      document.body.classList.remove('mode-ambient');
+      shell.remove();
     }
   });
 
