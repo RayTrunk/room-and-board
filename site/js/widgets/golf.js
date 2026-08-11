@@ -5,7 +5,7 @@
 
 import { escapeHtml } from '../util.js';
 import { setCardNote, setMoreBadge } from '../card.js';
-import { itemCapacity, cardSize } from '../capacity.js';
+import { fitList } from '../capacity.js';
 import { WORKER_URL } from '../env.js';
 import { setExpandSource } from '../expand.js';
 import { mapGolf } from '../espn-scores.js';
@@ -56,22 +56,27 @@ export function render(el, vm, _cfg) {
     setExpandSource(el, null);
     return;
   }
-  const [w, h] = cardSize(el, [3, 4]);
-  const cap = itemCapacity('golf', w, h);
-  const shown = vm.players.slice(0, cap);
-  el.style.setProperty('--n', String(shown.length)); // elastic row-gap divisor
-  el.innerHTML = shown
-    .map(
-      (p) => `<div class="golf-row">
+  fitList(el, {
+    id: meta.id,
+    items: vm.players,
+    defaultSize: [3, 4],
+    badge: true,
+    draw: (n) => {
+      const shown = vm.players.slice(0, n);
+      el.style.setProperty('--n', String(shown.length)); // elastic row-gap divisor
+      el.innerHTML = shown
+        .map(
+          (p) => `<div class="golf-row">
         <span class="golf-row__pos">${p.pos ?? ''}</span>
         ${p.flag ? `<img class="golf-row__flag" src="${escapeHtml(p.flag)}" alt="">` : ''}
         <span class="golf-row__name">${escapeHtml(p.name)}</span>
         ${p.today ? `<span class="golf-row__today">${escapeHtml(p.today)}</span>` : ''}
         <span class="golf-row__score ${p.score.startsWith('-') ? 'golf-row__score--under' : ''}">${escapeHtml(p.score)}</span>
       </div>`,
-    )
-    .join('');
-  setMoreBadge(el, vm.players.length - shown.length);
+        )
+        .join('');
+    },
+  });
   // Unconditional, the history precedent: one card, one destination. The note
   // carries the event and round into the overlay's small text, the same words
   // the card title wears.

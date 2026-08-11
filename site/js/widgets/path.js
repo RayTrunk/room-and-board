@@ -6,7 +6,7 @@
 import { escapeHtml, fmtMin, fmtTime } from '../util.js';
 import { setCardNote } from '../card.js';
 import { WORKER_URL } from '../env.js';
-import { itemCapacity, cardSize, sizeTier } from '../capacity.js';
+import { fitList, cardSize, sizeTier } from '../capacity.js';
 
 export const meta = { id: 'path', title: 'PATH', refreshMs: 60 * 1000 };
 
@@ -56,7 +56,9 @@ export function mapPath(digest, cfgPath, nowSec) {
 
 export function render(el, vm, _cfg) {
   setCardNote(el, PATH_STATIONS[vm.station] ?? null);
-  const [w, h] = cardSize(el, [4, 4]);
+  // Height alone, and only for the tier branch below: the row counts come from
+  // the fits.
+  const [, h] = cardSize(el, [4, 4]);
   const sections = vm.sections ?? [];
   const both = sections.length > 1;
   const shallow = sizeTier(h) === 's';
@@ -72,14 +74,20 @@ export function render(el, vm, _cfg) {
   // Shallow cards can't afford section headers: flatten both directions into
   // one time-sorted list with the direction inline on each row instead.
   if (both && shallow) {
-    const cap = Math.max(1, itemCapacity('path', w, h) ?? 2);
-    const flat = sections
-      .flatMap((s) => s.rows.map((r) => ({ ...r, dirShort: s.dir === 'ToNY' ? 'To NY' : 'To NJ' })))
-      .sort((a, b) => a.t - b.t)
-      .slice(0, cap);
-    el.innerHTML = flat.length
-      ? flat.map((r) => row(r, r.dirShort)).join('')
-      : '<div class="empty">No trains</div>';
+    fitList(el, {
+      id: meta.id,
+      min: 1,
+      fallback: 2,
+      draw: (n) => {
+        const flat = sections
+          .flatMap((s) => s.rows.map((r) => ({ ...r, dirShort: s.dir === 'ToNY' ? 'To NY' : 'To NJ' })))
+          .sort((a, b) => a.t - b.t)
+          .slice(0, n);
+        el.innerHTML = flat.length
+          ? flat.map((r) => row(r, r.dirShort)).join('')
+          : '<div class="empty">No trains</div>';
+      },
+    });
     return;
   }
   // Drop an empty direction entirely — terminal stations (e.g. the default
@@ -91,18 +99,29 @@ export function render(el, vm, _cfg) {
     return;
   }
   const showBoth = live.length > 1;
-  const cap = Math.max(showBoth ? 2 : 1, (itemCapacity('path', w, h) ?? 4) - (showBoth ? 1 : 0));
-  // Fair share to each section, then hand any unused budget to the other.
-  let per0 = showBoth ? Math.min(live[0].rows.length, Math.ceil(cap / 2)) : cap;
-  const per1 = showBoth ? Math.min(live[1].rows.length, cap - per0) : 0;
-  if (showBoth) per0 = Math.min(live[0].rows.length, cap - per1);
-  const counts = showBoth ? [per0, per1] : [cap];
-  el.innerHTML = live
-    .map((s, i) => `<div class="path-section">
+  // A two-section board spends one row on its direction labels, and never
+  // drops below one row per section. The count is a budget shared by the two
+  // sections rather than a slice of one list, so nothing is handed over to
+  // count against and there is no corner badge to stamp.
+  fitList(el, {
+    id: meta.id,
+    min: showBoth ? 2 : 1,
+    fallback: 4,
+    reserve: showBoth ? 1 : 0,
+    draw: (cap) => {
+      // Fair share to each section, then hand any unused budget to the other.
+      let per0 = showBoth ? Math.min(live[0].rows.length, Math.ceil(cap / 2)) : cap;
+      const per1 = showBoth ? Math.min(live[1].rows.length, cap - per0) : 0;
+      if (showBoth) per0 = Math.min(live[0].rows.length, cap - per1);
+      const counts = showBoth ? [per0, per1] : [cap];
+      el.innerHTML = live
+        .map((s, i) => `<div class="path-section">
       ${showBoth ? `<div class="path-section__label">${escapeHtml(s.label)}</div>` : ''}
       ${s.rows.slice(0, counts[i]).map((r) => row(r)).join('')}
     </div>`)
-    .join('');
+        .join('');
+    },
+  });
 }
 
 export async function fetchData(cfg, net) {

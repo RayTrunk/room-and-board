@@ -4,10 +4,9 @@
 // alert feed — the raw feed runs ~800 KB, the digest ~2 KB.
 
 import { escapeHtml, fmtClock, setupPrompt } from '../util.js';
-import { setMoreBadge } from '../card.js';
 import { routeBullets } from '../transit-alerts.js';
 import { WORKER_URL } from '../env.js';
-import { itemCapacity, cardSize } from '../capacity.js';
+import { fitList } from '../capacity.js';
 import { setExpandSource, OVERLAY_BODY_H } from '../expand.js';
 
 export const meta = { id: 'subway', title: 'Subway Status', refreshMs: 2 * 60 * 1000 };
@@ -301,13 +300,6 @@ export function render(el, vm, cfg) {
     setExpandSource(el, null); // a card that lost its lines must not still expand
     return;
   }
-  const [w, h] = cardSize(el, [4, 4]);
-  const cap = itemCapacity('subway', w, h);
-  // When truncating, alerting lines take priority over Good Service rows.
-  // The overflow count rides the title badge, so it costs no row.
-  const rows = vm.lines.length > cap
-    ? [...vm.lines].sort((a, b) => Number(a.ok) - Number(b.ok)).slice(0, cap)
-    : vm.lines;
   const rowHtml = (row) => `<div class="linestatus ${row.ok ? '' : 'linestatus--alert'}">
         <span class="bullet bullet--${escapeHtml(row.line)}">${escapeHtml(row.line)}</span>
         <span class="linestatus__text">${
@@ -315,23 +307,36 @@ export function render(el, vm, cfg) {
         }</span>
         ${row.ok ? '' : '<span class="linestatus__icon" aria-hidden="true">⚠</span>'}
       </div>`;
-  const build = (n) => rows.slice(0, n).map(rowHtml).join('');
-  // Stamp the elastic row-gap divisor with every rebuild so the gap math
-  // tracks the rows actually shown as the trim loop moves n.
-  const apply = (n) => {
-    el.style.setProperty('--n', String(n));
-    el.innerHTML = build(n);
-  };
-  let shown = rows.length;
-  apply(shown);
+  // When truncating, alerting lines take priority over Good Service rows.
+  // The overflow count rides the title badge, so it costs no row.
+  //
+  // That order is settled ONCE, against the estimate, which is what the first
+  // draw carries: a card whose estimate seats every line keeps line order, and
+  // a row the measurement sheds after that comes off the bottom. Deciding it
+  // again on each shrink would re-rank a board mid-fit and float an alert into
+  // view a row at a time.
+  let ranked = null;
   // Alert rows wrap taller than the capacity pitch budgets; when they push
   // past the body, shed rows to the corner badge (services-style trim) rather
   // than clipping — the capacity model and height caps assume this backstop.
-  if (el.clientHeight > 0) {
-    while (shown > 1 && el.scrollHeight > el.clientHeight) { shown -= 1; apply(shown); }
-  }
+  // Shrink only: there is nothing above the estimate to grow into, since the
+  // rows past it were the ones the priority order already ruled out.
+  const shown = fitList(el, {
+    id: meta.id,
+    items: vm.lines,
+    measure: true,
+    badge: true,
+    draw: (n) => {
+      ranked ??= vm.lines.length > n
+        ? [...vm.lines].sort((a, b) => Number(a.ok) - Number(b.ok))
+        : vm.lines;
+      // Stamp the elastic row-gap divisor with every rebuild so the gap math
+      // tracks the rows actually shown as the trim loop moves n.
+      el.style.setProperty('--n', String(n));
+      el.innerHTML = ranked.slice(0, n).map(rowHtml).join('');
+    },
+  });
   const hidden = vm.lines.length - shown;
-  setMoreBadge(el, hidden);
   // Rows here are not tappable, so the whole card is the target and the +N badge
   // is a passive signifier — the two must agree exactly: no badge, no expansion.
   // The closure captures THIS render's vm, so the overlay always shows what the

@@ -37,7 +37,7 @@
 
 import { GRID, MIN_SIZE, MAX_SIZE, minAlternatives, contentMaxH } from './layout.js';
 import { WIDGET_GROUPS, WIDGET_IDS } from './config.js';
-import { itemCapacity } from './capacity.js';
+import { itemCapacity, trimOf } from './capacity.js';
 
 // ---------------------------------------------------------------------------
 // The demand model: one question per widget — "how much card does this user's
@@ -78,18 +78,15 @@ export const DEMAND = {
   // ---- exact: config-bounded lists ----
   sports: { kind: 'exact', count: (c) => c.sports?.teams?.length },
   markets: { kind: 'exact', count: (c) => c.markets?.symbols?.length, widthTier: [4, 6] }, // markets.js:311 twoDay spark at w>=4
-  // subway + services carry a deliberately optimistic pitch (capacity.js:45-47,
-  // :83-88) because their renderers measure the rendered box and shed trailing
-  // rows to the corner badge. Ask for a row of headroom so a wrapped alert row
-  // does not turn "shows all 6 lines" into "+1" on the wall.
-  // subway's trim is exactly 1 across the sizes the generator emits (measured
-  // 5/6 at h=4, 7/8 at h=5, 11/12 at h=7 with a third of 24 lines alerting).
-  subway: { kind: 'exact', count: (c) => c.subway?.lines?.length, trim: 1 },
+  // subway + services carry a deliberately optimistic pitch because their
+  // renderers measure the rendered box and shed trailing rows to the corner
+  // count. Ask for that headroom so a wrapped alert row does not turn "shows
+  // all 6 lines" into "+1" on the wall. How many rows each sheds is the
+  // measurement recorded next to the pitch it corrects (capacity.js TRIM), and
+  // this table no longer keeps a second opinion of it.
+  subway: { kind: 'exact', count: (c) => c.subway?.lines?.length, trim: trimOf('subway') },
   worldclock: { kind: 'exact', count: (c) => c.worldclock?.cities?.length },
-  // services runs 2 rows short, not 1: its pitch is calibrated on the typical
-  // all-Operational row and an incident note makes a row half again as tall
-  // (measured 3/5 at h=3, 5/7 at h=4, 10/12 at h=6 with 3 of 11 degraded).
-  services: { kind: 'exact', count: (c) => c.services?.list?.length, trim: 2 },
+  services: { kind: 'exact', count: (c) => c.services?.list?.length, trim: trimOf('services') },
   citibike: { kind: 'exact', count: (c) => c.citibike?.stations?.length },
   tfl: { kind: 'exact', count: (c) => c.tfl?.lines?.length },
   // bus spends 1 row on each stop header then up to 3 arrivals (capacity.js

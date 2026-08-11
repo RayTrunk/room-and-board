@@ -2,7 +2,9 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { itemCapacity, capacityLabel, bodyPx } from '../site/js/capacity.js';
+import { itemCapacity, capacityLabel, bodyPx, TRIM, trimOf } from '../site/js/capacity.js';
+import { capHeadroom } from '../site/js/layout.js';
+import { DEMAND } from '../site/js/layout-optimize.js';
 
 // Some capacity numbers are only half the answer: the other half is a pixel in
 // main.css, and nothing re-measures the two against each other at runtime. Read
@@ -93,6 +95,42 @@ describe('itemCapacity', () => {
   });
   it('returns null for widgets without a primary list', () => {
     expect(itemCapacity('art', 2, 2)).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Trim: one record, two readers.
+//
+// The number of rows subway and services shed below their estimate used to be
+// written three times at two values: layout.js said services trims 1, the
+// optimizer said 2, and only the optimizer had measured it. Both now read
+// capacity.js, and this is what stops either of them growing a table again.
+// ---------------------------------------------------------------------------
+describe('trim', () => {
+  it('records the measured numbers, and nothing that does not trim', () => {
+    expect(TRIM).toEqual({ subway: 1, services: 2 });
+    expect(trimOf('markets')).toBe(0);
+    expect(trimOf('nonsense')).toBe(0);
+  });
+
+  it('is what the optimizer discounts a card by, exactly', () => {
+    // The optimizer asks what a card shows TODAY, so it takes the whole trim.
+    for (const id of Object.keys(TRIM)) {
+      expect(DEMAND[id].trim, id).toBe(trimOf(id));
+    }
+  });
+
+  it('is what the height caps buy one row of, and only where there is trim', () => {
+    // The cap asks a different question (a standing bet, paid as dead air on
+    // every good day), so it buys one row of the trim rather than all of it.
+    // Deliberate, and measured: spending the second row on services re-packs
+    // the generator's twelve-widget board and takes markets below the height
+    // its own presentable floor puts the sparklines at (layout.js says so at
+    // length). What must never drift is WHO trims.
+    for (const id of [...Object.keys(TRIM), 'markets', 'worldclock', 'lirr']) {
+      expect(capHeadroom(id), id).toBe(Math.min(1, trimOf(id)));
+    }
+    for (const id of Object.keys(TRIM)) expect(capHeadroom(id), id).toBeGreaterThan(0);
   });
 });
 

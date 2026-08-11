@@ -6,7 +6,7 @@
 import { escapeHtml, setupPrompt } from '../util.js';
 import { setMoreBadge } from '../card.js';
 import { WORKER_URL } from '../env.js';
-import { itemCapacity, cardSize } from '../capacity.js';
+import { fitList } from '../capacity.js';
 import { setExpandSource } from '../expand.js';
 
 // ESPN's image combiner serves right-sized logos for 4K panels.
@@ -63,15 +63,17 @@ export function render(el, vm, _cfg) {
     setExpandSource(el, null); // the prompt's tap belongs to Settings, not the overlay
     return;
   }
-  const [w, h] = cardSize(el, [4, 4]);
-  const cap = itemCapacity('sports', w, h);
-  const shown = vm.rows.slice(0, cap);
-  const hidden = vm.rows.length - shown.length;
-  el.style.setProperty('--n', String(shown.length)); // elastic row-gap divisor
-  el.innerHTML =
-    shown
-      .map(
-        (r) => `<div class="team ${r.state === 'in' ? 'team--live' : ''}">
+  fitList(el, {
+    id: meta.id,
+    items: vm.rows,
+    badge: true,
+    draw: (n) => {
+      const shown = vm.rows.slice(0, n);
+      el.style.setProperty('--n', String(shown.length)); // elastic row-gap divisor
+      el.innerHTML =
+        shown
+          .map(
+            (r) => `<div class="team ${r.state === 'in' ? 'team--live' : ''}">
           ${r.logo ? `<span class="team__crest"><img class="team__logo" src="${escapeHtml(logoUrl(r.logo))}" alt=""></span>` : `<span class="team__abbr">${escapeHtml(r.abbr)}</span>`}
           <div class="team__info">
             <span class="team__name">${escapeHtml(r.name)}${r.record ? ` <small>${escapeHtml(r.record)}</small>` : ''}</span>
@@ -79,9 +81,10 @@ export function render(el, vm, _cfg) {
             ${[lastLine(r), nextLine(r)].filter(Boolean).map((t) => `<span class="team__last">${escapeHtml(t)}</span>`).join('')}
           </div>
         </div>`,
-      )
-      .join('');
-  setMoreBadge(el, hidden);
+          )
+          .join('');
+    },
+  });
   // Unconditional, the history precedent: the rows cover the card, so one card
   // means one destination and a card showing all its teams still owes a tap the
   // grand column. Only the badge tracks what the card is not showing. The

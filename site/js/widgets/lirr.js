@@ -11,7 +11,7 @@ import { setCardNote } from '../card.js';
 import { lineChipPrefix } from '../lines.js';
 import { WORKER_URL } from '../env.js';
 import { cardAlerts, renderAlertRows } from '../transit-alerts.js';
-import { itemCapacity, cardSize } from '../capacity.js';
+import { fitList } from '../capacity.js';
 import { wireTrainExpand } from '../train-expand.js';
 
 // Title is just "LIRR" — terminal context lives in settings copy and the
@@ -38,11 +38,6 @@ export function render(el, vm, cfg) {
     .filter(Boolean).join(' · ');
   setCardNote(el, note || null);
   el.classList.toggle('has-alerts', Boolean(vm.alerts?.length));
-  const [w, h] = cardSize(el, [4, 4]);
-  // Banners are not pre-charged a row: a 72px banner charged as a 61px row
-  // under-filled the card for years (backlog 23b). The full promise renders
-  // and fitTrainRows sheds what measurement says cannot fit, into the pill.
-  const cap = Math.max(1, itemCapacity('lirr', w, h));
   // Rows disambiguate their terminal only when both are on the board.
   const tagged = cfg?.lirr?.origin === 'both';
   const row = (d) => `<div class="train">
@@ -54,9 +49,19 @@ export function render(el, vm, cfg) {
             ${d.track ? `<span class="train__track">Track ${escapeHtml(d.track)}</span>` : ''}
           </div>`;
   const rows = vm.departures.map(row);
-  el.innerHTML = renderAlertRows(vm.alerts?.map((a) => ({ ...a, routes: [] })) ?? []) + '<div class="trains">' + (rows.length
-    ? rows.slice(0, cap).join('')
-    : '<div class="empty">No departures</div>') + '</div>';
+  // Banners are not pre-charged a row: a 72px banner charged as a 61px row
+  // under-filled the card for years (backlog 23b). The full promise renders
+  // and fitTrainRows sheds what measurement says cannot fit, into the pill.
+  fitList(el, {
+    id: meta.id,
+    items: rows,
+    min: 1,
+    draw: (n) => {
+      el.innerHTML = renderAlertRows(vm.alerts?.map((a) => ({ ...a, routes: [] })) ?? []) + '<div class="trains">' + (rows.length
+        ? rows.slice(0, n).join('')
+        : '<div class="empty">No departures</div>') + '</div>';
+    },
+  });
   wireTrainExpand(el, { title: meta.title, note, rows, alerts: vm.alerts ?? [] });
 }
 

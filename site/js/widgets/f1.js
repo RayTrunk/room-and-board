@@ -8,6 +8,7 @@
 
 import { escapeHtml, clockTimeOpts } from '../util.js';
 import { WORKER_URL } from '../env.js';
+import { fitList } from '../capacity.js';
 import { setExpandSource } from '../expand.js';
 import { loadImage } from '../imageshow.js';
 
@@ -396,6 +397,8 @@ export function render(el, vm, cfg) {
   const teamRow = (s) => `<div class="f1-row"><span class="f1-pos">${s.pos}</span>${dot(s.cid)}<span class="f1-name">${escapeHtml(teamName(s.cid, s.name))}</span><span class="f1-pts">${s.pts}</span></div>`;
   const col = (h, rows) => `<div class="f1-col"><div class="f1-sec__h">${h}</div>${rows}</div>`;
 
+  // Eight drivers beside eight constructors: the most the card ever deals.
+  const STANDINGS_ROWS = 16;
   const build = (dn, cn) => {
     const dCol = drivers.length ? col('Drivers', drivers.slice(0, dn).map(driverRow).join('')) : '';
     const cCol = teams.length ? col('Constructors', teams.slice(0, cn).map(teamRow).join('')) : '';
@@ -403,18 +406,23 @@ export function render(el, vm, cfg) {
     return nextBlock + podiumBlock + stand;
   };
 
-  // Static estimate for happy-dom (no layout to measure); the real board measures below.
-  let dn = 8, cn = 8;
-  el.innerHTML = build(dn, cn);
-  if (el.clientHeight > 0) {
-    let guard = 0;
-    while (el.scrollHeight > el.clientHeight + 1 && guard++ < 60) {
-      if (cn >= dn && cn > 1) cn -= 1;
-      else if (dn > 1) dn -= 1;
-      else break;
-      el.innerHTML = build(dn, cn);
-    }
-  }
+  // The standings are two columns dealing from ONE budget, so the fit counts
+  // rows across both: the drivers column keeps the odd row (ceil), which is
+  // exactly the old walk of "shrink whichever column is longer, constructors
+  // first" written as arithmetic rather than as a loop of its own. Eight a side
+  // is where it starts and where it stays wherever there is no layout to
+  // measure (happy-dom); one a side is the floor. F1 has no capacity model,
+  // this card not being a list, so STANDINGS_ROWS is both the start and the
+  // fallback. The one pixel of tolerance is the one this card shipped with:
+  // at zero it sheds a driver on a hairline overflow.
+  fitList(el, {
+    id: meta.id,
+    fallback: STANDINGS_ROWS,
+    min: 2,
+    measure: true,
+    slack: 1,
+    draw: (n) => { el.innerHTML = build(Math.ceil(n / 2), Math.floor(n / 2)); },
+  });
 
   // One card, one destination (the history precedent): every tap on a card with
   // any season on it opens the whole season, whatever the card had room for.

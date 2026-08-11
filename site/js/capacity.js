@@ -2,6 +2,18 @@
 // card size. Renderers slice to this (data is removed on purpose, never
 // clipped mid-row), and edit mode surfaces it so users see what a resize
 // gains or loses. Counts are calibrated against the browser overflow audit.
+//
+// Three things live here, in the order a row count is arrived at: the
+// capacity estimate (the table below), the trim a widget is known to shed
+// under it, and fitList, the one operation every list renderer asks its
+// question through.
+
+// setMoreBadge is the corner count's only writer, and a fit is the only thing
+// that knows what a card left out, so the stamp happens here rather than in
+// every renderer that slices a list. card.js reaches config.js, which reaches
+// layout.js, which reaches back here; nothing in that ring runs at module
+// scope, so the cycle resolves before any of it is called.
+import { setMoreBadge } from './card.js';
 
 // Usable body height in px for h grid rows on the 12x8 canvas (cell ≈ 92px
 // tall after the safe-bottom reserve, minus card chrome: padding + title).
@@ -134,6 +146,31 @@ export function itemCapacity(id, w, h) {
   return model ? model(w, h) : null;
 }
 
+// Trim: the rows a widget habitually sheds BELOW its estimate. Two of the
+// pitches above are deliberately optimistic, calibrated on the TYPICAL row (an
+// all-Operational service, a Good-Service subway line), because those two
+// renderers measure the drawn box and shed trailing rows to the corner count
+// whenever an alert or an incident note wraps taller. Anything that plans a
+// board has to discount by that.
+//
+// The fact used to be written three times at two different values: layout.js
+// budgeted services one row, layout-optimize.js two, and only the optimizer
+// carried the measurement that settles it. So the measurement wins, and it
+// lives beside the pitch it corrects, where a future recalibration cannot move
+// one and forget the other.
+//
+//   subway    1 across the sizes the generator emits (measured 5 of 6 at h=4,
+//             7 of 8 at h=5, 11 of 12 at h=7, a third of 24 lines alerting).
+//   services  2, not 1: an incident note makes a row half again as tall
+//             (measured 3 of 5 at h=3, 5 of 7 at h=4, 10 of 12 at h=6, with
+//             3 of 11 services degraded).
+//
+// The rail boards' trim is deliberately NOT here: theirs is a function of
+// whether the live feed happens to carry an alert banner, which is a fact
+// about the day rather than about the widget (layout-optimize.js DEMAND).
+export const TRIM = Object.freeze({ subway: 1, services: 2 });
+export const trimOf = (id) => TRIM[id] ?? 0;
+
 function ofTotal(shown, total, unit) {
   if (total == null) return `next ${shown} ${unit}`;
   return shown >= total ? `shows all ${total} ${unit}` : `shows ${shown} of ${total} ${unit}`;
@@ -249,4 +286,95 @@ export function cardSize(el, defaults = [4, 4]) {
   const w = Number(card?.dataset.w) || defaults[0];
   const h = Number(card?.dataset.h) || defaults[1];
   return [w, h];
+}
+
+// ---------------------------------------------------------------------------
+// THE FIT: one question, how many rows fit.
+//
+// Every list renderer used to assemble the answer itself out of the same four
+// moves (read the card's size, ask the model, clamp what the model said, then
+// slice and draw), and the clamp is exactly where nineteen call sites drifted
+// into six dialects: Math.max(1, ...) on the four rail boards, `?? 4` on five
+// more, `?? 5` on services, nothing at all on seven, and PATH writing a
+// compound of all three at once. Four widgets went further and measured the
+// drawn box, in two copies of one shrink-grow-squeeze walk that only two of
+// them had tests for.
+//
+// So the protocol is one call, and the dialects become arguments:
+//
+//   id          the widget's own meta.id, which is the capacity model's key.
+//   items       the list being sliced. Optional: a widget that spends the
+//               count as a BUDGET rather than slicing one list (bus shares it
+//               between stop headers and arrivals, PATH between two direction
+//               sections) has no single total to measure against.
+//   draw(n, squeezed)  render n items into the body. Called once for the
+//               estimate, and again for every step of the measured walk.
+//   defaultSize the size to assume when there is no card to read one from
+//               (tests render into bare divs; see cardSize).
+//   min         the floor under the estimate, and the row the shed loop will
+//               never take. This is the Math.max idiom.
+//   fallback    what to draw when the model has no entry for this id. This is
+//               the `??` idiom.
+//   reserve     rows the card spends on something other than items before it
+//               counts any (PATH's per-section labels).
+//   measure     also run the shed loop against the drawn box.
+//   squeeze     ...and, having shrunk, grow back into whatever room is left,
+//               then spend the last of it on one row drawn short. Growing and
+//               squeezing arrive together because they are one appetite: fill
+//               the card. The two shrink-only callers must not grow: subway
+//               settled its priority order against the estimate and would
+//               start dealing rows it had already ruled out, and F1's columns
+//               have no more rows to deal.
+//   slack       pixels of overflow to tolerate before shedding. F1 shipped
+//               with one of them; unifying it to zero would cost a standings
+//               row on a hairline overflow.
+//   badge       stamp the corner count with what the fit left out. Off unless
+//               asked, because three families count something else: the rail
+//               boards count after their own measured fit, the news family
+//               caps the count at what its reading list can seat, and bus
+//               counts STOPS while it fits ROWS.
+//
+// Returns the count actually drawn.
+// ---------------------------------------------------------------------------
+export function fitList(body, {
+  id, items, draw, defaultSize = [4, 4],
+  min = 0, fallback = null, reserve = 0,
+  measure = false, squeeze = false, slack = 0, badge = false,
+}) {
+  const [w, h] = cardSize(body, defaultSize);
+  // The estimate, and the whole answer wherever there is no rendered box to
+  // measure (happy-dom in tests, and any card the browser has not laid out
+  // yet). A widget with neither a model nor a fallback lands on `min`, which
+  // is what its old bare `slice(0, cap)` did with a null cap.
+  const model = itemCapacity(id, w, h) ?? fallback;
+  let n = Math.max(min, (model ?? 0) - reserve);
+  if (items) n = Math.min(items.length, n);
+  draw(n);
+  if (measure && body.clientHeight > 0) {
+    const over = () => body.scrollHeight > body.clientHeight + slack;
+    // A card sheds down to its last row and no further: one row too few is the
+    // corner count doing its job, half a row of clipping is a bug.
+    const floor = Math.max(1, min);
+    while (n > floor && over()) { n -= 1; draw(n); }
+    if (squeeze) {
+      const total = items?.length ?? n;
+      while (n < total) {
+        n += 1;
+        draw(n);
+        if (over()) { n -= 1; draw(n); break; }
+      }
+      // The loops fit WHOLE rows, so when the next one does not fit, most of a
+      // row can sit empty. Spend it on one more item drawn short (a headline
+      // clamped to one line, a service without its incident notes), because a
+      // truncated row beats blank space, and the tap still tells the whole
+      // story.
+      if (n < total) {
+        n += 1;
+        draw(n, true);
+        if (over()) { n -= 1; draw(n); }
+      }
+    }
+  }
+  if (badge && items) setMoreBadge(body, items.length - n);
+  return n;
 }

@@ -5,9 +5,9 @@
 // (see SEVERITY) so a problem survives the capacity slice.
 
 import { escapeHtml, fmtClock, setupPrompt } from '../util.js';
-import { setCardNote, setMoreBadge } from '../card.js';
+import { setCardNote } from '../card.js';
 import { WORKER_URL } from '../env.js';
-import { itemCapacity, cardSize } from '../capacity.js';
+import { fitList } from '../capacity.js';
 import { openTextViewer, defersToExpand } from '../textviewer.js';
 import { setExpandSource } from '../expand.js';
 import { ledgerBody } from '../ledger.js';
@@ -141,8 +141,8 @@ export function render(el, vm, cfg) {
         </div>
         ${dropNote ? '' : noteLines(s, maxLines).map((t) => `<div class="svc__note">${escapeHtml(t)}</div>`).join('')}
       </div>`;
-  // Markup for the first n rows. The overflow count rides the title badge
-  // (setMoreBadge below), so it costs no row. dropLastNote drops the final
+  // Markup for the first n rows. The overflow count rides the corner badge,
+  // which the fit stamps, so it costs no row. dropLastNote drops the final
   // row's incident notes — ALL of them, now that a row can carry several — to
   // spend leftover slack on one more service the tap still explains in full.
   const build = (n, dropLastNote = false, maxLines = 0) =>
@@ -153,50 +153,41 @@ export function render(el, vm, cfg) {
     el.style.setProperty('--n', String(n));
     el.innerHTML = build(n, dropLastNote, maxLines);
   };
-  // Static estimate from the capacity model — the final answer when there's no
-  // rendered box to measure (happy-dom tests).
-  const [w, h] = cardSize(el, [3, 4]);
-  const cap = itemCapacity('services', w, h) ?? 5;
-  let n = Math.min(all.length, cap);
-  apply(n);
   // Fill-to-fit: the static estimate reserves worst-case (two-line degraded)
   // height per row, but most rows are one-line "Operational", so the card
-  // usually has room for more. Grow/shrink to what actually fits.
-  if (el.clientHeight > 0) {
-    while (n > 1 && el.scrollHeight > el.clientHeight) { n -= 1; apply(n); }
-    while (n < all.length) {
-      n += 1;
-      apply(n);
-      if (el.scrollHeight > el.clientHeight) { n -= 1; apply(n); break; }
-    }
-    // Rows fit whole, so a degraded row's note-line of slack can sit empty.
-    // Spend it: show one more service without its note (tap still reveals it).
-    if (n < all.length) {
-      n += 1;
-      apply(n, true);
-      if (el.scrollHeight > el.clientHeight) { n -= 1; apply(n); }
-    }
-    // The floor's backstop. Shedding rows stops at one, but ONE service can now
-    // be several lines tall on its own, so a small card holding a six-incident
-    // Microsoft still clips with nothing left to drop. Shed that row's note
-    // lines from the bottom, one at a time, until the card fits — keeping at
-    // least one, so a degraded row never goes silent. Runs last because every
-    // loop above re-renders from scratch and would undo the trim; by here n is
-    // settled, and n === 1 is the only state that can still be overflowing
-    // (the grow and slack steps revert themselves).
-    // Trimmed LINES are not hidden SERVICES: the +N badge below counts services
-    // only, so this cannot desync the badge from the expansion, and the tap (or
-    // the expansion) still shows every incident in full.
-    if (n === 1 && el.scrollHeight > el.clientHeight) {
-      let lines = noteLines(all[0]).length;
-      while (lines > 1 && el.scrollHeight > el.clientHeight) {
-        lines -= 1;
-        apply(n, false, lines);
-      }
+  // usually has room for more. Grow/shrink to what actually fits, and spend the
+  // last of the slack on one more service drawn without its notes (the tap
+  // still reveals them).
+  const n = fitList(el, {
+    id: meta.id,
+    items: all,
+    defaultSize: [3, 4],
+    fallback: 5,
+    measure: true,
+    squeeze: true,
+    badge: true,
+    draw: apply,
+  });
+  // The floor's backstop, and the one thing the fit cannot do for this card:
+  // shedding rows stops at one, but ONE service can be several lines tall on
+  // its own, so a small card holding a six-incident Microsoft still clips with
+  // nothing left to drop. Shed that row's note lines from the bottom, one at a
+  // time, until the card fits — keeping at least one, so a degraded row never
+  // goes silent. It runs AFTER the fit because every loop in there re-renders
+  // from scratch and would undo the trim; by here the count is settled, and
+  // one row is the only state that can still be overflowing (the grow and
+  // squeeze steps revert themselves).
+  // Trimmed LINES are not hidden SERVICES: the +N badge counts services only,
+  // so this cannot desync the badge from the expansion, and the tap (or the
+  // expansion) still shows every incident in full.
+  if (n === 1 && el.clientHeight > 0 && el.scrollHeight > el.clientHeight) {
+    let lines = noteLines(all[0]).length;
+    while (lines > 1 && el.scrollHeight > el.clientHeight) {
+      lines -= 1;
+      apply(n, false, lines);
     }
   }
   const hidden = all.length - n;
-  setMoreBadge(el, hidden);
   // The corner badge and the expansion must agree exactly: no badge, no
   // expansion (the subway/rail contract). A card showing every service keeps
   // its per-row reader instead, which loses nothing — the reader shows that

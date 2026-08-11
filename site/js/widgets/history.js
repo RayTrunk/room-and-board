@@ -3,7 +3,7 @@
 
 import { escapeHtml } from '../util.js';
 import { setMoreBadge } from '../card.js';
-import { itemCapacity, cardSize } from '../capacity.js';
+import { fitList } from '../capacity.js';
 import { setExpandSource } from '../expand.js';
 
 export const meta = { id: 'history', title: 'This Day in History', refreshMs: 24 * 60 * 60 * 1000 };
@@ -15,17 +15,19 @@ export function render(el, vm, _cfg) {
     setExpandSource(el, null);
     return;
   }
-  const [w, h] = cardSize(el, [6, 2]);
-  const cap = itemCapacity('history', w, h);
   const row = (e) => `<div class="history__item">
         <span class="history__year">${e.year}</span>
         <span class="history__text">${escapeHtml(e.text)}</span>
       </div>`;
   const rows = vm.events.map(row);
-  const hidden = rows.length - Math.min(cap, rows.length);
-  el.innerHTML = `<div class="history">${rows.slice(0, cap).join('')}</div>`;
   // The overflow count rides the corner badge, in the one board-wide form.
-  setMoreBadge(el, hidden);
+  fitList(el, {
+    id: meta.id,
+    items: rows,
+    defaultSize: [6, 2],
+    badge: true,
+    draw: (n) => { el.innerHTML = `<div class="history">${rows.slice(0, n).join('')}</div>`; },
+  });
   // Whole-card tap for the whole day (Sean's pick, mockup A): the grand
   // centered reading list of every event, the card's own rows at reading size.
   // Unconditional, not only when rows are hidden: the rows cover the card, so

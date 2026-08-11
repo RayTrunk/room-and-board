@@ -9,7 +9,7 @@ import { escapeHtml, fmtMin, fmtTime } from '../util.js';
 import { setCardNote } from '../card.js';
 import { renderAlertRows } from '../transit-alerts.js';
 import { lineChipPrefix } from '../lines.js';
-import { itemCapacity, cardSize } from '../capacity.js';
+import { fitList } from '../capacity.js';
 import { wireTrainExpand } from '../train-expand.js';
 
 export const meta = { id: 'njt', title: 'NJ Transit', refreshMs: 2 * 60 * 1000 };
@@ -19,10 +19,6 @@ export function render(el, vm, _cfg) {
   // baked into the title (card-consistency contract).
   setCardNote(el, 'Penn Station');
   el.classList.toggle('has-alerts', Boolean(vm.alerts?.length));
-  const [w, h] = cardSize(el, [4, 4]);
-  // Banners are not pre-charged a row (see the lirr note): the measured fit
-  // sheds what cannot fit, into the pill.
-  const cap = Math.max(1, itemCapacity('njt', w, h));
   const row = (t) => `<div class="train">
             <div class="train__min"><span>${fmtMin(t.min)}</span><small>min</small></div>
             <div class="train__info">
@@ -32,9 +28,18 @@ export function render(el, vm, _cfg) {
             ${t.track ? `<span class="train__track">Track ${escapeHtml(t.track)}</span>` : ''}
           </div>`;
   const rows = vm.trains.map(row);
-  el.innerHTML = renderAlertRows(vm.alerts) + '<div class="trains">' + (rows.length
-    ? rows.slice(0, cap).join('')
-    : '<div class="empty">No departures</div>') + '</div>';
+  // Banners are not pre-charged a row (see the lirr note): the measured fit
+  // sheds what cannot fit, into the pill.
+  fitList(el, {
+    id: meta.id,
+    items: rows,
+    min: 1,
+    draw: (n) => {
+      el.innerHTML = renderAlertRows(vm.alerts) + '<div class="trains">' + (rows.length
+        ? rows.slice(0, n).join('')
+        : '<div class="empty">No departures</div>') + '</div>';
+    },
+  });
   wireTrainExpand(el, { title: meta.title, note: 'Penn Station', rows, alerts: vm.alerts ?? [] });
 }
 

@@ -14,7 +14,6 @@
 // off it (the title note, the corner count, the tap affordance), each of which
 // walks .closest('.card') from a body element to reach exactly this article.
 
-import { normalizeConfig } from './config.js';
 import { fmtClock } from './util.js';
 
 const $ = (sel) => document.querySelector(sel);
@@ -59,7 +58,14 @@ function wireSetupTap(card) {
     const prompt = card.querySelector('[data-setup]');
     if (!prompt) return;
     const settings = await import('./settings/settings.js');
-    settings.openSettings(readConfig() ?? normalizeConfig({}), { focus: prompt.dataset.setup });
+    // config.js is reached on the tap, the same way settings.js is, and for the
+    // same reason: an empty default config is only ever needed at the moment
+    // someone opens Settings from a card that has none. Held as a static
+    // import it was also the edge that closed a ring: capacity.js now stamps
+    // the corner count through card.js, and config.js reads layout.js, which
+    // reads capacity.js, at MODULE scope. That ring throws on load.
+    const cfg = readConfig() ?? (await import('./config.js')).normalizeConfig({});
+    settings.openSettings(cfg, { focus: prompt.dataset.setup });
   });
 }
 

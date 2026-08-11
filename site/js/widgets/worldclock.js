@@ -3,8 +3,7 @@
 // D. E. Shaw offices; any IANA zone can be added. Pure Intl math, no network.
 
 import { escapeHtml, clockTimeOpts } from '../util.js';
-import { setMoreBadge } from '../card.js';
-import { itemCapacity, cardSize } from '../capacity.js';
+import { fitList } from '../capacity.js';
 import { setExpandSource } from '../expand.js';
 import { clockFaceHtml } from '../clockfaces.js';
 
@@ -141,30 +140,34 @@ export function startWorldFaceRepaint(body, cfg, schedule = setTimeout) {
 }
 
 export function render(el, vm, cfg) {
-  const [w, h] = cardSize(el, [3, 4]);
-  const cap = itemCapacity('worldclock', w, h);
-  const shown = vm.slice(0, cap);
-  const hidden = vm.length - shown.length;
-  // Reserve the day-offset gutter on every row (only when some city actually
-  // crosses a day boundary) so the +1d/−1d badge never shifts the time; and
-  // split the hour into a fixed-width cell so the colon sits on one axis
-  // whether the hour is one or two digits.
-  el.classList.toggle('wc-has-day', shown.some((row) => row.dayDiff));
-  el.style.setProperty('--n', String(shown.length)); // elastic row-gap divisor
-  el.innerHTML = shown
-    .map((row) => {
-      const ci = row.time.indexOf(':');
-      const hh = row.time.slice(0, ci);
-      const rest = row.time.slice(ci); // ":11 PM"
-      const day = row.dayDiff > 0 ? '+1d' : row.dayDiff < 0 ? '−1d' : '';
-      return `<div class="wc-row">
+  fitList(el, {
+    id: meta.id,
+    items: vm,
+    defaultSize: [3, 4],
+    badge: true,
+    draw: (n) => {
+      const shown = vm.slice(0, n);
+      // Reserve the day-offset gutter on every row (only when some city actually
+      // crosses a day boundary) so the +1d/−1d badge never shifts the time; and
+      // split the hour into a fixed-width cell so the colon sits on one axis
+      // whether the hour is one or two digits.
+      el.classList.toggle('wc-has-day', shown.some((row) => row.dayDiff));
+      el.style.setProperty('--n', String(shown.length)); // elastic row-gap divisor
+      el.innerHTML = shown
+        .map((row) => {
+          const ci = row.time.indexOf(':');
+          const hh = row.time.slice(0, ci);
+          const rest = row.time.slice(ci); // ":11 PM"
+          const day = row.dayDiff > 0 ? '+1d' : row.dayDiff < 0 ? '−1d' : '';
+          return `<div class="wc-row">
         <span class="wc-row__city">${escapeHtml(row.city)}</span>
         <span class="wc-row__time"><span class="wc-row__hh">${escapeHtml(hh)}</span>${escapeHtml(rest)}</span>
         <span class="wc-row__day">${day}</span>
       </div>`;
-    })
-    .join('');
-  setMoreBadge(el, hidden);
+        })
+        .join('');
+    },
+  });
   // Built at TAP time, not here: the face must read the clock the moment it is
   // opened, not the clock at the last card refresh.
   setExpandSource(el, () => ({

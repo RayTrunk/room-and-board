@@ -8,7 +8,7 @@ import { setCardNote } from '../card.js';
 import { lineChipPrefix } from '../lines.js';
 import { WORKER_URL } from '../env.js';
 import { cardAlerts, renderAlertRows } from '../transit-alerts.js';
-import { itemCapacity, cardSize } from '../capacity.js';
+import { fitList } from '../capacity.js';
 import { wireTrainExpand } from '../train-expand.js';
 
 // Title is just "Metro-North" — the card is GCT-only by design (context lives
@@ -65,10 +65,6 @@ export function render(el, vm, _cfg) {
   const note = vm.destName ? `stops at ${vm.destName}` : '';
   setCardNote(el, note || null);
   el.classList.toggle('has-alerts', Boolean(vm.alerts?.length));
-  const [w, h] = cardSize(el, [4, 4]);
-  // Banners are not pre-charged a row (see the lirr note): the measured fit
-  // sheds what cannot fit, into the pill.
-  const cap = Math.max(1, itemCapacity('mnr', w, h));
   const row = (d) => `<div class="train">
               <div class="train__min"><span>${fmtMin(d.min)}</span><small>min</small></div>
               <div class="train__info">
@@ -77,11 +73,20 @@ export function render(el, vm, _cfg) {
               </div>
             </div>`;
   const rows = vm.departures.map(row);
-  el.innerHTML =
-    renderAlertRows(vm.alerts?.map((a) => ({ ...a, routes: [] })) ?? []) +
-    '<div class="trains">' +
-    (rows.length ? rows.slice(0, cap).join('') : '<div class="empty">No departures</div>') +
-    '</div>';
+  // Banners are not pre-charged a row (see the lirr note): the measured fit
+  // sheds what cannot fit, into the pill.
+  fitList(el, {
+    id: meta.id,
+    items: rows,
+    min: 1,
+    draw: (n) => {
+      el.innerHTML =
+        renderAlertRows(vm.alerts?.map((a) => ({ ...a, routes: [] })) ?? []) +
+        '<div class="trains">' +
+        (rows.length ? rows.slice(0, n).join('') : '<div class="empty">No departures</div>') +
+        '</div>';
+    },
+  });
   wireTrainExpand(el, { title: meta.title, note, rows, alerts: vm.alerts ?? [] });
 }
 

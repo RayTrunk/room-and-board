@@ -8,7 +8,7 @@
 import { escapeHtml, fmtMin, fmtTime } from '../util.js';
 import { setCardNote } from '../card.js';
 import { WORKER_URL } from '../env.js';
-import { itemCapacity, cardSize } from '../capacity.js';
+import { fitList } from '../capacity.js';
 import { wireTrainExpand } from '../train-expand.js';
 
 export const meta = { id: 'ferry', title: 'NYC Ferry', refreshMs: 60 * 1000 };
@@ -38,8 +38,6 @@ export function mapFerry(digest, data, landing, nowSec) {
 
 export function render(el, vm, _cfg) {
   setCardNote(el, vm.landingName || null);
-  const [w, h] = cardSize(el, [4, 4]);
-  const cap = itemCapacity('ferry', w, h) ?? 4;
   const row = (d) => {
     const chip = d.route && /^[0-9A-Fa-f]{6}$/.test(d.route.color)
       ? `<i class="ferryroute" style="background:#${d.route.color}"></i>`
@@ -53,9 +51,18 @@ export function render(el, vm, _cfg) {
           </div>`;
   };
   const rows = (vm.departures ?? []).map(row);
-  el.innerHTML = '<div class="trains">' + (rows.length
-    ? rows.slice(0, cap).join('')
-    : '<div class="empty">No departures</div>') + '</div>';
+  // No alert banners here, but the same contract as the rail boards: the
+  // estimate slices, and fitTrainRows sheds what the browser cannot hold.
+  fitList(el, {
+    id: meta.id,
+    items: rows,
+    fallback: 4,
+    draw: (n) => {
+      el.innerHTML = '<div class="trains">' + (rows.length
+        ? rows.slice(0, n).join('')
+        : '<div class="empty">No departures</div>') + '</div>';
+    },
+  });
   wireTrainExpand(el, { title: meta.title, note: vm.landingName || '', rows });
 }
 

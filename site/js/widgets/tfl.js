@@ -3,9 +3,8 @@
 // line for the full reason.
 
 import { escapeHtml, setupPrompt } from '../util.js';
-import { setMoreBadge } from '../card.js';
 import { WORKER_URL } from '../env.js';
-import { itemCapacity, cardSize } from '../capacity.js';
+import { fitList } from '../capacity.js';
 import { openTextViewer, defersToExpand } from '../textviewer.js';
 import { setExpandSource } from '../expand.js';
 import { ledgerBody } from '../ledger.js';
@@ -46,22 +45,31 @@ export function render(el, vm, cfg) {
       ok: live ? live.ok : true, status: live ? live.status : '—', reason: live?.reason ?? '',
     };
   });
-  const [w, h] = cardSize(el, [4, 4]);
-  const cap = itemCapacity('tfl', w, h) ?? 4;
-  // Alerting lines take priority when truncating (Subway's rule).
-  const ordered = rows.length > cap
-    ? [...rows].sort((a, b) => Number(a.ok) - Number(b.ok)).slice(0, cap)
-    : rows;
-  const hidden = rows.length - ordered.length;
-  el.style.setProperty('--n', String(ordered.length)); // elastic row-gap divisor
-  el.innerHTML = ordered
-    .map((r, i) => `<div class="tfl ${r.ok ? '' : 'tfl--alert'}${!r.ok && r.reason ? ' tfl--tap' : ''}" data-i="${i}">
+  // The rows the card ended up drawing, in the order it drew them: the tap
+  // handler below indexes into this, so it is written by the draw itself.
+  let ordered = rows;
+  const shown = fitList(el, {
+    id: meta.id,
+    items: rows,
+    fallback: 4,
+    badge: true,
+    draw: (n) => {
+      // Alerting lines take priority when truncating (Subway's rule). Drawing
+      // fewer than every line IS the truncation, so that is the test.
+      ordered = n < rows.length
+        ? [...rows].sort((a, b) => Number(a.ok) - Number(b.ok)).slice(0, n)
+        : rows;
+      el.style.setProperty('--n', String(ordered.length)); // elastic row-gap divisor
+      el.innerHTML = ordered
+        .map((r, i) => `<div class="tfl ${r.ok ? '' : 'tfl--alert'}${!r.ok && r.reason ? ' tfl--tap' : ''}" data-i="${i}">
         <span class="tfl__dot" style="background:${r.color}"></span>
         <span class="tfl__name">${escapeHtml(r.name)}</span>
         <span class="tfl__status">${escapeHtml(r.status)}</span>
       </div>`)
-    .join('');
-  setMoreBadge(el, hidden);
+        .join('');
+    },
+  });
+  const hidden = rows.length - shown;
   // Badge and expansion agree exactly: no badge, no expansion. A card showing
   // every line keeps its per-row reader, which loses nothing.
   const alerting = rows.filter((r) => !r.ok).length;

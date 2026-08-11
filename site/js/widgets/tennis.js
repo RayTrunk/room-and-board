@@ -5,7 +5,7 @@
 
 import { escapeHtml } from '../util.js';
 import { setCardNote, setMoreBadge } from '../card.js';
-import { itemCapacity, cardSize } from '../capacity.js';
+import { fitList } from '../capacity.js';
 import { WORKER_URL } from '../env.js';
 import { setExpandSource } from '../expand.js';
 import { mapTennisEvent, mapTennis } from '../espn-scores.js';
@@ -83,19 +83,24 @@ export function render(el, vm, _cfg) {
     setExpandSource(el, null);
     return;
   }
-  const [w, h] = cardSize(el, [3, 4]);
-  const cap = itemCapacity('tennis', w, h);
-  const shown = vm.rows.slice(0, cap);
-  el.style.setProperty('--n', String(shown.length)); // elastic row-gap divisor
-  el.innerHTML = shown
-    .map(
-      (m) => `<div class="tennis-row ${m.state === 'in' ? 'tennis-row--live' : ''}">
+  fitList(el, {
+    id: meta.id,
+    items: vm.rows,
+    defaultSize: [3, 4],
+    badge: true,
+    draw: (n) => {
+      const shown = vm.rows.slice(0, n);
+      el.style.setProperty('--n', String(shown.length)); // elastic row-gap divisor
+      el.innerHTML = shown
+        .map(
+          (m) => `<div class="tennis-row ${m.state === 'in' ? 'tennis-row--live' : ''}">
         <span class="tennis-row__match">${matchLabel(m)}</span>
         <span class="tennis-row__score">${m.state === 'in' ? LIVE_DOT : ''}${matchScore(m)}</span>
       </div>`,
-    )
-    .join('');
-  setMoreBadge(el, vm.rows.length - shown.length);
+        )
+        .join('');
+    },
+  });
   // Unconditional, the history precedent: one card, one destination. The
   // tournament and the day ride the overlay's small text.
   setExpandSource(el, () => ({

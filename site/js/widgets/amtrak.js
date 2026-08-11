@@ -8,7 +8,7 @@ import { escapeHtml, fmtMin, fmtTime, fmtClock, setupPrompt } from '../util.js';
 import { setCardNote } from '../card.js';
 import { WORKER_URL } from '../env.js';
 import { renderAlertRows } from '../transit-alerts.js';
-import { itemCapacity, cardSize } from '../capacity.js';
+import { fitList } from '../capacity.js';
 import { wireTrainExpand } from '../train-expand.js';
 
 export const meta = { id: 'amtrak', title: 'Amtrak', refreshMs: 60 * 1000 };
@@ -44,12 +44,6 @@ export function render(el, vm, cfg) {
 
   const alerts = showAlerts ? (vm.alerts ?? []) : [];
   el.classList.toggle('has-alerts', Boolean(alerts.length));
-  const [w, h] = cardSize(el, [4, 4]);
-  // Each alert banner costs roughly one train row of space.
-  // Banners are not pre-charged a row (see the lirr note): the measured fit
-  // sheds what cannot fit, into the pill.
-  const cap = Math.max(1, itemCapacity('amtrak', w, h));
-  const shown = deps.slice(0, cap);
 
   const row = (d) => {
     const min = Math.max(0, Math.round((d.t - nowSec) / 60));
@@ -65,8 +59,20 @@ export function render(el, vm, cfg) {
     </div>`;
   };
 
-  el.innerHTML = renderAlertRows(alerts) + '<div class="trains">' +
-    (shown.length ? shown.map(row).join('') : '<div class="empty">No departures</div>') + '</div>';
+  // Each alert banner costs roughly one train row of space.
+  // Banners are not pre-charged a row (see the lirr note): the measured fit
+  // sheds what cannot fit, into the pill. The estimate is the whole slice
+  // here; wireTrainExpand's fitTrainRows does the measuring.
+  fitList(el, {
+    id: meta.id,
+    items: deps,
+    min: 1,
+    draw: (n) => {
+      const shown = deps.slice(0, n);
+      el.innerHTML = renderAlertRows(alerts) + '<div class="trains">' +
+        (shown.length ? shown.map(row).join('') : '<div class="empty">No departures</div>') + '</div>';
+    },
+  });
   const note = dest && vm.destName ? `to ${vm.destName}` : '';
   wireTrainExpand(el, { title: meta.title, note, rows: deps.map(row), alerts });
 }

@@ -1,7 +1,7 @@
 // Pure grid geometry for the 12×8 dashboard layout. Everything here is
 // side-effect free; edit.js and config.js consume it.
 
-import { itemCapacity } from './capacity.js';
+import { itemCapacity, trimOf } from './capacity.js';
 
 // 12x8: cells ~135x92 logical px. v2 layouts (6x4) migrate by doubling.
 export const GRID = { cols: 12, rows: 8 };
@@ -131,20 +131,39 @@ const CONTENT_CAPPED = [
 
 // One row of headroom for the widgets whose RENDERER trims. subway and services
 // carry a deliberately optimistic static pitch (capacity.js) because they
-// measure the drawn box and shed trailing rows to the corner badge whenever an
+// measure the drawn box and shed trailing rows to the corner count whenever an
 // alert or incident note wraps — so the height where the static pitch first
-// covers the list is exactly one row too low to show the whole list on a bad
-// day. Since normalizeLayout re-clamps every stored layout through these caps,
-// nothing downstream can hand out that row on its own. This only ever LOOSENS a
-// cap (allows a taller card, never forces one), so no layout that fits today
+// covers the list is one row too low to show the whole list on a bad day. Since
+// normalizeLayout re-clamps every stored layout through these caps, nothing
+// downstream can hand out that row on its own. This only ever LOOSENS a cap
+// (allows a taller card, never forces one), so no layout that fits today
 // changes size — proven byte-for-byte against DEFAULT_LAYOUT, the quick-start
 // preset and the generator corpus.
-const TRIM_ALLOWANCE = { subway: 1, services: 1 };
+//
+// WHICH widgets trim, and how much, is capacity.js TRIM's to say: this file
+// used to keep a second copy of that list and had services at 1 where the
+// measurement says 2. What stays this file's own is how much of the trim a
+// height CAP is worth buying, and the answer is one row, never the whole of it.
+// The two readers are asking different questions. The optimizer asks what a
+// card shows TODAY, so it discounts by the full measured trim. A cap is a
+// standing bet, paid on every good day: rows bought against a bad day sit as
+// dead air whenever nothing is wrong, and buying the second row for services
+// costs more than it returns: with it, the generator's twelve-widget board
+// re-packs to hand services its fifth row and takes markets from 4x4 down to
+// 4x2, under the height its own presentable floor puts the sparklines at, while
+// the board loses weather from the top-left reading slot. Same total shortfall,
+// concentrated into one badly starved card instead of spread as a row each.
+// So: one row of headroom for a widget that trims at all, and none for one that
+// does not.
+// Exported so the agreement between the two readers can be pinned by a test
+// rather than by a comment: both sides derive from capacity.js TRIM, and
+// neither may grow a table of its own again.
+export const capHeadroom = (id) => Math.min(1, trimOf(id));
 
 export function contentMaxH(cfg) {
   const caps = {};
   const fit = (id, n, fromH) => {
-    const slack = TRIM_ALLOWANCE[id] ?? 0;
+    const slack = capHeadroom(id);
     for (let h = fromH; h <= GRID.rows; h++) {
       const cap = itemCapacity(id, MIN_SIZE[id][0], h);
       if (cap == null || cap - slack >= n) return h;

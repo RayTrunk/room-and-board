@@ -4,8 +4,8 @@
 
 import { WORKER_URL } from '../env.js';
 import { escapeHtml, fmtClock, chaikin } from '../util.js';
-import { setCardNote, setMoreBadge } from '../card.js';
-import { itemCapacity, cardSize } from '../capacity.js';
+import { setCardNote } from '../card.js';
+import { fitList, cardSize } from '../capacity.js';
 import { setExpandSource, OVERLAY_BODY_H } from '../expand.js';
 
 export const meta = { id: 'markets', title: 'Markets', refreshMs: 5 * 60 * 1000 };
@@ -299,23 +299,27 @@ export function render(el, vm, cfg) {
   // Freshness note in the card header (worker fetch time, not render time) —
   // a clock reading, so it honors cfg.clock24.
   if (vm.updatedAt) setCardNote(el, `as of ${fmtClock(vm.updatedAt, cfg?.clock24)}`);
-  const [w, h] = cardSize(el, [4, 4]);
-  const cap = itemCapacity('markets', w, h);
   // Config order once, for BOTH the card and the wall behind the tap.
   const indices = orderBySymbols(vm.indices, cfg?.markets?.symbols ?? []);
-  const shown = indices.slice(0, cap);
-  const hidden = indices.length - shown.length;
   // At full width (4 cols — markets caps there, see MAX_SIZE) show the
   // two-session sparkline; the 3-wide min keeps the compact last-session shape.
-  const twoDay = w >= 4;
-  // Rows render display:contents inside one .indexes grid so every row shares
-  // the same column tracks — otherwise the auto-sized delta column would shift
-  // each row's sparkline independently (594.83 vs 0.01 wide deltas).
-  el.innerHTML = shown.length
-    ? `<div class="indexes" style="--n:${shown.length}">` + shown
-        .map((ix) => {
-          const up = ix.change >= 0;
-          return `<div class="index">
+  // Width is a presentation branch rather than a count, so it is read here and
+  // not through the fit.
+  const twoDay = cardSize(el, [4, 4])[0] >= 4;
+  const shown = fitList(el, {
+    id: meta.id,
+    items: indices,
+    badge: true,
+    draw: (n) => {
+      const rows = indices.slice(0, n);
+      // Rows render display:contents inside one .indexes grid so every row shares
+      // the same column tracks — otherwise the auto-sized delta column would shift
+      // each row's sparkline independently (594.83 vs 0.01 wide deltas).
+      el.innerHTML = rows.length
+        ? `<div class="indexes" style="--n:${rows.length}">` + rows
+            .map((ix) => {
+              const up = ix.change >= 0;
+              return `<div class="index">
             <div class="index__info">
               <span class="index__name">${escapeHtml(ix.name)}</span>
               <span class="index__price">${fmt.format(ix.price)}</span>
@@ -324,10 +328,12 @@ export function render(el, vm, cfg) {
             <span class="delta delta__chg ${up ? 'delta--up' : 'delta--down'}">${up ? '▲' : '▼'} ${fmt.format(Math.abs(ix.change))}</span>
             <span class="delta delta__pct ${up ? 'delta--up' : 'delta--down'}">(${Math.abs(ix.changePct).toFixed(2)}%)</span>
           </div>`;
-        })
-        .join('') + '</div>'
-    : '<div class="empty">Market data unavailable</div>';
-  setMoreBadge(el, shown.length ? hidden : 0);
+            })
+            .join('') + '</div>'
+        : '<div class="empty">Market data unavailable</div>';
+    },
+  });
+  const hidden = indices.length - shown;
   // Rows here are not tappable, so the whole card is the target and the +N badge
   // is a passive signifier — the two must agree exactly: no badge, no expansion.
   // The closure captures THIS render's vm, so the overlay always shows what the
@@ -335,7 +341,7 @@ export function render(el, vm, cfg) {
   const note = vm.updatedAt ? `as of ${fmtClock(vm.updatedAt, cfg?.clock24)}` : '';
   setExpandSource(
     el,
-    shown.length && hidden > 0
+    shown && hidden > 0
       ? () => ({ title: meta.title, note, bodyHtml: tileWall(indices) })
       : null,
   );

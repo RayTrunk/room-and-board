@@ -3,7 +3,7 @@
 import { escapeHtml } from '../util.js';
 import { setMoreBadge } from '../card.js';
 import { WORKER_URL } from '../env.js';
-import { itemCapacity, cardSize } from '../capacity.js';
+import { fitList } from '../capacity.js';
 import { setExpandSource, OVERLAY_BODY_H } from '../expand.js';
 import { openStoryViewer } from '../textviewer.js';
 
@@ -230,37 +230,26 @@ export function renderHeadlines(el, vm, { widgetId, emptyHint, title = '' }) {
         <span class="headline__title">${escapeHtml(i.title)}</span>
       </div>`;
   };
-  // Markup for the first n items. The overflow count rides the title badge
-  // (setMoreBadge below), so it costs no row and isn't part of the measure.
-  // clampLast renders the final item with its title clamped to one line.
-  const build = (n, clampLast = false) =>
-    vm.items.slice(0, n).map((it, idx) => itemHtml(it, clampLast && idx === n - 1)).join('');
-  // Static estimate from the capacity model. This is the final answer when
-  // there's no rendered box to measure (e.g. happy-dom in tests).
-  const [w, h] = cardSize(el, [4, 4]);
-  const cap = itemCapacity(widgetId, w, h) ?? 4;
-  let n = Math.min(vm.items.length, cap);
-  el.innerHTML = build(n);
+  // Markup for the first n items. The overflow count rides the corner badge,
+  // so it costs no row and isn't part of the measure. clampLast renders the
+  // final item with its title clamped to one line: the squeezed row the fit
+  // spends its last slack on.
+  const build = (n, clampLast = false) => {
+    el.innerHTML = vm.items.slice(0, n).map((it, idx) => itemHtml(it, clampLast && idx === n - 1)).join('');
+  };
   // Fill-to-fit: with a real rendered box, grow/shrink to the count that
   // actually fits. The static 75px/row estimate assumes worst-case two-line
   // titles; most titles are one line, so the card usually has room for more.
-  if (el.clientHeight > 0) {
-    while (n > 1 && el.scrollHeight > el.clientHeight) { n -= 1; el.innerHTML = build(n); }
-    while (n < vm.items.length) {
-      n += 1;
-      el.innerHTML = build(n);
-      if (el.scrollHeight > el.clientHeight) { n -= 1; el.innerHTML = build(n); break; }
-    }
-    // The loops fit whole rows, so when the next item doesn't fit, up to a
-    // full two-line headline of slack can sit empty (visible on a 3x4 board
-    // card). Spend it on one more item with its title clamped to a single
-    // ellipsized line — a truncated headline beats blank space.
-    if (n < vm.items.length) {
-      n += 1;
-      el.innerHTML = build(n, true);
-      if (el.scrollHeight > el.clientHeight) { n -= 1; el.innerHTML = build(n); }
-    }
-  }
+  // The badge is this renderer's own (see the cap below), not the fit's.
+  const n = fitList(el, {
+    id: widgetId,
+    items: vm.items,
+    fallback: 4,
+    measure: true,
+    squeeze: true,
+    badge: false,
+    draw: build,
+  });
   // THE +N CAP (Sean, 2026-08-01). The badge is a promise about the tap, so it
   // must never advertise more than the tap can actually deliver. This is the
   // one family where that can bite: mergeNews hands over as many as 30 items

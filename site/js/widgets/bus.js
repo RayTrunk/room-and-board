@@ -5,7 +5,7 @@
 import { WORKER_URL } from '../env.js';
 import { escapeHtml, fmtMin, setupPrompt } from '../util.js';
 import { setMoreBadge } from '../card.js';
-import { itemCapacity, cardSize } from '../capacity.js';
+import { fitList } from '../capacity.js';
 import { setExpandSource } from '../expand.js';
 
 export const meta = { id: 'bus', title: 'Express Bus', refreshMs: 60 * 1000 };
@@ -131,21 +131,28 @@ export function render(el, vm, _cfg) {
   }
   // Slice to the card, don't clip: each stop costs one header row plus its
   // arrival rows. Fit as many stops as have room for a header + one arrival,
-  // sharing the remaining budget across their arrivals.
-  const [w, h] = cardSize(el, [4, 4]);
-  let left = itemCapacity('bus', w, h) ?? 4;
-  const groups = [];
-  for (const stop of vm.stops) {
-    if (left < 2) break; // no room for a header + at least one row
-    const shown = stop.arrivals.slice(0, Math.max(1, Math.min(stop.arrivals.length || 1, left - 1)));
-    left -= 1 + shown.length;
-    groups.push({ ...stop, arrivals: shown });
-  }
-  const hiddenStops = vm.stops.length - groups.length;
+  // sharing the remaining budget across their arrivals. The count here is a
+  // ROW budget rather than a list slice, which is why no items are handed over
+  // and why the corner count is stamped below: it counts STOPS, and the fit is
+  // counting rows.
   const nowSec = Math.floor(Date.now() / 1000);
-  el.innerHTML = groups
-    .map(
-      (stop) => `<div class="stop-group">
+  let hiddenStops = 0;
+  fitList(el, {
+    id: meta.id,
+    fallback: 4,
+    draw: (rows) => {
+      let left = rows;
+      const groups = [];
+      for (const stop of vm.stops) {
+        if (left < 2) break; // no room for a header + at least one row
+        const shown = stop.arrivals.slice(0, Math.max(1, Math.min(stop.arrivals.length || 1, left - 1)));
+        left -= 1 + shown.length;
+        groups.push({ ...stop, arrivals: shown });
+      }
+      hiddenStops = vm.stops.length - groups.length;
+      el.innerHTML = groups
+        .map(
+          (stop) => `<div class="stop-group">
         <div class="stop-group__head"><span class="stop-group__name"><b class="buspill">${escapeHtml(stop.route)}</b> ${escapeHtml(stopLabel(stop))}</span></div>
         <div class="trains">${
           stop.arrivals.length
@@ -162,8 +169,10 @@ export function render(el, vm, _cfg) {
             : '<div class="empty">No buses en route</div>'
         }</div>
       </div>`,
-    )
-    .join('');
+        )
+        .join('');
+    },
+  });
   setMoreBadge(el, hiddenStops);
   // Unconditional, the history precedent: the rows cover the card, so one card
   // means one destination and a card that fits its two stops still owes a tap

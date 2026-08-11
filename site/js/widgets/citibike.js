@@ -4,8 +4,7 @@
 
 import { WORKER_URL } from '../env.js';
 import { escapeHtml, setupPrompt } from '../util.js';
-import { setMoreBadge } from '../card.js';
-import { itemCapacity, cardSize } from '../capacity.js';
+import { fitList } from '../capacity.js';
 import { setExpandSource } from '../expand.js';
 
 export const meta = { id: 'citibike', title: 'Citi Bike', refreshMs: 60 * 1000 };
@@ -52,21 +51,27 @@ export function render(el, vm, cfg) {
     return;
   }
   const byId = new Map((vm.stations ?? []).map((s) => [s.id, s]));
-  const [w, h] = cardSize(el, [3, 4]);
-  const cap = itemCapacity('citibike', w, h) ?? 4;
-  const shown = chosen.slice(0, cap);
-  const hidden = chosen.length - shown.length;
-  el.style.setProperty('--n', String(shown.length)); // elastic row-gap divisor
-  el.innerHTML = shown
-    .map((st) => {
-      const live = byId.get(st.id);
-      const stat = !live || !live.ok
-        ? '<span class="cb__stat cb__stat--off">not renting</span>'
-        : `<span class="cb__stat"><b class="cb__n">${live.bikes}</b> bikes${live.ebikes > 0 ? ` (<b class="cb__e">${live.ebikes}⚡</b>)` : ''} · ${live.docks} docks</span>`;
-      return `<div class="cb"><span class="cb__name">${escapeHtml(st.name)}</span>${stat}</div>`;
-    })
-    .join('');
-  setMoreBadge(el, hidden);
+  const shown = fitList(el, {
+    id: meta.id,
+    items: chosen,
+    defaultSize: [3, 4],
+    fallback: 4,
+    badge: true,
+    draw: (n) => {
+      el.style.setProperty('--n', String(n)); // elastic row-gap divisor
+      el.innerHTML = chosen
+        .slice(0, n)
+        .map((st) => {
+          const live = byId.get(st.id);
+          const stat = !live || !live.ok
+            ? '<span class="cb__stat cb__stat--off">not renting</span>'
+            : `<span class="cb__stat"><b class="cb__n">${live.bikes}</b> bikes${live.ebikes > 0 ? ` (<b class="cb__e">${live.ebikes}⚡</b>)` : ''} · ${live.docks} docks</span>`;
+          return `<div class="cb"><span class="cb__name">${escapeHtml(st.name)}</span>${stat}</div>`;
+        })
+        .join('');
+    },
+  });
+  const hidden = chosen.length - shown;
   // Badge and expansion agree exactly: no badge, no expansion. The rows here
   // are not tappable, so the whole card is the target.
   setExpandSource(
