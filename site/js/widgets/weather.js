@@ -162,7 +162,14 @@ function pickAlert(alertsJson) {
   if (!Array.isArray(feats) || feats.length === 0) return null;
   const ranked = feats
     .map((f) => f?.properties)
-    .filter((p) => p && typeof p.event === 'string')
+    // Only live warnings reach the glass. CAP's other statuses (Test,
+    // Exercise, System, Draft) are deliberately fake, and the only place NWS
+    // marks them as fake is the headline text, which the banner does not
+    // show: the tsunami system's routine communications test ranks Extreme
+    // and wore the banner as a bare "Tsunami Warning" on real boards
+    // (2026-08-11). A Cancel message is likewise ABOUT a warning, not one.
+    .filter((p) => p && typeof p.event === 'string'
+      && p.status === 'Actual' && p.messageType !== 'Cancel')
     .sort(
       (a, b) =>
         (SEVERITY_RANK[a.severity] ?? 9) - (SEVERITY_RANK[b.severity] ?? 9),

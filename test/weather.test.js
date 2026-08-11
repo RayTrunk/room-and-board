@@ -41,6 +41,26 @@ describe('mapWeather', () => {
     expect(typeof vm.alert.headline).toBe('string');
   });
 
+  it('never banners a CAP test, exercise, or cancellation as a live warning', async () => {
+    // The real payload from 2026-08-11: the National Tsunami Warning Center's
+    // routine communications test carries status "Test" and severity
+    // "Extreme", and the word TEST appears only in the headline the banner
+    // does not show. It outranked everything and real boards read
+    // "Tsunami Warning" over Manhattan.
+    const props = (over) => ({
+      event: 'Tsunami Warning', severity: 'Extreme', status: 'Actual',
+      messageType: 'Alert', headline: 'TEST Tsunami Warning until 1:25PM EDT', ...over,
+    });
+    const forecast = await fixture('open-meteo-forecast.json');
+    for (const fake of [{ status: 'Test' }, { status: 'Exercise' }, { messageType: 'Cancel' }]) {
+      expect(mapWeather(forecast, { features: [{ properties: props(fake) }] }).alert).toBeNull();
+    }
+    // And the same alert marked Actual still banners: the filter is about
+    // status, not about tsunamis.
+    const vm = mapWeather(forecast, { features: [{ properties: props({}) }] });
+    expect(vm.alert?.event).toBe('Tsunami Warning');
+  });
+
   it('carries the hourly chance of precipitation', async () => {
     const vm = mapWeather(await fixture('open-meteo-forecast.json'), null);
     expect(vm.hourly.slice(0, 8).map((x) => x.pp)).toEqual([0, 0, 5, 10, 25, 45, 60, 30]);

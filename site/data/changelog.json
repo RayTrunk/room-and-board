@@ -13,6 +13,10 @@
       {
         "lead": "The tap that closes a view stays put",
         "text": "Tapping your way out of live video, or out of any full screen view, could occasionally count twice: the view closed, and the same tap landed on whatever card sat under your finger, opening a reader or a viewer you never asked for. The board now remembers what was on screen when your finger came down, so the tap that closes a view is spent on closing it and nothing else."
+      },
+      {
+        "lead": "Weather banners ignore drills",
+        "text": "The weather service runs routine communications tests, and this morning one of them read as a real tsunami warning on the weather card: the feed marks a drill in a field the banner never showed, so the board repeated it with a straight face. The card now banners only warnings marked as actual, so tests, exercises and cancellation notices stay off the glass."
       }
     ]
   },
