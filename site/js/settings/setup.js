@@ -8,6 +8,7 @@ import { toggleIn, searchStations, canAddTicker, foldAt } from './pickers.js';
 import { attachReorder, foldHeadHtml, tickerRowsHtml } from './reorder.js';
 import { locationSearch } from '../geo.js';
 import { fetchJSON } from '../net.js';
+import { mintCode, codeFailureText } from '../setupcode.js';
 import { ensureOceanProbe } from '../surf-gate.js';
 import { escapeHtml, parseAlbumToken, parseDriveFolder } from '../util.js';
 import { OFFICES, zoneLabel, zonesByRegion } from '../widgets/worldclock.js';
@@ -1175,12 +1176,7 @@ async function getCode() {
   btn.disabled = true;
   btn.textContent = 'Getting code…';
   try {
-    const res = await fetch(`${WORKER_URL}/code`, {
-      method: 'POST',
-      body: JSON.stringify({ cfg: encoded }),
-    });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const { code } = await res.json();
+    const code = await mintCode(encoded);
     $('#code').textContent = code;
     // What you are about to carry to the board, in one line, so a wrong pick is
     // caught here rather than on the wall.
@@ -1197,8 +1193,7 @@ async function getCode() {
     $('#code-copied').hidden = true;
     $('#code-help').hidden = true;
     $('#code').textContent = '···';
-    $('#code-error').textContent =
-      `Couldn't reach the code service (${err.message}). Check that the Worker is deployed.`;
+    $('#code-error').textContent = codeFailureText(err);
     $('#code-error').hidden = false;
     reveal($('#code-out'));
   } finally {

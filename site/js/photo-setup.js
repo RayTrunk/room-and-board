@@ -7,6 +7,7 @@
 import { WORKER_URL } from './env.js';
 import { parseAlbumToken, parseDriveFolder } from './util.js';
 import { encodePhotosCode } from './config.js';
+import { mintCode, codeFailureText } from './setupcode.js';
 
 const $ = (sel) => document.querySelector(sel);
 // Validated ids, ready to encode into the code. Cleared when an input fails.
@@ -59,9 +60,7 @@ async function getCode() {
   btn.textContent = 'Getting code…';
   try {
     const encoded = await encodePhotosCode({ icloud: valid.icloud, gdrive: valid.gdrive });
-    const res = await fetch(`${WORKER_URL}/code`, { method: 'POST', body: JSON.stringify({ cfg: encoded }) });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const { code } = await res.json();
+    const code = await mintCode(encoded);
     const which = [valid.icloud && 'iCloud', valid.gdrive && 'Google Drive'].filter(Boolean).join(' + ');
     $('#ps-code-out').textContent = code;
     $('#ps-code-note').textContent = `Covers ${which}. On your board, open Settings → Photos, tap Enter code, and type this in. Press Save. The code expires in 1 hour.`;
@@ -69,7 +68,7 @@ async function getCode() {
     $('#ps-code').scrollIntoView({ block: 'end' });
   } catch (err) {
     $('#ps-code-out').textContent = '—';
-    $('#ps-code-note').textContent = `Couldn't reach the code service (${err.message}). Try again in a moment.`;
+    $('#ps-code-note').textContent = codeFailureText(err);
     $('#ps-code').hidden = false;
   } finally {
     btn.textContent = 'Get board code';

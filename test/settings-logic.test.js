@@ -1222,6 +1222,72 @@ describe('the keypad status line has three registers, not one', () => {
   });
 });
 
+// The photo keypad answered every failure with "Code not found", because its
+// catch had no argument to look at: a 503 from the code service, a dead
+// network and a genuinely expired code all told the person at the board to go
+// mint a fresh code, the one repair that could not work. All three keypads
+// take their wording from setupcode.js now, so the distinction cannot drift
+// back out of one of them.
+describe('a keypad names the failure it actually hit', () => {
+  const settle = () => new Promise((r) => setTimeout(r, 30));
+  const status = () => document.querySelector('.settings__pane .code__status');
+  const key = (k) => [...document.querySelectorAll('.settings__pane [data-key]')]
+    .find((b) => b.dataset.key === k);
+  const answers = (s) => vi.fn(async () => ({ ok: s >= 200 && s < 300, status: s, json: async () => ({}) }));
+
+  afterEach(() => {
+    closeSettings();
+    vi.unstubAllGlobals();
+  });
+
+  // The photo pane keeps its keypad behind Enter code; the six characters go in
+  // the same way once it is revealed.
+  const typeCodeIntoPhotoPane = async () => {
+    document.body.innerHTML = '<div id="settings-root"></div>';
+    await openSettings(normalizeConfig({}), { focus: 'photos' });
+    await settle();
+    document.querySelector('.settings__pane [data-code-reveal]').click();
+    for (const k of ['A', 'B', 'C', 'D', 'E', 'F']) key(k).click();
+    await settle();
+  };
+
+  it('says the code expired only when the service says the code is gone', async () => {
+    vi.stubGlobal('fetch', answers(404));
+    await typeCodeIntoPhotoPane();
+    expect(status().textContent).toBe('Code not found (codes expire after an hour).');
+  });
+
+  it('sends someone to the network, not back to their phone, on a 503', async () => {
+    vi.stubGlobal('fetch', answers(503));
+    await typeCodeIntoPhotoPane();
+    expect(status().textContent).toBe("Couldn't reach the code service. Check the network and try again.");
+    expect(status().textContent).not.toContain('expire');
+  });
+
+  it('asks for a pause when the service is throttling, on 429', async () => {
+    vi.stubGlobal('fetch', answers(429));
+    await typeCodeIntoPhotoPane();
+    expect(status().textContent).toBe('Too many tries just now. Wait a few seconds and try again.');
+  });
+
+  it('says the same three things on the full-board keypad', async () => {
+    for (const [s, text] of [
+      [404, 'Code not found (codes expire after an hour).'],
+      [503, "Couldn't reach the code service. Check the network and try again."],
+      [429, 'Too many tries just now. Wait a few seconds and try again.'],
+    ]) {
+      vi.stubGlobal('fetch', answers(s));
+      document.body.innerHTML = '<div id="settings-root"></div>';
+      await openSettings(normalizeConfig({}), { focus: 'code' });
+      await settle();
+      for (const k of ['A', 'B', 'C', 'D', 'E', 'F']) key(k).click();
+      await settle();
+      expect(status().textContent).toBe(text);
+      closeSettings();
+    }
+  });
+});
+
 /* ---------- Settings → Widgets: a signpost, not a second editor ---------- */
 
 // The pane carried its own add/remove toggle list until 2026-08-01. It was a

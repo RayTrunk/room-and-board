@@ -4,8 +4,8 @@
 // (Settings → Live Video → Enter code). The code merges ONLY the Live Video
 // block — never the rest of the board's config.
 
-import { WORKER_URL } from './env.js';
 import { encodeVideoCode } from './config.js';
+import { mintCode, codeFailureText } from './setupcode.js';
 import { isCameraShare, isHlsUrl } from './widgets/iptv.js';
 
 const $ = (sel) => document.querySelector(sel);
@@ -87,16 +87,14 @@ async function getCode() {
   btn.textContent = 'Getting code…';
   try {
     const encoded = await encodeVideoCode({ url: currentUrl(), label: $('#vs-label').value });
-    const res = await fetch(`${WORKER_URL}/code`, { method: 'POST', body: JSON.stringify({ cfg: encoded }) });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const { code } = await res.json();
+    const code = await mintCode(encoded);
     $('#vs-code-out').textContent = code;
     $('#vs-code-note').textContent = 'On your board, open Settings → Live Video, tap Enter code, and type this in. Press Save. The code expires in 1 hour.';
     $('#vs-code').hidden = false;
     $('#vs-code').scrollIntoView({ block: 'end' });
   } catch (err) {
     $('#vs-code-out').textContent = '—';
-    $('#vs-code-note').textContent = `Couldn't reach the code service (${err.message}). Try again in a moment.`;
+    $('#vs-code-note').textContent = codeFailureText(err);
     $('#vs-code').hidden = false;
   } finally {
     btn.textContent = 'Get board code';

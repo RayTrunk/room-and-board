@@ -2,9 +2,10 @@
 // sections; every control is a ≥56px touch target; no typing anywhere
 // (setup codes use the on-page keypad, names come from the companion page).
 
-import { isLaunched, isAdvancedHidden, normalizeConfig, encodeConfig, decodeCode, WIDGET_IDS, ART_CATS, NJT_LINES, CURATED_SOURCES } from '../config.js';
+import { isLaunched, isAdvancedHidden, normalizeConfig, encodeConfig, WIDGET_IDS, ART_CATS, NJT_LINES, CURATED_SOURCES } from '../config.js';
 import { saveConfig, loadCache, markPendingEdit } from '../store.js';
 import { fetchJSON } from '../net.js';
+import { mintCode, redeemCode, codeFailureText } from '../setupcode.js';
 import { fetchDailyBackdrop } from '../curated.js';
 import { TFL_LINES, TFL_MODES } from '../tfl-lines.js';
 import { WORKER_URL } from '../env.js';
@@ -617,15 +618,14 @@ function wirePhotoCodeEntry(src, status) {
         if (code.length === 6) {
           setStatus(status, 'Checking…', 'busy');
           try {
-            const { cfg: encoded } = await fetchJSON(`${WORKER_URL}/code/${code}`);
-            const decoded = await decodeCode(encoded);
+            const decoded = await redeemCode(code);
             if (decoded.scope !== 'photos') { setStatus(status, 'That code holds a full board setup; enter it under Settings → Setup code instead.'); code = ''; paint(); return; }
             const changed = applyPhotosPatch(decoded.patch);
             if (!changed.length) { setStatus(status, "That code didn't carry a usable photo link."); code = ''; paint(); return; }
             renderPhotoPane(src);
             setStatus(pane().querySelector('.code__status'), `Applied ${changed.join(' + ')} photos. Press Save to finish.`, 'good');
-          } catch {
-            setStatus(status, 'Code not found (codes expire after an hour).');
+          } catch (err) {
+            setStatus(status, codeFailureText(err));
             code = '';
             paint();
           }
@@ -658,17 +658,14 @@ function wireVideoCodeEntry(status) {
         if (code.length === 6) {
           setStatus(status, 'Checking\u2026', 'busy');
           try {
-            const { cfg: encoded } = await fetchJSON(`${WORKER_URL}/code/${code}`);
-            const decoded = await decodeCode(encoded);
+            const decoded = await redeemCode(code);
             if (decoded.scope !== 'video') { setStatus(status, 'That code is not a Live Video code; full setups go under Settings \u2192 Setup code.'); code = ''; paint(); return; }
             if (!decoded.patch.url) { setStatus(status, "That code didn't carry a usable stream link."); code = ''; paint(); return; }
             state.cfg.iptv = { ...state.cfg.iptv, ...decoded.patch };
             renderIptv();
             setStatus(pane().querySelector('.code__status'), 'Applied the stream. Press Save to finish.', 'good');
           } catch (err) {
-            setStatus(status, err?.status === 404
-              ? 'Code not found (codes expire after an hour).'
-              : "Couldn't reach the code service. Check the network and try again.");
+            setStatus(status, codeFailureText(err));
             code = '';
             paint();
           }
@@ -1853,8 +1850,7 @@ function renderCode() {
       if (code.length === 6) {
         setStatus(status, 'Checking…', 'busy');
         try {
-          const { cfg: encoded } = await fetchJSON(`${WORKER_URL}/code/${code}`);
-          const decoded = await decodeCode(encoded);
+          const decoded = await redeemCode(code);
           if (decoded.scope === 'photos') {
             // A photos-only code merges just the photo blocks (Settings → Photos
             // is the home for these, but redeeming here shouldn't dead-end).
@@ -1874,10 +1870,9 @@ function renderCode() {
           }
         } catch (err) {
           // Only a real 404 means the code is wrong; anything else is the
-          // network/service, and regenerating the code won't help.
-          setStatus(status, err?.status === 404
-            ? 'Code not found (codes expire after an hour).'
-            : "Couldn't reach the code service. Check the network and try again.");
+          // network or the service, and minting a fresh code won't help.
+          // setupcode.js owns that reading now, for all three keypads.
+          setStatus(status, codeFailureText(err));
           code = '';
           display.textContent = '······';
         }
@@ -1905,14 +1900,12 @@ function renderCode() {
     btn.textContent = 'Getting code…';
     try {
       const encoded = await encodeConfig(normalizeConfig(state.cfg));
-      const res = await fetch(`${WORKER_URL}/code`, { method: 'POST', body: JSON.stringify({ cfg: encoded }) });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const { code } = await res.json();
+      const code = await mintCode(encoded);
       codeEl.textContent = code;
       note.textContent = `Write it down. Enter it on another board (Settings → Setup code) or at ${location.host}/setup; expires in 1 hour.`;
     } catch (err) {
       codeEl.textContent = '—';
-      note.textContent = `Couldn't reach the code service (${err.message}). Check that the Worker is deployed.`;
+      note.textContent = codeFailureText(err);
     } finally {
       box.hidden = false;
       btn.disabled = false;
