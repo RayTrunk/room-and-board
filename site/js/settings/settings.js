@@ -3,7 +3,7 @@
 // (setup codes use the on-page keypad, names come from the companion page).
 
 import { isLaunched, isAdvancedHidden, normalizeConfig, encodeConfig, WIDGET_IDS, ART_CATS, NJT_LINES, CURATED_SOURCES } from '../config.js';
-import { saveConfig, loadCache, markPendingEdit } from '../store.js';
+import { loadCache, markPendingEdit, applyConfig, getBridge, vaultStatus } from '../store.js';
 import { fetchJSON } from '../net.js';
 import { mintCode, redeemCode, codeFailureText } from '../setupcode.js';
 import { fetchDailyBackdrop } from '../curated.js';
@@ -177,26 +177,19 @@ export function closeSettings() {
 
 // Whether Cancel would throw work away. Nothing marks the config dirty as it is
 // edited (see openSettings), and nothing needs to: a value set back to what it
-// was is not a change, and normalizeConfig+saveConfig is what "saving" means,
+// was is not a change, and store.js's applyConfig is what "saving" means,
 // so JSON equality with the opening config IS the question. Exported for tests.
 export function hasUnsavedChanges() {
   return !!state && JSON.stringify(state.cfg) !== state.clean;
 }
 
+// What "saving" means is store.js's applyConfig, in full: the fresh timestamp,
+// the write, the vault mirror, and the reload that is still the simplest
+// correct way to apply layout and widget changes. All this panel adds is which
+// config, and taking itself off the screen afterwards.
 async function saveAndClose() {
-  state.cfg.t = Math.floor(Date.now() / 1000);
-  const cfg = normalizeConfig(state.cfg);
-  await saveConfig(cfg);
-  try {
-    if (window.__signage?.bridge) {
-      await window.__signage.bridge.sendConfig(await encodeConfig(cfg));
-      window.__signage.vault = 'synced';
-    }
-  } catch {
-    window.__signage.vault = 'offline';
-  }
+  await applyConfig(state.cfg);
   closeSettings();
-  location.reload(); // simplest correct way to apply layout/widget changes
 }
 
 // Collapsible nav model: pinned items + collapsible category groups (one open
@@ -1981,7 +1974,7 @@ function renderDiag() {
     <h2 class="pane__title">Diagnostics</h2>
     <div class="kv-grid">
       <span>Config source</span><b>${window.__signage?.source ?? '—'}</b>
-      <span>Device link</span><b>${window.__signage?.vault ?? 'not connected'}</b>
+      <span>Device link</span><b>${vaultStatus() ?? 'not connected'}</b>
       ${rows.join('')}
       <span>User agent</span><b class="kv__small">${escapeHtml(navigator.userAgent)}</b>
       <span>Cisco fonts</span><b>${escapeHtml(probeCiscoFonts())}</b>
@@ -2052,7 +2045,7 @@ function renderDiag() {
     try {
       // Legacy: boards provisioned with the retired SignageManager macro keep a
       // device-side vault; ask it to clear too so the reset really sticks there.
-      await window.__signage?.bridge?.sendReset();
+      await getBridge()?.sendReset();
     } catch {
       // no bridge: local reset only
     }

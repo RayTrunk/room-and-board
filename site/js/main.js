@@ -1,7 +1,7 @@
 // Boot and runtime orchestration for the signage dashboard.
 
 import { normalizeConfig, decodeConfig, CURATED_SOURCES } from './config.js';
-import { loadConfig, saveConfig, loadCache, saveCache, takePendingEdit } from './store.js';
+import { loadConfig, saveConfig, loadCache, saveCache, takePendingEdit, applyConfig, setBridge, isDemoSession } from './store.js';
 import { fetchJSON, fetchBuffer, fetchText } from './net.js';
 import { fitViewport } from './util.js';
 import { cardFor, markFresh, markStale, setCardConfigSource } from './card.js';
@@ -65,7 +65,11 @@ for (const m of MODULES) registerWidget(m);
 const net = { fetchJSON, fetchBuffer, fetchText };
 const $ = (sel) => document.querySelector(sel);
 const params = new URLSearchParams(location.search);
-const DEMO = params.get('demo') === '1';
+// Asked of store.js rather than re-derived here: it is the same question the
+// save path asks before it refuses to persist, and two spellings of "is this a
+// demo?" is exactly how the save path came to have one answer and Settings the
+// other.
+const DEMO = isDemoSession();
 
 // The demo fixtures are a 33 KB module (the 3rd-largest thing in the boot
 // graph) that only ?demo=1 ever reads. A static import shipped and parsed them
@@ -333,6 +337,12 @@ async function boot() {
   // Diagnostics surface — but the bridge passphrase (auth.p) must NOT sit on a
   // global where injected script could read it. Expose only non-secret fields;
   // connectBridge below uses the local `fragment` (with the passphrase) instead.
+  //
+  // What is left here is only what a person poking at a console (or the two
+  // read-only lines in Settings) wants to see: how this board was configured
+  // and what it is running. The bridge and the vault status used to ride along
+  // and no longer do; they are working state that two save paths wrote through,
+  // which is a different thing from a debug readout, and they live in store.js.
   window.__signage = {
     fragment: { cfg: fragment.cfg, auth: fragment.auth ? { u: fragment.auth.u, ip: fragment.auth.ip } : null },
     source: null,
@@ -391,15 +401,16 @@ async function boot() {
   }
   startRuntime();
 
-  // Vault sync runs opportunistically after first paint; settings uses the
-  // connection to mirror saves into the macro vault.
+  // Vault sync runs opportunistically after first paint. Boot is the only place
+  // that can open this connection, and store.js is the only place that needs
+  // it, so handing it over is the whole of boot's involvement. Every save from
+  // here on mirrors itself without main.js or Settings knowing there is a wire.
   if (fragment.auth) {
     import('./bridge.js').then(async ({ connectBridge }) => {
       try {
-        window.__signage.bridge = await connectBridge(fragment.auth);
-        window.__signage.vault = 'connected';
+        setBridge(await connectBridge(fragment.auth));
       } catch {
-        window.__signage.vault = 'offline';
+        setBridge(null); // no vault this session; saves still land locally
       }
     });
   }
@@ -423,19 +434,9 @@ $('#edit').addEventListener('click', async () => {
   const { openEditMode } = await import('./edit.js');
   openEditMode(cfg, {
     async onDone(layout) {
-      cfg = normalizeConfig({ ...cfg, layout, t: Math.floor(Date.now() / 1000) });
-      if (DEMO) return location.reload(); // demo sessions never persist
-      await saveConfig(cfg);
-      try {
-        if (window.__signage?.bridge) {
-          const { encodeConfig } = await import('./config.js');
-          await window.__signage.bridge.sendConfig(await encodeConfig(cfg));
-          window.__signage.vault = 'synced';
-        }
-      } catch {
-        window.__signage.vault = 'offline';
-      }
-      location.reload();
+      // Stamp, persist, mirror, reload: all of it is store.js's applyConfig now,
+      // and this handler's only remaining job is saying WHICH config to apply.
+      cfg = await applyConfig({ ...cfg, layout });
     },
   });
 });
