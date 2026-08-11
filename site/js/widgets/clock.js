@@ -1,5 +1,7 @@
 // Clock, date and greeting for the top bar. Renders locally, no network.
 
+import { escapeHtml } from '../util.js';
+
 export const meta = { id: 'clock', title: 'Clock', refreshMs: 30 * 1000 };
 
 export function greetingFor(name, date) {
@@ -24,8 +26,4 @@ export function render(el, _vm, cfg) {
       <span class="topbar__time">${time}</span>
       <span class="topbar__date">${date}</span>
     </div>`;
-}
-
-export function escapeHtml(s) {
-  return String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 }

@@ -39,6 +39,10 @@ holds the nouns.
   card excepts from that rule are declared, not improvised.
 - **Surface**: anything that takes over the screen: expand view, text viewer,
   art viewer, ambient, slideshow preview, iptv full screen, display test.
+- **Gesture**: one press record per surface: where the finger went down, which
+  pointer owns the gesture, and whether the record is still fresh. Classified
+  as tap, next, prev, or nothing (site/js/gesture.js); a second finger or a
+  resting palm never moves the origin.
 - **Canvas**: the fixed pixel budget a full-screen view lays out into
   (the overlay body height below the title).
 
