@@ -32,7 +32,14 @@ const TRAY_COLLAPSIBLE_GROUPS = TRAY_COLLAPSIBLE
   .map((label) => WIDGET_GROUPS.find((g) => g.label === label))
   .filter(Boolean);
 
-const TITLES = {
+// Edit mode's own, SHORTER register, and it stays its own on purpose: these
+// names are printed inside a grid tile that can be two cells wide, so the card
+// the catalogue calls "This Day in History" is "History" here and "LIRR (Penn
+// Station)" is just "LIRR". The catalogue's label answers "which card is this?"
+// in a settings list with a full line to spend; this answers it in a box.
+// It must still cover every card, or a tile renders its raw id, so it is
+// exported for test/catalog.test.js to hold it to that.
+export const TITLES = {
   apod: 'NASA Daily Photo',
   chart: 'Chart of the Day',
   citibike: 'Citi Bike',

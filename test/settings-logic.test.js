@@ -198,8 +198,11 @@ describe('connectBridge', () => {
   });
 });
 
-// Every widget id must have a label in BOTH settings surfaces — a missing
-// entry renders literal "undefined" in the Widgets and Diagnostics menus.
+// Every widget id must have a label on the settings surfaces; a missing entry
+// renders literal "undefined" in the Widgets and Diagnostics menus. Both
+// surfaces read one map from the catalogue now (they each kept a copy until the
+// two drifted); test/catalog.test.js is where that shared map is held to the
+// roster, and these two stay because they say it from the surfaces' side.
 import { WIDGET_IDS as ALL_IDS, isRetired } from '../site/js/config.js';
 const LIVE_IDS = ALL_IDS.filter((id) => !isRetired(id)); // retired ids drop from unplaced pickers
 import { WIDGET_LABELS as BOARD_LABELS } from '../site/js/settings/settings.js';
@@ -392,8 +395,15 @@ describe('widgetChecksHtml (setup picker)', () => {
     expect(html).toMatch(/data-w="photos"[^>]*checked/);
     // an unplaced widget is not checked
     expect(html).not.toMatch(/data-w="lirr"[^>]*checked/);
-    // uses the passed (phone) labels
-    expect(html).toContain('Metro-North (GCT)');
+    // Names come from the catalogue now, one map for both surfaces. This used
+    // to read "Metro-North (GCT)" and assert that the picker used the PHONE's
+    // labels rather than the board's, which was only ever provable because the
+    // two had drifted. So assert the mechanism instead: the labels it renders
+    // are the ones it was handed.
+    expect(html).toContain('Metro-North (Grand Central)');
+    const stubbed = widgetChecksHtml({ ...SETUP_LABELS, mnr: 'Harlem Line' }, new Set(), onTheCoast({ nerdMode: true }));
+    expect(stubbed).toContain('Harlem Line');
+    expect(stubbed).not.toContain('Metro-North');
   });
 
   // /setup used to open with DEFAULT_LAYOUT's nine cards ticked, which read as a

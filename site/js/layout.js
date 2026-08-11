@@ -119,7 +119,9 @@ export const MAX_SIZE = {
 // row and its time — the cap must not lock the richer tier out. Subway/services keep alert/incident headroom through their
 // deliberately generous capacity pitches, and both renderers shed rows to the
 // corner badge when expanded rows overflow anyway.
-const CONTENT_CAPPED = [
+// Exported for the catalogue completeness suite only: an id misspelled here is
+// a cap that silently never applies, and nothing else would notice.
+export const CONTENT_CAPPED = [
   ['worldclock', (cfg) => cfg?.worldclock?.cities?.length, 3],
   ['markets', (cfg) => cfg?.markets?.symbols?.length, 3],
   ['sports', (cfg) => cfg?.sports?.teams?.length, 3],

@@ -7,6 +7,7 @@
 // the default location moved to ZIP 10001. v1 configs migrate automatically.
 // `widgets` survives as a derived convenience array (layout ids, in order).
 
+import { CATALOG_IDS, CATALOG_GROUPS } from './catalog.js';
 import { DEFAULT_LAYOUT, normalizeLayout, migrateWidgetsToLayout, contentMaxH } from './layout.js';
 import { TFL_TUBE_IDS, TFL_LINE_IDS } from './tfl-lines.js';
 import { CHART_TOPICS, CHART_TOPIC_SLUGS } from './widgets/chart-topics.js';
@@ -19,40 +20,16 @@ export const ART_CATS = [
   ['asian', 'Asian'],
 ];
 
-export const WIDGET_IDS = [
-  'weather', 'subway', 'lirr', 'mnr', 'njt', 'amtrak', 'path', 'ferry', 'bus', 'citibike', 'tfl', 'art', 'photos', 'gdrivephotos', 'landscapes', 'apod', 'history', 'aqi', 'surf', 'quote', 'wotd', 'markets', 'marketsnews', 'worldclock', 'sports', 'sportsnews', 'news', 'substack', 'bsky', 'services', 'chart', 'f1', 'golf', 'tennis', 'iptv',
-];
-
-// Display grouping for the widget pickers (board Settings and phone /setup).
-// WIDGET_IDS above stays the validity source of truth; this is only on-screen
-// order + categories, and must remain an exact partition of WIDGET_IDS
-// (asserted in test/settings-logic.test.js).
-export const WIDGET_GROUPS = [
-  { label: 'Commute', ids: ['subway', 'lirr', 'mnr', 'njt', 'amtrak', 'path', 'ferry', 'bus', 'citibike', 'tfl'] },
-  { label: 'Weather & Air', ids: ['weather', 'aqi', 'surf'] },
-  { label: 'Markets', ids: ['markets', 'marketsnews'] },
-  { label: 'Sports', ids: ['sports', 'sportsnews', 'f1', 'golf', 'tennis'] },
-  { label: 'News & Social', ids: ['news', 'substack', 'bsky'] },
-  // Images = every card whose content IS the picture: art, photography, apod,
-  // and (since Ambient retired, 2026-07-29) the Live Video stream, which is the
-  // same media surface with the pictures moving. It is a superset of the
-  // Settings NAV_MODEL 'Images' group, which lists only the ones with something
-  // to configure — apod has no settings pane at all.
-  { label: 'Images', ids: ['art', 'landscapes', 'photos', 'gdrivephotos', 'apod', 'iptv'] },
-  // Daily = the cards that are literally "of the day": one new thing lands each
-  // morning and that IS the card. Cloud Services used to sit here and does not
-  // belong — it is live, not daily — so it left for Reference when the group
-  // narrowed and lost the "Extras" (2026-07-29).
-  { label: 'Daily', ids: ['history', 'quote', 'wotd', 'chart'] },
-  // Reference = "what is true right now somewhere else": the time where your
-  // colleagues are, and whether the tools everyone depends on are up. Took the
-  // slot Ambient vacated, which had become a rump of leftovers once Images was
-  // carved out of it.
-  // NAMING — decided with Sean, 2026-07-29: this group is "Reference", never
-  // "Work". Quadrillé is his personal project and a "Work" label would imply an
-  // employer sponsors it. Do not rename it back.
-  { label: 'Reference', ids: ['worldclock', 'services'] },
-];
+// The widget vocabulary itself now lives in catalog.js, which is pure data and
+// therefore safe for the phone wizard to import: one entry per card carrying
+// its id, its one settings-facing label and its picker group. These two names
+// are what the rest of the tree has always asked config.js for, and their
+// shapes are unchanged (an ordered id list; an ordered [{label, ids}] list), so
+// nothing downstream had to move. What changed is that they are no longer typed
+// here, and the label maps the two settings surfaces each kept are gone with
+// them. WIDGET_IDS stays the validity source of truth for a config.
+export const WIDGET_IDS = CATALOG_IDS;
+export const WIDGET_GROUPS = CATALOG_GROUPS;
 
 const SERVICE_IDS = ['webex', 'zoom', 'slack', 'ubiquiti', 'cloudflare', 'github', 'm365', 'gworkspace', 'aws', 'claude', 'openai'];
 

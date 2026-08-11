@@ -17,6 +17,15 @@ holds the nouns.
 - **Widget**: a module with meta {id, title, refreshMs}, a render(el, vm, cfg)
   entry, and a view model fetched from the worker. Widgets live in
   site/js/widgets/.
+- **Catalogue**: the roster of widgets, in site/js/catalog.js: one entry per id
+  carrying its label and its picker group, and nothing else. Pure data, so both
+  settings surfaces can read it without importing widget code. Identity and
+  display only; the geometry and capacity tables stay with the modules that
+  measured them, bound back to the catalogue by test/catalog.test.js.
+- **Label / title**: three registers, deliberately distinct. The catalogue's
+  `label` is the settings-facing name ("This Day in History"); a widget's
+  `meta.title` is what the card wears on the wall; edit.js TITLES is the short
+  form that fits a grid tile ("History").
 - **Grid**: the 12x8 layout the cards sit on. A rect is {x, y, w, h} in grid
   cells.
 - **Capacity**: the estimated number of list rows a card can show at a given

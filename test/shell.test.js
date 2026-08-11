@@ -1,19 +1,45 @@
 import { describe, it, expect } from 'vitest';
-import { registerWidget, activeWidgets, clearRegistry } from '../site/js/registry.js';
+import { readFileSync, existsSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { chooseBootConfig } from '../site/js/boot.js';
 import { parseFragment } from '../site/js/bridge.js';
 import { greetingFor } from '../site/js/widgets/clock.js';
 import { normalizeConfig, encodeConfig } from '../site/js/config.js';
+import { CATALOG_IDS } from '../site/js/catalog.js';
 
-describe('registry', () => {
-  it('returns widgets in config order, skipping unknown and inactive ids', () => {
-    clearRegistry();
-    const mk = (id) => ({ meta: { id, title: id, refreshMs: 1000 }, render() {} });
-    registerWidget(mk('weather'));
-    registerWidget(mk('subway'));
-    registerWidget(mk('art'));
-    const cfg = { widgets: ['art', 'bogus', 'weather'] };
-    expect(activeWidgets(cfg).map((w) => w.meta.id)).toEqual(['art', 'weather']);
+// What the deleted registry.js was really for. It held a Map, a register loop
+// and a getter, and the only thing that could go wrong with any of it was a
+// widget module that never got wired up, which is a fact about main.js's
+// MODULES list, not about a Map. So this reads main.js and asks that question
+// directly: the boot script must run exactly the cards the catalogue names.
+// A missing module is a card the layout can place and nothing can render; an
+// extra one is a module nobody can ever reach.
+//
+// Read as text rather than imported: main.js boots the board at module scope.
+const main = readFileSync(resolve(process.cwd(), 'site/js/main.js'), 'utf8');
+
+describe('main.js wires exactly the catalogue', () => {
+  // `import * as pathw from './widgets/path.js'`: local name to module file,
+  // because two of them are renamed around JS keywords and globals.
+  const importedAs = new Map(
+    [...main.matchAll(/import \* as (\w+) from '\.\/widgets\/([\w-]+)\.js'/g)].map((m) => [m[1], m[2]]),
+  );
+  const listed = (main.match(/const MODULES = \[([^\]]*)\]/) ?? [])[1]
+    ?.split(',').map((s) => s.trim()).filter(Boolean) ?? [];
+
+  it('runs one widget module per catalogue id, and no others', () => {
+    expect(listed.length, 'MODULES did not parse').toBeGreaterThan(0);
+    const ids = listed.map((name) => {
+      expect(importedAs.has(name), `MODULES lists ${name}, which is not an imported widget`).toBe(true);
+      return importedAs.get(name);
+    });
+    expect([...ids].sort()).toEqual([...CATALOG_IDS].sort());
+  });
+
+  it('has a module file on disk for every card', () => {
+    for (const id of CATALOG_IDS) {
+      expect(existsSync(resolve(process.cwd(), `site/js/widgets/${id}.js`)), `no widget module for ${id}`).toBe(true);
+    }
   });
 });
 

@@ -2,6 +2,7 @@
 // exchange, show the 6-char code. Reads #cfg= to pre-fill (QR round trip).
 
 import { isAddable, normalizeConfig, encodeConfig, decodeConfig, WIDGET_IDS, WIDGET_GROUPS, ART_CATS, DEFAULT_CONFIG, NJT_LINES } from '../config.js';
+import { WIDGET_LABELS } from '../catalog.js';
 import { optimizeLayout } from '../layout-optimize.js';
 import { WORKER_URL } from '../env.js';
 import { toggleIn, searchStations, canAddTicker, foldAt } from './pickers.js';
@@ -19,43 +20,15 @@ import { PATH_STATIONS, PATH_DIRS } from '../widgets/path.js';
 import { BSKY_API } from '../widgets/posts.js';
 
 const $ = (sel) => document.querySelector(sel);
-export const WIDGET_LABELS = {
-  weather: 'Weather',
-  subway: 'NYC Subway',
-  lirr: 'LIRR (Penn Station)',
-  mnr: 'Metro-North (GCT)',
-  njt: 'NJ Transit',
-  amtrak: 'Amtrak (Moynihan)',
-  path: 'PATH',
-  ferry: 'NYC Ferry',
-  bus: 'Express Bus',
-  markets: 'Markets',
-  marketsnews: 'Markets News',
-  art: 'Art slideshow',
-  photos: 'iCloud Photos',
-  gdrivephotos: 'GDrive Photos',
-  landscapes: 'Landscapes',
-  services: 'Cloud Services',
-  apod: 'NASA Daily Photo',
-  chart: 'Chart of the Day',
-  citibike: 'Citi Bike',
-  tfl: 'TfL Status',
-  history: 'This Day in History',
-  aqi: 'Air & Sky',
-  surf: 'Surf',
-  quote: 'Quote of the Day',
-  wotd: 'Word of the Day',
-  worldclock: 'World Clock',
-  sports: 'My Teams (sports)',
-  sportsnews: 'Sports News',
-  f1: 'Formula 1',
-  golf: 'Golf (PGA)',
-  tennis: 'Tennis',
-  iptv: 'Live Video (HLS)',
-  news: 'Headlines',
-  substack: 'Substack',
-  bsky: 'Bluesky',
-};
+
+// One list of card names for both settings surfaces, held in the catalogue.
+// This page used to keep its own copy "phone-length", which in practice meant
+// it was a second place to forget: it had already drifted from the board's on
+// Metro-North and Live Video, and nothing tested that the two agreed. Where the
+// phone genuinely needs it shorter, shortLabel() below drops the parenthetical.
+// Re-exported under the name it has always had, because the picker and the
+// tests reach for it here.
+export { WIDGET_LABELS };
 
 // Ordered config sections for the two-step /setup wizard. A section shows in
 // step 2 iff any of its trigger widget ids is placed; a category divider shows
@@ -323,8 +296,9 @@ async function boot() {
   refreshGating();
 }
 
-// Grouped checkbox HTML for the setup widget picker. `labels` is this page's
-// WIDGET_LABELS (phone-length); `placed` is a Set of currently-placed ids.
+// Grouped checkbox HTML for the setup widget picker. `labels` is an id-to-name
+// map, normally the catalogue's WIDGET_LABELS; `placed` is a Set of
+// currently-placed ids.
 // Exported for tests. The phone wizard is the LAST grouped picker: the board's
 // own Settings gave up its toggle list on 2026-08-01 (edit mode owns add and
 // remove there), but /setup builds a config for a board that has none yet, so

@@ -2,7 +2,8 @@
 // sections; every control is a ≥56px touch target; no typing anywhere
 // (setup codes use the on-page keypad, names come from the companion page).
 
-import { isLaunched, isAdvancedHidden, normalizeConfig, encodeConfig, WIDGET_IDS, ART_CATS, NJT_LINES, CURATED_SOURCES } from '../config.js';
+import { isLaunched, isAdvancedHidden, normalizeConfig, encodeConfig, ART_CATS, NJT_LINES, CURATED_SOURCES } from '../config.js';
+import { WIDGET_LABELS } from '../catalog.js';
 import { loadCache, markPendingEdit, applyConfig, getBridge, vaultStatus } from '../store.js';
 import { fetchJSON } from '../net.js';
 import { mintCode, redeemCode, codeFailureText } from '../setupcode.js';
@@ -18,43 +19,12 @@ import { attachReorder, foldHeadHtml, tickerRowsHtml } from './reorder.js';
 import { itemCapacity } from '../capacity.js';
 import { paneHtml as whatsNewHtml, railFootHtml, loadChangelog, fitChangelog, wireChangelog } from './whatsnew.js';
 
-export const WIDGET_LABELS = {
-  weather: 'Weather',
-  subway: 'NYC Subway',
-  lirr: 'LIRR (Penn Station)',
-  mnr: 'Metro-North (Grand Central)',
-  njt: 'NJ Transit',
-  amtrak: 'Amtrak (Moynihan)',
-  path: 'PATH',
-  ferry: 'NYC Ferry',
-  bus: 'Express Bus',
-  markets: 'Markets',
-  marketsnews: 'Markets News',
-  art: 'Art slideshow',
-  photos: 'iCloud Photos',
-  gdrivephotos: 'GDrive Photos',
-  landscapes: 'Landscapes',
-  history: 'This Day in History',
-  aqi: 'Air & Sky',
-  surf: 'Surf',
-  quote: 'Quote of the Day',
-  wotd: 'Word of the Day',
-  worldclock: 'World Clock',
-  services: 'Cloud Services',
-  apod: 'NASA Daily Photo',
-  chart: 'Chart of the Day',
-  citibike: 'Citi Bike',
-  tfl: 'TfL Status',
-  sports: 'My Teams (sports)',
-  sportsnews: 'Sports News',
-  f1: 'Formula 1',
-  golf: 'Golf (PGA)',
-  tennis: 'Tennis',
-  iptv: 'Live Video',
-  news: 'Headlines',
-  substack: 'Substack',
-  bsky: 'Bluesky',
-};
+// The card names this surface shows come from the catalogue now, and so do
+// /setup's: this file and that one each kept a 35-key map of their own, and the
+// pair had already drifted apart on Metro-North and Live Video. Re-exported
+// under the name it has always had, because the Diagnostics readout below and
+// the tests both reach for it here.
+export { WIDGET_LABELS };
 
 
 import { SUBWAY_LINES } from '../widgets/subway.js';

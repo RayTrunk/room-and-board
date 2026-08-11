@@ -8,7 +8,6 @@ import { cardFor, markFresh, markStale, setCardConfigSource } from './card.js';
 import { blockZoomGestures } from './zoomguard.js';
 import { schedule } from './scheduler.js';
 import { resolveMode, ambientSource } from './modes.js';
-import { registerWidget, getWidget } from './registry.js';
 import { chooseBootConfig } from './boot.js';
 import { parseFragment } from './bridge.js';
 import { stripData, stripHtml } from './ambient.js';
@@ -59,8 +58,15 @@ import * as tfl from './widgets/tfl.js';
 import { resolvePhotosManifest } from './photos-manifest.js';
 import { fetchCuratedManifest, fetchBackdropList } from './curated.js';
 
+// Every widget module the board can run, and the id lookup the layout walks to
+// find one. This used to be registry.js: a module-level Map, a register loop, a
+// getter, plus an activeWidgets() and a clearRegistry() that no production code
+// ever called. The Map is one line here and nothing outside this file wanted
+// it: a widget is reached through the layout, never by asking a registry. That
+// this list names exactly the catalogue's ids is pinned by test/shell.test.js.
 const MODULES = [weather, subway, lirr, mnr, njt, amtrak, pathw, ferry, bus, art, history, aqi, surf, quote, wotd, markets, marketsnews, worldclock, sports, sportsnews, news, substack, bsky, photos, gdrivephotos, landscapes, services, apod, chart, citibike, tfl, f1, golf, tennis, iptv];
-for (const m of MODULES) registerWidget(m);
+const BY_ID = new Map(MODULES.map((m) => [m.meta.id, m]));
+const getWidget = (id) => BY_ID.get(id) ?? null;
 
 const net = { fetchJSON, fetchBuffer, fetchText };
 const $ = (sel) => document.querySelector(sel);

@@ -55,7 +55,9 @@ const RAIL_ROWS = Object.freeze({ 2: 2, 3: 4, 4: 5, 5: 7, 6: 9, 7: 11, 8: 12 });
 const railCapacity = (w, h) => (h < 2 ? 1 : RAIL_ROWS[Math.min(h, 8)]);
 
 // Per-widget capacity of the primary list, or null when there isn't one.
-const MODELS = {
+// Exported for the catalogue completeness suite: a key here that is not a
+// widget id is a calibration nothing ever reads.
+export const MODELS = {
   // ~67px row pitch (name+price stacked over a 28px spark, +10px row-gap) with
   // headroom for the "+N more" hint. 69 (was a too-tall 78) makes a 4x3 fit 3
   // index rows instead of 2 — verified overflow-safe with the hint at 3–8 tall.
