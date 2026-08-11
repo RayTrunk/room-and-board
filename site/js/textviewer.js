@@ -7,6 +7,7 @@
 
 import { escapeHtml } from './util.js';
 import { registerSurface, whileShown } from './surfaces.js';
+import { surfaceOwnsTap } from './expand.js';
 
 // Every card text that CSS may clamp or ellipsize. Headlines are handled
 // separately (rich story view), but stay here as the fallback for a link-less,
@@ -180,6 +181,12 @@ export function closeTextViewer() {
 // Delegated: one listener on the grid covers every card, surviving re-renders.
 export function initTextViewer(host, { truncated = defaultTruncated } = {}) {
   host.addEventListener('click', (e) => {
+    // No reader opens under a full-screen surface, and the tap that dismisses
+    // one is that surface's tap, not the grid's. This listener ran unguarded
+    // for as long as the overlay probe was a three-id allow-list: a tap while
+    // live TV covered the board, or the retargeted click trailing its exit,
+    // could open a reader on whatever truncated row sat under the finger.
+    if (surfaceOwnsTap()) return;
     // A news headline opens the rich story view (summary + QR) whether or not
     // its title is truncated — the value is the story behind it, not just the
     // full headline.

@@ -9,6 +9,10 @@
       {
         "lead": "Photos answer the finger you meant",
         "text": "Standing close to the board with a hand resting on the glass, a tap or a swipe on a full screen photo could do nothing at all, or turn into a swipe you never made. The picture viewer now follows the finger that started the gesture and ignores whatever else lands while it is still going, so a palm on the panel, or a second hand alongside yours, no longer takes the tap or the swipe you meant."
+      },
+      {
+        "lead": "The tap that closes a view stays put",
+        "text": "Tapping your way out of live video, or out of any full screen view, could occasionally count twice: the view closed, and the same tap landed on whatever card sat under your finger, opening a reader or a viewer you never asked for. The board now remembers what was on screen when your finger came down, so the tap that closes a view is spent on closing it and nothing else."
       }
     ]
   },

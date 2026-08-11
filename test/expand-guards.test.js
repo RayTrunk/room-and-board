@@ -256,4 +256,39 @@ describe('the surfaces register is what the guards read', () => {
     pointer(card, 'click', 300, 200);
     expect(built).toHaveLength(0);
   });
+
+  // The reader ran unguarded for as long as the probe was an allow-list: the
+  // text viewer's delegated listener never asked whether anything was full
+  // screen, so a tap while live TV covered the board could open a reader on
+  // whatever truncated row sat under the finger. These two hold it to the same
+  // two guards the expand engine answers to, through the same register.
+  // Same trap countingBoard sidesteps, reader edition: one raised selector IS
+  // '#text-viewer', and a fabricated div with no hidden attribute satisfies
+  // `hidden === false` by existing. So the probe here ignores the fabricated
+  // surface and asks whether any OTHER #text-viewer is showing, which is the
+  // only honest reading of "did a reader open".
+  const readerShown = (except = null) =>
+    [...document.querySelectorAll('#text-viewer')].some((el) => el !== except && el.hidden === false);
+
+  it.each(registeredSurfaces())('opens no reader under $name', ({ selector }) => {
+    const { grid } = board(LINESTATUS, { expandable: false });
+    const row = grid.querySelector('.linestatus__text');
+    const surface = raise(selector);
+    row.click();
+    expect(readerShown(surface)).toBe(false);
+
+    surface.remove();
+    row.click();
+    expect(readerShown()).toBe(true);
+  });
+
+  it.each(registeredSurfaces())('attributes the reader tap that dismisses $name to $name', ({ selector }) => {
+    const { grid } = board(LINESTATUS, { expandable: false });
+    const row = grid.querySelector('.linestatus__text');
+    const surface = raise(selector);
+    pointer(surface, 'pointerdown', 300, 200);
+    surface.remove();
+    pointer(row, 'click', 300, 200);
+    expect(readerShown()).toBe(false);
+  });
 });

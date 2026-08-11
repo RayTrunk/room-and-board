@@ -294,6 +294,18 @@ function wirePress(doc) {
   doc.addEventListener('click', () => press.clear());
 }
 
+// Whether a full-screen surface owns the tap in flight: one is up right now,
+// or one was up when the finger went down. The second half is the dismissal
+// case: by the time the browser retargets the trailing synthesised click onto
+// the grid, the surface is already gone, and only the press record remembers
+// it was there. Any grid listener that opens a view asks this before treating
+// a click as a card tap; it is exported because the text viewer's delegated
+// listener leaked exactly this class of tap until it could ask.
+export function surfaceOwnsTap() {
+  if (isOverlayOpen()) return true;
+  return Boolean(press.fresh()?.overlay);
+}
+
 // Delegated: one listener on the grid covers every card and survives every
 // widget re-render (same idiom as the text viewer).
 export function initExpand(host) {
@@ -308,16 +320,16 @@ export function initExpand(host) {
     const sub = source.subviews?.find((s) => e.target.closest?.(s.selector));
     if (!sub && source.except && e.target.closest?.(source.except)) return; // the row owns this tap, not the card
     if (!sub && !source.build) return; // subviews only: the card surface stays inert
-    // Never stack a second full-screen view on a live one. A widget's own
-    // handler may have opened its viewer earlier in this very click (the art
-    // and chart cards do), so this reads the DOM, not just the press record.
-    if (isOverlayOpen()) return;
+    // Never stack a second full-screen view on a live one, and never mistake a
+    // surface's dismissal for a card tap. A widget's own handler may have
+    // opened its viewer earlier in this very click (the art and chart cards
+    // do), which is why surfaceOwnsTap reads the DOM and not just the record.
+    if (surfaceOwnsTap()) return;
     const gesture = press.fresh();
     if (gesture) {
       // Both checks are about the tap's ORIGIN, which is the only thing a
       // retargeted click gets wrong: it keeps the coordinates but arrives with
       // a target it was never aimed at.
-      if (gesture.overlay) return; // something was full screen when the finger went down: this tap was its dismissal
       if (gesture.card !== card) return; // the press began somewhere else entirely
       if (swipeAction(e.clientX - gesture.x, e.clientY - gesture.y) !== 'tap') return; // a drag, not a tap
     }
