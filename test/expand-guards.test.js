@@ -13,9 +13,17 @@ import {
   initExpand,
   setExpandSource,
   isExpandOpen,
-  isOverlayOpen,
   closeExpand,
 } from '../site/js/expand.js';
+import { isOverlayOpen, registeredSurfaces } from '../site/js/surfaces.js';
+// A surface signs the register when its module loads, so the inventory is only
+// the whole inventory if every owner has been imported. These four own the
+// surfaces this file does not otherwise touch. (expand.js and textviewer.js
+// are imported above for their own sake.)
+import '../site/js/imageshow.js';
+import '../site/js/screensaver.js';
+import '../site/js/widgets/iptv.js';
+import '../site/js/settings/settings.js';
 import { tap as pointer } from './helpers/board.js';
 
 const LINESTATUS =
@@ -163,21 +171,6 @@ describe('a tap that closes an overlay never opens another', () => {
     expect(isExpandOpen()).toBe(false);
   });
 
-  it('refuses to stack under any live full-screen view, including the art viewer', () => {
-    const { card } = board(LINESTATUS);
-    const art = document.createElement('div');
-    art.id = 'art-viewer';
-    document.body.appendChild(art); // visible: the art card was tapped
-    expect(isOverlayOpen()).toBe(true);
-    card.click();
-    expect(isExpandOpen()).toBe(false);
-
-    art.hidden = true;
-    expect(isOverlayOpen()).toBe(false);
-    card.click();
-    expect(isExpandOpen()).toBe(true);
-  });
-
   it('still opens for a synthesised click with no pointer gesture at all', () => {
     // RoomOS injects taps and the settings pane drives cards programmatically;
     // an unattributable click keeps its pre-existing behaviour rather than
@@ -185,5 +178,82 @@ describe('a tap that closes an overlay never opens another', () => {
     const { card } = board(LINESTATUS);
     card.click();
     expect(isExpandOpen()).toBe(true);
+  });
+});
+
+describe('the surfaces register is what the guards read', () => {
+  // No hand-built #art-viewer here any more. This block used to fabricate the
+  // one surface it happened to know about, which is the same mistake the
+  // allow-list in util.js made: it could only ever test what someone had
+  // remembered to type. It now enumerates the register, so every surface that
+  // signs is covered by these two guards on the day it signs.
+
+  // A registered selector, made real. The register holds exactly two shapes,
+  // an id and a class chain, because those are the two ways these seven are
+  // addressed in the DOM.
+  const raise = (selector) => {
+    const el = document.createElement('div');
+    if (selector.startsWith('#')) el.id = selector.slice(1);
+    else el.className = selector.slice(1).replaceAll('.', ' ');
+    document.body.appendChild(el);
+    return el;
+  };
+
+  it('knows all seven full-screen surfaces, and this is the whole list', () => {
+    // The inventory, pinned. An eighth surface has to appear here to be
+    // guarded, which is the moment to notice it: the point of the register is
+    // that the list is somewhere a person reads, not scattered across the six
+    // files that put things on the glass.
+    expect(registeredSurfaces()).toEqual([
+      { name: 'ambient', selector: '#ambient' },
+      { name: 'art viewer', selector: '#art-viewer' },
+      { name: 'display test', selector: '.displaytest' },
+      { name: 'expand view', selector: '#expand-view' },
+      { name: 'iptv full screen', selector: '.iptv--full' },
+      { name: 'screensaver preview', selector: '.ss-preview' },
+      { name: 'text viewer', selector: '#text-viewer' },
+    ]);
+  });
+
+  // A card whose view records every time it is BUILT. That is the assertion
+  // these two want rather than isExpandOpen(), because one registered surface
+  // is the expand overlay itself and "did the engine build a view for this
+  // card" is the question in every case, including that one.
+  const countingBoard = () => {
+    const built = [];
+    const { card } = board(LINESTATUS, { expandable: false });
+    setExpandSource(card, () => {
+      built.push(1);
+      return { title: 'Subway Status', bodyHtml: '<p class="statusboard">every line</p>' };
+    });
+    return { card, built };
+  };
+
+  it.each(registeredSurfaces())('sees $name, so no card opens under it', ({ selector }) => {
+    const { card, built } = countingBoard();
+    const surface = raise(selector); // this surface has taken the screen
+    expect(isOverlayOpen()).toBe(true);
+    card.click();
+    expect(built).toHaveLength(0);
+
+    surface.remove(); // and has stood down again
+    expect(isOverlayOpen()).toBe(false);
+    card.click();
+    expect(built).toHaveLength(1);
+  });
+
+  it.each(registeredSurfaces())('attributes the tap that dismisses $name to $name', ({ selector }) => {
+    // The retargeting case, which is the one that bites on a real panel: the
+    // finger goes down on the surface, the surface closes, and the browser
+    // hit-tests the trailing touch-synthesised click against the DOM that is
+    // left, landing it on whatever card is now under the finger. Knowing what
+    // was on screen when the finger went DOWN is the whole defence, and it is
+    // only as good as the register.
+    const { card, built } = countingBoard();
+    const surface = raise(selector);
+    pointer(surface, 'pointerdown', 300, 200);
+    surface.remove();
+    pointer(card, 'click', 300, 200);
+    expect(built).toHaveLength(0);
   });
 });

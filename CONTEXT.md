@@ -38,7 +38,9 @@ holds the nouns.
 - **One-tap rule**: a tap on a card opens exactly one destination; live rows a
   card excepts from that rule are declared, not improvised.
 - **Surface**: anything that takes over the screen: expand view, text viewer,
-  art viewer, ambient, slideshow preview, iptv full screen, display test.
+  art viewer, ambient, slideshow preview, iptv full screen, display test. Each
+  signs the register in site/js/surfaces.js from its own module, and that
+  register is what the tap guards read.
 - **Gesture**: one press record per surface: where the finger went down, which
   pointer owns the gesture, and whether the record is still fresh. Classified
   as tap, next, prev, or nothing (site/js/gesture.js); a second finger or a

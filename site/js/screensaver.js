@@ -26,9 +26,24 @@ import { ambientSource } from './modes.js';
 import { createSlideshow, swipeFadeThrough, loadImage } from './imageshow.js';
 import { startClockFace, CLOCK_SOURCES } from './clockfaces.js';
 import { attachGesture } from './gesture.js';
+import { registerSurface, whileShown } from './surfaces.js';
 import { backdropDayIndex, localDayNumber } from './curated.js';
 
 const $ = (sel) => document.querySelector(sel);
+
+// Ambient signs the surfaces register too, and it is the one that needed an
+// argument. isAmbient() below stays exactly as it is: the MODE is policy, and
+// it answers a different question, "should this widget be doing work at all".
+// The register answers a question about the screen, and ambient covers the
+// screen as completely as any tap-opened view. Leaving it out would mean
+// writing "is anything full screen, other than the screensaver" wherever the
+// plain question was wanted, which is precisely how the old three-id allow-list
+// came to be wrong. Nothing about tap handling changes by signing: setMode
+// hides #grid outright, so there are no card taps to guard while ambient is up,
+// and a tap that somehow leaked through should not open a card behind the
+// screensaver anyway. #ambient ships hidden in index.html and setMode is the
+// one writer, so `hidden` is the same live signal the overlays give.
+registerSurface('ambient', '#ambient', whileShown);
 
 let ambient = false; // the published mode: what isAmbient() answers
 let source = null; // the ambient source in force, for step() and the minute re-runs

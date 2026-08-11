@@ -7,8 +7,16 @@
 import { setupPrompt, escapeHtml } from '../util.js';
 import { setCardNote } from '../card.js';
 import { isAmbient } from '../screensaver.js';
+import { registerSurface } from '../surfaces.js';
 
 export const meta = { id: 'iptv', title: 'Live Video', refreshMs: 60 * 1000 };
+
+// The card's own video wrapper, wearing a class that makes it position:fixed
+// inset:0 at z-index 47: higher than every other surface on the board. It is
+// also the one that was invisible to the tap guards for its whole life, because
+// their allow-list only knew the three overlays with ids. The class IS the
+// signal; the element under it never goes anywhere.
+registerSurface('iptv full screen', '.iptv--full');
 
 // UniFi Protect "share livestream" pages (monitor.ui.com/<id>) embed cleanly
 // (no frame-ancestors as of 2026-07); they play via UI's WebRTC relay, so

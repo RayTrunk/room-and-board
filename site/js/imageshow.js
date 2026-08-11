@@ -8,7 +8,8 @@
 // the picture band by band as the bytes arrive — the "drawing in from the top"
 // that made a rotating card yank the eye across the room.
 
-import { escapeHtml, isOverlayOpen } from './util.js';
+import { escapeHtml } from './util.js';
+import { isOverlayOpen, registerSurface, whileShown } from './surfaces.js';
 import { markExpandable } from './card.js';
 import { attachGesture } from './gesture.js';
 import { stripData, stripHtml } from './ambient.js';
@@ -290,6 +291,9 @@ function renderViewerCaption(viewer, item) {
   }
   cap.innerHTML = html;
 }
+
+// Built once below and thereafter toggled, so `hidden` is the signal.
+registerSurface('art viewer', '#art-viewer', whileShown);
 
 // Full-screen viewer: tap the dashboard card to open, tap anywhere to close,
 // swipe left/right to browse the supplied photo list.  Shows the ambient info

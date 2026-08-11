@@ -83,24 +83,6 @@ export function fmtClock(epochSec, clock24 = false) {
   return new Date(epochSec * 1000).toLocaleTimeString('en-US', clockTimeOpts(clock24));
 }
 
-// Every full-screen view that is dismissed by "tap anywhere": the expand
-// overlay, the text/story reader, and the art viewer. All three toggle the
-// `hidden` property, so the DOM is the live signal. One invariant to serve: a
-// tap that CLOSES an overlay must never open another.
-//
-// It lives here, not in expand.js where it was written, because the image
-// surface needs the same answer. The import cycle that first forced it out has
-// since gone (expand.js no longer reaches into imageshow.js for the gesture
-// classifier; that rule is gesture.js now), but the reason to keep it here is
-// unchanged: imageshow.js would otherwise import the whole expand engine to ask
-// a one-line DOM question. expand.js re-exports it, so every existing importer
-// is unchanged.
-const OVERLAYS = '#expand-view, #text-viewer, #art-viewer';
-
-export function isOverlayOpen(doc = document) {
-  return [...doc.querySelectorAll(OVERLAYS)].some((el) => !el.hidden);
-}
-
 // Extract an iCloud shared-album token from a full URL, a #fragment, or a bare
 // token. Case-sensitive (the token is), lenient about surrounding text.
 export function parseAlbumToken(input) {

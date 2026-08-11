@@ -6,6 +6,7 @@
 // Tap anywhere to dismiss; a 20s idle timer returns an abandoned board home.
 
 import { escapeHtml } from './util.js';
+import { registerSurface, whileShown } from './surfaces.js';
 
 // Every card text that CSS may clamp or ellipsize. Headlines are handled
 // separately (rich story view), but stay here as the fallback for a link-less,
@@ -40,6 +41,9 @@ const defaultTruncated = (el) =>
 
 const DISMISS_MS = 20 * 1000;
 let timer = null;
+
+// Built once by viewerEl() and thereafter toggled, so `hidden` is the signal.
+registerSurface('text viewer', '#text-viewer', whileShown);
 
 // Shared overlay element: created once, wired to close on any tap.
 function viewerEl() {

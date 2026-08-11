@@ -28,6 +28,14 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { OVERLAY_BODY_H, BOARD_VIEWPORT_H } from '../site/js/expand.js';
+import { registeredSurfaces } from '../site/js/surfaces.js';
+// Loading a surface's module is how it signs the register, so the inventory
+// below is only complete with all seven owners in hand (expand.js is above).
+import '../site/js/textviewer.js';
+import '../site/js/imageshow.js';
+import '../site/js/screensaver.js';
+import '../site/js/widgets/iptv.js';
+import '../site/js/settings/settings.js';
 import { blockZoomGestures } from '../site/js/zoomguard.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -244,6 +252,26 @@ describe('full-bleed contexts are fixed to the real viewport', () => {
 
   it.each(FULL_SCREEN)('%s is position:fixed', (sel) => {
     expect(decl(sel, 'position')).toBe('fixed');
+  });
+
+  it('is the same seven the surfaces register knows', () => {
+    // The stylesheet names a surface by its block class and the register by the
+    // handle the JS actually toggles: same seven things, two vocabularies. The
+    // pairing is written out so the two lists cannot drift, which is exactly
+    // how the register's predecessor went wrong (a three-id allow-list in
+    // util.js, still three ids four surfaces later).
+    const PAIRS = {
+      '.ambient': '#ambient',
+      '.art-viewer': '#art-viewer',
+      '.expand': '#expand-view',
+      '.text-viewer': '#text-viewer',
+      '.ss-preview': '.ss-preview',
+      '.iptv.iptv--full': '.iptv--full',
+      '.displaytest': '.displaytest',
+    };
+    expect(Object.keys(PAIRS).sort()).toEqual([...FULL_SCREEN].sort());
+    expect(Object.values(PAIRS).sort())
+      .toEqual(registeredSurfaces().map((s) => s.selector).sort());
   });
 
   it('puts the ambient info band on the last visible pixel, on every device', () => {

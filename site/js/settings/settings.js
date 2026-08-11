@@ -63,7 +63,12 @@ import { BSKY_API } from '../widgets/posts.js';
 import { OFFICES, zoneLabel, zonesByRegion } from '../widgets/worldclock.js';
 import { symbolKnown } from '../widgets/markets.js';
 import { stripData, stripHtml } from '../ambient.js';
+import { registerSurface } from '../surfaces.js';
 
+// The two full-screen surfaces Settings puts up. Both are built on demand and
+// removed on the tap that dismisses them, so matching at all is being up.
+registerSurface('screensaver preview', '.ss-preview');
+registerSurface('display test', '.displaytest');
 
 let state = null; // { cfg, root, section, stack }
 

@@ -8,7 +8,8 @@
 // Cards register a builder via setExpandSource; a card with nothing hidden
 // registers nothing and its taps stay inert.
 
-import { escapeHtml, isOverlayOpen } from './util.js';
+import { escapeHtml } from './util.js';
+import { isOverlayOpen, registerSurface, whileShown } from './surfaces.js';
 import { markExpandable } from './card.js';
 import { swipeAction, attachGesture, pressRecord } from './gesture.js';
 import { reportTap } from './fleet.js';
@@ -114,19 +115,13 @@ function overlayEl() {
   return host;
 }
 
+// Built once by overlayEl() and thereafter toggled, so `hidden` is the signal.
+registerSurface('expand view', '#expand-view', whileShown);
+
 export function isExpandOpen() {
   const host = document.querySelector('#expand-view');
   return Boolean(host) && !host.hidden;
 }
-
-// "Is any full-screen view up?" lives in util.js so the image surface can ask
-// it too. The cycle that forced it out of here is gone (the gesture classifier
-// this module used to import from imageshow.js now belongs to gesture.js), but
-// moving it back would only trade one dependency for another: imageshow.js
-// would then import the whole expand engine to ask a one-line DOM question.
-// Where it finally belongs is a question for the refactor that owns the
-// overlays. It is re-exported here because this is where every caller looks.
-export { isOverlayOpen };
 
 // One seam for "the view on screen is going away", so a view is told exactly
 // once however it ends: a tap, the idle timer, or a handover to the next view.
