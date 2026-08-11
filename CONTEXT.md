@@ -1,0 +1,76 @@
+# Domain glossary
+
+The ubiquitous language of Quadrillé. Use these words in code, comments, tests,
+and commit messages; if a concept needs a different word, add it here first.
+PRODUCT.md holds the product framing, DESIGN.md the visual system. This file
+holds the nouns.
+
+## The board
+
+- **Board**: the 1920x1080 dashboard page a Cisco Board Pro idles on. One user,
+  one room, no accounts.
+- **Card**: the framed surface a widget renders into: title, body, freshness
+  stamp, corner count, note line. A card's size signals are its data-w/data-h
+  attributes plus the tier classes (t-s/t-m/t-l by height, t-narrow at four
+  columns or fewer); CSS branches on the tiers, JS reads the attributes.
+  Owned by site/js/card.js.
+- **Widget**: a module with meta {id, title, refreshMs}, a render(el, vm, cfg)
+  entry, and a view model fetched from the worker. Widgets live in
+  site/js/widgets/.
+- **Grid**: the 12x8 layout the cards sit on. A rect is {x, y, w, h} in grid
+  cells.
+- **Capacity**: the estimated number of list rows a card can show at a given
+  size (the pixel-calibrated table in capacity.js).
+- **Fit**: the measured correction to capacity: render, measure, shed or grow
+  until the content actually fits the card. The shed count feeds the corner
+  count.
+- **Trim**: the rows a widget habitually sheds below its capacity estimate
+  (tall content, notes, banners). Stated per widget, read by layout and the
+  optimizer; the estimate deliberately over-promises and trim corrects it.
+- **Corner count**: the "+N" text badge in a card's corner: pure information,
+  never a glyph, never per-card chrome (decision 2026-08-02, final).
+
+## Tap views
+
+- **Expand view / tap view**: the full-screen reading of a card, opened by a
+  tap anywhere on the card (the one-tap rule: one card, one tap, one
+  destination). Views are read from about a foot away.
+- **One-tap rule**: a tap on a card opens exactly one destination; live rows a
+  card excepts from that rule are declared, not improvised.
+- **Surface**: anything that takes over the screen: expand view, text viewer,
+  art viewer, ambient, slideshow preview, iptv full screen, display test.
+- **Canvas**: the fixed pixel budget a full-screen view lays out into
+  (the overlay body height below the title).
+
+## Ambient
+
+- **Ambient mode**: the screensaver state: backdrop or slideshow or clock face
+  plus the info strip. The ambient engine owns entering, leaving, stepping,
+  and the midnight rollover of the daily pick.
+- **Backdrop**: the full-bleed daily artwork behind ambient.
+- **Ambient strip**: the compact digest (temperature, next departures) shown in
+  ambient mode (site/js/ambient.js).
+
+## The worker
+
+- **Worker**: the Cloudflare Worker API proxy (signage-api) every board polls.
+- **Feed**: one upstream data source proxied by a worker route (weather, ESPN,
+  NJT, markets, ...). Feeds cache through cached(), the one caching seam:
+  Cache API only, never KV; KV is a durable store (setup codes, the NJT day
+  timetable), not a cache.
+- **Digest envelope**: the contract every feed response carries: updatedAt
+  (epoch seconds), stale, and optionally partial/mended. Consumed by cached(),
+  the health monitor, and the board's freshness chrome.
+- **Service day**: the New York transit day a timetable is valid for; it rolls
+  over at midnight local, not UTC.
+
+## Setup and fleet
+
+- **Setup code**: the 6-character, hour-lived code minted from a config payload
+  and redeemed into a scoped patch (full board, photos, video). The exchange
+  (mint, redeem, failure wording) is one module; the keypads are presentations
+  of it.
+- **Settings surface**: the on-board settings panel (settings.js) and the phone
+  setup flow (setup.js): two presentations of the same widget preferences.
+- **Fleet beacon**: the anonymous hourly stats ping (boot time, widget health,
+  viewport) feeding the stats dashboard on the NAS.
