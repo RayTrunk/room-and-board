@@ -226,7 +226,7 @@ export function nyDate(now = new Date()) {
 
 // getStationSchedule returns the full static day-timetable (verified live
 // 2026-07-25: ~267 items -> ~87 Penn departures, and it responds fine midday).
-// We cache it in KV (not the Cache API: that's colo-local and evicts, which
+// We STORE it in KV (not the Cache API: that's colo-local and evicts, which
 // stranded the widget with 502s mid-outage) and REFRESH it on a TTL. The refresh
 // is the fix for a real bug: NJT lists only the outgoing service day's overnight
 // TAIL during its ~midnight rollover, so a single daily fetch landing in that
@@ -236,19 +236,14 @@ export function nyDate(now = new Date()) {
 // reused; getStationSchedule itself allows 40k/day. On a refresh FAILURE we serve
 // the stored copy: today's timetable is static, so a same-day copy is still
 // correct (stale:false); only a prior day's is flagged stale.
+//
+// This is a durable STORE, not a response cache. The response cache is cached()
+// in index.js, which is also where the isolate memos that used to live here went:
+// the route's own cache entry answers repeat polls without reaching this function
+// at all, and its failure backoff is what keeps a timing-out NJT from being
+// re-dialed by every board (the job the old outage memo was doing by hand).
 const SCHEDULE_KV_KEY = 'njt:schedule';
 const SCHEDULE_MAX_AGE_S = 30 * 60; // refresh the day-timetable at least this often
-const MEMO_MS = 5 * 60 * 1000; // how long an isolate reuses what it last resolved
-let scheduleMemo = null; // { date, vm, until } per isolate — the last GOOD timetable
-// The copy we fell back to when a refresh FAILED, memoized for the same short
-// window. /njt/departures has no cache layer in front of it, so without this
-// every board request re-attempts an upstream that is already timing out: NJT's
-// 10s abort plus the alerts call behind it can push a single request past the
-// board's own 15s fetch timeout, and then nothing refreshes at all. One attempt
-// per window per isolate instead. It is a BACKOFF, not extra staleness: the
-// window is short enough that the TTL refresh still escapes a midnight-rollover
-// snapshot, and `stale` is recomputed against today's date on every serve.
-let outageMemo = null; // { date, vm, until }
 
 // Usable as-is only if it's today's timetable, has trains, AND was fetched
 // recently — the age check is what escapes a stale midnight-rollover snapshot.
@@ -259,30 +254,17 @@ const scheduleFresh = (s, today, nowS) =>
 export async function getNjtSchedule(env) {
   const today = nyDate();
   const nowS = Math.floor(Date.now() / 1000);
-  if (scheduleMemo && scheduleMemo.until > Date.now() && scheduleFresh(scheduleMemo, today, nowS)) {
-    return { ...scheduleMemo.vm, stale: false };
-  }
-  // Upstream failed recently and this isolate already has the copy it fell back
-  // to: serve that rather than queueing behind another timing-out fetch.
-  if (outageMemo && outageMemo.until > Date.now()) {
-    return { ...outageMemo.vm, stale: outageMemo.date !== today };
-  }
   let stored = null;
   try {
     const raw = await env.CODES.get(SCHEDULE_KV_KEY);
     if (raw) stored = JSON.parse(raw);
   } catch { /* KV read failed — fall through and fetch fresh */ }
-  if (scheduleFresh(stored, today, nowS)) {
-    scheduleMemo = { date: today, vm: stored.vm, until: Date.now() + MEMO_MS };
-    return { ...stored.vm, stale: false };
-  }
+  if (scheduleFresh(stored, today, nowS)) return { ...stored.vm, stale: false };
   try {
     const vm = await fetchNjtSchedule(env);
     // Only persist a non-empty timetable — an empty result is anomalous and must
-    // not become the cached "today" (nor spend a KV write on every request).
+    // not become the stored "today" (nor spend a KV write on every request).
     if (vm.trains?.length > 0) {
-      scheduleMemo = { date: today, vm, until: Date.now() + MEMO_MS };
-      outageMemo = null; // upstream is back
       try {
         await env.CODES.put(SCHEDULE_KV_KEY, JSON.stringify({ date: today, vm }), { expirationTtl: 48 * 3600 });
       } catch { /* best effort: a later isolate re-fetches */ }
@@ -291,21 +273,9 @@ export async function getNjtSchedule(env) {
   } catch (err) {
     // Refresh failed (e.g. NJT 500): fall back to the stored copy. A same-day
     // timetable is static and still correct; only a prior day's is truly stale.
-    // Memoized so the NEXT request in this window serves it without repeating
-    // the failing call (see outageMemo); the window lapsing is what puts the
-    // TTL refresh back in play.
-    if (stored?.vm) {
-      outageMemo = { date: stored.date, vm: stored.vm, until: Date.now() + MEMO_MS };
-      return { ...stored.vm, stale: stored.date !== today };
-    }
+    // Note this is NOT an error to the caller, so the route caches it like any
+    // other answer and the next attempt waits for that entry to lapse.
+    if (stored?.vm) return { ...stored.vm, stale: stored.date !== today };
     throw err;
   }
-}
-
-// Test hook: clear the cached schedule (KV + isolate memo) so state can't leak
-// between cases.
-export async function resetNjtSchedule(env) {
-  scheduleMemo = null;
-  outageMemo = null;
-  try { await env?.CODES?.delete(SCHEDULE_KV_KEY); } catch { /* ignore */ }
 }

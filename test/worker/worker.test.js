@@ -4,7 +4,7 @@ import { digestNext, digestSchedule, fetchTeamSummary, mapTeamSummary } from '..
 import { ESPN_UA } from '../../worker/src/espn.js';
 import { env } from 'cloudflare:test';
 import worker, { guardFetch } from '../../worker/src/index.js';
-import { resetNjtToken, resetNjtSchedule, nyDate } from '../../worker/src/njt.js';
+import { resetNjtToken, nyDate } from '../../worker/src/njt.js';
 import { mapRidePath } from '../../worker/src/path.js';
 import GtfsRt from 'gtfs-realtime-bindings';
 import { mapFerryFeed } from '../../worker/src/ferry.js';
@@ -23,11 +23,14 @@ const call = (path, init, extraEnv = {}) =>
 const NJT_ENV = { NJT_USER: 'user', NJT_PASS: 'pass' };
 
 // The upstream-proxy cache lives in the Cache API now (not KV). Keys mirror
-// cached() in worker/src/index.js: `${origin}/__cache/{fresh,stale}/{key}`,
+// cached() in worker/src/index.js: `${origin}/__cache/{fresh,stale,fail}/{key}`,
 // with the test origin https://api.test.
 const cacheKey = (kind, key) => new Request(`https://api.test/__cache/${kind}/${encodeURIComponent(key)}`);
 const clearCache = (key) =>
-  Promise.all([caches.default.delete(cacheKey('fresh', key)), caches.default.delete(cacheKey('stale', key))]);
+  Promise.all(['fresh', 'stale', 'fail'].map((kind) => caches.default.delete(cacheKey(kind, key))));
+
+// /njt/departures keys its entry by the New York service day (see the route).
+const njtKey = () => `njt:${nyDate()}`;
 
 // Route-based fetch stub: routes = [{match: RegExp, status, body}], each entry
 // consumed in order per matching URL; records calls for assertions.
@@ -57,9 +60,9 @@ function stubFetch(routes) {
 afterEach(async () => {
   vi.unstubAllGlobals();
   await resetNjtToken(env); // clears the KV session token + isolate memo so it can't leak between cases
-  await resetNjtSchedule(env); // clears the KV daily schedule + memo
+  await env.CODES.delete('njt:schedule'); // the durable day-timetable store
+  await clearCache(njtKey()); // and the route's own cache entry (fresh + backup + backoff)
   resetGraphToken(); // clears the isolate's Microsoft Graph token memo
-  await caches.default.delete(new Request('https://api.test/__cache/njt-alerts'));
 });
 
 describe('CORS and routing', () => {
@@ -277,6 +280,9 @@ describe('/njt/departures', () => {
     ]);
     const res = await call('/njt/departures', {}, NJT_ENV);
     expect(res.status).toBe(200);
+    // It rides cached() like every other feed now, so a board finally gets a
+    // Cache-Control it can act on instead of hitting origin on every poll.
+    expect(res.headers.get('cache-control')).toBe('public, max-age=120');
     const body = await res.json();
     expect(body.station).toBe('NY');
     expect(body.stale).toBe(false);
@@ -306,7 +312,8 @@ describe('/njt/departures', () => {
     expect(await env.CODES.get('njt:schedule')).toBeTruthy();
     expect(await caches.default.match(cacheKey('fresh', 'njt:NY'))).toBeFalsy();
 
-    // Second same-day call is served from KV/memo — no second getStationSchedule.
+    // Second same-day call is served from the route's cache entry, with no
+    // second getStationSchedule.
     const before = calls.filter((u) => /getStationSchedule/.test(u)).length;
     const res2 = await call('/njt/departures', {}, NJT_ENV);
     expect(res2.status).toBe(200);
@@ -347,6 +354,7 @@ describe('/njt/departures', () => {
     stubFetch([
       { match: /getToken/, body: TOKEN_RESPONSE, times: 2 },
       { match: /getStationSchedule/, body: 'err', status: 500, times: 2 },
+      { match: /getStationMSG/, body: [], times: 2 },
     ]);
     const res = await call('/njt/departures', {}, NJT_ENV);
     expect(res.status).toBe(200);
@@ -355,11 +363,12 @@ describe('/njt/departures', () => {
     expect(body.trains).toHaveLength(1);
   });
 
-  // /njt/departures has no cache in front of it, so every board on every refresh
-  // arrives at getNjtSchedule directly. Mid-outage that used to mean one 10s
-  // timing-out upstream attempt PER REQUEST, stacked with the alerts call behind
-  // it — past the board's own 15s fetch timeout, so nothing ever refreshed.
-  it('attempts the upstream once per memo window while a refresh keeps failing', async () => {
+  // Mid-outage, every board on every refresh used to arrive at a getStationSchedule
+  // that was already timing out: one 10s abort PER REQUEST, stacked with the alerts
+  // call behind it and past the board's own 15s fetch timeout, so nothing ever
+  // refreshed. The route's cache entry is what ends that now: one attempt per
+  // window, and every request in between is answered from it.
+  it('attempts the upstream once per cache window while a refresh keeps failing', async () => {
     await env.CODES.put('njt:schedule', JSON.stringify(priorDay));
     const calls = stubFetch([
       { match: /getToken/, body: TOKEN_RESPONSE, times: 8 },
@@ -378,10 +387,11 @@ describe('/njt/departures', () => {
     }
   });
 
-  it('re-attempts once the memo window lapses (the fallback never sets)', async () => {
-    // The backoff must not become a second way to serve a stale copy forever:
-    // when the window is up the TTL refresh is back in play, which is what
-    // escapes a midnight-rollover snapshot.
+  it('re-attempts once the entry lapses (the fallback never sets)', async () => {
+    // The window must not become a second way to serve a stale copy forever:
+    // when the entry expires the refresh is back in play, which is what escapes
+    // a midnight-rollover snapshot. Expiry is simulated by dropping the fresh
+    // entry (the colo cache honors its own clock, not the test's).
     await env.CODES.put('njt:schedule', JSON.stringify(priorDay));
     const calls = stubFetch([
       { match: /getToken/, body: TOKEN_RESPONSE, times: 8 },
@@ -389,19 +399,14 @@ describe('/njt/departures', () => {
       { match: /getStationSchedule/, body: SCHEDULE_RESPONSE, times: 4 }, // recovered
       { match: /getStationMSG/, body: [], times: 8 },
     ]);
-    vi.useFakeTimers();
-    try {
-      await call('/njt/departures', {}, NJT_ENV);
-      await call('/njt/departures', {}, NJT_ENV);
-      expect(calls.filter((u) => /getStationSchedule/.test(u)).length).toBe(1); // backed off
-      vi.setSystemTime(Date.now() + 6 * 60 * 1000); // the window lapses
-      const body = await (await call('/njt/departures', {}, NJT_ENV)).json();
-      expect(calls.filter((u) => /getStationSchedule/.test(u)).length).toBe(2); // tried again
-      expect(body.trains).toHaveLength(2); // today's list, not the seeded prior day
-      expect(body.stale).toBe(false);
-    } finally {
-      vi.useRealTimers();
-    }
+    await call('/njt/departures', {}, NJT_ENV);
+    await call('/njt/departures', {}, NJT_ENV);
+    expect(calls.filter((u) => /getStationSchedule/.test(u)).length).toBe(1); // served from the entry
+    await caches.default.delete(cacheKey('fresh', njtKey()));
+    const body = await (await call('/njt/departures', {}, NJT_ENV)).json();
+    expect(calls.filter((u) => /getStationSchedule/.test(u)).length).toBe(2); // tried again
+    expect(body.trains).toHaveLength(2); // today's list, not the seeded prior day
+    expect(body.stale).toBe(false);
   });
 
   it('a stale KV date triggers a refetch (service-day rollover)', async () => {
@@ -453,7 +458,26 @@ describe('/njt/departures', () => {
       { match: /getToken/, body: TOKEN_RESPONSE, times: 2 },
       { match: /getStationSchedule/, body: 'err', status: 500, times: 2 },
     ]);
+    const res = await call('/njt/departures', {}, NJT_ENV);
+    expect(res.status).toBe(502);
+    expect(res.headers.get('cache-control')).toBe('no-store'); // recovery is never one poll late
+  });
+
+  // The hard-failure path is the one that hurt most: nothing cached to answer
+  // with, so every board re-opened a 10s abort of its own. cached()'s failure
+  // backoff holds the upstream at arm's length for a minute; the reader sees the
+  // same 502 either way.
+  it('remembers a hard failure briefly instead of re-dialing NJT on every poll', async () => {
+    const calls = stubFetch([
+      { match: /getToken/, body: TOKEN_RESPONSE, times: 8 },
+      { match: /getStationSchedule/, body: 'err', status: 500, times: 8 },
+    ]);
     expect((await call('/njt/departures', {}, NJT_ENV)).status).toBe(502);
+    const attempts = calls.filter((u) => /getStationSchedule/.test(u)).length;
+    expect(attempts).toBe(1);
+    expect((await call('/njt/departures', {}, NJT_ENV)).status).toBe(502);
+    expect((await call('/njt/departures', {}, NJT_ENV)).status).toBe(502);
+    expect(calls.filter((u) => /getStationSchedule/.test(u)).length).toBe(attempts);
   });
 
   it('serves alerts separately and empties them (never stale) when getStationMSG fails', async () => {
@@ -467,12 +491,12 @@ describe('/njt/departures', () => {
     expect(body.alerts).toEqual([]); // alert fetch failed -> empty, not a stale banner
   });
 
-  // The schedule half of this route backs off (above); the alerts half did not.
-  // njtAlerts cached a SUCCESS for two minutes but let a FAILURE fall straight
-  // through to a bare [], so mid-outage every board request re-opened a
-  // getStationMSG that was already timing out: 10s of AbortSignal apiece, which
-  // is most of the stall the schedule backoff was meant to end. The schedule is
-  // seeded fresh in KV here so nothing but the alerts call can reach upstream.
+  // The alerts half used to keep a cache of its own that remembered a SUCCESS for
+  // two minutes but let a FAILURE fall straight through to a bare [], so
+  // mid-outage every board request re-opened a getStationMSG that was already
+  // timing out: 10s of AbortSignal apiece. One entry over the whole digest covers
+  // both halves at that same two minutes. The schedule is seeded fresh in KV here
+  // so nothing but the alerts call can reach upstream.
   it('attempts the alerts upstream once per window while getStationMSG keeps failing', async () => {
     await env.CODES.put('njt:schedule', JSON.stringify({
       date: nyDate(),

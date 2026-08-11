@@ -3,7 +3,7 @@
 // nothing served here is sensitive, and the boards fetch from a static origin.
 
 import { mapYahooChart } from './markets.js';
-import { getNjtSchedule, fetchNjtAlerts } from './njt.js';
+import { getNjtSchedule, fetchNjtAlerts, nyDate } from './njt.js';
 import { fetchMtaAlerts } from './alerts.js';
 import { fetchBusStops, parseLegs } from './bus.js';
 import { fetchNewsFeed, newsFeedUrl } from './news.js';
@@ -132,10 +132,12 @@ const STALE_TTL_S = 24 * 3600;
 // (see below) instead of restarting the clock on the board.
 const FRESH_UNTIL = 'X-Fresh-Until';
 
-async function cached(origin, key, ttlS, fetcher, { mend } = {}) {
+async function cached(origin, key, ttlS, fetcher, { mend, failBackoffS = 0 } = {}) {
   const cache = caches.default;
   const freshKey = new Request(`${origin}/__cache/fresh/${encodeURIComponent(key)}`);
   const staleKey = new Request(`${origin}/__cache/stale/${encodeURIComponent(key)}`);
+  // Where the failure backoff remembers that the fetcher just threw (see below).
+  const failKey = new Request(`${origin}/__cache/fail/${encodeURIComponent(key)}`);
   const hit = await cache.match(freshKey);
   if (hit) {
     // Stream the stored bytes straight through — the old parse-then-restringify
@@ -155,6 +157,28 @@ async function cached(origin, key, ttlS, fetcher, { mend } = {}) {
         'Cache-Control': `public, max-age=${remaining}`,
       },
     });
+  }
+  // The answer when there is no fresh payload to give: last-good if a backup
+  // survives, the error otherwise. Both are no-store, so the next poll reaches
+  // the worker and gets the real thing back the moment upstream recovers.
+  const lastGoodOrError = async (detail) => {
+    const stale = await cache.match(staleKey);
+    if (stale) return json({ ...(await stale.json()), stale: true }, 200, NO_STORE);
+    return json({ error: 'upstream_failed', detail }, 502, NO_STORE);
+  };
+  // Failure backoff, off unless a route asks for it. A fetcher that fails SLOWLY
+  // (NJ Transit aborts at 10s) otherwise pays that stall on every board poll for
+  // as long as the outage lasts: a failure leaves nothing in the fresh entry, so
+  // the next request queues behind the same timing-out upstream, and the board's
+  // own 15s fetch timeout starts expiring first, so nothing refreshes at all.
+  // Remembering the failure for a few seconds costs the reader nothing (the
+  // answer inside the window is the one they would have got anyway, last-good or
+  // the error) and hands the upstream one attempt per window instead of one per
+  // poll. Deliberately NOT logged again here: the failure that opened the window
+  // already logged itself below.
+  if (failBackoffS) {
+    const failed = await cache.match(failKey);
+    if (failed) return lastGoodOrError(await failed.text());
   }
   try {
     let fresh = await fetcher();
@@ -199,42 +223,26 @@ async function cached(origin, key, ttlS, fetcher, { mend } = {}) {
     // tail` / Workers logs), so a silent stale-serve (e.g. NJT returning 500s)
     // is diagnosable without deploying a one-off debug probe.
     console.warn(`[cached] ${key} upstream failed, serving stale if available: ${String(err?.message ?? err)}`);
-    // Stale and error answers are no-store: the next poll must reach the worker
-    // and get the real thing back the moment upstream recovers.
-    const stale = await cache.match(staleKey);
-    if (stale) return json({ ...(await stale.json()), stale: true }, 200, NO_STORE);
-    return json({ error: 'upstream_failed', detail: String(err) }, 502, NO_STORE);
+    if (failBackoffS) {
+      try {
+        await cache.put(failKey, new Response(String(err), { headers: { 'Cache-Control': `max-age=${failBackoffS}` } }));
+      } catch {
+        // Best effort, like every other put here: a failed write just means the
+        // next request tries the upstream again.
+      }
+    }
+    return lastGoodOrError(String(err));
   }
 }
 
-// NJT live alerts (getStationMSG): dynamic, so a short colo cache (~2 min) is
-// fine, but a fetch failure returns [] rather than a stale banner — unlike the
-// schedule, a resolved delay must not linger. Not the shared cached() helper,
-// which serves 24h stale on failure.
-const ALERTS_TTL_S = 120;
-
-async function njtAlerts(env, origin) {
-  const key = new Request(`${origin}/__cache/njt-alerts`);
-  const hit = await caches.default.match(key);
-  if (hit) { try { return await hit.json(); } catch { /* refetch */ } }
-  // The FAILURE is cached at the same cadence as a success, which is the alerts
-  // half of the schedule's backoff (getNjtSchedule's outageMemo). Without it an
-  // outage put every board request back on a getStationMSG that was already
-  // timing out: 10s of AbortSignal apiece, stacked with the schedule call and
-  // past the board's own 15s fetch timeout, so nothing refreshed at all. Caching
-  // the empty answer costs nothing a successful empty response would not, since
-  // the banner is at most one window behind either way, and it still EMPTIES on
-  // failure rather than lingering.
-  const alerts = await fetchNjtAlerts(env).catch(() => []);
-  try {
-    await caches.default.put(key, new Response(JSON.stringify(alerts), {
-      headers: { 'Content-Type': 'application/json', 'Cache-Control': `max-age=${ALERTS_TTL_S}` },
-    }));
-  } catch {
-    // Best effort: a failed put just means the next request re-fetches.
-  }
-  return alerts;
-}
+// /njt/departures rides cached() like every other feed. 120s is the advisory
+// cadence: the alerts half is the dynamic one (the timetable half keeps its own,
+// longer refresh clock inside getNjtSchedule), and it is the same two minutes the
+// alerts used to cache for themselves. 60s of failure backoff, short enough that
+// recovery costs at most one board poll and long enough that a dead NJT is not
+// re-dialed by every board on every refresh.
+const NJT_TTL_S = 120;
+const NJT_FAIL_BACKOFF_S = 60;
 
 const YAHOO_UA =
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36';
@@ -375,17 +383,27 @@ const handlers = {
 
     if (path === '/njt/departures' && request.method === 'GET') {
       if (!env.NJT_USER || !env.NJT_PASS) return json({ error: 'njt_not_configured' }, 503);
-      // Pinned to New York Penn (the widget filters by line client-side). The
-      // schedule is a static daily timetable served from KV (getNjtSchedule);
-      // alerts are dynamic, so they ride a short colo cache and empty out (never
-      // stale) when NJT is down — a resolved delay must not linger on the board.
-      try {
+      // Pinned to New York Penn (the widget filters by line client-side). Two
+      // upstreams behind one digest: the day's static timetable, which lives in
+      // KV because the Cache API is colo-local and evicts (see getNjtSchedule),
+      // and the live advisory banner. The catch below is the banner's rule: a
+      // failed alerts fetch EMPTIES the alerts rather than keeping the last ones,
+      // because a delay that has since been resolved must not linger on a wall.
+      //
+      // That rule survives cached()'s 24h backup because the key carries the New
+      // York service day. The backup is only ever reached when the fetcher
+      // throws; the fetcher only throws when KV holds no timetable at all; and a
+      // backup under today's key implies a successful fetch today, which implies
+      // a timetable in KV. So a banner cannot outlive the day it was published.
+      return cached(url.origin, `njt:${nyDate()}`, NJT_TTL_S, async () => {
+        // Sequential, never Promise.all: the first call is the one that mints the
+        // RailData session token (capped at 10 a DAY), and two concurrent
+        // cold-token calls can both read an empty cache before either publishes
+        // its in-flight mint, spending two of them for one request.
         const schedule = await getNjtSchedule(env);
-        const alerts = await njtAlerts(env, url.origin);
-        return json({ ...schedule, alerts });
-      } catch (err) {
-        return json({ error: 'upstream_failed', detail: String(err) }, 502);
-      }
+        const alerts = await fetchNjtAlerts(env).catch(() => []);
+        return { ...schedule, alerts };
+      }, { failBackoffS: NJT_FAIL_BACKOFF_S });
     }
 
     if (path === '/markets' && request.method === 'GET') {
