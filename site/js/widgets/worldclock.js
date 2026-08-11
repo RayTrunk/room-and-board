@@ -91,8 +91,9 @@ const GAP_MIN = 40;
 const GAP_STEP = 6;
 
 // The screensaver lays its dials out against .clockface, roughly 1032px tall;
-// the overlay canvas is OVERLAY_BODY_H, 814. Walking clockfaces' own planRows
-// and gridScale, every dial count clears that except exactly SIX: six deals as
+// the overlay canvas is OVERLAY_BODY_H, 814. Walking clockfaces' own deal
+// (DIAL_BANDS through columns.js) and gridScale, every dial count clears that
+// except exactly SIX: six deals as
 // 3 + 3, which gridScale then draws at the biggest 330px dial for about 892px
 // of cells. (A user with five cities and no home city lands there, because the
 // local dial is injected.) Rather than re-tune the shared grid — the face must
