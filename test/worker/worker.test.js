@@ -1,4 +1,5 @@
 import { fetchGolf, fetchTennis } from '../../worker/src/scores.js';
+import { runHealthChecks } from '../../worker/src/health.js';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { digestNext, digestSchedule, fetchTeamSummary, mapTeamSummary } from '../../worker/src/sports.js';
 import { ESPN_UA } from '../../worker/src/espn.js';
@@ -197,10 +198,13 @@ describe('cached() response headers', () => {
   });
 });
 
-const clearThrottle = (ip = 'anon') =>
+// origin is a parameter because the health monitor's selfFetch dispatches under
+// the worker's own hostname, so its throttle entries land in a different bucket
+// than a test's own https://api.test calls.
+const clearThrottle = (ip = 'anon', origin = 'https://api.test') =>
   Promise.all([
-    caches.default.delete(new Request(`https://api.test/__throttle/code/${encodeURIComponent(ip)}`)),
-    caches.default.delete(new Request(`https://api.test/__throttle/getcode/${encodeURIComponent(ip)}`)),
+    caches.default.delete(new Request(`${origin}/__throttle/code/${encodeURIComponent(ip)}`)),
+    caches.default.delete(new Request(`${origin}/__throttle/getcode/${encodeURIComponent(ip)}`)),
   ]);
 
 describe('/code exchange', () => {
@@ -2172,5 +2176,104 @@ describe('every feed route carries the digest envelope', () => {
     // The value of the sweep is that it is exhaustive: a feed route added
     // without a row above would otherwise slip past it in silence.
     expect(ROUTES).toHaveLength([...WORKER_SOURCE.matchAll(/cached\(url\.origin,/g)].length);
+  });
+});
+
+// A CODES stand-in with the KV surface the setup-code routes touch, recording
+// every write. Overrides break exactly one operation for a single case.
+const mockCodes = (over = {}) => {
+  const store = new Map();
+  const puts = [];
+  const deletes = [];
+  return {
+    store, puts, deletes,
+    get: over.get ?? ((k) => Promise.resolve(store.has(k) ? store.get(k) : null)),
+    put: over.put ?? ((k, v) => { puts.push(k); store.set(k, v); return Promise.resolve(); }),
+    delete: over.delete ?? ((k) => { deletes.push(k); store.delete(k); return Promise.resolve(); }),
+  };
+};
+
+// Mint and redeem go through the REAL route handlers, exactly as the monitor's
+// selfFetch does in production. worker.fetch is the guarded entry, which changes
+// only how an unexpected throw is reported (a 500 rather than a rejection).
+const selfFetchWith = (e) => (p, init) => worker.fetch(new Request(`https://api.test${p}`, init), e, ctx);
+
+describe('setup-code canary: write cycle (cron only)', () => {
+  // Every check but the canary needs the network, and the network is dead here
+  // on purpose: only the `code` row is under test, and a dead upstream lets the
+  // rest of the report resolve immediately.
+  beforeEach(async () => {
+    stubFetch([]);
+    await clearThrottle();
+  });
+
+  const canary = async (codes) => {
+    const e = { ...env, CODES: codes };
+    const report = await runHealthChecks(e, selfFetchWith(e), fetch, { writeCycle: true });
+    return report.results.find((r) => r.name === 'code');
+  };
+
+  it('mints, redeems, and confirms the cfg came back, for two writes', async () => {
+    const codes = mockCodes();
+    expect(await canary(codes)).toMatchObject({ ok: true, detail: 'ok (mint+redeem)' });
+    expect(codes.puts).toHaveLength(1);
+    expect(codes.puts[0]).toMatch(/^code:[ABCDEFGHJKMNPQRSTVWXYZ0-9]{6}$/);
+    expect(codes.deletes).toEqual(codes.puts); // single use: the canary leaves nothing behind
+    expect(codes.store.size).toBe(0);
+    expect(codes.store.has('code:HEALTH')).toBe(false); // the read-mode key is never written
+  });
+
+  it('fails as mint HTTP 503 when the namespace refuses the write (the 1000/day cap)', async () => {
+    const result = await canary(mockCodes({ put: () => Promise.reject(new Error('KV PUT failed: 429')) }));
+    expect(result).toMatchObject({ ok: false, detail: 'mint HTTP 503' });
+  });
+
+  it('fails as redeem HTTP 404 when the minted code cannot be read back', async () => {
+    // The half of the pairing flow a mint-only check would call healthy.
+    const result = await canary(mockCodes({ get: () => Promise.resolve(null) }));
+    expect(result).toMatchObject({ ok: false, detail: 'redeem HTTP 404' });
+  });
+
+  it('fails as cfg mismatch when the payload does not round-trip', async () => {
+    const store = new Map();
+    const codes = {
+      get: (k) => Promise.resolve(store.has(k) ? store.get(k) : null),
+      put: (k) => { store.set(k, '{"canary":false}'); return Promise.resolve(); }, // stored, but not what was minted
+      delete: (k) => { store.delete(k); return Promise.resolve(); },
+    };
+    expect(await canary(codes)).toMatchObject({ ok: false, detail: 'cfg mismatch' });
+  });
+
+  it('treats a throttled mint as a failure, not a shrug', async () => {
+    // Unreachable at the 20-minute cron cadence (the window is 10 s), so a 429
+    // means something else is wrong and the operator should hear about it.
+    const codes = mockCodes();
+    expect((await canary(codes)).ok).toBe(true);
+    expect(await canary(codes)).toMatchObject({ ok: false, detail: 'mint HTTP 429' });
+  });
+});
+
+describe('the setup-code write budget stays off the public path', () => {
+  // /health is public and unauthenticated: an external pinger may poll it as
+  // fast as it likes, and KV writes are capped at 1000/day, a cap whose
+  // exhaustion has already broken setup codes once. So the public route spends
+  // zero writes while the cron, at 72 runs a day, spends two per run.
+  it('GET /health writes NOTHING to CODES; a cron run puts once and deletes once', async () => {
+    stubFetch([]);
+    await clearThrottle('anon', 'https://api.roomboard.app'); // the monitor's own selfFetch origin
+    const codes = mockCodes();
+    const e = { ...env, CODES: codes };
+
+    const res = await worker.fetch(new Request('https://api.test/health'), e, ctx);
+    const row = (await res.json()).results.find((r) => r.name === 'code');
+    expect(row).toMatchObject({ ok: true, detail: 'ok (read)' });
+    expect(codes.puts).toEqual([]);
+    expect(codes.deletes).toEqual([]);
+
+    const waits = [];
+    await worker.scheduled({}, e, { waitUntil: (p) => waits.push(p), passThroughOnException() {} });
+    await Promise.all(waits);
+    expect(codes.puts).toHaveLength(1);
+    expect(codes.deletes).toHaveLength(1);
   });
 });

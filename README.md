@@ -921,13 +921,27 @@ checks in `worker/src/health.js`:
 | `gdrive` | `/gdrive/album` returns photos for a curated folder, which also proves `GDRIVE_KEY` still works |
 | `amtrak` | `/amtrak/departures` returns a station and a departures array |
 | `m365` | `/services/status?ids=m365` returns an m365 row whose state is **not** `unknown` |
+| `espn` | `/sports/team` returns a row carrying a real team abbreviation. One upstream feeds My Teams, Golf and Tennis, so this one check covers all three |
 | `njt` | `/njt/departures` still has a *future* departure. NJT's schedule is a static daily timetable, so "old" is not "wrong", but a prior-day timetable is |
+| `path` | `/path/realtime` still carries its station map, every station with both `ToNY` and `ToNJ`. PATH runs 24/7, so a missing map means the RidePATH feed reshaped; the direction arrays themselves may be empty between trains |
+| `subway` | `/alerts/subway` returns an alerts array whose rows still carry a header. An empty array passes (a day with no alerts is good news). Stands in for the whole `/alerts/{subway,lirr,mnr}` family: one upstream, so three checks would page three times for one MTA outage |
+| `ferry` | `/ferry/departures` returns a trips array. Empty passes, since NYC Ferry has genuinely quiet hours, which leaves the stale window as the real watchdog for this route |
+| `code` | the setup-code service answers at all. A broken CODES namespace, an exhausted quota or a KV outage is otherwise invisible until somebody stands at a board typing a code that will never work |
 
 The `m365` check earned its place: that row is the only one assembled from
 several feeds, and when its previous endpoint became a permanent 404 the card
 read "Status unavailable" for weeks with nothing pointing at it. So the check
 asserts the row's *state*, not merely that the route answered. Checks with a
 `maxStaleSec` also fail on an answer that is fresh-looking but stale underneath.
+
+The `code` check runs in two modes, and the split matters. `/health` is public
+and unauthenticated, so it only ever **reads** (a `null` for the reserved
+`code:HEALTH` key is the pass: the binding exists, the namespace answered, the
+read quota is alive) and spends zero KV writes. The cron additionally runs the
+whole user path, minting a code through `/code` and redeeming it back, which
+costs 2 writes per run, roughly 144 a day against KV's 1000/day cap. A write
+canary reachable from a public URL could spend that budget and cause the very
+outage it watches for.
 
 ## Security
 

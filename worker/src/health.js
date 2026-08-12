@@ -7,7 +7,9 @@
 //
 // Checks with `path` are the worker's OWN routes: they run in-process via
 // selfFetch (a Worker fetching its own custom domain over the network loops →
-// Cloudflare 522). Checks with `url` are external and use plain fetch.
+// Cloudflare 522). Checks with `url` are external and use plain fetch. A check
+// with `canary` runs code instead of probing an endpoint, for the dependency
+// that has no route to watch (the CODES KV setup-code service; see codeCanary).
 // `maxStaleSec` (own-route checks only): when the worker serves last-good cache
 // (`stale: true`) because the upstream refresh keeps failing, tolerate a brief
 // blip but FAIL once the data is older than this, that sustained-stale window is
@@ -107,7 +109,106 @@ export const CHECKS = [
     path: '/njt/departures',
     ok: (j) => typeof j.station === 'string' && Array.isArray(j.trains) && j.trains.some((t) => Number(t?.time) > Date.now() / 1000),
   },
+  {
+    // PATH runs 24/7, so a missing station map is never a quiet hour: it is the
+    // RidePATH feed having been reshaped under us. The individual direction
+    // arrays DO empty out between trains, so only the skeleton is asserted
+    // (every station still carries both ToNY and ToNJ), which is exactly what a
+    // reshape takes away. Until this existed the route could serve 24h-old
+    // cache while the monitor read green.
+    name: 'path',
+    path: '/path/realtime',
+    maxStaleSec: STALE_MAX,
+    ok: (j) => {
+      const st = j.stations;
+      if (!st || typeof st !== 'object' || Array.isArray(st)) return false;
+      const dirs = Object.values(st);
+      return dirs.length > 0 && dirs.every((d) => Array.isArray(d?.ToNY) && Array.isArray(d?.ToNJ));
+    },
+  },
+  {
+    // Stands in for the whole /alerts/{subway,lirr,mnr} family: one upstream
+    // (the camsys feeds), one route, one mapper, so three checks would page
+    // three times for a single MTA outage. A day with no active alerts is good
+    // news and common, so an empty array passes; what rots is the row shape (an
+    // alert that lost its header). maxStaleSec is the real watchdog here: an
+    // alerts digest that stopped refreshing is how a resolved delay lingers on
+    // a wall for a day.
+    name: 'subway',
+    path: '/alerts/subway',
+    maxStaleSec: STALE_MAX,
+    ok: (j) => Array.isArray(j.alerts) && j.alerts.every((a) => typeof a?.header === 'string'),
+  },
+  {
+    // NYC Ferry has genuinely quiet periods (midday, overnight), and an empty
+    // board then is correct rather than broken, so the validator asserts shape
+    // only; a check that flapped every night would be worse than no check (same
+    // reasoning as espn's always-in-season team). maxStaleSec does the real
+    // work: a feed that stopped refreshing shows up as sustained staleness.
+    name: 'ferry',
+    path: '/ferry/departures',
+    maxStaleSec: STALE_MAX,
+    ok: (j) => Array.isArray(j.trips),
+  },
+  {
+    // The setup-code service is the one dependency with no route worth probing:
+    // a broken namespace, an exhausted quota or a KV outage stays invisible
+    // until somebody is standing at a board typing a code that will never work.
+    // So this check is a canary rather than an HTTP probe, and it appears in
+    // EVERY report under the one name in both of its modes (see codeCanary), so
+    // alertPlan treats it as a single concept and pages once.
+    name: 'code',
+    canary: codeCanary,
+  },
 ];
+
+// Can never collide with a real setup code: real keys are `code:` plus six
+// characters of CODE_ALPHABET, which drops I, L, O and U, and HEALTH has an L.
+const CANARY_KEY = 'code:HEALTH';
+
+// Two modes on purpose, and the split is load-bearing. /health is public and
+// unauthenticated (an external uptime pinger may poll it as fast as it likes),
+// while KV writes are capped at 1000/day, and spending that cap is not
+// hypothetical here: board polling once drained it through the shared CODES
+// namespace and broke setup-code minting outright (see postCode in index.js).
+// A write canary reachable from a public URL could spend the budget and cause
+// the very outage it exists to watch for. Hence:
+//   read mode (the default, used by the /health route): one KV get, zero
+//     writes. A null answer is the SUCCESS case; it proves the binding exists,
+//     the namespace answered, and the read quota is alive, which is everything
+//     obtainable without spending a write.
+//   write-cycle mode (cron only): the whole user path, mint then redeem,
+//     through the real routes. The cron fires 72 times a day and each cycle
+//     costs 2 writes (the put plus the single-use delete) and 2 reads, so about
+//     144 writes/day against the 1000 cap, leaving ample room for real pairing
+//     volume.
+async function codeCanary({ env, selfFetch, writeCycle }) {
+  if (writeCycle) return codeWriteCycle(selfFetch);
+  if (!env?.CODES) return { ok: false, detail: 'CODES binding missing' };
+  await env.CODES.get(CANARY_KEY); // null is healthy: the read itself is the test
+  return { ok: true, detail: 'ok (read)' };
+}
+
+// Mint and redeem through the REAL route handlers (selfFetch, in-process). Each
+// failure names the half that broke, because a dead mint and a dead redemption
+// send an operator to different places. A 429 is a failure too: the per-IP
+// throttle window is 10 s and the cron runs every 20 min, so tripping it means
+// something else is already wrong.
+async function codeWriteCycle(selfFetch) {
+  const cfg = JSON.stringify({ canary: true });
+  const mint = await selfFetch('/code', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ cfg }),
+  });
+  if (!mint.ok) return { ok: false, detail: `mint HTTP ${mint.status}` };
+  const code = (await mint.json())?.code;
+  if (typeof code !== 'string' || !code) return { ok: false, detail: 'mint returned no code' };
+  const redeem = await selfFetch(`/code/${code}`);
+  if (!redeem.ok) return { ok: false, detail: `redeem HTTP ${redeem.status}` };
+  if ((await redeem.json())?.cfg !== cfg) return { ok: false, detail: 'cfg mismatch' };
+  return { ok: true, detail: 'ok (mint+redeem)' };
+}
 
 // Age of a payload in seconds. Every one of our own routes answers through
 // cached(), which stamps updatedAt as epoch seconds on the way out, so on a
@@ -130,8 +231,12 @@ function withTimeout(p, ms) {
   return Promise.race([p, timer]).finally(() => clearTimeout(t));
 }
 
-async function probe(check, selfFetch, extFetch) {
+async function probe(check, selfFetch, extFetch, ctx = {}) {
   try {
+    // A canary reports {ok, detail} from its own logic rather than from a
+    // response body, and inherits the same timeout discipline as the two HTTP
+    // kinds: a KV read that never settles must not hang the whole report.
+    if (check.canary) return { name: check.name, ...(await withTimeout(check.canary(ctx), 13000)) };
     const res = check.path
       ? await withTimeout(selfFetch(check.path), 13000)
       : await extFetch(check.url, { signal: AbortSignal.timeout(12000), headers: { 'cache-control': 'no-cache' } });
@@ -177,10 +282,13 @@ async function probe(check, selfFetch, extFetch) {
   }
 }
 
-// Runs every check concurrently. selfFetch(path)→Response dispatches the worker's
-// own routes in-process; extFetch defaults to global fetch (injectable for tests).
-export async function runHealthChecks(env, selfFetch, extFetch = fetch) {
-  const results = await Promise.all(CHECKS.map((c) => probe(c, selfFetch, extFetch)));
+// Runs every check concurrently. selfFetch(path, init?)→Response dispatches the
+// worker's own routes in-process; extFetch defaults to global fetch (injectable
+// for tests). opts.writeCycle opts the code canary into its full mint-and-redeem
+// path: the cron passes it, the public /health route must not (see codeCanary).
+export async function runHealthChecks(env, selfFetch, extFetch = fetch, opts = {}) {
+  const ctx = { env, selfFetch, writeCycle: opts.writeCycle === true };
+  const results = await Promise.all(CHECKS.map((c) => probe(c, selfFetch, extFetch, ctx)));
   return { ok: results.every((r) => r.ok), at: new Date().toISOString(), results };
 }
 

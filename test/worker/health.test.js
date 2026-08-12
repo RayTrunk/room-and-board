@@ -17,8 +17,24 @@ const OK_BODIES = {
   '/njt': { ...STAMP(), station: 'NY', trains: [{ time: 9999999999, dest: 'Trenton' }] }, // far-future = an upcoming departure exists
   '/services/status': { ...STAMP(), services: [{ id: 'm365', label: 'Microsoft 365', state: 'ok', note: 'All systems operational', incidents: [] }] },
   '/sports/team': { ...STAMP(), row: { lg: 'mlb', abbr: 'NYY', name: 'Yankees', record: '48-38', line: 'vs MIN · 7:05 PM' } },
+  // Shapes captured live 2026-08-11. PATH keeps its station skeleton around the
+  // clock even when a direction has no train in it; the alerts and ferry
+  // digests are legitimately empty for hours at a time.
+  '/path/realtime': {
+    ...STAMP(),
+    stations: {
+      NWK: { ToNY: [{ t: 1754900000, headSign: 'World Trade Center', lineColors: ['D93A30'] }], ToNJ: [] },
+      HAR: { ToNY: [], ToNJ: [{ t: 1754900200, headSign: 'Journal Square', lineColors: ['4D92FB'] }] },
+    },
+  },
+  '/alerts/subway': { ...STAMP(), alerts: [{ routes: ['4', '5', '6'], stops: [], kind: 'service', header: 'Downtown 4 trains run express', body: 'Track work.' }] },
+  '/ferry/departures': { ...STAMP(), trips: [] }, // quiet midday board, live-observed
 };
 const bodyFor = (url) => OK_BODIES[Object.keys(OK_BODIES).find((k) => url.includes(k))];
+
+// The CODES binding the setup-code canary reads. A healthy namespace has
+// nothing under code:HEALTH, so it answers null, and that null is the pass.
+const okEnv = () => ({ CODES: { get: vi.fn(() => Promise.resolve(null)) } });
 
 // Mock fetch. overrides maps a URL-substring to {status} or {body:'raw'} to
 // force a specific failure for one check while the rest stay green.
@@ -91,6 +107,32 @@ describe('health CHECKS validators', () => {
     expect(byName.njt({ station: 'NY', trains: [] })).toBe(false);
     expect(byName.njt({ trains: [{ time: now + 600 }] })).toBe(false); // no station
   });
+  it('path: needs the station skeleton, not a train (PATH runs 24/7)', () => {
+    const live = OK_BODIES['/path/realtime'];
+    expect(byName.path(live)).toBe(true);
+    // Between trains every array empties; the skeleton is what must survive.
+    expect(byName.path({ stations: { NWK: { ToNY: [], ToNJ: [] } } })).toBe(true);
+    expect(byName.path({ stations: {} })).toBe(false); // no stations = the feed reshaped
+    expect(byName.path({ stations: { NWK: { ToNY: [] } } })).toBe(false); // lost a direction
+    expect(byName.path({ stations: [] })).toBe(false); // an array is not the station map
+    expect(byName.path({ stations: null })).toBe(false);
+    expect(byName.path({})).toBe(false);
+  });
+  it('subway: shape-only, because a day with no alerts is good news', () => {
+    const live = OK_BODIES['/alerts/subway'];
+    expect(byName.subway(live)).toBe(true);
+    expect(byName.subway({ alerts: [] })).toBe(true); // quiet day, not an outage
+    expect(byName.subway({ alerts: [{ routes: ['A'] }] })).toBe(false); // row lost its header
+    expect(byName.subway({ alerts: [{ header: 42 }] })).toBe(false);
+    expect(byName.subway({ alerts: {} })).toBe(false);
+    expect(byName.subway({})).toBe(false);
+  });
+  it('ferry: shape-only, because the board is empty for hours at a time', () => {
+    expect(byName.ferry({ trips: [] })).toBe(true); // midday quiet period, live-observed
+    expect(byName.ferry({ trips: [{ tripId: '1', stops: [] }] })).toBe(true);
+    expect(byName.ferry({ trips: {} })).toBe(false);
+    expect(byName.ferry({})).toBe(false);
+  });
 });
 
 describe('front-door check (the separate origin nobody would notice broken)', () => {
@@ -112,7 +154,7 @@ describe('front-door check (the separate origin nobody would notice broken)', ()
   });
   it('a broken front door fails its own check without touching the primary', async () => {
     const m = mockFetch({ 'quadrille.io': { throw: 'TypeError' } });
-    const report = await runHealthChecks({}, m, m);
+    const report = await runHealthChecks(okEnv(), m, m);
     expect(report.results.find((r) => r.name === 'frontdoor').ok).toBe(false);
     expect(report.results.find((r) => r.name === 'site').ok).toBe(true);
   });
@@ -143,7 +185,7 @@ describe('runHealthChecks', () => {
   // external checks (called with a URL) — it matches by URL/path substring.
   const run = (overrides = {}) => {
     const m = mockFetch(overrides);
-    return runHealthChecks({}, m, m);
+    return runHealthChecks(okEnv(), m, m);
   };
 
   it('reports ok when every endpoint is healthy', async () => {
@@ -176,7 +218,7 @@ describe('stale-age (cached routes serving old data)', () => {
   const nowSec = () => Math.floor(Date.now() / 1000);
   const run = (overrides = {}) => {
     const m = mockFetch(overrides);
-    return runHealthChecks({}, m, m);
+    return runHealthChecks(okEnv(), m, m);
   };
   const byName = (report, name) => report.results.find((r) => r.name === name);
 
@@ -222,11 +264,76 @@ describe('stale-age (cached routes serving old data)', () => {
   });
 });
 
+describe('stale-age on the three routes that could serve day-old cache unwatched', () => {
+  // /path/realtime, /alerts/subway and /ferry/departures all ride cached(), so
+  // each can hand a board a 24h backup while the monitor sees a green 200. The
+  // validators are shape-only by design (an empty alerts list or ferry board is
+  // normal), which makes the stale window the actual watchdog for all three.
+  const nowSec = () => Math.floor(Date.now() / 1000);
+  const run = (overrides = {}) => {
+    const m = mockFetch(overrides);
+    return runHealthChecks(okEnv(), m, m);
+  };
+  const staleBody = (key, ageSec) => JSON.stringify({ ...OK_BODIES[key], stale: true, updatedAt: nowSec() - ageSec });
+
+  for (const [name, key] of [['path', '/path/realtime'], ['subway', '/alerts/subway'], ['ferry', '/ferry/departures']]) {
+    it(`${name}: FAILS past the 1h window, tolerates a brief blip inside it`, async () => {
+      const old = (await run({ [key]: { body: staleBody(key, 6 * 3600) } })).results.find((r) => r.name === name);
+      expect(old.ok).toBe(false);
+      expect(old.detail).toMatch(/stale \d+ min old/);
+      const brief = (await run({ [key]: { body: staleBody(key, 10 * 60) } })).results.find((r) => r.name === name);
+      expect(brief.ok).toBe(true);
+      expect(brief.detail).toMatch(/ok \(stale \d+ min\)/);
+    });
+  }
+});
+
+describe('setup-code canary: read mode (what the public /health route runs)', () => {
+  const probeCode = async (env) => {
+    const m = mockFetch();
+    const report = await runHealthChecks(env, m, m);
+    return { result: report.results.find((r) => r.name === 'code'), calls: m.mock.calls.map((c) => c[0]) };
+  };
+
+  it('rides in every report, under one name, so alertPlan sees one concept', async () => {
+    const { result } = await probeCode(okEnv());
+    expect(result).toBeDefined();
+    expect(CHECKS.filter((c) => c.name === 'code')).toHaveLength(1);
+  });
+  it('a null read is the SUCCESS case: binding present, namespace answering', async () => {
+    const env = okEnv();
+    const { result } = await probeCode(env);
+    expect(result).toMatchObject({ ok: true, detail: 'ok (read)' });
+    // code:HEALTH cannot collide with a minted code: CODE_ALPHABET has no L.
+    expect(env.CODES.get).toHaveBeenCalledWith('code:HEALTH');
+  });
+  it('a value under the canary key is healthy too: the read itself is the test', async () => {
+    const { result } = await probeCode({ CODES: { get: () => Promise.resolve('{"canary":true}') } });
+    expect(result.ok).toBe(true);
+  });
+  it('fails with a truthful detail when the namespace throws', async () => {
+    const { result } = await probeCode({ CODES: { get: () => Promise.reject(new Error('KV GET failed: 429 daily limit')) } });
+    expect(result.ok).toBe(false);
+    expect(result.detail).toContain('429');
+  });
+  it('fails when the binding is missing entirely', async () => {
+    const { result } = await probeCode({});
+    expect(result).toMatchObject({ ok: false, detail: 'CODES binding missing' });
+  });
+  it('never reaches the /code routes and never writes', async () => {
+    const env = { CODES: { get: vi.fn(() => Promise.resolve(null)), put: vi.fn(), delete: vi.fn() } };
+    const { calls } = await probeCode(env);
+    expect(calls.some((u) => String(u).startsWith('/code'))).toBe(false);
+    expect(env.CODES.put).not.toHaveBeenCalled();
+    expect(env.CODES.delete).not.toHaveBeenCalled();
+  });
+});
+
 describe('njt static-schedule health (age-agnostic)', () => {
   const nowSec = () => Math.floor(Date.now() / 1000);
   const run = (overrides = {}) => {
     const m = mockFetch(overrides);
-    return runHealthChecks({}, m, m);
+    return runHealthChecks(okEnv(), m, m);
   };
   const njtResult = (report) => report.results.find((r) => r.name === 'njt');
 

@@ -317,8 +317,10 @@ async function fetchMarkets(symbols) {
 // custom domain over the network loops (Cloudflare returns 522), so the health
 // checks reach the worker's own routes by calling this handler directly instead
 // of via fetch(). The hostname is arbitrary — only the path drives routing.
-const selfFetch = (env) => (routePath) =>
-  handlers.fetch(new Request('https://api.roomboard.app' + routePath), env);
+// `init` is optional and rides straight into the Request, so a check can POST:
+// the setup-code canary mints through the real route (see codeCanary).
+const selfFetch = (env) => (routePath, init) =>
+  handlers.fetch(new Request('https://api.roomboard.app' + routePath, init), env);
 
 // Last-alerted failing-check set, so the cron only alerts on a CHANGE (see
 // alertPlan). Kept in the Cache API, not KV — it's colo-local and evictable, but
@@ -602,7 +604,10 @@ const handlers = {
   // even when a bad deploy breaks the routes — the scheduled handler is separate
   // from fetch — so it catches route regressions, not just upstream outages.
   async scheduled(event, env, ctx) {
-    const report = await runHealthChecks(env, selfFetch(env));
+    // writeCycle is the cron's alone: it runs the setup-code canary all the way
+    // through mint and redeem, which costs KV writes against a 1000/day cap.
+    // The public /health route above must never ask for it (see codeCanary).
+    const report = await runHealthChecks(env, selfFetch(env), fetch, { writeCycle: true });
     // Dead-man ping AFTER the checks complete: it certifies the whole run, so
     // a cron that stops firing OR a run that hangs/throws both go silent and
     // trip the external check (see heartbeat in health.js).
