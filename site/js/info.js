@@ -147,6 +147,64 @@ if (folds.length) {
   // hence one listener per fold.)
   for (const fold of folds) fold.addEventListener('toggle', syncNav);
 
+  // ---------- the unfold ----------
+  // A tapped group used to appear fully formed between two frames. Now the
+  // list sweeps open while the rows arrive on a short cascade (the spine grows
+  // alongside, from the stylesheet); close is the reverse, faster and plain.
+  // Only real taps animate: hash deep-links and the print hooks above set
+  // .open directly, because a reader following a link wants the guide, not a
+  // performance. Native <details> semantics survive throughout, since all this
+  // handler does differently is choose WHEN .open flips.
+  const FOLD_EASE = 'cubic-bezier(0.22, 1, 0.36, 1)';
+  const noMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  for (const fold of folds) {
+    const sum = fold.querySelector('.fold__sum');
+    const list = fold.querySelector('.list');
+    if (!sum || !list || !list.animate) continue;
+    let busy = false;
+    sum.addEventListener('click', (e) => {
+      e.preventDefault();
+      if (busy) return;
+      if (noMotion) { fold.open = !fold.open; return; }
+      busy = true;
+      // Confined for the sweep only: a permanent overflow:hidden would clip
+      // focus rings at the list edge.
+      list.style.overflow = 'hidden';
+      const settle = () => { busy = false; list.style.overflow = ''; };
+      // The list's padding-bottom rides the keyframes too; with border-box
+      // sizing a bare height:0 would bottom out at the padding and leave a
+      // sliver standing.
+      const pb = getComputedStyle(list).paddingBottom;
+      if (!fold.open) {
+        fold.open = true;
+        const grow = list.animate(
+          [{ height: '0px', paddingBottom: '0px' }, { height: `${list.scrollHeight}px`, paddingBottom: pb }],
+          { duration: 300, easing: FOLD_EASE },
+        );
+        list.querySelectorAll('.row').forEach((row, i) => {
+          row.animate(
+            [{ opacity: 0, transform: 'translateY(-6px)' }, { opacity: 1, transform: 'none' }],
+            { duration: 260, delay: 60 + Math.min(i, 6) * 28, easing: FOLD_EASE, fill: 'backwards' },
+          );
+        });
+        grow.onfinish = grow.oncancel = settle;
+      } else {
+        const rows = [...list.querySelectorAll('.row')];
+        rows.forEach((row) => row.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 120, fill: 'forwards' }));
+        const shrink = list.animate(
+          [{ height: `${list.scrollHeight}px`, paddingBottom: pb }, { height: '0px', paddingBottom: '0px' }],
+          { duration: 200, easing: 'ease-in' },
+        );
+        shrink.onfinish = () => {
+          fold.open = false;
+          settle();
+          rows.forEach((row) => row.getAnimations().forEach((a) => a.cancel()));
+        };
+        shrink.oncancel = settle;
+      }
+    });
+  }
+
   // Paper has no disclosure. info.css opens ::details-content under @media
   // print, which is what print PREVIEW and print-to-PDF see; this is the other
   // half, for browsers that do not support that pseudo yet. Open every fold

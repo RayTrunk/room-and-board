@@ -261,7 +261,19 @@ button:focus-visible {
 /* scroll-margin because each fold is a link target in its own right: the ids
    are the ones the old per-group sections carried, so /info#commute still
    lands, and the sticky nav would otherwise cover it. */
-.fold { border-top: 1px solid var(--bg-card-2); scroll-margin-top: 76px; }
+.fold { border-top: 1px solid var(--bg-card-2); scroll-margin-top: 76px; position: relative; }
+/* Which rows belong to the open group? The spine answers: a rule that grows
+   down the left gutter, header through last row (Sean's pick, B of three
+   mockups, 2026-08-13). It floats OUTSIDE the text column so nothing indents
+   when a group opens, and it is deliberately brighter than the row hairlines:
+   figure, not furniture. Its growth keeps time with the unfold in info.js. */
+.fold::before {
+  content: ""; position: absolute; left: -20px; top: 14px; bottom: 14px;
+  width: 1px; background: rgba(255, 255, 255, 0.38);
+  transform: scaleY(0); transform-origin: top;
+  transition: transform 300ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.fold[open]::before { transform: scaleY(1); }
 /* No closing rule: the "On a board" subhead below carries its own border-top,
    and two hairlines 40px apart read as a mistake. */
 /* 150px + a 20px gutter puts the dek on the same optical left edge as the
@@ -466,6 +478,8 @@ button:focus-visible {
   .list::after { display: none; }
   /* The fold's three lines stack, and the caret spans all three. */
   .fold__sum { grid-template-columns: minmax(0, 1fr) 1.1em; }
+  /* --pad is 20px here; at -20px the spine would kiss the viewport edge. */
+  .fold::before { left: -12px; }
   .fold__name { grid-column: 1; grid-row: 1; }
   .fold__dek { grid-column: 1; grid-row: 2; }
   .fold__ids { grid-column: 1; grid-row: 3; }
@@ -490,7 +504,7 @@ button:focus-visible {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .nav__link, .nav__pill, .log__toggle, .log__toggle::after, .fold__caret, .fold__caret::after { transition: none; }
+  .nav__link, .nav__pill, .log__toggle, .log__toggle::after, .fold__caret, .fold__caret::after, .fold::before { transition: none; }
   html { scroll-behavior: auto; }
 }
 
