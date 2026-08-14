@@ -26,6 +26,45 @@ const links = new Map(
 const nav = document.querySelector('.nav');
 const navInner = document.querySelector('.nav__inner');
 
+// ---------- the glide pill ----------
+// The active highlight is ONE element that travels between labels, not four
+// backgrounds trading places: the slide says "the same selection moved", and
+// its direction mirrors the reader's scroll (Sean's pick 2026-08-13, mockup A
+// of three). Created here rather than in the HTML so a page without script
+// keeps today's per-link fallback; the nav--glide class is what retires the
+// static background, so the pill and the class must arrive together.
+const pill = (() => {
+  if (!navInner || !sections.length) return null;
+  const el = document.createElement('div');
+  el.className = 'nav__pill';
+  el.setAttribute('aria-hidden', 'true');
+  navInner.prepend(el);
+  nav.classList.add('nav--glide');
+  return el;
+})();
+
+// animate=false is for placements that are not a section change (first paint,
+// resize, the web font arriving): the pill must LAND there, not travel there.
+// The transition lives in the stylesheet; suppressing it needs the reflow
+// flush, or the browser coalesces the none and the restore into one style.
+function placePill(link, animate) {
+  if (!pill) return;
+  if (!link) return;
+  if (!animate) pill.style.transition = 'none';
+  pill.style.top = `${link.offsetTop}px`;
+  pill.style.height = `${link.offsetHeight}px`;
+  pill.style.left = `${link.offsetLeft}px`;
+  pill.style.width = `${link.offsetWidth}px`;
+  if (!animate) {
+    void pill.offsetWidth;
+    pill.style.transition = '';
+  }
+}
+// Label widths shift when CiscoSans lands over the fallback face; re-measure
+// then, and on every resize (which can also reflow the row's wrapping).
+document.fonts?.ready?.then?.(() => placePill(links.get(current), false));
+window.addEventListener('resize', () => placePill(links.get(current), false), { passive: true });
+
 // The pill row scrolls horizontally on narrow screens, where a hard edge just
 // looks like the nav ends. Fade whichever side still has nav behind it.
 function syncFade() {
@@ -67,6 +106,9 @@ function syncNav() {
     if (active === current) return;
     links.get(current)?.classList.remove('is-active');
     links.get(active)?.classList.add('is-active');
+    // First placement (current still '') lands without motion; every change
+    // after that glides.
+    placePill(links.get(active), Boolean(current));
     current = active;
     // Keep the current section's pill in view, going up as well as down: on a
     // phone the active pill is usually one the reader has already scrolled past
