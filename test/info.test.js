@@ -126,6 +126,9 @@ describe('/info wears the brand', () => {
 
   it('points the head icons at the new masters', () => {
     expect(html).toContain('href="assets/unsleep-quad.svg"');
-    expect(html).toContain('href="assets/unsleep-mark.svg"');
+    // PNGs, not SVGs, for the raster slots: iOS ignores an SVG
+    // apple-touch-icon and would fall back to a page screenshot.
+    expect(html).toContain('href="assets/unsleep-favicon-32.png"');
+    expect(html).toContain('href="assets/unsleep-icon-180.png"');
   });
 });

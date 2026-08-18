@@ -620,11 +620,14 @@ export const isRetired = (id, nowMs = Date.now(), table = RETIRED_AFTER) =>
 // board never breaks by visiting prod.
 const BETA_ONLY = Object.freeze(['iptv']);
 // The list is of PRODUCTION hosts, and everything else is staging by default.
-// app.quadrille.io now serves production alongside roomboard.app, so it must
-// not count as a staging host; the beta hosts (beta.roomboard.app,
-// beta.quadrille.io) fall through to the default and stay beta.
+// app.quadrille.io and unsleep.app serve production alongside roomboard.app,
+// so none of them may count as a staging host; the beta hosts
+// (beta.roomboard.app, beta.quadrille.io) fall through to the default and stay
+// beta. A production domain missing from this list would quietly ship the
+// BETA_ONLY cards to real boards, which is why the rename reconciliation of
+// 2026-08-18 added unsleep.app here the same day the domain went live.
 export const isBetaHost = (host = (typeof location !== 'undefined' ? location.hostname : 'localhost')) =>
-  host !== 'roomboard.app' && host !== 'www.roomboard.app' && host !== 'app.quadrille.io';
+  host !== 'roomboard.app' && host !== 'www.roomboard.app' && host !== 'app.quadrille.io' && host !== 'unsleep.app';
 export const isLaunched = (id, host) => !BETA_ONLY.includes(id) || isBetaHost(host);
 
 // "Nerd mode": cards that need self-hosted infrastructure (live streams,

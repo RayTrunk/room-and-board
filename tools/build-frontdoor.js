@@ -38,6 +38,12 @@ const FILES = [
   ['data/changelog.json', 'data/changelog.json'], // also the health probe
   // Icon filenames track site/assets and the guide's <link rel="icon">; they
   // are brand-named, so a rename on either side has to land on both.
+  ['assets/unsleep-quad.svg', 'assets/unsleep-quad.svg'],
+  ['assets/unsleep-favicon-32.png', 'assets/unsleep-favicon-32.png'],
+  ['assets/unsleep-icon-180.png', 'assets/unsleep-icon-180.png'],
+  // The old pair still ships: the front door caches normally (that is its
+  // point), so HTML cached before the rename keeps resolving its icons until
+  // it expires instead of 404ing them.
   ['assets/quadrille-favicon-32.png', 'assets/quadrille-favicon-32.png'],
   ['assets/quadrille-icon-180.png', 'assets/quadrille-icon-180.png'],
 ];

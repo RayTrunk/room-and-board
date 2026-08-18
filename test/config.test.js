@@ -452,6 +452,7 @@ describe('staged rollout (BETA_ONLY widgets)', () => {
     expect(isLaunched('iptv', 'roomboard.app')).toBe(false);
     expect(isLaunched('iptv', 'www.roomboard.app')).toBe(false);
     expect(isLaunched('iptv', 'app.quadrille.io')).toBe(false);
+    expect(isLaunched('iptv', 'unsleep.app')).toBe(false);
     expect(isLaunched('iptv', 'beta.roomboard.app')).toBe(true);
     expect(isLaunched('iptv', 'beta.quadrille.io')).toBe(true);
     expect(isLaunched('iptv', 'signage.rvc.tech')).toBe(true);
@@ -466,6 +467,7 @@ describe('staged rollout (BETA_ONLY widgets)', () => {
     expect(isBetaHost('roomboard.app')).toBe(false);
     expect(isBetaHost('www.roomboard.app')).toBe(false);
     expect(isBetaHost('app.quadrille.io')).toBe(false);
+    expect(isBetaHost('unsleep.app')).toBe(false);
     expect(isBetaHost('beta.roomboard.app')).toBe(true);
     expect(isBetaHost('beta.quadrille.io')).toBe(true);
     expect(isBetaHost('signage.rvc.tech')).toBe(true);

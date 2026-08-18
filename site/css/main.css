@@ -931,7 +931,7 @@ body.mode-ambient .gear--edit { display: none; }
    (calm-utility — no divider needed). It used to be purely decorative; it is
    now the face of the What's new control below, which is what lets that
    control cost the rail ~24px instead of a whole row. */
-.settings__lockup { align-self: center; font-size: 27px; line-height: 1.2; color: var(--ink-mid); }
+.settings__lockup { align-self: center; font-size: 27px; line-height: 1.2; }
 /* The rail footer's What's new entry: the wordmark, and one line that opens the
    release notes. It lives in the FOOTER, which is `flex: none` and never
    scrolls, rather than in the nav, which is the list that grows with every

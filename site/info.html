@@ -11,11 +11,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>unsleep · Widget Guide</title>
 <meta name="description" content="Every widget card the unsleep signage dashboard can show: commute, weather, markets, news, images, and the daily reads.">
-<!-- Two icon masters, the same pair the app shell wires: the quad reads at
-     favicon scale, the modules mark from 40px up. Both are SVG, so neither
-     carries a pixel size. -->
-<link rel="icon" href="assets/unsleep-quad.svg" type="image/svg+xml">
-<link rel="apple-touch-icon" href="assets/unsleep-mark.svg">
+<!-- The same icon trio the app shell wires: the scalable quad master, then
+     PNG rasters for the slots that want pixels (iOS ignores an SVG
+     apple-touch-icon and would fall back to a page screenshot). -->
+<link rel="icon" type="image/svg+xml" href="assets/unsleep-quad.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="assets/unsleep-favicon-32.png">
+<link rel="apple-touch-icon" href="assets/unsleep-icon-180.png">
 <link rel="stylesheet" href="css/info.css">
 </head>
 <body>
@@ -82,7 +83,7 @@
 
 <section id="yours" class="wrap section" data-nav-section="yours">
   <h2 class="h2 h2--tight">Making it yours</h2>
-  <p class="section__lede">The board is a touchscreen: two buttons sit in the bottom-right corner, and the cards themselves are the third control. Rather set it up from your computer? <a href="https://app.quadrille.io/setup">app.quadrille.io/setup</a> lets you pick your widgets and hands you a code &mdash; on the board, tap the gear, choose Setup code, type it in, and Save. Codes last an hour.</p>
+  <p class="section__lede">The board is a touchscreen: two buttons sit in the bottom-right corner, and the cards themselves are the third control. Rather set it up from your computer? <a href="https://unsleep.app/setup">unsleep.app/setup</a> lets you pick your widgets and hands you a code &mdash; on the board, tap the gear, choose Setup code, type it in, and Save. Codes last an hour.</p>
   <div class="duo duo--trio">
     <article class="card card--row">
       <span class="fab" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 5.5l4 4L8 20l-4.6 1 1-4.6L14.5 5.5zM12.5 7.5l4 4"/></svg></span>
