@@ -22,13 +22,16 @@
   "observability": {
     "enabled": true
   },
-  // Only the root path enters the router; every other URL is served straight
-  // from the asset store exactly as before the script existed.
+  // Every request enters the router (a ["/"]-scoped run_worker_first proved
+  // not to catch the root in practice: the deploy served the app at
+  // beta.unsleep.io/ with the pattern in place, live-tested 2026-08-18).
+  // The script is a one-condition pass-through and beta traffic is a person
+  // and a test board, so the invocation cost buys certainty.
   "main": "beta-router.js",
   "assets": {
     "directory": "site",
     "binding": "ASSETS",
-    "run_worker_first": ["/"]
+    "run_worker_first": true
   },
   "compatibility_flags": [
     "nodejs_compat"
