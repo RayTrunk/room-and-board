@@ -91,7 +91,10 @@ const css = await readFile(resolve(process.cwd(), 'site/css/info.css'), 'utf8');
 
 describe('/info wears the brand', () => {
   it('is titled for the product, and never title-cases it', () => {
-    expect(html).toContain('<title>unsleep · Widget Guide</title>');
+    // The tab carries the tagline, not "Widget Guide": the page is the
+    // product's front door now, and this string is also what search results
+    // and link previews show (Sean's call, 2026-08-18).
+    expect(html).toContain('<title>unsleep · A dashboard for the screen that never sleeps</title>');
     // Lowercase, always. The one place a capital U could sneak back in is a
     // sentence start, so the rule is checked against the whole file.
     expect(html).not.toMatch(/Unsleep/);
