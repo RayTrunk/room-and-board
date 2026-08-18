@@ -1,5 +1,5 @@
 <p align="center">
-  <a href="https://unsleep.io"><img alt="unsleep: a dashboard for the screen that never sleeps" src="docs/screenshots/quadrille-hero.png" width="720"></a>
+  <a href="https://unsleep.io"><img alt="unsleep: a dashboard for the screen that never sleeps" src="docs/screenshots/unsleep-hero.png" width="720"></a>
 </p>
 
 A lightweight, personal signage dashboard, **unsleep** (`unsleep.io`), for
