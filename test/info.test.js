@@ -108,7 +108,7 @@ describe('/info wears the brand', () => {
     // Live, selectable text: no aria-hidden twin, no clip, nothing drawn twice.
     // The whole word has to come out of textContent in order.
     const mark = /<span class="umark"><span class="umark__un">un<\/span><span class="umark__sl">\/<\/span><span class="umark__sleep">sleep<\/span><\/span>/g;
-    expect(html.match(mark)).toHaveLength(2); // the nav brand and the masthead
+    expect(html.match(mark)).toHaveLength(3); // nav brand, masthead, footer lockup
     expect(html).not.toMatch(/qmark/);
     expect(css).not.toMatch(/qmark/);
   });

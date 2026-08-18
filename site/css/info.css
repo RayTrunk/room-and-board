@@ -225,6 +225,10 @@ button:focus-visible {
    six sources; there are seven). */
 .section__sub { font-size: 17px; color: var(--ink-dim); margin: 0 0 26px; max-width: var(--measure); }
 .section__lede { font-size: 17px; line-height: 1.5; color: var(--ink-dim); margin: 0 0 26px; max-width: var(--measure); text-wrap: pretty; }
+/* A section's trailing quiet line (the relocated footer sentence): the old
+   footer__p's own size and ink, so the sentence reads exactly as it always
+   did, just standing where its subject lives. */
+.section__aside { font-size: 15.5px; color: var(--ink-dim); margin: 22px 0 0; max-width: var(--measure); }
 
 /* ---------- tile grid (display modes, screensaver sources) ----------
    A grid only. Both grids hold .card, so the page has exactly one card
@@ -455,11 +459,17 @@ button:focus-visible {
    script at all. Quiet on purpose: it is an absence, not an error. */
 .log__empty { font-size: 16px; line-height: 1.5; color: var(--ink-dim); margin: 0; padding: 15px 2px; border-top: 1px solid var(--bg-card-2); max-width: var(--measure); }
 
-/* ---------- footer ---------- */
+/* ---------- footer ----------
+   The lockup signs the page (the brand sheet's own footer context); the amber
+   stamp stays as the wink it always was, the page wearing the boards' stale
+   treatment. The behavior sentence that used to sit here moved up into
+   Making it yours (Sean's call, 2026-08-18): facts about the product belong
+   with the section that explains it. */
 .footer { margin-top: 96px; padding-top: 26px; padding-bottom: 72px; }
-.footer__inner { border-top: 1px solid var(--bg-card-2); padding-top: 24px; display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
-.footer__p { font-size: 15.5px; color: var(--ink-dim); margin: 0; }
-.footer__stamp { font-size: 14px; color: var(--warn); opacity: 0.75; }
+.footer__inner { border-top: 1px solid var(--bg-card-2); padding-top: 24px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.footer__brand { display: flex; align-items: center; gap: 10px; }
+.footer__brand .umark { font-size: 17px; }
+.footer__stamp { font-size: 14px; color: var(--warn); opacity: 0.75; margin-left: auto; }
 
 /* ---------- lightbox (built by info.js) ---------- */
 .lightbox {

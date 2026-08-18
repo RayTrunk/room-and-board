@@ -121,6 +121,11 @@
       </div>
     </article>
   </div>
+  <!-- Moved up from the page footer (Sean's call, 2026-08-18): a fact about
+       how the widgets behave belongs with the section that explains the
+       board, not alone under the changelog. The footer keeps the lockup and
+       the stale-stamp wink. -->
+  <p class="section__aside">Widgets update themselves. Stale data dims with a timestamp rather than disappearing.</p>
 
   <!-- Display modes are one of the things you set behind the gear, so they sit
        inside this section rather than standing above it with a nav pill of their
@@ -400,7 +405,10 @@
 
 <footer class="wrap footer">
   <div class="footer__inner">
-    <p class="footer__p">Widgets update themselves. Stale data dims with a timestamp rather than disappearing.</p>
+    <!-- The brand sheet's own footer lockup, applied at last; the amber "as
+         of" stamp stays as the page's quiet demonstration of the stale
+         treatment the boards use. -->
+    <span class="footer__brand"><svg width="18" height="18" viewBox="0 0 16 16" aria-hidden="true"><rect x="0.5" y="3.5" width="15" height="9" rx="2" fill="#0d1218" stroke="rgba(255,255,255,.16)"/><rect x="2.5" y="5.5" width="6" height="5" rx="1" fill="#64b4fa"/><rect x="10" y="5.5" width="3.5" height="5" rx="1" fill="rgba(100,180,250,.30)"/></svg><span class="umark"><span class="umark__un">un</span><span class="umark__sl">/</span><span class="umark__sleep">sleep</span></span></span>
     <span class="footer__stamp">as of 9:41</span>
   </div>
 </footer>
