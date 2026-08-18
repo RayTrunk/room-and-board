@@ -403,7 +403,27 @@ if (logRoot) {
     .catch(() => showLogFallback(logRoot));
 }
 
-// The hero-field cell snap retired here with the ruled masthead it served (the
-// panel that replaced it is proportional, so there is nothing to round to a
-// grid). Noted rather than silently dropped: this file has carried orphaned
-// listeners before.
+// ---------- hero grid snap ----------
+// The masthead's ruling came back 2026-08-18 (Sean's call), and with it the
+// snap: the panel's rendered box rounds to whole cells so the right and
+// bottom keylines land on rules, exactly like the retired field. Width floors
+// (never wider than the column), height ceils (never tighter than the word's
+// band needs), and the +2 on each is the two 1px keylines. Without JS nothing
+// breaks: the keyline still closes the edge cells, the grid is just not
+// whole-cell.
+const heroScreen = document.querySelector('.hero__screen');
+function snapHeroScreen() {
+  heroScreen.style.width = '';
+  heroScreen.style.height = '';
+  const cell = parseFloat(getComputedStyle(heroScreen).getPropertyValue('--cell'));
+  const w = heroScreen.getBoundingClientRect().width;
+  if (!cell || !w) return; // test DOMs have no layout; leave the panel fluid
+  heroScreen.style.width = `${Math.floor((w - 2) / cell) * cell + 2}px`;
+  const h = heroScreen.getBoundingClientRect().height;
+  heroScreen.style.height = `${Math.ceil((h - 2) / cell) * cell + 2}px`;
+}
+if (heroScreen) {
+  snapHeroScreen();
+  window.addEventListener('resize', snapHeroScreen, { passive: true });
+  document.fonts?.ready?.then(snapHeroScreen).catch(() => {});
+}

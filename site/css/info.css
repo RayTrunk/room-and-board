@@ -117,36 +117,55 @@ button:focus-visible {
 /* ---------- hero ---------- */
 .hero { padding-top: 84px; padding-bottom: 12px; }
 /* The masthead is the product's own subject at poster scale: one landscape
-   screen, awake, with four cards on it and the name read across the clear
-   middle band. The accent marks what is awake: exactly one card is lit, the
-   other three sit at descending light, which is the system rule the whole
-   palette runs on. Nothing sits BEHIND the letters; that rule outlived the
-   masthead it was written for and holds here unchanged.
-   (What retired: a field ruled into squares, which drew the OLD name and
-   nothing else. Its --cell snapping in info.js went with it.) */
+   screen, awake, with four cards on its ruled grid and the name read across
+   the clear middle band. The accent marks what is awake: exactly one card is
+   lit, the other three sit at descending light, which is the system rule the
+   whole palette runs on. Nothing sits BEHIND the letters except the ruling
+   itself, which is the precedent the previous masthead set: the faint grid
+   may run under the word, placed cards never do.
+   (The ruling came back at Sean's call 2026-08-18: under the old name it drew
+   the name's meaning; under this one it draws the BOARD, the grid the ghost
+   cards actually live on. Every geometric rule below is inherited verbatim
+   from the retired field, learned defects and all.) */
 .hero__screen {
+  --cell: 30px;
+  /* The gutter a placed module keeps from the rules around it — the same idea
+     as the icon masters' constant gutter, and the edit view's card inset. */
+  --g: 3px;
   position: relative; overflow: hidden;
   display: flex; align-items: center; justify-content: center;
   /* Landscape at every width, and tall enough that the word's own band stays
-     clear of the cards. The floor is what the narrowest phone needs; the
-     ceiling stops a 2560px desktop from turning the masthead into a wall. */
+     clear of the card rows. The snap in info.js rounds the rendered box to
+     whole cells, so these bounds are starting points, not the final size. */
   min-height: clamp(180px, 26vw, 260px);
-  padding: 46px 52px;
-  background: #05070a;
-  /* The mark's keyline, drawn at hero scale. */
-  border: 1.5px solid rgba(255, 255, 255, 0.14);
-  /* 18px outside, 6px on the cards: the radii stay concentric, which is the
-     same relation the two icon masters draw between tile and module. */
-  border-radius: 18px;
+  padding: calc(var(--cell) * 1.5) calc(var(--cell) * 1.5);
+  background-color: #05070a;
+  /* The corner radius is exactly ONE CELL: the arc's endpoints land on the
+     first interior rules, so each corner cell is a quarter-round bounded by
+     the arc and two rules, a corner OF the grid rather than a curve clipping
+     through it. An arbitrary radius cuts cells mid-way. */
+  border-radius: var(--cell);
+  /* The keyline is the outermost rule: firmer than the interior ruling (.085)
+     because anti-aliasing feathers the corner arcs and dilutes their apparent
+     ink; equal alpha would read fainter on the curves than on the straights.
+     background-position hides the gradient's own first line under the keyline
+     so the left and top edges are never drawn twice. */
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.085) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.085) 1px, transparent 1px);
+  background-size: var(--cell) var(--cell);
+  background-position: -1px -1px;
 }
-/* Percentage offsets on purpose: the composition is a proportion, not a pixel
-   arrangement, so it survives the panel going from ~490px wide in the desktop
-   two-up to a 320px phone without a single breakpoint moving a card. */
-.hero__card { position: absolute; border-radius: 6px; }
-.hero__card--lit { left: 5%; top: 10%; width: 20%; height: 36px; background: #64b4fa; }
-.hero__card--b { right: 5%; top: 10%; width: 12%; height: 36px; background: rgba(100, 180, 250, 0.20); }
-.hero__card--c { right: 5%; bottom: 12%; width: 17%; height: 40px; background: rgba(100, 180, 250, 0.12); }
-.hero__card--d { left: 5%; bottom: 12%; width: 10%; height: 40px; background: rgba(100, 180, 250, 0.20); }
+/* Cell units, not percentages: cards on a visible ruling must LAND on it, the
+   same discipline the dashboard itself and the icon masters keep. The lit
+   card spans whole cells exactly; the ghosts sit INSIDE cells, inset by the
+   gutter on every side, so they read as placed cards at rest. */
+.hero__card { position: absolute; border-radius: 3px; }
+.hero__card--lit { left: var(--cell); top: var(--cell); width: calc(var(--cell) * 3); height: var(--cell); background: #64b4fa; }
+.hero__card--b { right: calc(var(--cell) + var(--g)); top: calc(var(--cell) + var(--g)); width: calc(var(--cell) * 2 - var(--g) * 2); height: calc(var(--cell) - var(--g) * 2); background: rgba(100, 180, 250, 0.20); }
+.hero__card--c { right: calc(var(--cell) + var(--g)); bottom: calc(var(--cell) + var(--g)); width: calc(var(--cell) * 2 - var(--g) * 2); height: calc(var(--cell) - var(--g) * 2); background: rgba(100, 180, 250, 0.12); }
+.hero__card--d { left: calc(var(--cell) + var(--g)); bottom: calc(var(--cell) + var(--g)); width: calc(var(--cell) * 2 - var(--g) * 2); height: calc(var(--cell) - var(--g) * 2); background: rgba(100, 180, 250, 0.20); }
 /* position:relative is paint-order clarity only; the panel is one stacking
    context and the word is the last thing in it either way. */
 .hero__title { position: relative; margin: 0; font-size: clamp(38px, 6.4vw, 64px); line-height: 1; }
@@ -443,12 +462,10 @@ button:focus-visible {
 @media (max-width: 900px) {
   :root { --pad: 20px; }
   .hero { padding-top: 56px; }
-  /* Every card keeps its place: the composition is proportional, so only the
-     heights come down, and they come down because height is the one dimension
-     that does NOT scale with the panel. Measured at 900, 560 and 360: the
-     word's band clears the cards above and below it at all three. */
-  .hero__card { height: 30px; }
-  .hero__card--c, .hero__card--d { height: 32px; }
+  /* One knob: the cell. Every card is sized and placed in cell units, so the
+     grid, the cards, the corner radius and the padding all shrink together
+     and nothing can fall off the ruling. Same step the retired field used. */
+  .hero__screen { --cell: 24px; }
   .section { padding-top: 56px; }
   .h2 { font-size: 26px; }
   /* One column: the two-column ::after balancer has no empty cell to fill. */
@@ -475,10 +492,10 @@ button:focus-visible {
   .footer { margin-top: 64px; }
 }
 @media (max-width: 560px) {
-  /* The panel comes in with the page padding so the word keeps its air; the
-     cards shrink once more rather than going away. */
-  .hero__screen { padding: 34px 26px; }
-  .hero__card { height: 26px; }
+  /* The panel keeps the word's air by giving up a padding cell, not by
+     shrinking the grid again: a third cell size would make the ruling read
+     as three different products in one scroll. */
+  .hero__screen { padding: var(--cell); }
   .hero__card--c, .hero__card--d { height: 28px; }
   .duo { grid-template-columns: 1fr; }
   .card--row { flex-direction: column; gap: 14px; }

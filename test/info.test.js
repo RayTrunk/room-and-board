@@ -118,10 +118,15 @@ describe('/info wears the brand', () => {
     // one solid accent card and three at descending light.
     expect((html.match(/class="hero__card /g) || []).length).toBe(4);
     expect((html.match(/hero__card--lit/g) || []).length).toBe(1);
-    // The panel's only other child is the title: no rule, no texture, no
-    // background image behind the letters. The ruled field died with the name.
+    // The old field's class names stay dead; the RULING itself came back at
+    // Sean's call (2026-08-18): the faint grid may run under the word, the
+    // way the first masthead drew it, but it must stay a drawn ruling, never
+    // imagery. So the panel's background-image is allowed to be exactly
+    // linear-gradients, and a url() behind the letters is still a failure.
     expect(css).not.toMatch(/hero__field|hero__mod/);
-    expect(css).not.toMatch(/\.hero__screen\s*\{[^}]*background-image/);
+    const screen = /\.hero__screen\s*\{[^}]*\}/.exec(css)?.[0] ?? '';
+    expect(screen).toContain('linear-gradient');
+    expect(screen).not.toContain('url(');
   });
 
   it('points the head icons at the new masters', () => {
