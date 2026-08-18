@@ -138,12 +138,16 @@ button:focus-visible {
      as the icon masters' constant gutter, and the edit view's card inset. */
   --g: 3px;
   position: relative; overflow: hidden;
-  display: flex; align-items: center; justify-content: center;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
   /* Landscape at every width, and tall enough that the word's own band stays
      clear of the card rows. The snap in info.js rounds the rendered box to
      whole cells, so these bounds are starting points, not the final size. */
   min-height: clamp(180px, 26vw, 260px);
-  padding: calc(var(--cell) * 1.5) calc(var(--cell) * 1.5);
+  /* Two cells of vertical padding, the retired field's own number: the top
+     and bottom card rows live inside it, so the centered title-and-sub stack
+     can never enter their rows; when the sub wraps taller the panel grows
+     and the snap rounds the growth to whole cells. */
+  padding: calc(var(--cell) * 2) calc(var(--cell) * 1.5);
   background-color: #05070a;
   /* The corner radius is exactly ONE CELL: the arc's endpoints land on the
      first interior rules, so each corner cell is a quarter-round bounded by
@@ -174,10 +178,12 @@ button:focus-visible {
 /* position:relative is paint-order clarity only; the panel is one stacking
    context and the word is the last thing in it either way. */
 .hero__title { position: relative; margin: 0; font-size: clamp(38px, 6.4vw, 64px); line-height: 1; }
-/* The sub and the note now both sit UNDER the panel, in their old order and
-   with their old copy. The measure applies here because they are no longer
-   held in by the panel's padding. */
-.hero__sub { font-size: clamp(15px, 1.6vw, 17px); line-height: 1.45; color: var(--ink-mid); margin: 20px 0 0; max-width: var(--measure); text-wrap: pretty; }
+/* The sub lives INSIDE the panel under the wordmark (Sean's call on beta
+   review, restoring the old masthead's arrangement); the note stays below.
+   position: relative is the same paint-order clarity the title carries, and
+   the measure is tighter than the page's because the panel's own padding is
+   what frames it now. */
+.hero__sub { position: relative; font-size: clamp(15px, 1.6vw, 17px); line-height: 1.45; color: var(--ink-mid); margin: 14px 0 0; max-width: 48ch; text-align: center; text-wrap: pretty; }
 .hero__note { font-size: 16px; color: var(--ink-dim); margin: 18px 0 0; max-width: var(--measure); }
 /* Nav brand is the mark and the wordmark at rail scale. min-height holds the
    same 44px thumb target the pills beside it keep, and it is a BORDER-box 44
@@ -497,10 +503,11 @@ button:focus-visible {
   .footer { margin-top: 64px; }
 }
 @media (max-width: 560px) {
-  /* The panel keeps the word's air by giving up a padding cell, not by
-     shrinking the grid again: a third cell size would make the ruling read
-     as three different products in one scroll. */
-  .hero__screen { padding: var(--cell); }
+  /* Horizontal padding gives up half a cell for width; the vertical TWO
+     CELLS are load-bearing (the card rows live inside them) and do not
+     shrink. A third cell size would make the ruling read as three different
+     products in one scroll, so the grid itself stays at the 24px step. */
+  .hero__screen { padding: calc(var(--cell) * 2) var(--cell); }
   .hero__card--c, .hero__card--d { height: 28px; }
   .duo { grid-template-columns: 1fr; }
   .card--row { flex-direction: column; gap: 14px; }
