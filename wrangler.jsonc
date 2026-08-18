@@ -7,10 +7,9 @@
   // config is NOT detached by a deploy, so listing them is documentation,
   // not a change). The unsleep pair was added 2026-08-18 with the rename:
   // both TLDs answer because the beta. prefix should work on whichever
-  // domain a person remembers (Sean reached for the .io twice before it
-  // existed, which settled it). All four serve this same worker: the beta
-  // guide is /info on any of them, and there is no separate beta front-door
-  // build on purpose, the front door being a byte copy of /info.
+  // domain a person remembers. The origins MIRROR production's mapping:
+  // beta.unsleep.io serves the guide at its root the way unsleep.io does
+  // (beta-router.js does that one rewrite), the app origins serve the app.
   // NOTE: a NEW custom domain here provisions only from a LOCAL wrangler
   // deploy; the Workers-Builds token cannot create zone DNS records.
   "routes": [
@@ -23,8 +22,13 @@
   "observability": {
     "enabled": true
   },
+  // Only the root path enters the router; every other URL is served straight
+  // from the asset store exactly as before the script existed.
+  "main": "beta-router.js",
   "assets": {
-    "directory": "site"
+    "directory": "site",
+    "binding": "ASSETS",
+    "run_worker_first": ["/"]
   },
   "compatibility_flags": [
     "nodejs_compat"
