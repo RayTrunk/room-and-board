@@ -1,6 +1,20 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "room-and-board-beta",
+  // The beta origins, all custom domains on this worker. The first two were
+  // attached by hand in the dashboard before this block existed; declaring
+  // them here makes the config match reality (a custom domain absent from
+  // config is NOT detached by a deploy, so listing them is documentation,
+  // not a change). beta.unsleep.app was added 2026-08-18 with the rename and
+  // provisions itself on the next build, the same way the API worker's
+  // aliases do. The beta guide is beta.unsleep.app/info; there is no beta
+  // front-door origin on purpose, because the front door is a byte copy of
+  // /info and previewing /info here IS previewing it.
+  "routes": [
+    { "pattern": "beta.roomboard.app", "custom_domain": true },
+    { "pattern": "beta.quadrille.io", "custom_domain": true },
+    { "pattern": "beta.unsleep.app", "custom_domain": true }
+  ],
   "compatibility_date": "2026-07-16",
   "observability": {
     "enabled": true
