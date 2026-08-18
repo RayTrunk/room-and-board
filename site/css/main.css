@@ -788,31 +788,18 @@ body { position: relative; top: max(0px, calc((100dvh - 1080px) / 2)); }
 body.mode-ambient .topbar, body.mode-ambient #grid { visibility: hidden; }
 
 /* ---------- the wordmark ----------
-   Quadrillé as live text: Quad light, rillé semibold, and the acute is the
-   only blue in the word. The base text is the real "é"; the overlay is a
-   second "é" clipped to its top quarter and recolored, painted exactly over
-   the first — glyph-metric exact at every size, and unselectable/aria-hidden
-   so copy, find, and screen readers see "Quadrillé" once, correctly. Shared
-   by the welcome screen and the settings rail; info.css carries its own copy
-   for the standalone guide. */
-.qmark { font-weight: 600; letter-spacing: -0.035em; }
-.qmark__lt { font-weight: 300; }
-.qmark__e { position: relative; display: inline-block; line-height: 1; }
-/* Blue base é + accent-less overlay e in the context ink: the letter body is
-   covered by its own glyph outline so ONLY the accent stays blue — no
-   clip-path, no size-dependent boundary. See info.css for the full story. */
-.qmark__e > b { font-weight: inherit; color: var(--accent); }
-.qmark__e > i {
-  /* `hidden` keeps the unstyled page reading "Quadrillé" in plain ink; the
-     restore MUST be !important because this sheet's own
-     `[hidden]{display:none !important}` utility otherwise wins. */
-  display: inline !important;
-  position: absolute; left: 0; top: 0;
-  font-style: normal; color: inherit;
-  pointer-events: none;
-  -webkit-user-select: none;
-  user-select: none;
-}
+   unsleep as live text: "un" carries the weight, the slash is the only blue in
+   the word, and "sleep" recedes to half-strength white. Three plain spans with
+   nothing hidden and nothing overlaid, so copy, find and screen readers get the
+   name straight from the DOM and an unstyled page still reads it correctly.
+   Shared by the welcome screen and the settings rail; info.css carries an
+   identical copy for the standalone guide, so the class names must not drift
+   apart. Weights are absolute rather than inherited: this mark sets its own
+   contrast and must not restate whatever the host line is set in. */
+.umark { line-height: 1; letter-spacing: -0.03em; }
+.umark__un { font-weight: 600; color: var(--ink); }
+.umark__sl { color: var(--accent); font-weight: 300; margin: 0 0.05em; }
+.umark__sleep { font-weight: 300; color: rgba(255, 255, 255, 0.50); }
 
 /* ---------- welcome ---------- */
 .welcome { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: var(--bg); }

@@ -223,19 +223,18 @@ function showWelcome() {
   welcome.innerHTML = `
     <div class="welcome__inner">
       <div class="welcome__brand" aria-hidden="true">
+        <!-- Inlined rather than <img src="assets/unsleep-mark.svg">: the welcome
+             screen is the first paint of a cold boot and this must not cost a
+             round trip. Geometry is the 64 master verbatim; keep the two in
+             step. -->
         <svg class="welcome__mark" viewBox="0 0 64 64" width="72" height="72">
-          <rect x="1.5" y="1.5" width="61" height="61" rx="9" fill="#0d1218" stroke="rgba(255,255,255,.14)" stroke-width="1.5"/>
-          <g opacity=".15" stroke="#fff" stroke-width="2">
-            <line x1="21.75" y1="2" x2="21.75" y2="62"/>
-            <line x1="42.25" y1="2" x2="42.25" y2="62"/>
-            <line x1="2" y1="21.75" x2="62" y2="21.75"/>
-            <line x1="2" y1="42.25" x2="62" y2="42.25"/>
-          </g>
-          <rect x="5.25" y="5.25" width="33" height="12.5" rx="3.5" fill="#64b4fa"/>
-          <rect x="46.25" y="25.75" width="12.5" height="12.5" rx="3.5" fill="rgba(100,180,250,.38)"/>
-          <rect x="25.75" y="46.25" width="12.5" height="12.5" rx="3.5" fill="rgba(100,180,250,.20)"/>
+          <rect x="4" y="14" width="56" height="36" rx="7" fill="#0d1218" stroke="rgba(255,255,255,.14)" stroke-width="1.5"/>
+          <rect x="9" y="19" width="24" height="12" rx="3" fill="#64b4fa"/>
+          <rect x="36" y="19" width="19" height="12" rx="3" fill="rgba(100,180,250,.22)"/>
+          <rect x="9" y="34" width="14" height="11" rx="3" fill="rgba(100,180,250,.14)"/>
+          <rect x="26" y="34" width="29" height="11" rx="3" fill="rgba(100,180,250,.22)"/>
         </svg>
-        <span class="qmark welcome__word"><span class="qmark__lt">Quad</span>rill<span class="qmark__e"><b>é</b><i hidden>e</i></span></span>
+        <span class="umark welcome__word"><span class="umark__un">un</span><span class="umark__sl">/</span><span class="umark__sleep">sleep</span></span>
       </div>
       <h1>Welcome to your office display</h1>
       <p>Set it up from your phone or desktop, or start with sensible defaults and fine-tune later.</p>

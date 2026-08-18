@@ -234,7 +234,7 @@ describe('paneHtml', () => {
   it('drops the version clause rather than printing an empty one', () => {
     // Scoped to the colophon: the notes themselves may well say "version".
     const foot = /<p class="log__foot">(.*?)<\/p>/.exec(paneHtml(shipped))[1];
-    expect(foot).toBe('Quadrillé · full guide at quadrille.io');
+    expect(foot).toBe('unsleep · full guide at quadrille.io');
     expect(foot).not.toMatch(/·\s*·/);
   });
 
@@ -274,31 +274,23 @@ describe('the rail-footer entry point', () => {
 
   it('keeps the wordmark decorative inside the control, not a second label', () => {
     // The lockup is the button's face; it is hidden from the accessibility tree
-    // so the accessible name is the caption, not "Quadrillé Quadrillé". The
-    // wordmark is now set in text rather than drawn as an image, which is why
+    // so the accessible name is the caption alone, not "un/sleep What's new".
+    // The wordmark is set in text rather than drawn as an image, which is why
     // hiding it takes aria-hidden instead of an empty alt.
     const html = railFootHtml();
-    expect(html).toMatch(/<span class="settings__lockup qmark" aria-hidden="true">/);
+    expect(html).toMatch(/<span class="settings__lockup umark" aria-hidden="true">/);
     expect(html).not.toContain('<img');
     const host = document.createElement('div');
     host.innerHTML = html;
     const lockup = host.querySelector('.settings__lockup');
     expect(lockup.getAttribute('aria-hidden')).toBe('true');
-    // The name is set in text: the lit "Quad", the plain "rill", and a REAL
-    // trailing é (the <b>, painted accent blue) under an accent-less overlay
-    // "e" (the <i>) drawn in the context ink — the letter body is covered by
-    // its own glyph outline so only the accent stays blue, with no clip-path
-    // and therefore no size-dependent boundary to bleed or clip. The base é
-    // carries meaning; the <i> is aria-hidden and unselectable, so copy and
-    // screen readers see "Quadrillé" even though raw textContent reads "…ée".
-    expect(lockup.querySelector('.qmark__lt').textContent).toBe('Quad');
-    expect(lockup.querySelector('.qmark__e').textContent).toBe('ée');
-    expect(lockup.querySelector('.qmark__e b').textContent).toBe('é');
-    expect(lockup.querySelector('.qmark__e i').textContent).toBe('e');
-    expect(lockup.textContent).toBe('Quadrillée');
-    // The overlay must carry `hidden`: before the stylesheet lands, the UA's
-    // [hidden]{display:none} is the only thing keeping the raw page from
-    // showing a doubled letter (the CSS restores it with display !important).
-    expect(lockup.querySelector('.qmark__e i').hasAttribute('hidden')).toBe(true);
+    // Three plain spans and nothing else: the whole mark is real text, so the
+    // DOM reads the name exactly once with no hidden or duplicated glyphs.
+    // Class names are shared with info.css, so a rename here is a rename there.
+    expect(lockup.querySelector('.umark__un').textContent).toBe('un');
+    expect(lockup.querySelector('.umark__sl').textContent).toBe('/');
+    expect(lockup.querySelector('.umark__sleep').textContent).toBe('sleep');
+    expect(lockup.textContent).toBe('un/sleep');
+    expect(lockup.querySelector('[hidden]')).toBeNull();
   });
 });

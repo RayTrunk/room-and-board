@@ -172,7 +172,7 @@ export function paneHtml(groups, { build = '' } = {}) {
       </div>
       <p class="pane__hint">Updates to this board, newest first. It keeps itself up to date, so there is nothing to install.</p>
       ${list || emptyHtml()}
-      <p class="log__foot">Quadrillé${build ? ` · version ${escapeHtml(build)}` : ''} · full guide at quadrille.io</p>
+      <p class="log__foot">unsleep${build ? ` · version ${escapeHtml(build)}` : ''} · full guide at quadrille.io</p>
     </div>`;
 }
 
@@ -192,7 +192,7 @@ export function paneHtml(groups, { build = '' } = {}) {
 // wants it will look.
 export function railFootHtml() {
   return `<button class="settings__whatsnew" type="button" data-whatsnew>
-      <span class="settings__lockup qmark" aria-hidden="true"><span class="qmark__lt">Quad</span>rill<span class="qmark__e"><b>é</b><i hidden>e</i></span></span>
+      <span class="settings__lockup umark" aria-hidden="true"><span class="umark__un">un</span><span class="umark__sl">/</span><span class="umark__sleep">sleep</span></span>
       <span class="settings__wnline">What’s new</span>
     </button>`;
 }

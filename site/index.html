@@ -20,7 +20,7 @@
      a no-op on the Board Pro (device width already 1920, so scale stays 1).
      main.js fitViewport() covers the case where this meta is ignored. -->
 <meta name="viewport" content="width=1920">
-<title>Quadrillé</title>
+<title>unsleep</title>
 <!-- Warm the two hosts every board talks to before the module graph has even
      parsed: the API worker (transit, markets, news, …) and Open-Meteo, which
      the Weather card in the default layout fetches browser-direct. Both are
@@ -30,8 +30,13 @@
      socket on a stack that has few to spare. -->
 <link rel="preconnect" href="https://api.roomboard.app" crossorigin>
 <link rel="preconnect" href="https://api.open-meteo.com" crossorigin>
-<link rel="icon" type="image/png" sizes="32x32" href="assets/quadrille-favicon-32.png">
-<link rel="apple-touch-icon" href="assets/quadrille-icon-180.png">
+<!-- SVG first for anything that takes one; the 32px PNG is the fallback and the
+     touch icon must stay a PNG, which iOS is the only consumer of. All three are
+     the small master except the touch icon, which uses the full one at a size
+     where four cards still read. -->
+<link rel="icon" type="image/svg+xml" href="assets/unsleep-quad.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="assets/unsleep-favicon-32.png">
+<link rel="apple-touch-icon" href="assets/unsleep-icon-180.png">
 <link rel="stylesheet" href="css/main.css">
 </head>
 <body>
