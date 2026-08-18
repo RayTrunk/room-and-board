@@ -7,7 +7,7 @@
   * Version:                 1.3.0
   *
   * Description:             Self-contained signage provisioning + Control
-  *                          Panel button for the Quadrillé dashboard.
+  *                          Panel button for the unsleep dashboard.
   *                          init() configures the device for interactive
   *                          web signage (WebEngine, Standby Signage mode/
   *                          interaction/URL/audio, standby delay, meeting-
@@ -20,7 +20,7 @@
   *                          Standalone: no storage/vault macro, no bridge
   *                          account — the URL carries the board's config.
   *
-  * Documentation:           https://github.com/scotty83/quadrille
+  * Documentation:           https://github.com/scotty83/unsleep
   *
   * Software Platforms:      RoomOS 11+
   *
@@ -43,7 +43,7 @@ import xapi from 'xapi';
  * and enable — init() applies every device setting signage needs, so
  * nothing else has to be configured by hand.
  *
- * The default URL opens Quadrillé's welcome screen (Quick Start + a QR
+ * The default URL opens unsleep's welcome screen (Quick Start + a QR
  * to the /setup page). To load a saved configuration instead, replace it
  * with your board's URL from /setup -> "Get signage URL" (it carries the
  * display's configuration in the #cfg fragment).
@@ -166,7 +166,7 @@ async function ensureOptionalConfig(node, label, value) {
   * Applies every device setting interactive web signage needs. Macros
   * Mode/AutoStart are included so a hand-uploaded copy of this macro survives
   * reboots.
-  * The default URL opens the Quadrillé welcome screen, so an untouched
+  * The default URL opens the unsleep welcome screen, so an untouched
   * install still lands somewhere useful.
   * @roomosxapi [xConfiguration Standby Delay](https://roomos.cisco.com/xapi/Configuration.Standby.Delay/)
   * @roomosxapi [xConfiguration Standby WakeupAtMeetingStart](https://roomos.cisco.com/xapi/Configuration.Standby.WakeupAtMeetingStart/)

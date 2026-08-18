@@ -1,4 +1,4 @@
-// Assemble the quadrille.io front door from site/ into dist/frontdoor.
+// Assemble the unsleep.io front door from site/ into dist/frontdoor.
 //
 // The front door is the public widget guide served on its own origin so it
 // can cache normally while the app keeps `no-cache` (see site/_headers). It
@@ -7,14 +7,22 @@
 // script makes it a build product of the same commit instead. CI deploys the
 // output to the `quadrille-site` Pages project on every push to main
 // (.github/workflows/test.yml), and `npm run deploy:frontdoor` is the manual
-// fallback.
+// fallback. That project name predates the unsleep rename and is deliberately
+// frozen: unsleep.io is a custom domain attached to it, so renaming the
+// project would break the attachment to rename a string nobody sees.
+//
+// There are no brand rewrites here, and that absence is the design. The guide
+// carries its own title, copy and app links, and this script serves the same
+// bytes the app serves at /info. A rewrite layer would let the two origins
+// drift, which is the exact failure the hand-curled mirror used to produce.
+// Brand copy changes belong in site/info.html.
 //
 // The file list is EXPLICIT on purpose: the guide is self-contained (one
 // stylesheet, one script, the changelog it fetches, and its images), and an
 // explicit list fails loudly in CI when a new dependency is added to
 // info.html without being shipped here — a silent partial copy would serve a
 // broken page with a green build.
-import { cpSync, mkdirSync, rmSync, readFileSync } from 'node:fs';
+import { cpSync, mkdirSync, rmSync, readFileSync, existsSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -28,10 +36,21 @@ const FILES = [
   ['css/info.css', 'css/info.css'],
   ['js/info.js', 'js/info.js'],
   ['data/changelog.json', 'data/changelog.json'], // also the health probe
+  // Icon filenames track site/assets and the guide's <link rel="icon">; they
+  // are brand-named, so a rename on either side has to land on both.
   ['assets/quadrille-favicon-32.png', 'assets/quadrille-favicon-32.png'],
   ['assets/quadrille-icon-180.png', 'assets/quadrille-icon-180.png'],
 ];
 const DIRS = [['assets/info', 'assets/info']];
+
+// Name the missing sources before copying. cpSync would fail anyway, but on
+// the first one and with a bare ENOENT path; a renamed asset set is worth a
+// sentence that says which side of the rename is out of step.
+const absent = [...FILES.map(([s]) => s), ...DIRS.map(([s]) => s)].filter((s) => !existsSync(resolve(repo, 'site', s)));
+if (absent.length) {
+  console.error('front door cannot find these under site/:', absent);
+  process.exit(1);
+}
 
 rmSync(out, { recursive: true, force: true });
 mkdirSync(out, { recursive: true });

@@ -1,9 +1,9 @@
 <p align="center">
-  <a href="https://quadrille.io"><img alt="Quadrillé — a glanceable dashboard for your personal screen" src="docs/screenshots/quadrille-hero.png" width="720"></a>
+  <a href="https://unsleep.io"><img alt="unsleep: a glanceable dashboard for your personal screen" src="docs/screenshots/quadrille-hero.png" width="720"></a>
 </p>
 
-A lightweight, personal signage dashboard — **Quadrillé** (`quadrille.io`) —
-for touch enabled Cisco RoomOS endpoints such as the Board Pro and Desk Pro:
+A lightweight, personal signage dashboard, **unsleep** (`unsleep.io`), for
+touch enabled Cisco RoomOS endpoints such as the Board Pro and Desk Pro:
 worldwide weather and surf, transit boards (NYC Subway status, LIRR,
 Metro-North, NJ Transit, Amtrak, PATH, NYC Ferry, Express Bus, Citi Bike;
 London TfL status), market tickers, sports scores, headlines, cloud-service
@@ -12,7 +12,12 @@ the day, Statista's chart of the day, and more). Hosted entirely on the
 public internet, personalized per device **without authentication**, with
 preferences that survive reboots and RoomOS upgrades.
 
-![A Quadrillé dashboard in the Momentum theme: weather, public-domain art, world clock, subway status, markets, quote of the day, and cloud-service status](docs/screenshots/dashboard-classic.png)
+**unsleep.io** is the site and **unsleep.app** is the app. Those two addresses
+go live with the rename release; every address already in use keeps working
+afterwards, so a board pointed at `app.quadrille.io` or `roomboard.app` needs no
+attention.
+
+![An unsleep dashboard in the Momentum theme: weather, public-domain art, world clock, subway status, markets, quote of the day, and cloud-service status](docs/screenshots/dashboard-classic.png)
 
 <table>
   <tr>
@@ -609,7 +614,7 @@ settings.
   heavier than it needs to be. If you are testing on a board, try re-setting
   the signage URL first and simplify the macro if that works.
 
-Leave the URL on `https://app.quadrille.io` (or the original `https://roomboard.app`, which keeps working) for the welcome screen, or paste a
+Leave the URL on `https://unsleep.app` (the earlier `https://app.quadrille.io` and `https://roomboard.app` keep working) for the welcome screen, or paste a
 board's own URL from `/setup` → "Get signage URL" to load a saved
 configuration. Pilot on one board first. Recommended extra per Cisco guidance:
 configure `Time OfficeHours` so signage runs ≤ 12 h/day.
@@ -945,7 +950,7 @@ outage it watches for.
 
 ## Security
 
-Quadrillé is a **read-only** signage app that renders **public** data feeds.
+unsleep is a **read-only** signage app that renders **public** data feeds.
 It has no user accounts, no passwords, and holds no personal data beyond an
 optional first-name greeting — a deliberately small attack surface, and the code
 is written to keep it that way.
@@ -1015,7 +1020,7 @@ tools/      data builders (stations, ferry, Citi Bike, express bus, teams,
             build command
 test/       vitest suites (+ worker pool project in worker/vitest.config.js)
 docs/       the screenshots this README uses
-assets/     the logo lockups and app icons (this README's header uses them)
+assets/     preview.html, the gallery page for exported brand assets
 .github/    workflows: test.yml (CI + Pages deploy), deploy-worker.yml
 wrangler.jsonc  NOT the API Worker (that config lives in worker/wrangler.toml).
             This one belongs to a separate Worker that serves site/ as static
