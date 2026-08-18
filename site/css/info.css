@@ -167,14 +167,18 @@ button:focus-visible {
   background-position: -1px -1px;
 }
 /* Cell units, not percentages: cards on a visible ruling must LAND on it, the
-   same discipline the dashboard itself and the icon masters keep. The lit
-   card spans whole cells exactly; the ghosts sit INSIDE cells, inset by the
-   gutter on every side, so they read as placed cards at rest. */
+   same discipline the dashboard itself and the icon masters keep. ONE rule
+   for every card, lit and ghost alike: occupy a whole-cell span, inset by
+   the gutter from the four rules that bound it. And every card is OPAQUE
+   (the ghost tints are pre-blended against the panel's #05070a): a
+   translucent card lets the ruling show through its body, which reads as a
+   card that does not fit its cells (Sean's catch on beta review). A real
+   card covers the cells it occupies; these do too. */
 .hero__card { position: absolute; border-radius: 3px; }
-.hero__card--lit { left: var(--cell); top: var(--cell); width: calc(var(--cell) * 3); height: var(--cell); background: #64b4fa; }
-.hero__card--b { right: calc(var(--cell) + var(--g)); top: calc(var(--cell) + var(--g)); width: calc(var(--cell) * 2 - var(--g) * 2); height: calc(var(--cell) - var(--g) * 2); background: rgba(100, 180, 250, 0.20); }
-.hero__card--c { right: calc(var(--cell) + var(--g)); bottom: calc(var(--cell) + var(--g)); width: calc(var(--cell) * 2 - var(--g) * 2); height: calc(var(--cell) - var(--g) * 2); background: rgba(100, 180, 250, 0.12); }
-.hero__card--d { left: calc(var(--cell) + var(--g)); bottom: calc(var(--cell) + var(--g)); width: calc(var(--cell) * 2 - var(--g) * 2); height: calc(var(--cell) - var(--g) * 2); background: rgba(100, 180, 250, 0.20); }
+.hero__card--lit { left: calc(var(--cell) + var(--g)); top: calc(var(--cell) + var(--g)); width: calc(var(--cell) * 3 - var(--g) * 2); height: calc(var(--cell) - var(--g) * 2); background: #64b4fa; }
+.hero__card--b { right: calc(var(--cell) + var(--g)); top: calc(var(--cell) + var(--g)); width: calc(var(--cell) * 2 - var(--g) * 2); height: calc(var(--cell) - var(--g) * 2); background: #182a3a; }
+.hero__card--c { right: calc(var(--cell) + var(--g)); bottom: calc(var(--cell) + var(--g)); width: calc(var(--cell) * 2 - var(--g) * 2); height: calc(var(--cell) - var(--g) * 2); background: #101c27; }
+.hero__card--d { left: calc(var(--cell) + var(--g)); bottom: calc(var(--cell) + var(--g)); width: calc(var(--cell) * 2 - var(--g) * 2); height: calc(var(--cell) - var(--g) * 2); background: #182a3a; }
 /* position:relative is paint-order clarity only; the panel is one stacking
    context and the word is the last thing in it either way. */
 .hero__title { position: relative; margin: 0; font-size: clamp(38px, 6.4vw, 64px); line-height: 1; }
