@@ -9,10 +9,13 @@
 <meta charset="utf-8">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https: data: blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Quadrillé · Widget Guide</title>
-<meta name="description" content="Every widget card the Quadrillé signage dashboard can show: commute, weather, markets, news, images, and the daily reads.">
-<link rel="icon" href="assets/quadrille-favicon-32.png" sizes="32x32">
-<link rel="apple-touch-icon" href="assets/quadrille-icon-180.png">
+<title>unsleep · Widget Guide</title>
+<meta name="description" content="Every widget card the unsleep signage dashboard can show: commute, weather, markets, news, images, and the daily reads.">
+<!-- Two icon masters, the same pair the app shell wires: the quad reads at
+     favicon scale, the modules mark from 40px up. Both are SVG, so neither
+     carries a pixel size. -->
+<link rel="icon" href="assets/unsleep-quad.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/unsleep-mark.svg">
 <link rel="stylesheet" href="css/info.css">
 </head>
 <body>
@@ -25,7 +28,10 @@
      inside it and nothing up here. -->
 <nav class="nav">
   <div class="nav__inner">
-    <a class="nav__brand" href="#top"><span class="qmark"><span class="qmark__lt">Quad</span>rill<span class="qmark__e"><b>é</b><i aria-hidden="true" hidden>e</i></span></span></a>
+    <!-- The mark is inlined rather than linked so the rail never waits on an
+         asset fetch (and never shows a broken icon on a partial deploy: Pages
+         propagates PER-ASSET). Same 16-viewBox master the favicon uses. -->
+    <a class="nav__brand" href="#top"><svg class="nav__mark" width="18" height="18" viewBox="0 0 16 16" aria-hidden="true"><rect x="0.5" y="3.5" width="15" height="9" rx="2" fill="#0d1218" stroke="rgba(255,255,255,.16)"/><rect x="2.5" y="5.5" width="6" height="5" rx="1" fill="#64b4fa"/><rect x="10" y="5.5" width="3.5" height="5" rx="1" fill="rgba(100,180,250,.30)"/></svg><span class="umark"><span class="umark__un">un</span><span class="umark__sl">/</span><span class="umark__sleep">sleep</span></span></a>
     <a class="nav__link" href="#yours">Making it yours</a>
     <a class="nav__link" href="#widgets">The widgets</a>
     <a class="nav__link" href="#screensavers">Screensavers</a>
@@ -35,19 +41,21 @@
 
 <header id="top" class="wrap hero">
   <div class="hero__text">
-    <!-- The masthead is the wordmark set on a ruled field: the name drawn as
-         the thing it names. The word is REAL text reading "Quadrillé"; the
-         blue acute is a second, aria-hidden, unselectable é clipped to its
-         accent and painted exactly over the first, so screen readers, find,
-         and copy all see the true word. (An earlier construction used a base
-         "e" under the overlay and put "Quadrilleé" on the clipboard.) -->
-    <div class="hero__field">
-      <span class="hero__mod hero__mod--a"></span>
-      <span class="hero__mod hero__mod--b"></span>
-      <span class="hero__mod hero__mod--c"></span>
-      <h1 class="hero__title"><span class="qmark"><span class="qmark__lt">Quad</span>rill<span class="qmark__e"><b>é</b><i aria-hidden="true" hidden>e</i></span></span></h1>
-      <p class="hero__sub">A glanceable dashboard for your personal screen: your commute, your weather, your markets, your images.</p>
+    <!-- The masthead: the unsleeping screen, at scale. One landscape panel with
+         four cards on it (one lit, three at descending light) and the name
+         read across the clear middle band. The word is plain, selectable text
+         in three spans, so find, copy, and screen readers all get "un/sleep"
+         with nothing clipped, overlaid, or aria-hidden. (The old masthead drew
+         the name as a ruled field, which was the old name's concept; it retired
+         whole, ruling and all.) Nothing sits BEHIND the letters. -->
+    <div class="hero__screen">
+      <span class="hero__card hero__card--lit"></span>
+      <span class="hero__card hero__card--b"></span>
+      <span class="hero__card hero__card--c"></span>
+      <span class="hero__card hero__card--d"></span>
+      <h1 class="hero__title"><span class="umark"><span class="umark__un">un</span><span class="umark__sl">/</span><span class="umark__sleep">sleep</span></span></h1>
     </div>
+    <p class="hero__sub">A glanceable dashboard for your personal screen: your commute, your weather, your markets, your images.</p>
     <!-- 33 = every widget a reader of this page can actually add today: the 34
          ids in config.js less the one still behind the beta gate (Live Video).
          (It was 35 less a retired World Cup less Live Video until the World Cup
@@ -66,8 +74,8 @@
        activating it DOES; the image's alt still describes the board itself and
        travels with it into the lightbox. -->
   <figure class="hero__shot">
-    <button class="shot__btn" type="button" aria-label="Enlarge the Quadrillé dashboard screenshot">
-      <img src="assets/info/hero-board.webp" data-zoom data-caption="The Quadrillé dashboard" alt="A Quadrillé display showing Weather with hourly rain chances, Landscapes, World Clock, Cloud Services, Markets, Headlines, and Subway Status." width="1920" height="1080" loading="eager" fetchpriority="high" decoding="async">
+    <button class="shot__btn" type="button" aria-label="Enlarge the unsleep dashboard screenshot">
+      <img src="assets/info/hero-board.webp" data-zoom data-caption="The unsleep dashboard" alt="An unsleep display showing Weather with hourly rain chances, Landscapes, World Clock, Cloud Services, Markets, Headlines, and Subway Status." width="1920" height="1080" loading="eager" fetchpriority="high" decoding="async">
     </button>
   </figure>
 </header>

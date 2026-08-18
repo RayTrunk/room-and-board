@@ -403,29 +403,7 @@ if (logRoot) {
     .catch(() => showLogFallback(logRoot));
 }
 
-/* ---------- hero field cell snap ---------- */
-// The masthead field is ruled into --cell squares, but its fluid width lands
-// mid-cell, which crops the edge squares and pulls the placed modules off the
-// grid. Snap the box to whole cells: width rounds down, height rounds up
-// (content must never clip). box-sizing is border-box and the keyline is 1px
-// per side, so the snap targets the padding box — that is where the ruling
-// paints and where the modules anchor. Re-run on resize (--cell changes at
-// the 900px breakpoint) and once fonts settle, since the wordmark's metrics
-// set the field's natural height. Without JS nothing breaks: the keyline
-// still closes the edge cells, the grid is just not whole-cell.
-const heroField = document.querySelector('.hero__field');
-function snapHeroField() {
-  heroField.style.width = '';
-  heroField.style.height = '';
-  const cell = parseFloat(getComputedStyle(heroField).getPropertyValue('--cell'));
-  const w = heroField.getBoundingClientRect().width;
-  if (!cell || !w) return; // test DOMs have no layout; leave the field fluid
-  heroField.style.width = `${Math.floor((w - 2) / cell) * cell + 2}px`;
-  const h = heroField.getBoundingClientRect().height;
-  heroField.style.height = `${Math.ceil((h - 2) / cell) * cell + 2}px`;
-}
-if (heroField) {
-  snapHeroField();
-  window.addEventListener('resize', snapHeroField, { passive: true });
-  document.fonts?.ready?.then(snapHeroField).catch(() => {});
-}
+// The hero-field cell snap retired here with the ruled masthead it served (the
+// panel that replaced it is proportional, so there is nothing to round to a
+// grid). Noted rather than silently dropped: this file has carried orphaned
+// listeners before.

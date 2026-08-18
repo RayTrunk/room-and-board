@@ -81,3 +81,51 @@ describe('/info scroll-spy', () => {
     }
   });
 });
+
+// The guide is the one page a stranger reads first, so the brand it prints is
+// worth a guard. Source text, not a DOM: the point is what ships on disk.
+import { readFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
+const html = await readFile(resolve(process.cwd(), 'site/info.html'), 'utf8');
+const css = await readFile(resolve(process.cwd(), 'site/css/info.css'), 'utf8');
+
+describe('/info wears the brand', () => {
+  it('is titled for the product, and never title-cases it', () => {
+    expect(html).toContain('<title>unsleep · Widget Guide</title>');
+    // Lowercase, always. The one place a capital U could sneak back in is a
+    // sentence start, so the rule is checked against the whole file.
+    expect(html).not.toMatch(/Unsleep/);
+    expect(css).not.toMatch(/Unsleep/);
+  });
+
+  it('carries no display mention of the retired name (URLs are a separate phase)', () => {
+    const prose = html.replace(/https?:\/\/[^\s"'<>]+|>[^<]*quadrille\.io[^<]*</gi, '');
+    expect(prose).not.toMatch(/quadrill/i);
+    expect(css).not.toMatch(/quadrill/i);
+  });
+
+  it('sets the wordmark as three plain spans, not the old glyph-cover trick', () => {
+    // Live, selectable text: no aria-hidden twin, no clip, nothing drawn twice.
+    // The whole word has to come out of textContent in order.
+    const mark = /<span class="umark"><span class="umark__un">un<\/span><span class="umark__sl">\/<\/span><span class="umark__sleep">sleep<\/span><\/span>/g;
+    expect(html.match(mark)).toHaveLength(2); // the nav brand and the masthead
+    expect(html).not.toMatch(/qmark/);
+    expect(css).not.toMatch(/qmark/);
+  });
+
+  it('lights exactly one card on the masthead panel, and nothing sits behind the word', () => {
+    // "The accent marks what is awake" is the system rule the hero draws, so
+    // one solid accent card and three at descending light.
+    expect((html.match(/class="hero__card /g) || []).length).toBe(4);
+    expect((html.match(/hero__card--lit/g) || []).length).toBe(1);
+    // The panel's only other child is the title: no rule, no texture, no
+    // background image behind the letters. The ruled field died with the name.
+    expect(css).not.toMatch(/hero__field|hero__mod/);
+    expect(css).not.toMatch(/\.hero__screen\s*\{[^}]*background-image/);
+  });
+
+  it('points the head icons at the new masters', () => {
+    expect(html).toContain('href="assets/unsleep-quad.svg"');
+    expect(html).toContain('href="assets/unsleep-mark.svg"');
+  });
+});

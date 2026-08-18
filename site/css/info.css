@@ -98,92 +98,70 @@ button:focus-visible {
 }
 
 /* ---------- the wordmark ----------
-   Quadrillé is set as live text, one family, two weights: Quad light, rillé
-   semibold, and the acute is the ONLY blue thing in the word. Construction
-   (the FOURTH iteration — do not regress to a clip): the real text é (the <b>,
-   selectable, what copy/find/screen readers see) is painted accent blue, and
-   an accent-less "e" overlays it in the surrounding text color, covering the
-   letter body with its own glyph outline. Only the accent survives uncovered,
-   so only the accent is blue. NO clip-path: every horizontal-cut variant bled
-   into the crown or clipped the accent's foot at SOME size, because optical
-   sizing moves the accent-to-letter gap with the font size. The overlay
-   inherits `color`, so the construction works on any ink (nav, rail, pane). */
-.qmark { font-weight: 600; letter-spacing: -0.035em; }
-.qmark__lt { font-weight: 300; }
-.qmark__e { position: relative; display: inline-block; line-height: 1; }
-.qmark__e > b { font-weight: inherit; color: var(--accent); }
-.qmark__e > i {
-  /* The overlay carries the `hidden` attribute, so before this stylesheet
-     lands the browser's own styles suppress it and the raw page reads
-     "Quadrillé" in plain ink (the blue <b> rule is also absent then, so
-     nothing is half-styled). The restore MUST be !important: this sheet's own
-     `[hidden]{display:none !important}` utility (line ~26) otherwise wins and
-     the overlay dies — which shipped, briefly. Same counter-override idiom
-     as `.log__more[hidden]`. */
-  display: inline !important;
-  position: absolute; left: 0; top: 0;
-  font-style: normal; color: inherit;
-  pointer-events: none;
-  -webkit-user-select: none;
-  user-select: none;
-}
+   unsleep is set as live text, one family, two weights, and the word carries
+   its own meaning in the weight: "un" is the semibold half that stays awake,
+   "sleep" is the half held back at 50% ink, and the slash between them is the
+   only blue thing in the word. Three plain spans, no overlay, no clip, no
+   aria-hidden twin, so find, copy, and screen readers all get exactly
+   "un/sleep". (The old mark needed a glyph-cover construction to paint one
+   accent blue and took four iterations to stop clipping; nothing here can
+   regress the same way, because nothing is drawn twice.)
+   The brand rule: lowercase, always. Never title-case it in copy or CSS.
+   These class names and values are shared verbatim with the app shell's
+   lockup: change one, change both. */
+.umark { line-height: 1; letter-spacing: -0.03em; }
+.umark__un { font-weight: 600; color: var(--ink); }
+.umark__sl { color: var(--accent); font-weight: 300; margin: 0 0.05em; }
+.umark__sleep { font-weight: 300; color: rgba(255, 255, 255, 0.50); }
 
 /* ---------- hero ---------- */
 .hero { padding-top: 84px; padding-bottom: 12px; }
-/* The masthead is the name ON the product: the wordmark sits directly on a
-   field ruled into squares (what "quadrillé" means), with three cards placed
-   around it. The ruling is snapped to --cell so every module lands exactly on
-   cells, the same discipline the dashboard itself uses, and it is held at
-   8.5% white so the field never vibrates behind the letters. Nothing sits
-   BEHIND the word — legibility is untouched; the modules read as widgets
-   placed around it. */
-.hero__field {
-  --cell: 30px;
-  /* The gutter a placed module keeps from the rules around it — the same idea
-     as the icon masters' constant gutter, and the edit view's card inset. */
-  --g: 3px;
+/* The masthead is the product's own subject at poster scale: one landscape
+   screen, awake, with four cards on it and the name read across the clear
+   middle band. The accent marks what is awake: exactly one card is lit, the
+   other three sit at descending light, which is the system rule the whole
+   palette runs on. Nothing sits BEHIND the letters; that rule outlived the
+   masthead it was written for and holds here unchanged.
+   (What retired: a field ruled into squares, which drew the OLD name and
+   nothing else. Its --cell snapping in info.js went with it.) */
+.hero__screen {
   position: relative; overflow: hidden;
-  /* The corner radius is exactly ONE CELL: the arc's endpoints land on the
-     first interior rules, so each corner cell is a quarter-round bounded by
-     the arc and two rules — a corner OF the grid, not a curve clipping
-     through it. An arbitrary radius (the old 16px) cut cells mid-way. */
-  border-radius: var(--cell);
-  background-color: #05070a;
-  /* The keyline is the outermost rule: same weight, same ink as the ruling,
-     so the edge cells read bounded instead of cropped — the icon tile's move
-     at hero scale. background-position hides the gradient's own first line
-     under the keyline so the left/top edges are not drawn twice (rule lines
-     must never compound). info.js snaps the box to whole cells so the right
-     and bottom keylines land on the grid too; without JS the keyline still
-     closes the edge cells. */
-  /* Firmer than the interior ruling (.085) on purpose: anti-aliasing feathers
-     a 1px stroke across ~2px on the corner arcs, diluting their apparent ink,
-     so at equal alpha the curves read fainter than the straight rules. The
-     extra ink brings the arcs up to par and gives the straight runs the
-     slightly-firmer frame the icon tile's keyline already has. */
-  border: 1px solid rgba(255, 255, 255, 0.13);
-  background-image:
-    linear-gradient(to right, rgba(255, 255, 255, 0.085) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255, 255, 255, 0.085) 1px, transparent 1px);
-  background-size: var(--cell) var(--cell);
-  background-position: -1px -1px;
-  padding: calc(var(--cell) * 2) calc(var(--cell) * 1.5);
+  display: flex; align-items: center; justify-content: center;
+  /* Landscape at every width, and tall enough that the word's own band stays
+     clear of the cards. The floor is what the narrowest phone needs; the
+     ceiling stops a 2560px desktop from turning the masthead into a wall. */
+  min-height: clamp(180px, 26vw, 260px);
+  padding: 46px 52px;
+  background: #05070a;
+  /* The mark's keyline, drawn at hero scale. */
+  border: 1.5px solid rgba(255, 255, 255, 0.14);
+  /* 18px outside, 6px on the cards: the radii stay concentric, which is the
+     same relation the two icon masters draw between tile and module. */
+  border-radius: 18px;
 }
-.hero__mod { position: absolute; border-radius: 3px; }
-/* The solid bar rides with the wordmark and keeps its composed position; the
-   two translucent modules sit INSIDE cells — whole-cell spans, inset by the
-   gutter on every side — so they read as placed cards, exactly like the edit
-   view. Their offsets are whole cells from the snapped right/bottom edges. */
-.hero__mod--a { left: calc(var(--cell) * 1.5); top: calc(var(--cell) * 0.5); width: calc(var(--cell) * 3); height: var(--cell); background: var(--accent); }
-.hero__mod--b { right: calc(var(--cell) + var(--g)); top: var(--g); width: calc(var(--cell) - var(--g) * 2); height: calc(var(--cell) * 2 - var(--g) * 2); background: rgba(100, 180, 250, 0.30); }
-.hero__mod--c { right: calc(var(--cell) * 3 + var(--g)); bottom: var(--g); width: calc(var(--cell) * 2 - var(--g) * 2); height: calc(var(--cell) - var(--g) * 2); background: rgba(100, 180, 250, 0.18); }
-/* position:relative lifts the text above the ruling's background layers only
-   in the sense of paint order clarity; the field is one stacking context. */
-.hero__title { position: relative; margin: 0; font-size: clamp(40px, 5vw, 64px); line-height: 1; }
-.hero__sub { position: relative; font-size: clamp(15px, 1.6vw, 17px); line-height: 1.45; color: var(--ink-mid); margin: 12px 0 0; text-wrap: pretty; }
+/* Percentage offsets on purpose: the composition is a proportion, not a pixel
+   arrangement, so it survives the panel going from ~490px wide in the desktop
+   two-up to a 320px phone without a single breakpoint moving a card. */
+.hero__card { position: absolute; border-radius: 6px; }
+.hero__card--lit { left: 5%; top: 10%; width: 20%; height: 36px; background: #64b4fa; }
+.hero__card--b { right: 5%; top: 10%; width: 12%; height: 36px; background: rgba(100, 180, 250, 0.20); }
+.hero__card--c { right: 5%; bottom: 12%; width: 17%; height: 40px; background: rgba(100, 180, 250, 0.12); }
+.hero__card--d { left: 5%; bottom: 12%; width: 10%; height: 40px; background: rgba(100, 180, 250, 0.20); }
+/* position:relative is paint-order clarity only; the panel is one stacking
+   context and the word is the last thing in it either way. */
+.hero__title { position: relative; margin: 0; font-size: clamp(38px, 6.4vw, 64px); line-height: 1; }
+/* The sub and the note now both sit UNDER the panel, in their old order and
+   with their old copy. The measure applies here because they are no longer
+   held in by the panel's padding. */
+.hero__sub { font-size: clamp(15px, 1.6vw, 17px); line-height: 1.45; color: var(--ink-mid); margin: 20px 0 0; max-width: var(--measure); text-wrap: pretty; }
 .hero__note { font-size: 16px; color: var(--ink-dim); margin: 18px 0 0; max-width: var(--measure); }
-/* Nav brand is the same wordmark at rail scale. */
-.nav__brand { font-size: 21px; color: var(--ink); }
+/* Nav brand is the mark and the wordmark at rail scale. min-height holds the
+   same 44px thumb target the pills beside it keep, and it is a BORDER-box 44
+   (the sheet sets box-sizing globally), so the 9px padding is inside it:
+   .umark sets line-height:1, which collapses the flex row to the em box and
+   would otherwise leave the brand a 39px target next to 44px neighbours. */
+.nav__brand { font-size: 21px; color: var(--ink); gap: 10px; min-height: 44px; }
+.nav__mark { flex: none; display: block; }
 
 /* The hero shows the product: the board sits beside the lede once there is room
    for both to stay legible, and drops below it before either gets squeezed.
@@ -465,12 +443,12 @@ button:focus-visible {
 @media (max-width: 900px) {
   :root { --pad: 20px; }
   .hero { padding-top: 56px; }
-  /* The field's cell shrinks with the viewport and the right-hand module tucks
-     closer to the edge; the bottom-right module goes entirely — at phone
-     widths it starts crowding the sub line. */
-  .hero__field { --cell: 24px; }
-  .hero__mod--b { right: var(--g); }
-  .hero__mod--c { display: none; }
+  /* Every card keeps its place: the composition is proportional, so only the
+     heights come down, and they come down because height is the one dimension
+     that does NOT scale with the panel. Measured at 900, 560 and 360: the
+     word's band clears the cards above and below it at all three. */
+  .hero__card { height: 30px; }
+  .hero__card--c, .hero__card--d { height: 32px; }
   .section { padding-top: 56px; }
   .h2 { font-size: 26px; }
   /* One column: the two-column ::after balancer has no empty cell to fill. */
@@ -497,6 +475,11 @@ button:focus-visible {
   .footer { margin-top: 64px; }
 }
 @media (max-width: 560px) {
+  /* The panel comes in with the page padding so the word keeps its air; the
+     cards shrink once more rather than going away. */
+  .hero__screen { padding: 34px 26px; }
+  .hero__card { height: 26px; }
+  .hero__card--c, .hero__card--d { height: 28px; }
   .duo { grid-template-columns: 1fr; }
   .card--row { flex-direction: column; gap: 14px; }
   .shots { grid-template-columns: 1fr; }
@@ -549,12 +532,19 @@ button:focus-visible {
   .fold__caret { display: none !important; }
   .wrap { max-width: none; padding-left: 0; padding-right: 0; }
   a { color: #000; text-decoration: underline; }
-  /* The hero field is a dark panel and would print as a slab of ink. On paper
-     the masthead is just the name: field chrome off, modules gone, word black
-     (the accent acute keeps its blue; it prints as a readable mid-gray). */
-  .hero__field { background: none; border: 1px solid #c8c8c8; padding: 18px 22px; width: auto !important; height: auto !important; }
-  .hero__mod { display: none; }
+  /* The screen panel is a dark slab and would print as one. On paper the
+     masthead is just the name: panel chrome off, cards gone, the word set
+     left where a printed heading belongs. The slash keeps the accent, which
+     the palette flip above prints as a readable navy; "sleep" needs its own
+     ink, because its 50%-WHITE is invisible on paper, and a mid-gray holds
+     the same two-tone reading the screen has. */
+  .hero__screen {
+    background: none; border: 1px solid #c8c8c8; padding: 18px 22px;
+    display: block; min-height: 0;
+  }
+  .hero__card { display: none; }
   .hero__title, .nav__brand { color: #000; }
+  .umark__sleep { color: #5a5a5a; }
   .hero { padding-top: 0; display: block; }
   .hero__shot { margin-top: 24px; }
   .section { padding-top: 28px; }
