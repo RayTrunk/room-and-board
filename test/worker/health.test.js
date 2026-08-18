@@ -9,7 +9,7 @@ import { CHECKS, runHealthChecks, notify, alertPlan, nextFailingState, heartbeat
 const STAMP = () => ({ updatedAt: Math.floor(Date.now() / 1000), stale: false });
 const OK_BODIES = {
   'version.json': { version: '2026.07.22-abc1234' },
-  'changelog.json': [{ date: 'August 7', items: [{ lead: 'A new name', text: 'Now called Quadrillé.' }] }],
+  'changelog.json': [{ date: 'August 18', items: [{ lead: 'A new name', text: 'Now called unsleep.' }] }],
   '/markets': { ...STAMP(), indices: [{ symbol: '^DJI', price: 52376.73 }] },
   'open-meteo': { hourly: { temperature_2m: [70, 71, 69] } },
   'gdrive': { ...STAMP(), photos: [{ id: 'a' }, { id: 'b' }] },
@@ -137,8 +137,8 @@ describe('health CHECKS validators', () => {
 
 describe('front-door check (the separate origin nobody would notice broken)', () => {
   const byName = Object.fromEntries(CHECKS.map((c) => [c.name, c]));
-  it('probes quadrille.io externally (url, not path) via its changelog', () => {
-    expect(byName['frontdoor'].url).toContain('quadrille.io/data/changelog.json');
+  it('probes unsleep.io externally (url, not path) via its changelog', () => {
+    expect(byName['frontdoor'].url).toContain('unsleep.io/data/changelog.json');
     expect(byName['frontdoor'].path).toBeUndefined();
   });
   it('never probes the worker\'s own custom domains: that check cannot exist', () => {
@@ -146,14 +146,15 @@ describe('front-door check (the separate origin nobody would notice broken)', ()
     // worker fetching its OWN custom domain gets a Cloudflare 522 every run,
     // custom_domain binding or not, while the domain serves perfectly from
     // outside. A check that can only measure Cloudflare's own-alias
-    // restriction is worse than no check, so neither api.roomboard.app nor
-    // api.quadrille.io may ever appear in CHECKS.
+    // restriction is worse than no check, so none of api.roomboard.app,
+    // api.quadrille.io or api.unsleep.app may ever appear in CHECKS.
     expect(byName['backup-api']).toBeUndefined();
     expect(CHECKS.some((c) => (c.url || '').includes('api.roomboard.app'))).toBe(false);
     expect(CHECKS.some((c) => (c.url || '').includes('api.quadrille.io'))).toBe(false);
+    expect(CHECKS.some((c) => (c.url || '').includes('api.unsleep.app'))).toBe(false);
   });
   it('a broken front door fails its own check without touching the primary', async () => {
-    const m = mockFetch({ 'quadrille.io': { throw: 'TypeError' } });
+    const m = mockFetch({ 'unsleep.io': { throw: 'TypeError' } });
     const report = await runHealthChecks(okEnv(), m, m);
     expect(report.results.find((r) => r.name === 'frontdoor').ok).toBe(false);
     expect(report.results.find((r) => r.name === 'site').ok).toBe(true);
@@ -371,7 +372,7 @@ describe('notify', () => {
     const fetchImpl = mockFetch();
     await notify({ ALERT_WEBHOOK: 'https://ntfy.sh/roomboard-alerts' }, 'markets (HTTP 503)', fetchImpl);
     const [, init] = fetchImpl.mock.calls[0];
-    expect(init.headers.Title).toBe('Quadrillé health');
+    expect(init.headers.Title).toBe('unsleep health');
     expect(init.body).toBe('markets (HTTP 503)');
   });
   // Delivery signal drives at-least-once persistence (see nextFailingState).
@@ -424,6 +425,7 @@ describe('alertPlan (alert only on change)', () => {
     const plan = alertPlan(rep([mk('njt', false, 'stale 500 min old'), mk('site', true)]), []);
     expect(plan.changed).toBe(true);
     expect(plan.text).toContain('🔴');
+    expect(plan.text).toContain('unsleep health:'); // lowercase always, brand rule
     expect(plan.text).toContain('njt (stale 500 min old)');
     expect(plan.failing).toEqual(['njt']);
   });
@@ -431,6 +433,7 @@ describe('alertPlan (alert only on change)', () => {
     const plan = alertPlan(rep([mk('njt', true), mk('site', true)]), ['njt']);
     expect(plan.changed).toBe(true);
     expect(plan.text).toContain('✅');
+    expect(plan.text).toContain('unsleep health:');
     expect(plan.text).toContain('all clear');
     expect(plan.text).toContain('recovered: njt');
     expect(plan.failing).toEqual([]);

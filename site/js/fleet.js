@@ -28,7 +28,9 @@ const HOUR_MS = 60 * 60 * 1000;
 // otherwise mints a fresh "device" on every reload and paints the daily-actives
 // chart with phantom first-seens (diagnosed 2026-08-10 — the chronic half of
 // the inflation; the other half was the quadrille.io domain adds, where a new
-// origin means a new localStorage and a legitimate one-time re-identity).
+// origin means a new localStorage and a legitimate one-time re-identity; the
+// unsleep.app / unsleep.io adds of 2026-08-18 do the same thing once, so read
+// that first-seen bump as boards moving house rather than as growth).
 // The write is verified by reading back, because private-mode storage can
 // accept a write and persist nothing without throwing. The prefix still
 // matches the worker's parseBeacon bound (`e` is a hex character), so old
@@ -113,9 +115,14 @@ const medianMs = (xs) => {
 // Which deployment this board is actually served by, so the stats app can stop
 // GUESSING at beta rigs from version lineage (its documented fallback). Derived
 // from the hostname, which is the only honest source: beta.* is the dev channel
-// (beta.roomboard.app, beta.quadrille.io), loopback is a laptop, everything
-// else is production. No location at all (a test, an odd embedding) reads
-// 'prod' rather than inventing a third state.
+// (beta.roomboard.app, beta.quadrille.io, beta.unsleep.io), loopback is a
+// laptop, everything else is production. No location at all (a test, an odd
+// embedding) reads 'prod' rather than inventing a third state.
+//
+// Deliberately reads the first LABEL, never the brand: the three values are the
+// whole vocabulary the stats app keys on, so a rename adds hosts here and
+// changes no reported value. Renaming the channels instead would silently split
+// every historical series in two.
 export function serveChannel(loc = typeof location === 'undefined' ? null : location) {
   const host = String(loc?.hostname ?? '');
   if (host.startsWith('beta.')) return 'beta';

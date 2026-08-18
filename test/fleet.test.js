@@ -97,6 +97,15 @@ describe('serving channel', () => {
     expect(serveChannel({ hostname: 'localhost' })).toBe('dev');
     expect(serveChannel({ hostname: '127.0.0.1' })).toBe('dev');
   });
+  it('reads a rename as new hosts, never as new channel values', () => {
+    // The dashboard keys on these three strings, so the 2026-08-18 unsleep
+    // hosts must land in the SAME buckets the old names do. A brand that
+    // minted its own channel value would split every historical series.
+    expect(serveChannel({ hostname: 'app.unsleep.app' })).toBe('prod');
+    expect(serveChannel({ hostname: 'unsleep.io' })).toBe('prod');
+    expect(serveChannel({ hostname: 'beta.unsleep.io' })).toBe('beta');
+    expect(serveChannel({ hostname: 'beta.unsleep.app' })).toBe('beta');
+  });
   it('never mistakes a lookalike host for beta', () => {
     // The prefix must be the whole first label: a host that merely starts with
     // the letters is production.

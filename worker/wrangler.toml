@@ -24,7 +24,12 @@ routes = [
   # rvc.tech alias was retired the same day; if the dashboard still shows
   # signage-api.rvc.tech attached, detach it there — removing a route from
   # this file does not always deprovision an existing custom domain.
-  { pattern = "api.quadrille.io", custom_domain = true }
+  { pattern = "api.quadrille.io", custom_domain = true },
+  # unsleep-origin alias (2026-08-18): pages served from *.unsleep.app or
+  # *.unsleep.io target this host (see site/js/env.js). Like the others, a
+  # custom domain auto-provisions its DNS record and cert on deploy. The two
+  # older aliases stay: their URLs remain live.
+  { pattern = "api.unsleep.app", custom_domain = true }
 ]
 
 # Workers Logs: retain invocation logs (console output, exceptions, the

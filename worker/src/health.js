@@ -49,20 +49,21 @@ export const CHECKS = [
     ok: (j) => typeof j.station === 'string' && Array.isArray(j.departures),
   },
   {
-    // The public front door (quadrille.io, a SEPARATE Pages project deployed
-    // by its own CI job) exists precisely for the moment nobody would notice
-    // it silently broken (cert lapse, custom-domain removal, a build that
-    // stopped shipping). changelog.json is the probe because the health
-    // framework parses JSON and that file rides every front-door deploy.
+    // The public front door (unsleep.io, a SEPARATE Pages project deployed by
+    // its own CI job) exists precisely for the moment nobody would notice it
+    // silently broken (cert lapse, custom-domain removal, a build that stopped
+    // shipping). changelog.json is the probe because the health framework
+    // parses JSON and that file rides every front-door deploy.
     // Probed EXTERNALLY on purpose: DNS + TLS + routing are the failure modes
-    // under test, which selfFetch would bypass. An api.quadrille.io or
-    // api.roomboard.app check must NEVER be added here: the worker fetching
-    // its OWN custom domain gets a Cloudflare 522 every time — proven live
-    // 2026-07-31 after one night of false paging — while the domain serves
-    // perfectly from outside. (Replaced backup-site 2026-08-07 when rvc.tech
-    // was retired.)
+    // under test, which selfFetch would bypass. A check against ANY of this
+    // worker's own custom domains (api.roomboard.app, api.quadrille.io,
+    // api.unsleep.app) must NEVER be added here: the worker fetching its OWN
+    // custom domain gets a Cloudflare 522 every time, proven live 2026-07-31
+    // after one night of false paging, while the domain serves perfectly from
+    // outside. (Replaced backup-site 2026-08-07 when rvc.tech was retired;
+    // followed the front door to unsleep.io 2026-08-18.)
     name: 'frontdoor',
-    url: 'https://quadrille.io/data/changelog.json',
+    url: 'https://unsleep.io/data/changelog.json',
     ok: (j) => Array.isArray(j) && j.length > 0,
   },
   {
@@ -305,10 +306,10 @@ export function alertPlan(report, prevFailing = []) {
   const recovered = prevFailing.filter((n) => !names.includes(n));
   let text;
   if (failing.length) {
-    text = `🔴 Quadrillé health: ${failing.map((r) => `${r.name} (${r.detail})`).join(', ')}`;
+    text = `🔴 unsleep health: ${failing.map((r) => `${r.name} (${r.detail})`).join(', ')}`;
     if (recovered.length) text += ` (recovered: ${recovered.join(', ')})`;
   } else {
-    text = `✅ Quadrillé health: all clear (recovered: ${recovered.join(', ')})`;
+    text = `✅ unsleep health: all clear (recovered: ${recovered.join(', ')})`;
   }
   return { changed: true, failing: names, text: `${text} — ${report.at}` };
 }
@@ -358,7 +359,7 @@ export async function notify(env, text, fetchImpl = fetch) {
   try {
     const res = await fetchImpl(url, {
       method: 'POST',
-      headers: ntfy ? { Title: 'Quadrillé health' } : { 'content-type': 'application/json' },
+      headers: ntfy ? { Title: 'unsleep health' } : { 'content-type': 'application/json' },
       body: ntfy ? text : JSON.stringify({ text }),
       signal: AbortSignal.timeout(8000),
     });

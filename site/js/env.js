@@ -1,10 +1,15 @@
 // Deployment endpoints. The Worker URL is the only environment-specific
 // value in the shipped site; update it when deploying under your own domain.
-// New-name aware: a page served from any quadrille.io host talks to the
-// worker's quadrille alias, so the new-name stack is self-contained end to
-// end; every other origin (roomboard.app and friends) keeps the original
-// worker domain. (The rvc.tech fallback pair was retired 2026-08-07.)
-export const WORKER_URL =
-  typeof location !== 'undefined' && location.hostname.endsWith('quadrille.io')
-    ? 'https://api.quadrille.io'
-    : 'https://api.roomboard.app';
+// Name aware: a page served from an unsleep host talks to the worker's unsleep
+// alias, a page served from a quadrille.io host talks to the quadrille alias,
+// and every other origin (roomboard.app and friends) keeps the original worker
+// domain. Each stack is deliberately self-contained end to end, so a name's
+// pages and its API rise and fall together instead of one name's outage
+// reaching across into another's boards. (The rvc.tech fallback pair was
+// retired 2026-08-07.)
+export const WORKER_URL = (() => {
+  const host = typeof location !== 'undefined' ? location.hostname : '';
+  if (host.endsWith('unsleep.app') || host.endsWith('unsleep.io')) return 'https://api.unsleep.app';
+  if (host.endsWith('quadrille.io')) return 'https://api.quadrille.io';
+  return 'https://api.roomboard.app';
+})();
