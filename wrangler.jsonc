@@ -5,15 +5,19 @@
   // attached by hand in the dashboard before this block existed; declaring
   // them here makes the config match reality (a custom domain absent from
   // config is NOT detached by a deploy, so listing them is documentation,
-  // not a change). beta.unsleep.app was added 2026-08-18 with the rename and
-  // provisions itself on the next build, the same way the API worker's
-  // aliases do. The beta guide is beta.unsleep.app/info; there is no beta
-  // front-door origin on purpose, because the front door is a byte copy of
-  // /info and previewing /info here IS previewing it.
+  // not a change). The unsleep pair was added 2026-08-18 with the rename:
+  // both TLDs answer because the beta. prefix should work on whichever
+  // domain a person remembers (Sean reached for the .io twice before it
+  // existed, which settled it). All four serve this same worker: the beta
+  // guide is /info on any of them, and there is no separate beta front-door
+  // build on purpose, the front door being a byte copy of /info.
+  // NOTE: a NEW custom domain here provisions only from a LOCAL wrangler
+  // deploy; the Workers-Builds token cannot create zone DNS records.
   "routes": [
     { "pattern": "beta.roomboard.app", "custom_domain": true },
     { "pattern": "beta.quadrille.io", "custom_domain": true },
-    { "pattern": "beta.unsleep.app", "custom_domain": true }
+    { "pattern": "beta.unsleep.app", "custom_domain": true },
+    { "pattern": "beta.unsleep.io", "custom_domain": true }
   ],
   "compatibility_date": "2026-07-16",
   "observability": {
