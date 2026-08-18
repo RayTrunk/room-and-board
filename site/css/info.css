@@ -57,7 +57,12 @@ button:focus-visible {
   scrollbar-width: none;
 }
 .nav__inner::-webkit-scrollbar { display: none; }
-.nav__brand { margin-right: auto; padding: 9px 0; display: flex; align-items: center; flex: none; }
+/* margin-right: auto separates brand from pills only while the rail has slack;
+   on a phone the rail overflows and scrolls, the auto margin collapses to
+   nothing, and the lockup sat one 4px gap from the first pill (Sean's catch,
+   2026-08-18). The padding is the floor the auto margin cannot go below,
+   sized to the pills' own 14px inset. */
+.nav__brand { margin-right: auto; padding: 9px 18px 9px 0; display: flex; align-items: center; flex: none; }
 /* 22px line + 11px top and bottom = a 44px target, the floor for a thumb. */
 .nav__link {
   position: relative; z-index: 1; /* labels ride above the glide pill */
