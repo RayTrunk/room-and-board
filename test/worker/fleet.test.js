@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { env } from 'cloudflare:test';
 import worker from '../../worker/src/index.js';
-import { parseBeacon, beaconDataPoint, deviceModel } from '../../worker/src/fleet.js';
+import { parseBeacon, beaconDataPoint, deviceModel, originHost } from '../../worker/src/fleet.js';
 
 const ctx = { waitUntil() {}, passThroughOnException() {} };
 const call = (path, init, extraEnv = {}) =>
@@ -189,6 +189,23 @@ describe('deviceModel', () => {
   });
 });
 
+describe('originHost', () => {
+  // Edge-derived like country/model: the hostname of the Origin header,
+  // lowercased, hostname ONLY — and '' for anything that is not a URL, so a
+  // curl or a null Origin reads unknown instead of minting a fake host.
+  it('extracts the lowercased hostname and drops scheme and port', () => {
+    expect(originHost('https://app.unsleep.app')).toBe('app.unsleep.app');
+    expect(originHost('https://Beta.Unsleep.IO:8443')).toBe('beta.unsleep.io');
+    expect(originHost('http://localhost:8080')).toBe('localhost');
+  });
+  it("reads '' for a missing, null, or malformed Origin", () => {
+    expect(originHost(null)).toBe('');
+    expect(originHost(undefined)).toBe('');
+    expect(originHost('null')).toBe(''); // sandboxed iframes send the literal string
+    expect(originHost('not a url')).toBe('');
+  });
+});
+
 describe('beaconDataPoint', () => {
   it('maps to the Analytics Engine shape indexed by device, country then model last', () => {
     const p = { ...parseBeacon(JSON.stringify(VALID)), country: 'US', model: 'Cisco Board Pro' };
@@ -197,7 +214,7 @@ describe('beaconDataPoint', () => {
       // An old board's row: the dimensions it does report, then empty runtime
       // slots. blob8 (index 7) is the channel — reserved-and-empty until
       // 2026-08-10, and widget health has stayed on blob9 (index 8) throughout.
-      blobs: [VALID.deviceId, VALID.version, VALID.mode, VALID.tz, 'weather,subway,markets', 'US', 'Cisco Board Pro', '', '', '', '', ''],
+      blobs: [VALID.deviceId, VALID.version, VALID.mode, VALID.tz, 'weather,subway,markets', 'US', 'Cisco Board Pro', '', '', '', '', '', ''],
       doubles: [3, 0, 0, 0, 0],
     });
   });
@@ -213,7 +230,7 @@ describe('beaconDataPoint', () => {
       ...VALID, health: 'lirr=stale', channel: 'beta', viewport: '1920x1040',
       saver: 'art', units: 'C24', bootMs: 2482, bootRetries: 1, taps: 17, wkrMs: 180,
     };
-    const dp = beaconDataPoint({ ...parseBeacon(JSON.stringify(modern)), country: 'US', model: 'Cisco Board Pro' });
+    const dp = beaconDataPoint({ ...parseBeacon(JSON.stringify(modern)), country: 'US', model: 'Cisco Board Pro', origin: 'app.unsleep.app' });
     expect(dp.blobs[0]).toBe(VALID.deviceId);            // blob1
     expect(dp.blobs[1]).toBe(VALID.version);             // blob2
     expect(dp.blobs[2]).toBe(VALID.mode);                // blob3
@@ -226,7 +243,8 @@ describe('beaconDataPoint', () => {
     expect(dp.blobs[9]).toBe('1920x1040');               // blob10 viewport
     expect(dp.blobs[10]).toBe('art');                    // blob11 saver
     expect(dp.blobs[11]).toBe('C24');                    // blob12 units
-    expect(dp.blobs).toHaveLength(12);
+    expect(dp.blobs[12]).toBe('app.unsleep.app');        // blob13 origin
+    expect(dp.blobs).toHaveLength(13);
     expect(dp.doubles).toEqual([3, 2482, 1, 17, 180]);   // count, bootMs, retries, taps, wkrMs
   });
 
@@ -241,7 +259,7 @@ describe('beaconDataPoint', () => {
     // Old builds must produce columns that read as UNKNOWN, not as a value: ''
     // for the enums and 0 for the counters, in their own positions.
     const dp = beaconDataPoint({ ...parseBeacon(JSON.stringify(VALID)), country: 'US', model: 'x' });
-    expect([dp.blobs[7], dp.blobs[9], dp.blobs[10], dp.blobs[11]]).toEqual(['', '', '', '']);
+    expect([dp.blobs[7], dp.blobs[9], dp.blobs[10], dp.blobs[11], dp.blobs[12]]).toEqual(['', '', '', '', '']);
     expect(dp.doubles.slice(1)).toEqual([0, 0, 0, 0]);
   });
 

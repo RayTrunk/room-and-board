@@ -85,6 +85,23 @@ export function deviceModel(ua) {
   return m[1].replace(/\s*\(.*$/, '').trim().replace(/\s+/g, ' ').slice(0, 40) || 'other';
 }
 
+// The hostname the page was actually served from — the fact the stats app
+// needs to answer "which URL is each board on", now that the fleet spans
+// three brands' worth of live hostnames and channel (blob8) deliberately
+// collapses them all to 'prod'. Parsed edge-side from the Origin header
+// (sendBeacon and keepalive fetch both send it cross-origin; the board adds
+// nothing), hostname only — scheme and port carry no signal here. '' when
+// absent or unparseable (a curl, a null Origin), so the unknown reads as
+// unknown instead of inventing a host.
+export function originHost(o) {
+  try {
+    const host = new URL(String(o)).hostname.toLowerCase();
+    return /^[a-z0-9.-]{1,64}$/.test(host) ? host : '';
+  } catch {
+    return '';
+  }
+}
+
 // Analytics Engine shape. The index is the device id so AE's sampling keys on
 // devices, not pings; blobs carry the dimensions, doubles the counters.
 //
@@ -95,7 +112,7 @@ export function deviceModel(ua) {
 // leaves its slot behind as dead space rather than letting the ones after it
 // shift up.
 //
-//   blob1  deviceId   blob5  widgets   blob9   health
+//   blob1  deviceId   blob5  widgets   blob9   health    blob13  origin
 //   blob2  version    blob6  country   blob10  viewport
 //   blob3  mode       blob7  model     blob11  saver
 //   blob4  tz         blob8  channel   blob12  units
@@ -106,8 +123,12 @@ export function deviceModel(ua) {
 // (backlog item 32); the serving channel LANDED there 2026-08-10, so the slot
 // is now live and blob9's health has never had to move.
 //
-// p.country and p.model are stamped by the route from the request, not the
-// payload. The `|| ''` / `|| 0` fallbacks let a caller hand over a raw payload
+// blob13 (2026-08-19): the serving origin hostname, stamped by the route from
+// the Origin header the same way country and model are — edge-derived, so
+// every board reports it from its next heartbeat with no board-side change.
+//
+// p.country, p.model and p.origin are stamped by the route from the request,
+// not the payload. The `|| ''` / `|| 0` fallbacks let a caller hand over a raw payload
 // that predates these fields without minting undefined columns.
 export function beaconDataPoint(p) {
   return {
@@ -115,6 +136,7 @@ export function beaconDataPoint(p) {
     blobs: [
       p.deviceId, p.version, p.mode, p.tz, p.widgets.join(','), country(p.country), p.model || 'other',
       p.channel || '', p.health || '', p.viewport || '', p.saver || '', p.units || '',
+      p.origin || '',
     ],
     doubles: [p.widgets.length, p.bootMs || 0, p.bootRetries || 0, p.taps || 0, p.wkrMs || 0],
   };

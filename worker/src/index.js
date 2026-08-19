@@ -17,7 +17,7 @@ import { fetchServiceStatuses, mendServiceStatuses, SERVICES } from './svcstatus
 import { fetchApod } from './apod.js';
 import { fetchCitibike } from './citibike.js';
 import { fetchTfl } from './tfl.js';
-import { parseBeacon, beaconDataPoint, deviceModel } from './fleet.js';
+import { parseBeacon, beaconDataPoint, deviceModel, originHost } from './fleet.js';
 import { fetchChart, CHART_TOPICS } from './chart.js';
 import { fetchF1, mendF1 } from './f1.js';
 import { fetchGolf, fetchTennis } from './scores.js';
@@ -377,12 +377,14 @@ const handlers = {
       const parsed = raw === null ? null : parseBeacon(raw);
       if (!parsed) return json({ error: 'bad_beacon' }, 400);
       // Country is edge-derived (request.cf.country, CF-IPCountry header at the
-      // edge); model is parsed from the RoomOS WebEngine User-Agent — the board
-      // never sends either. fleet.js validates/defaults both.
+      // edge); model is parsed from the RoomOS WebEngine User-Agent; origin is
+      // the hostname of the Origin header — the board sends none of them.
+      // fleet.js validates/defaults all three.
       const geo = request.cf?.country ?? request.headers.get('CF-IPCountry');
       const model = deviceModel(request.headers.get('User-Agent'));
+      const origin = originHost(request.headers.get('Origin'));
       try {
-        env.ANALYTICS?.writeDataPoint(beaconDataPoint({ ...parsed, country: geo, model }));
+        env.ANALYTICS?.writeDataPoint(beaconDataPoint({ ...parsed, country: geo, model, origin }));
       } catch {
         // Metrics are best-effort — never fail the board over a write error.
       }
