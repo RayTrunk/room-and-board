@@ -3,8 +3,8 @@
   *
   *
   * Date Created:            July 17, 2026
-  * Revised:                 August 5, 2026
-  * Version:                 1.3.0
+  * Revised:                 August 19, 2026
+  * Version:                 1.3.1
   *
   * Description:             Self-contained signage provisioning + Control
   *                          Panel button for the unsleep dashboard.
@@ -30,7 +30,7 @@
   *
   * AI Generation:           ~90%
   *                          Claude Fable 5 (claude-fable-5) — through 1.2.1
-  *                          Claude Opus 5 (claude-opus-5) — 1.3.0
+  *                          Claude Opus 5 (claude-opus-5) — 1.3.0, 1.3.1
   *                          Instruction file: RoomOS.md
   *                          AI-generated code — review and test on the
   *                          target device before production deployment.
@@ -53,7 +53,7 @@ import xapi from 'xapi';
  * WebEngine Mode off and on when the device's time zone changes, so anything
  * else driving that node will fight too.
  */
-const SIGNAGE_URL = 'https://app.quadrille.io';
+const SIGNAGE_URL = 'https://unsleep.app';
 
 /*
  * Overridable defaults — safe to edit for your room. Everything else init()
