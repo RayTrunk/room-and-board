@@ -20,6 +20,11 @@
      line at the 45-75 character range where the eye finds the next line without
      hunting; the old 760px lede ran past 90 characters at desktop sizes. */
   --measure: 68ch;
+  /* The page's ONLY monospace, and it is spent on device configuration lines
+     and nothing else: an xConfiguration is a value the reader retypes exactly,
+     so the alignment and the unambiguous glyphs are load-bearing. Mono as a
+     costume for "technical" is how a guide ends up with three voices. */
+  --mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
 }
 
 * { box-sizing: border-box; }
@@ -267,6 +272,60 @@ button:focus-visible {
    becomes a trio. 300px is the floor at which a 56px FAB plus its copy still
    reads; below it the row-cards stack, as they already did at 560px. */
 .duo--trio { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+
+/* ---------- getting it on a board ----------
+   Three doors in the tile-card grammar Display Modes and Screensavers already
+   use. Deliberately NO icon badge: the .fab circles below mean "this is one of
+   the board's three buttons", and borrowing them for device names would spend
+   a meaningful component on decoration. A door's own name is the whole label
+   it needs. */
+.doors { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+/* The one string that tells a door apart from the other two, pinned to the
+   card's foot by the same margin-top:auto .card__note uses — so three cards of
+   unequal prose still line their values up on one baseline. The full set of
+   configurations lives once, in the .conf block below; this is an identifier,
+   not a copy of it. */
+.card__code {
+  margin-top: auto;
+  padding-top: 14px;
+  border-top: 1px solid var(--bg-card-2);
+  font-size: 14px;
+  line-height: 1.5;
+}
+.card__code code { background: none; padding: 0; color: var(--ink-dim); white-space: normal; word-break: break-word; }
+/* The macro is the one door whose artifact is a FILE rather than a value, so
+   its foot is a link and reads like one. */
+.card__code a { color: var(--accent); }
+.card__code a code { color: inherit; }
+
+/* A configuration value, inline in prose. */
+code {
+  font-family: var(--mono);
+  font-size: 0.9em;
+  color: var(--ink);
+  background: var(--bg-card-2);
+  border-radius: 6px;
+  padding: 1px 6px;
+  white-space: nowrap;
+}
+/* The device's own lines, quoted verbatim and set as one well. */
+.conf {
+  font-family: var(--mono);
+  font-size: 14px;
+  line-height: 1.75;
+  color: var(--ink-mid);
+  background: var(--bg-card-2);
+  border-radius: 12px;
+  margin: 0;
+  padding: 14px 18px;
+}
+/* A hanging indent rather than a horizontal scrollbar: a wrapped
+   xConfiguration still reads as one setting on a phone, and nothing in a guide
+   should have to be dragged sideways. It needs a block per line — text-indent
+   on the <pre> only ever catches the first — which is why info.html writes
+   each line as its own span. */
+.conf__l { display: block; padding-left: 1.6em; text-indent: -1.6em; white-space: pre-wrap; }
+.conf__after { font-size: 15.5px; line-height: 1.5; color: var(--ink-dim); margin: 14px 0 0; max-width: var(--measure); }
 
 /* the two round board buttons, rendered calm like they are on the device */
 .fab {
@@ -517,6 +576,7 @@ button:focus-visible {
   .gal { grid-template-columns: 1fr 1fr; gap: 16px 14px; }
   .gal .shot--half img { border-radius: 12px; }
   .gal .shot__cap { padding-top: 7px; font-size: 13px; font-weight: 500; }
+  .conf { font-size: 13px; }
   .row__name { flex: 1 1 100%; }
   .row__desc { flex: 1 1 100%; }
   .log__date { flex: 1 1 100%; }
@@ -598,9 +658,9 @@ button:focus-visible {
   .hero { padding-top: 0; display: block; }
   .hero__shot { margin-top: 24px; }
   .section { padding-top: 28px; }
-  .card, .notes, .fab { border: 1px solid #c8c8c8; }
+  .card, .notes, .fab, .conf { border: 1px solid #c8c8c8; }
   .card, .notes { background: #fff; }
-  .shot, .hero__shot, .card, .notes, .row, .log__group, .subhead, .fold { break-inside: avoid; }
+  .shot, .hero__shot, .card, .notes, .conf, .row, .log__group, .subhead, .fold { break-inside: avoid; }
   .h2, .subhead__title, .fold__name { break-after: avoid; }
   .footer { margin-top: 36px; padding-bottom: 0; }
   .footer__stamp { color: var(--ink-dim); opacity: 1; }

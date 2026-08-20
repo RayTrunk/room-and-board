@@ -88,6 +88,7 @@ import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 const html = await readFile(resolve(process.cwd(), 'site/info.html'), 'utf8');
 const css = await readFile(resolve(process.cwd(), 'site/css/info.css'), 'utf8');
+const macro = await readFile(resolve(process.cwd(), 'macro/Dashboard.js'), 'utf8');
 
 describe('/info wears the brand', () => {
   it('is titled for the product, and never title-cases it', () => {
@@ -138,5 +139,50 @@ describe('/info wears the brand', () => {
     // apple-touch-icon and would fall back to a page screenshot.
     expect(html).toContain('href="assets/unsleep-favicon-32.png"');
     expect(html).toContain('href="assets/unsleep-icon-180.png"');
+  });
+});
+
+describe('/info says how unsleep gets on a board', () => {
+  // The gap this closes: the guide serves from unsleep.io and the dashboard
+  // from unsleep.app, so before 2026-08-19 a stranger could not work out the
+  // address to point a board at from anything on the page.
+  it('answers the question before the page assumes the answer', () => {
+    const board = html.indexOf('id="board"');
+    const yours = html.indexOf('id="yours"');
+    expect(board).toBeGreaterThan(-1);
+    // Everything under Making it yours assumes a board already showing
+    // unsleep, so the install cannot come after it.
+    expect(board).toBeLessThan(yours);
+    expect(html).toContain('<a class="nav__link" href="#board">');
+  });
+
+  it('agrees with the macro about the address', () => {
+    // The README claimed this default had already moved to unsleep.app while
+    // the macro still shipped app.quadrille.io — a drift nobody could see
+    // from either file alone. Two sources, one assertion.
+    const shipped = /const SIGNAGE_URL = '([^']+)'/.exec(macro)?.[1];
+    expect(shipped).toBe('https://unsleep.app');
+    expect(html).toContain('xConfiguration Standby Signage Url: https://unsleep.app');
+  });
+
+  it('spells out the touch setting RoomOS does not turn on for you', () => {
+    // InteractionMode defaults to NonInteractive: the board shows the
+    // dashboard perfectly and ignores every tap, which reads as a broken
+    // dashboard rather than a missing setting (Sean's catch, 2026-08-19).
+    expect(html).toContain('xConfiguration Standby Signage InteractionMode: Interactive');
+  });
+
+  it('sends the reader somewhere the macro can actually be got', () => {
+    // The page names the file; naming it without a source is a dead end.
+    expect(html).toContain('https://github.com/scotty83/unsleep/blob/main/macro/Dashboard.js');
+  });
+
+  it('gives every quoted line its own block, so a hanging indent can hold', () => {
+    // text-indent on the <pre> catches the first line only, which leaves a
+    // wrapped xConfiguration reading as two settings on a phone.
+    const pre = /<pre class="conf">(.*?)<\/pre>/s.exec(html)?.[1] ?? '';
+    expect((pre.match(/<span class="conf__l">/g) || []).length).toBe(4);
+    expect(pre).not.toMatch(/\n/);
+    expect(css).toMatch(/\.conf__l\s*\{[^}]*text-indent/);
   });
 });
