@@ -89,6 +89,9 @@ import { resolve } from 'node:path';
 const html = await readFile(resolve(process.cwd(), 'site/info.html'), 'utf8');
 const css = await readFile(resolve(process.cwd(), 'site/css/info.css'), 'utf8');
 const macro = await readFile(resolve(process.cwd(), 'macro/Dashboard.js'), 'utf8');
+const terms = await readFile(resolve(process.cwd(), 'site/terms.html'), 'utf8');
+const frontdoor = await readFile(resolve(process.cwd(), 'tools/build-frontdoor.js'), 'utf8');
+const settings = await readFile(resolve(process.cwd(), 'site/js/settings/settings.js'), 'utf8');
 
 describe('/info wears the brand', () => {
   it('is titled for the product, and never title-cases it', () => {
@@ -184,5 +187,61 @@ describe('/info says how unsleep gets on a board', () => {
     expect((pre.match(/<span class="conf__l">/g) || []).length).toBe(4);
     expect(pre).not.toMatch(/\n/);
     expect(css).toMatch(/\.conf__l\s*\{[^}]*text-indent/);
+  });
+});
+
+describe('/terms', () => {
+  it('is reachable from the guide and reaches back', () => {
+    expect(html).toContain('<a class="footer__link" href="terms.html">Terms</a>');
+    expect(terms).toContain('href="info.html"');
+  });
+
+  it('keeps every internal link relative, because it serves from two origins', () => {
+    // The same bytes answer on unsleep.io (where the guide is the root) and
+    // unsleep.app (where it is /info). A root-absolute link resolves on one
+    // and 404s on the other, and nothing in CI would notice.
+    const internal = [...terms.matchAll(/href="([^"]+)"/g)]
+      .map((m) => m[1])
+      .filter((h) => !/^https?:/.test(h) && !h.startsWith('#'));
+    expect(internal.length).toBeGreaterThan(0);
+    for (const href of internal) expect(href.startsWith('/')).toBe(false);
+  });
+
+  it('ships to the front door as well as the app', () => {
+    // build-frontdoor.js fails the build when the guide references a file it
+    // does not copy, so this is belt to that brace: it catches the case where
+    // BOTH the footer link and the copy are dropped together.
+    expect(frontdoor).toContain("['terms.html', 'terms.html']");
+  });
+
+  it('carries the clauses a reviewer looks for, not just the honest ones', () => {
+    expect(terms).toMatch(/as is and as available/i);
+    expect(terms).toMatch(/warranties are disclaimed/i);
+    expect(terms).toMatch(/Cloudflare/);
+    // The security posture is a strength and the page used to omit it, which
+    // left a reviewer's most-asked question answered by silence.
+    expect(terms).toMatch(/Content-Security-Policy/);
+    // The examples of "it got something wrong" have to be things unsleep
+    // actually shows. It has no calendar and never has (Sean's catch,
+    // 2026-08-19), so a late meeting was promising a feature. The macro
+    // clause's `wake-at-meeting-start` is a RoomOS config name and stays.
+    expect(terms).not.toMatch(/a meeting joined late/);
+    // Sean's call, 2026-08-19: the page names no individual. The liability
+    // exclusion runs to "the maintainer", and LICENSE stays the one place
+    // the copyright holder is named (MIT requires that notice be kept).
+    expect(terms).not.toMatch(/Sean Scott/);
+  });
+
+  it('names the beacon opt-out exactly as the board spells it', () => {
+    // Terms that point at a setting by the wrong name are worse than terms
+    // that omit it: the reader hunts, fails, and concludes there is no
+    // opt-out. Two files, one assertion, same guard as the macro URL.
+    expect(settings).toContain('Anonymous usage ping');
+    expect(terms).toContain('Anonymous usage ping');
+  });
+
+  it('borrows the guide\'s stylesheet instead of growing its own', () => {
+    expect(terms).toContain('href="css/info.css"');
+    expect(terms).not.toMatch(/<script/);
   });
 });

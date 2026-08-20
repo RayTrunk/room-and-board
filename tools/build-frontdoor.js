@@ -33,6 +33,10 @@ const FILES = [
   // [source under site/, destination under dist/frontdoor/]
   ['info.html', 'index.html'], // the guide IS the front door's root...
   ['info.html', 'info.html'], // ...and /info keeps working for old links
+  // The guide's footer links this relatively, so it must exist on BOTH
+  // origins — unsleep.io/terms and unsleep.app/terms are the same bytes. The
+  // reference guard below is what enforces that it keeps being shipped.
+  ['terms.html', 'terms.html'],
   ['css/info.css', 'css/info.css'],
   ['js/info.js', 'js/info.js'],
   ['data/changelog.json', 'data/changelog.json'], // also the health probe

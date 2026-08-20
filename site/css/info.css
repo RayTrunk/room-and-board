@@ -477,6 +477,32 @@ code {
 }
 .notes__p { font-size: 15px; line-height: 1.45; color: var(--ink-dim); margin: 0; max-width: var(--measure); }
 
+/* ---------- terms ----------
+   The same row rhythm the widget list and the changelog keep: a quiet label
+   column, prose on the right. A terms page that invents its own type and
+   spacing reads as some other product's terms; this one is the guide in a
+   plainer mood. Only the container is new, and .row does the rest. */
+.section--terms { padding-bottom: 8px; }
+/* The container stops where the prose does. A hairline that runs 600px past
+   the last word of every clause reads as an unfinished table; the label
+   column (150px) plus its gutter plus the measure is the real width of the
+   thing being ruled. */
+.terms { display: flex; flex-direction: column; margin-top: 26px; max-width: calc(170px + var(--measure)); }
+.terms .row { padding: 18px 2px; }
+/* The widget list gets its measure from being two columns; a single-column
+   clause list has to bring its own, or the prose runs to ~100 characters and
+   the eye starts hunting for the next line. */
+.terms .row__desc { max-width: var(--measure); }
+/* A clause's trailing caveat: quieter than the clause, still above the
+   small-text contrast floor (--ink-faint fails AA below 18px; --ink-dim
+   does not). No cog marker — .row__note carries one, and nothing here
+   happens behind the gear. */
+.row__fine { display: block; margin-top: 10px; font-size: 15px; line-height: 1.45; color: var(--ink-dim); }
+/* When the page last changed, which a terms page has to say. */
+.section__stamp { font-size: 15px; color: var(--ink-dim); margin: 0 0 4px; }
+.footer__link { font-size: 15px; color: var(--ink-dim); }
+.footer__link:hover { color: var(--ink); }
+
 /* ---------- what's new (built by info.js) ----------
    Deliberately the same geometry as the widget rows above: hairline per group,
    a quiet label column, prose on the right. A changelog is a list, not a set of
@@ -577,6 +603,7 @@ code {
   .gal .shot--half img { border-radius: 12px; }
   .gal .shot__cap { padding-top: 7px; font-size: 13px; font-weight: 500; }
   .conf { font-size: 13px; }
+  .terms .row__name { flex: 1 1 100%; }
   .row__name { flex: 1 1 100%; }
   .row__desc { flex: 1 1 100%; }
   .log__date { flex: 1 1 100%; }
