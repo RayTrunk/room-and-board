@@ -658,7 +658,7 @@ export const isAddable = (id, cfg, host) =>
   !isRetired(id) && isLaunched(id, host) && !isAdvancedHidden(id, cfg) && !isOceanHidden(id, cfg);
 
 const PHOTOS_CODE_MARK = '~P~';
-// Live Video rides the same phone-to-board bridge: '~V~' carries just the
+// Live Video rides the same phone-to-board setup code: '~V~' carries just the
 // stream URL (+ optional label) so redeeming never disturbs the board's setup.
 const VIDEO_CODE_MARK = '~V~';
 const isStreamUrl = (u) => typeof u === 'string' && /^https:\/\/\S+$/i.test(u.trim());

@@ -1,15 +1,14 @@
 // Boot and runtime orchestration for the signage dashboard.
 
 import { normalizeConfig, decodeConfig, CURATED_SOURCES } from './config.js';
-import { loadConfig, saveConfig, loadCache, saveCache, takePendingEdit, applyConfig, setBridge, isDemoSession } from './store.js';
+import { loadConfig, saveConfig, loadCache, saveCache, takePendingEdit, applyConfig, isDemoSession } from './store.js';
 import { fetchJSON, fetchBuffer, fetchText } from './net.js';
 import { fitViewport } from './util.js';
 import { cardFor, markFresh, markStale, setCardConfigSource } from './card.js';
 import { blockZoomGestures } from './zoomguard.js';
 import { schedule } from './scheduler.js';
 import { resolveMode, ambientSource } from './modes.js';
-import { chooseBootConfig } from './boot.js';
-import { parseFragment } from './bridge.js';
+import { chooseBootConfig, fragmentConfig } from './boot.js';
 import { stripData, stripHtml } from './ambient.js';
 import { initScreensaver, setMode, isAmbient } from './screensaver.js';
 import { startBeacon, reportWidgetHealth } from './fleet.js';
@@ -338,18 +337,15 @@ async function boot() {
   // Whole-card tap opens a card's hidden items full screen (markets today).
   // Delegated on the grid, so it survives every widget re-render.
   initExpand($('#grid'));
-  const fragment = parseFragment(location.hash);
-  // Diagnostics surface — but the bridge passphrase (auth.p) must NOT sit on a
-  // global where injected script could read it. Expose only non-secret fields;
-  // connectBridge below uses the local `fragment` (with the passphrase) instead.
-  //
-  // What is left here is only what a person poking at a console (or the two
-  // read-only lines in Settings) wants to see: how this board was configured
-  // and what it is running. The bridge and the vault status used to ride along
-  // and no longer do; they are working state that two save paths wrote through,
-  // which is a different thing from a debug readout, and they live in store.js.
+  const encodedCfg = fragmentConfig(location.hash);
+  // Diagnostics surface: only what a person poking at a console (or the two
+  // read-only lines in Settings) wants to see — how this board was configured
+  // and what it is running. Working state stays out of it. The device bridge
+  // and its vault status used to ride along here, which was already the wrong
+  // shelf for something two save paths wrote through, and both are gone now
+  // along with the back-channel itself.
   window.__signage = {
-    fragment: { cfg: fragment.cfg, auth: fragment.auth ? { u: fragment.auth.u, ip: fragment.auth.ip } : null },
+    fragment: { cfg: encodedCfg },
     source: null,
   };
 
@@ -382,9 +378,9 @@ async function boot() {
   }
 
   let fragmentCfg = null;
-  if (fragment.cfg) {
+  if (encodedCfg) {
     try {
-      fragmentCfg = await decodeConfig(fragment.cfg);
+      fragmentCfg = await decodeConfig(encodedCfg);
     } catch {
       fragmentCfg = null;
     }
@@ -405,20 +401,6 @@ async function boot() {
     try { await saveConfig(cfg); } catch (e) { console.error('[boot] config repair-save failed', e); }
   }
   startRuntime();
-
-  // Vault sync runs opportunistically after first paint. Boot is the only place
-  // that can open this connection, and store.js is the only place that needs
-  // it, so handing it over is the whole of boot's involvement. Every save from
-  // here on mirrors itself without main.js or Settings knowing there is a wire.
-  if (fragment.auth) {
-    import('./bridge.js').then(async ({ connectBridge }) => {
-      try {
-        setBridge(await connectBridge(fragment.auth));
-      } catch {
-        setBridge(null); // no vault this session; saves still land locally
-      }
-    });
-  }
 }
 
 // Hand the ambient engine the two content lookups it does not own, and let it

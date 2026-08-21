@@ -1047,9 +1047,11 @@ async function renderFerry() {
   $('#ferry-landing').addEventListener('change', (e) => (cfg.ferry.landing = e.target.value));
 }
 
-// Cfg-only signage URL for non-touch devices (pasted into xConfiguration
-// Standby Signage Url). NEVER includes auth — that fragment part is the
-// macro's rotating bridge credential and must not leave its board.
+// Signage URL for non-touch devices (pasted into xConfiguration Standby
+// Signage Url). `#cfg=` is the whole fragment: the config, and nothing that
+// could be a secret. Early macro builds also rode a rotating device account's
+// credentials here in an `auth` key; that back-channel is gone, macro side and
+// client side both, and nothing may take its place in this URL.
 export function signageUrlFor(host, encoded) {
   return `https://${host}/#cfg=${encoded}`;
 }

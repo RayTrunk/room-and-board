@@ -74,63 +74,32 @@ describe('store quota/availability resilience', () => {
 /* ---------- applying a config to the board ---------- */
 
 // The ritual edit mode's Done and Settings' Save both perform: stamp, persist,
-// mirror to the macro vault, reload. It was copied prose in two files and
-// therefore untestable, since half of it reached through a global and the other
-// half ended in a real navigation. It is one function now, so this is the first
-// time any of it has been pinned.
+// reload. It was copied prose in two files and therefore untestable, since half
+// of it reached through a global and the other half ended in a real navigation.
+// It is one function now, so this is the first time any of it has been pinned.
+//
+// It used to mirror the config to a macro-side vault over the device bridge as
+// well; that back-channel was removed on 2026-08-21, and the coverage with it.
+// localStorage was always the primary write, so what is left below is the whole
+// operation rather than the surviving half of one.
 
-// The bridge and the vault status are module state, so each test takes a fresh
-// copy of store.js rather than inheriting whatever the previous one connected.
+// A fresh copy of store.js per test, so no module state can carry across.
 async function freshStore() {
   vi.resetModules();
   return import('../site/js/store.js');
 }
 
-function fakeBridge({ fail = false } = {}) {
-  const sent = [];
-  return {
-    sent,
-    async sendConfig(encoded) {
-      sent.push(encoded);
-      if (fail) throw new Error('bridge: send timeout');
-    },
-  };
-}
-
 describe('applyConfig: one operation applies a config to the board', () => {
-  it('round-trips the bridge, and null is how a failed connect is reported', async () => {
-    const store = await freshStore();
-    // Never attempted is NOT offline: most boards carry no auth fragment at all
-    // and Diagnostics must not accuse the network of something that never
-    // happened. This is the distinction the old `window.__signage.vault`
-    // undefined-vs-'offline' encoded by accident; it is deliberate here.
-    expect(store.getBridge()).toBeNull();
-    expect(store.vaultStatus()).toBeNull();
-
-    const bridge = fakeBridge();
-    store.setBridge(bridge);
-    expect(store.getBridge()).toBe(bridge);
-    expect(store.vaultStatus()).toBe('connected');
-
-    store.setBridge(null);
-    expect(store.getBridge()).toBeNull();
-    expect(store.vaultStatus()).toBe('offline');
-  });
-
-  it('stamps once, persists, mirrors to the vault and reloads', async () => {
+  it('stamps once, persists and reloads', async () => {
     const store = await freshStore();
     const st = fakeStorage();
     stubStorage(st);
     stubLocation('');
-    const bridge = fakeBridge();
-    store.setBridge(bridge);
     const reload = vi.fn();
 
     const applied = await store.applyConfig(normalizeConfig({ name: 'Studio' }), { reload });
 
     expect(st._map.has('sgn.cfg')).toBe(true);
-    expect(bridge.sent).toHaveLength(1);
-    expect(store.vaultStatus()).toBe('synced');
     expect(reload).toHaveBeenCalledTimes(1);
     expect(applied.name).toBe('Studio');
   });
@@ -140,12 +109,10 @@ describe('applyConfig: one operation applies a config to the board', () => {
     const st = fakeStorage();
     stubStorage(st);
     stubLocation('');
-    const bridge = fakeBridge();
-    store.setBridge(bridge);
 
-    // Every reading of the clock lands in a different second, so a second stamp
-    // taken anywhere inside one apply would leave storage and the vault
-    // disagreeing about when this config was made. They must not.
+    // Every reading of the clock lands in a different second, and the stamp is
+    // what boot.js compares to pick the newest config, so the value the caller
+    // is handed back must be the value that landed in storage.
     let clock = 1_700_000_000_000;
     vi.spyOn(Date, 'now').mockImplementation(() => (clock += 1000));
 
@@ -153,9 +120,7 @@ describe('applyConfig: one operation applies a config to the board', () => {
     const applied = await store.applyConfig(caller, { reload: vi.fn() });
 
     const stored = await decodeConfig(st._map.get('sgn.cfg'));
-    const mirrored = await decodeConfig(bridge.sent[0]);
     expect(stored.t).toBe(applied.t);
-    expect(mirrored.t).toBe(applied.t);
     expect(applied.t).toBeGreaterThan(1);
     // ...and the caller's own object is left alone, so the stamp cannot be
     // half-applied to a config someone still holds a reference to.
@@ -165,54 +130,17 @@ describe('applyConfig: one operation applies a config to the board', () => {
     expect(again.t).toBeGreaterThan(applied.t);
   });
 
-  it('a vault failure still persists locally, still reloads, and records offline', async () => {
-    const store = await freshStore();
-    const st = fakeStorage();
-    stubStorage(st);
-    stubLocation('');
-    const bridge = fakeBridge({ fail: true });
-    store.setBridge(bridge);
-    const reload = vi.fn();
-
-    await store.applyConfig(normalizeConfig({ name: 'Vault down' }), { reload });
-
-    // The vault is the recovery layer, not the store: the config is safe in
-    // localStorage and the board still restarts onto it.
-    expect(st._map.has('sgn.cfg')).toBe(true);
-    expect(reload).toHaveBeenCalledTimes(1);
-    expect(store.vaultStatus()).toBe('offline');
-  });
-
-  it('persists and reloads with no bridge at all, leaving the vault unreported', async () => {
-    const store = await freshStore();
-    const st = fakeStorage();
-    stubStorage(st);
-    stubLocation('');
-    const reload = vi.fn();
-
-    await store.applyConfig(normalizeConfig({}), { reload });
-
-    expect(st._map.has('sgn.cfg')).toBe(true);
-    expect(reload).toHaveBeenCalledTimes(1);
-    expect(store.vaultStatus()).toBeNull();
-  });
-
   it('a demo session never persists, and still reloads', async () => {
     const store = await freshStore();
     const st = fakeStorage();
     stubStorage(st);
     stubLocation('?demo=1');
-    const bridge = fakeBridge();
-    store.setBridge(bridge);
     const reload = vi.fn();
 
     const applied = await store.applyConfig(normalizeConfig({ name: 'Showroom' }), { reload });
 
-    // Nothing left behind in the browser somebody opened the demo in: not in
-    // storage, and not on the device either.
+    // Nothing left behind in the browser somebody opened the demo in.
     expect(st._map.has('sgn.cfg')).toBe(false);
-    expect(bridge.sent).toHaveLength(0);
-    expect(store.vaultStatus()).toBe('connected'); // no mirror attempted, nothing to report
     // The reload is still the point: it is how the demo returns to its fixtures.
     expect(reload).toHaveBeenCalledTimes(1);
     expect(applied.name).toBe('Showroom');

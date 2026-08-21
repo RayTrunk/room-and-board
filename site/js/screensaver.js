@@ -8,8 +8,9 @@
 // and the schedule. Everything the ambient screen then DOES is here. It lived
 // inline in main.js, which meant seven of the boot script's module-level
 // variables, three concurrency guards and a teardown ladder sat among the
-// widget registry and the vault sync, and the only way to ask "are we ambient?"
-// from anywhere else was to read a class off <body>.
+// widget registry and the rest of the boot script's bookkeeping, and the only
+// way to ask "are we ambient?" from anywhere else was to read a class off
+// <body>.
 //
 // The mode is still published as body.mode-ambient, because main.css branches
 // on it, but the write happens in exactly one place below and every reader in

@@ -4,7 +4,7 @@
 
 import { isLaunched, isAdvancedHidden, normalizeConfig, encodeConfig, ART_CATS, NJT_LINES, CURATED_SOURCES } from '../config.js';
 import { WIDGET_LABELS } from '../catalog.js';
-import { loadCache, markPendingEdit, applyConfig, getBridge, vaultStatus } from '../store.js';
+import { loadCache, markPendingEdit, applyConfig } from '../store.js';
 import { fetchJSON } from '../net.js';
 import { mintCode, redeemCode, codeFailureText } from '../setupcode.js';
 import { fetchDailyBackdrop } from '../curated.js';
@@ -159,9 +159,9 @@ export function hasUnsavedChanges() {
 }
 
 // What "saving" means is store.js's applyConfig, in full: the fresh timestamp,
-// the write, the vault mirror, and the reload that is still the simplest
-// correct way to apply layout and widget changes. All this panel adds is which
-// config, and taking itself off the screen afterwards.
+// the write, and the reload that is still the simplest correct way to apply
+// layout and widget changes. All this panel adds is which config, and taking
+// itself off the screen afterwards.
 async function saveAndClose() {
   await applyConfig(state.cfg);
   closeSettings();
@@ -341,7 +341,7 @@ function renderWidgets() {
 
 // The handoff. Edit mode runs on the dashboard, so Settings has to be gone
 // first, and the entry belongs to the pencil FAB: main.js's handler owns the
-// live cfg plus the save, vault sync and reload that finishing an edit needs.
+// live cfg plus the save and reload that finishing an edit needs.
 // Tapping that button is already how a retired card's prompt gets there
 // (main.js cardFor), so this is the same one entry path rather than a second
 // one that would have to re-implement all of it.
@@ -1949,7 +1949,6 @@ function renderDiag() {
     <h2 class="pane__title">Diagnostics</h2>
     <div class="kv-grid">
       <span>Config source</span><b>${window.__signage?.source ?? '—'}</b>
-      <span>Device link</span><b>${vaultStatus() ?? 'not connected'}</b>
       ${rows.join('')}
       <span>User agent</span><b class="kv__small">${escapeHtml(navigator.userAgent)}</b>
       <span>Cisco fonts</span><b>${escapeHtml(probeCiscoFonts())}</b>
@@ -2017,13 +2016,6 @@ function renderDiag() {
     location.reload();
   });
   confirmThen(pane().querySelector('[data-reset]'), 'Tap again to reset', async () => {
-    try {
-      // Legacy: boards provisioned with the retired SignageManager macro keep a
-      // device-side vault; ask it to clear too so the reset really sticks there.
-      await getBridge()?.sendReset();
-    } catch {
-      // no bridge: local reset only
-    }
     window.localStorage.clear();
     location.reload();
   });

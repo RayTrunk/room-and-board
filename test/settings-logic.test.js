@@ -21,7 +21,6 @@ import {
   canAddTicker,
   TICKER_MAX,
 } from '../site/js/settings/pickers.js';
-import { connectBridge } from '../site/js/bridge.js';
 
 const SUBWAY = [
   { id: '631', name: 'Grand Central-42 St', borough: 'Manhattan', lines: ['4', '5', '6'] },
@@ -128,73 +127,6 @@ describe('toggleIn', () => {
     expect(toggleIn(list, '5')).toEqual(['4', '6', '5']);
     expect(toggleIn(list, '4')).toEqual(['6']);
     expect(list).toEqual(['4', '6']);
-  });
-});
-
-describe('connectBridge', () => {
-  function mockWS() {
-    const instances = [];
-    class WS {
-      constructor(url) {
-        this.url = url;
-        this.sent = [];
-        instances.push(this);
-      }
-      send(data) {
-        this.sent.push(JSON.parse(data));
-      }
-      close() {
-        this.closed = true;
-      }
-    }
-    return { WS, instances };
-  }
-
-  it('connects with credentials in the URL and sends framed configs', async () => {
-    const { WS, instances } = mockWS();
-    const p = connectBridge({ u: 'bridge', p: 's3cret', ip: '10.1.2.3' }, { WS, timeoutMs: 1000 });
-    const ws = instances[0];
-    expect(ws.url).toBe('wss://bridge:s3cret@10.1.2.3/ws');
-    ws.onopen();
-    const bridge = await p;
-
-    const sendP = bridge.sendConfig('ENCODEDCFG');
-    expect(ws.sent[0].method).toBe('xCommand/Message/Send');
-    expect(ws.sent[0].params.Text).toBe('sgn1:ENCODEDCFG');
-    ws.onmessage({ data: JSON.stringify({ jsonrpc: '2.0', id: ws.sent[0].id, result: {} }) });
-    await expect(sendP).resolves.toBeUndefined();
-
-    const resetP = bridge.sendReset();
-    expect(ws.sent[1].params.Text).toBe('sgn1-reset');
-    ws.onmessage({ data: JSON.stringify({ jsonrpc: '2.0', id: ws.sent[1].id, result: {} }) });
-    await expect(resetP).resolves.toBeUndefined();
-  });
-
-  it('rejects the connect on timeout', async () => {
-    vi.useFakeTimers();
-    const { WS } = mockWS();
-    const p = connectBridge({ u: 'u', p: 'p', ip: '10.0.0.1' }, { WS, timeoutMs: 5000 });
-    const guard = expect(p).rejects.toThrow(/timeout/i);
-    await vi.advanceTimersByTimeAsync(5001);
-    await guard;
-    vi.useRealTimers();
-  });
-
-  it('rejects sends that never get a reply', async () => {
-    vi.useFakeTimers();
-    const { WS, instances } = mockWS();
-    const p = connectBridge({ u: 'u', p: 'p', ip: '10.0.0.1' }, { WS, timeoutMs: 5000 });
-    instances[0].onopen();
-    const bridge = await p;
-    const sendP = bridge.sendConfig('X');
-    const guard = expect(sendP).rejects.toThrow(/timeout/i);
-    await vi.advanceTimersByTimeAsync(5001);
-    await guard;
-    vi.useRealTimers();
-  });
-
-  it('rejects when auth is incomplete', async () => {
-    await expect(connectBridge({ u: 'u', p: 'p', ip: null }, {})).rejects.toThrow(/ip/i);
   });
 });
 
@@ -810,22 +742,6 @@ describe('searchStations (Citi Bike picker)', () => {
   it('returns nothing under 2 chars and respects the cap', () => {
     expect(searchStations(stations, 'W', new Set())).toEqual([]);
     expect(searchStations(stations, 'W 2', new Set(), 1)).toHaveLength(1);
-  });
-});
-
-import { isBridgeHost } from '../site/js/bridge.js';
-describe('isBridgeHost (fragment IP validation)', () => {
-  it('accepts IPv4/hostname/port and bracketed IPv6', () => {
-    expect(isBridgeHost('192.168.1.50')).toBe(true);
-    expect(isBridgeHost('board.local')).toBe(true);
-    expect(isBridgeHost('10.0.0.1:443')).toBe(true);
-    expect(isBridgeHost('[fe80::1]')).toBe(true);
-  });
-  it('rejects anything that could redirect the socket', () => {
-    expect(isBridgeHost('evil.com/ws?x=')).toBe(false);
-    expect(isBridgeHost('a@b')).toBe(false);
-    expect(isBridgeHost('has space')).toBe(false);
-    expect(isBridgeHost(undefined)).toBe(false);
   });
 });
 

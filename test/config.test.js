@@ -169,7 +169,7 @@ describe('encode/decode round trip', () => {
 
   it('stays small enough for URL fragments and setup flows', async () => {
     // A maximal config must leave ample headroom inside the 2048-char
-    // signage URL (which also carries ~100 chars of bridge auth).
+    // signage URL, whose fragment now carries `#cfg=` and nothing else.
     const cfg = normalizeConfig({
       v: 2,
       name: 'Maximiliano Longname',
@@ -194,8 +194,9 @@ describe('encode/decode round trip', () => {
       ] },
     });
     const enc = await encodeConfig(cfg);
-    // 2048-char URL minus ~100 chars of bridge auth leaves ~1900 for the
-    // fragment; the fully-maxed config (20 tickers, 10 clock cities, 7 feeds,
+    // The 2048-char URL leaves close to 2000 chars for the fragment (it used
+    // to reserve ~100 for the retired bridge credentials, and no longer needs
+    // to); the fully-maxed config (20 tickers, 10 clock cities, 7 feeds,
     // 12 fully-custom follow accounts, all 6 NJT line-name strings) measures
     // ~1345 — it was ~1280 when the ticker cap was 10 — so 1450 still guards
     // ~1.3x headroom. Default follow lists are stripped from the wire and

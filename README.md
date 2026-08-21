@@ -645,9 +645,9 @@ reload (hourly version check, nightly 4 AM, or a power cycle). The exported
 URL contains only `#cfg=`. (Early macro builds also minted a rotating
 low-privilege device account and rode its credentials in an `auth` fragment
 for a page↔device back-channel; that feature was dropped — today's macro is
-standalone and no URL carries credentials. The client keeps a defensive
-parser for old `auth` fragments and quietly ignores them when no account
-answers.)
+standalone and no URL carries credentials. The client half was removed on
+2026-08-21, so an old URL still carrying an `auth` fragment is simply
+ignored, the same as any other unknown fragment key.)
 
 ### Screensaver
 
@@ -996,9 +996,10 @@ is written to keep it that way.
 **Macro-managed boards (Cisco RoomOS)**
 - The macro is **standalone**: it creates no account on the device and the
   signage URL carries no credentials (the page↔device bridge that once rode a
-  rotating low-privilege account in the URL fragment was dropped; the client
-  still refuses to surface an `auth` fragment's contents anywhere and
-  format-validates the device address before its legacy parser would use it).
+  rotating low-privilege account in the URL fragment was dropped, and its
+  client code was deleted on 2026-08-21 — the page now reads exactly one
+  fragment key, `cfg`, and an `auth` fragment on an old URL is ignored along
+  with every other key it does not know).
 - Setup codes are short-lived (1 hour), best-effort single-use, and carry only
   widget preferences — no secrets.
 

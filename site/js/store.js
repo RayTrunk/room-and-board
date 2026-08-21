@@ -1,10 +1,11 @@
 // What the board keeps, and the one operation that changes it: the config and
-// the widget caches in localStorage, the mirror of the config in the macro
-// vault, and applyConfig, which puts a new config in both and reloads onto it.
+// the widget caches in localStorage, and applyConfig, which puts a new config
+// there and reloads onto it.
 //
 // The signage web-engine profile keeps this data across standby, reboots and
-// RoomOS upgrades (per Cisco's WebEngine guide); the macro vault is the
-// recovery layer if it is ever wiped.
+// RoomOS upgrades (per Cisco's WebEngine guide); if it is ever wiped, the
+// `#cfg=` fragment in the board's own signage URL is the recovery layer
+// (boot.js), and it needs nothing from this module to do its job.
 
 import { encodeConfig, decodeConfig, normalizeConfig } from './config.js';
 
@@ -42,40 +43,6 @@ export async function saveConfig(cfg) {
   }
 }
 
-/* ---------- the device bridge, and the vault behind it ---------- */
-
-// The macro vault named at the top of this file is reached over one WebSocket
-// to the board's own xAPI, opened by main.js at boot from credentials in the
-// URL fragment. That connection used to be parked on window.__signage, an
-// untyped mutable global that two save paths reached through to find the
-// bridge and then wrote the sync outcome back onto. The global existed for one
-// reason: settings.js is a lazy import() that boot had nothing to hand it to.
-// A module-level variable behind two functions is the same amount of state
-// with none of the reach-through, and store.js is where it belongs, because
-// the vault is the second of the two places this module keeps the config.
-let bridge = null;
-// null is not 'offline'. Most boards carry no auth fragment at all and never
-// attempt a bridge, and Diagnostics has to be able to say "not connected"
-// rather than accuse the network of something that never happened.
-let vaultState = null;
-
-// Called once, from the boot that opens the connection: the resolved bridge on
-// success, nothing on failure. Passing null IS the failure report, so the two
-// outcomes cannot drift apart into two different spellings of the same fact.
-export function setBridge(connection) {
-  bridge = connection ?? null;
-  vaultState = bridge ? 'connected' : 'offline';
-}
-
-export function getBridge() {
-  return bridge;
-}
-
-// 'connected' | 'synced' | 'offline', or null if no bridge was ever attempted.
-export function vaultStatus() {
-  return vaultState;
-}
-
 /* ---------- applying a config to the board ---------- */
 
 // A demo session is a showroom, not a board. Somebody opening /?demo=1 to look
@@ -87,7 +54,7 @@ export function isDemoSession() {
 }
 
 // Applying a config to the board is ONE operation, and this is it: stamp it,
-// persist it, mirror it to the vault if there is a bridge, reload.
+// persist it, reload.
 //
 // It was written twice before this (edit mode's Done and Settings' Save), and
 // the copies had drifted the way copies do: only one of them honoured "a demo
@@ -100,8 +67,9 @@ export function isDemoSession() {
 // `reload` is injectable so a test can watch the ritual finish without a real
 // navigation; production never passes it.
 export async function applyConfig(cfg, { reload = () => window.location.reload() } = {}) {
-  // One fresh stamp, applied once, to the object that then goes everywhere:
-  // storage and the vault must never disagree about when this config was made.
+  // One fresh stamp, taken once, on the object that then goes everywhere: the
+  // timestamp is what boot.js compares to pick the newest config, so a second
+  // reading of the clock inside one apply could only produce disagreement.
   const applied = normalizeConfig({ ...cfg, t: Math.floor(Date.now() / 1000) });
   if (isDemoSession()) {
     // The reload still happens: it is how the demo returns to its fixtures.
@@ -112,17 +80,6 @@ export async function applyConfig(cfg, { reload = () => window.location.reload()
   // means the save did NOT happen, and reloading onto the old config while the
   // panel says "saved" is the one outcome worse than the error.
   await saveConfig(applied);
-  if (bridge) {
-    try {
-      await bridge.sendConfig(await encodeConfig(applied));
-      vaultState = 'synced';
-    } catch {
-      // The vault is the recovery layer, not the store. localStorage already
-      // has this config, so a failed mirror is a status to report in
-      // Diagnostics, never a reason to withhold the save or skip the reload.
-      vaultState = 'offline';
-    }
-  }
   reload();
   return applied;
 }
