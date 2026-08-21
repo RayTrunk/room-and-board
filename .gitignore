@@ -10,6 +10,11 @@ graphify-out/
 .impeccable/
 .claude/
 docs/superpowers/
+.scratch/
+docs/agents/
+CLAUDE.md
+.nodeterm/
+.design-sync/
 
 RoomOS.md
 
