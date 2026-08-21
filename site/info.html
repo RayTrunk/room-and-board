@@ -130,8 +130,11 @@
   <!-- One line per element, because a hanging indent needs a block per line:
        text-indent on the <pre> itself only ever catches the first one, which
        leaves a wrapped xConfiguration reading as two settings on a phone. -->
-  <pre class="conf"><span class="conf__l">xConfiguration WebEngine Mode: On</span><span class="conf__l">xConfiguration Standby Signage Mode: On</span><span class="conf__l">xConfiguration Standby Signage InteractionMode: Interactive</span><span class="conf__l">xConfiguration Standby Signage Url: https://unsleep.app</span></pre>
-  <p class="conf__after"><code>InteractionMode</code> is the one that makes the screen answer a finger, and RoomOS does not turn it on for you: left at its default the board shows the dashboard perfectly and ignores every tap. A Room series driving a TV is the exception that wants the default, along with the generated URL in place of the plain one.</p>
+  <pre class="conf"><span class="conf__l">xConfiguration WebEngine Mode: On</span><span class="conf__l">xConfiguration Standby Signage Mode: On</span><span class="conf__l">xConfiguration Standby Signage InteractionMode: Interactive<span class="conf__note"> // touch boards only</span></span><span class="conf__l">xConfiguration Standby Signage Url: https://unsleep.app</span></pre>
+  <!-- The line itself now says who it is for (Sean's call, 2026-08-19), so
+       what is left below is only what an inline comment cannot carry: the
+       failure mode, and the values the other door needs instead. -->
+  <p class="conf__after">Without that third line the board shows the dashboard and ignores every tap. A Room series on a TV takes <code>NonInteractive</code> and the generated URL instead.</p>
   <p class="conf__after">Cisco&rsquo;s own guidance for any of them: set <code>Time OfficeHours</code> so signage runs no more than twelve hours a day.</p>
 </section>
 

@@ -325,6 +325,11 @@ code {
    on the <pre> only ever catches the first — which is why info.html writes
    each line as its own span. */
 .conf__l { display: block; padding-left: 1.6em; text-indent: -1.6em; white-space: pre-wrap; }
+/* An annotation on a line meant to be retyped, so it must not travel with a
+   copy: user-select:none drops it from the selection, and a paste gets the
+   configuration alone. --ink-dim rather than --ink-faint because this sits at
+   14px, below the size where faint still clears AA. */
+.conf__note { color: var(--ink-dim); user-select: none; -webkit-user-select: none; }
 .conf__after { font-size: 15.5px; line-height: 1.5; color: var(--ink-dim); margin: 14px 0 0; max-width: var(--measure); }
 
 /* the two round board buttons, rendered calm like they are on the device */
