@@ -10,6 +10,7 @@
 export const WORKER_URL = (() => {
   const host = typeof location !== 'undefined' ? location.hostname : '';
   if (host.endsWith('unsleep.app') || host.endsWith('unsleep.io')) return 'https://api.unsleep.app';
+  if (host.endsWith('idlescreen.app') || host.endsWith('idlescreen.io')) return 'https://api.idlescreen.app';
   if (host.endsWith('quadrille.io')) return 'https://api.quadrille.io';
   return 'https://api.roomboard.app';
 })();

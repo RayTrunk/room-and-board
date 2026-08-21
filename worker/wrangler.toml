@@ -29,7 +29,11 @@ routes = [
   # *.unsleep.io target this host (see site/js/env.js). Like the others, a
   # custom domain auto-provisions its DNS record and cert on deploy. The two
   # older aliases stay: their URLs remain live.
-  { pattern = "api.unsleep.app", custom_domain = true }
+  { pattern = "api.unsleep.app", custom_domain = true },
+  # idlescreen-origin alias (2026-08-20): pages served from *.idlescreen.app or
+  # *.idlescreen.io target this host (see site/js/env.js). Same worker, fourth
+  # name; DNS + cert auto-provision on deploy like the aliases above.
+  { pattern = "api.idlescreen.app", custom_domain = true }
 ]
 
 # Workers Logs: retain invocation logs (console output, exceptions, the

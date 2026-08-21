@@ -627,7 +627,8 @@ const BETA_ONLY = Object.freeze(['iptv']);
 // BETA_ONLY cards to real boards, which is why the rename reconciliation of
 // 2026-08-18 added unsleep.app here the same day the domain went live.
 export const isBetaHost = (host = (typeof location !== 'undefined' ? location.hostname : 'localhost')) =>
-  host !== 'roomboard.app' && host !== 'www.roomboard.app' && host !== 'app.quadrille.io' && host !== 'unsleep.app';
+  host !== 'roomboard.app' && host !== 'www.roomboard.app' && host !== 'app.quadrille.io' && host !== 'unsleep.app' &&
+  host !== 'idlescreen.app';
 export const isLaunched = (id, host) => !BETA_ONLY.includes(id) || isBetaHost(host);
 
 // "Nerd mode": cards that need self-hosted infrastructure (live streams,

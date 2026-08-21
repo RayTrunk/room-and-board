@@ -16,7 +16,7 @@
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
-    if (url.hostname === 'beta.unsleep.io' && (url.pathname === '/' || url.pathname === '/index.html')) {
+    if ((url.hostname === 'beta.unsleep.io' || url.hostname === 'beta.idlescreen.io') && (url.pathname === '/' || url.pathname === '/index.html')) {
       url.pathname = '/info';
       return env.ASSETS.fetch(new Request(url, request));
     }

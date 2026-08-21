@@ -16,7 +16,9 @@
     { "pattern": "beta.roomboard.app", "custom_domain": true },
     { "pattern": "beta.quadrille.io", "custom_domain": true },
     { "pattern": "beta.unsleep.app", "custom_domain": true },
-    { "pattern": "beta.unsleep.io", "custom_domain": true }
+    { "pattern": "beta.unsleep.io", "custom_domain": true },
+    { "pattern": "beta.idlescreen.app", "custom_domain": true },
+    { "pattern": "beta.idlescreen.io", "custom_domain": true }
   ],
   "compatibility_date": "2026-07-16",
   "observability": {

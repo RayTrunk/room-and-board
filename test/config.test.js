@@ -468,6 +468,8 @@ describe('staged rollout (BETA_ONLY widgets)', () => {
     expect(isBetaHost('www.roomboard.app')).toBe(false);
     expect(isBetaHost('app.quadrille.io')).toBe(false);
     expect(isBetaHost('unsleep.app')).toBe(false);
+    expect(isBetaHost('idlescreen.app')).toBe(false);
+    expect(isBetaHost('beta.idlescreen.app')).toBe(true);
     expect(isBetaHost('beta.roomboard.app')).toBe(true);
     expect(isBetaHost('beta.quadrille.io')).toBe(true);
     expect(isBetaHost('signage.rvc.tech')).toBe(true);
