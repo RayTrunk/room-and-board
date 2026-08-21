@@ -57,6 +57,22 @@ describe('health CHECKS validators', () => {
     expect(byName.site({})).toBe(false);
     expect(byName.site({ version: '' })).toBe(false);
   });
+  it('site-unsleep: the flagship name is watched, same bar as site', () => {
+    const byName = Object.fromEntries(CHECKS.map((c) => [c.name, c.ok]));
+    expect(byName['site-unsleep']({ version: '0415bfcbee63' })).toBe(true);
+    expect(byName['site-unsleep']({})).toBe(false);
+    const urls = Object.fromEntries(CHECKS.map((c) => [c.name, c.url]));
+    expect(urls['site-unsleep']).toBe('https://unsleep.app/version.json');
+  });
+
+  it('site-idlescreen: the same version-string bar as site (same Pages project)', () => {
+    // Byte-identical content by construction, so the validator is deliberately
+    // identical too; the alias's DNS and custom-domain attachment are what this
+    // check actually watches.
+    expect(byName['site-idlescreen']({ version: '0415bfcbee63' })).toBe(true);
+    expect(byName['site-idlescreen']({})).toBe(false);
+    expect(byName['site-idlescreen']({ version: '' })).toBe(false);
+  });
   it('markets: needs indices with a finite price', () => {
     expect(byName.markets({ indices: [{ price: 100 }] })).toBe(true);
     expect(byName.markets({ indices: [] })).toBe(false);
@@ -152,12 +168,94 @@ describe('front-door check (the separate origin nobody would notice broken)', ()
     expect(CHECKS.some((c) => (c.url || '').includes('api.roomboard.app'))).toBe(false);
     expect(CHECKS.some((c) => (c.url || '').includes('api.quadrille.io'))).toBe(false);
     expect(CHECKS.some((c) => (c.url || '').includes('api.unsleep.app'))).toBe(false);
+    expect(CHECKS.some((c) => (c.url || '').includes('api.idlescreen.app'))).toBe(false);
   });
   it('a broken front door fails its own check without touching the primary', async () => {
     const m = mockFetch({ 'unsleep.io': { throw: 'TypeError' } });
     const report = await runHealthChecks(okEnv(), m, m);
     expect(report.results.find((r) => r.name === 'frontdoor').ok).toBe(false);
     expect(report.results.find((r) => r.name === 'site').ok).toBe(true);
+  });
+});
+
+describe('idlescreen aliases (same stacks, separately detachable names)', () => {
+  // idlescreen.app and idlescreen.io went live 2026-08-20 as custom domains on
+  // the very Pages projects that already serve unsleep.app and unsleep.io, so
+  // their content is identical and only their attachment is their own. A Pages
+  // detach or a DNS slip takes one name dark while every other check stays
+  // green, which is the whole reason these two probes exist.
+  const byName = Object.fromEntries(CHECKS.map((c) => [c.name, c]));
+  const run = (overrides = {}) => {
+    const m = mockFetch(overrides);
+    return runHealthChecks(okEnv(), m, m);
+  };
+  const at = (report, name) => report.results.find((r) => r.name === name);
+
+  it('probes both alias origins externally (url, not path)', () => {
+    expect(byName['site-idlescreen'].url).toBe('https://idlescreen.app/version.json');
+    expect(byName['site-idlescreen'].path).toBeUndefined();
+    expect(byName['frontdoor-idlescreen'].url).toBe('https://idlescreen.io/data/changelog.json');
+    expect(byName['frontdoor-idlescreen'].path).toBeUndefined();
+  });
+
+  it('all green in the healthy case', async () => {
+    const report = await run();
+    expect(at(report, 'site-idlescreen').ok).toBe(true);
+    expect(at(report, 'frontdoor-idlescreen').ok).toBe(true);
+  });
+
+  it('a detached idlescreen.app fails alone, leaving the primary app green', async () => {
+    // What a Pages custom-domain detach looks like from outside: the name stops
+    // resolving/serving while roomboard.app keeps answering.
+    const report = await run({ 'idlescreen.app': { throw: 'TypeError' } });
+    expect(at(report, 'site-idlescreen')).toMatchObject({ ok: false });
+    expect(at(report, 'site').ok).toBe(true);
+    expect(at(report, 'frontdoor').ok).toBe(true);
+    expect(report.ok).toBe(false);
+  });
+
+  it('a detached idlescreen.io fails alone, leaving the primary front door green', async () => {
+    const report = await run({ 'idlescreen.io': { throw: 'TypeError' } });
+    expect(at(report, 'frontdoor-idlescreen')).toMatchObject({ ok: false });
+    expect(at(report, 'frontdoor').ok).toBe(true);
+    expect(at(report, 'site-idlescreen').ok).toBe(true);
+    expect(report.ok).toBe(false);
+  });
+
+  it('reports the HTTP status when an alias serves an error page', async () => {
+    const report = await run({ 'idlescreen.app': { status: 404 } });
+    expect(at(report, 'site-idlescreen')).toMatchObject({ ok: false, detail: 'HTTP 404' });
+  });
+
+  it('catches the 200-with-the-wrong-thing case on the front-door alias', async () => {
+    // A DNS slip that lands the name on some other origin answers 200 with HTML
+    // or an empty array; neither is the changelog.
+    const empty = await run({ 'idlescreen.io': { body: JSON.stringify([]) } });
+    expect(at(empty, 'frontdoor-idlescreen')).toMatchObject({ ok: false, detail: 'unexpected shape/content' });
+    const html = await run({ 'idlescreen.io': { body: '<html>parked</html>' } });
+    expect(at(html, 'frontdoor-idlescreen')).toMatchObject({ ok: false, detail: 'unparseable response' });
+  });
+
+  it('a timeout on an alias is named as one', async () => {
+    const report = await run({ 'idlescreen.io': { throw: 'TimeoutError' } });
+    expect(at(report, 'frontdoor-idlescreen')).toMatchObject({ ok: false, detail: 'timeout' });
+  });
+
+  it('breaking the primaries leaves the aliases green (the pairs are independent)', async () => {
+    const report = await run({ 'roomboard.app': { throw: 'TypeError' }, 'unsleep.io': { throw: 'TypeError' } });
+    expect(at(report, 'site').ok).toBe(false);
+    expect(at(report, 'frontdoor').ok).toBe(false);
+    expect(at(report, 'site-idlescreen').ok).toBe(true);
+    expect(at(report, 'frontdoor-idlescreen').ok).toBe(true);
+  });
+
+  it('each alias pages under its own name, so an operator knows which is dark', () => {
+    const plan = alertPlan(
+      { at: '2026-08-21T00:00:00Z', results: [{ name: 'site-idlescreen', ok: false, detail: 'HTTP 404' }, { name: 'site', ok: true }] },
+      [],
+    );
+    expect(plan.text).toContain('site-idlescreen (HTTP 404)');
+    expect(plan.failing).toEqual(['site-idlescreen']);
   });
 });
 
@@ -194,6 +292,13 @@ describe('runHealthChecks', () => {
     expect(report.ok).toBe(true);
     expect(report.results).toHaveLength(CHECKS.length);
     expect(report.results.every((r) => r.ok)).toBe(true);
+  });
+  it('carries all 15 checks, each under a distinct name', () => {
+    // A hard count on purpose: toHaveLength(CHECKS.length) above is circular and
+    // would happily pass with a check silently deleted. 13 → 15 on 2026-08-20,
+    // when the idlescreen aliases were added.
+    expect(CHECKS).toHaveLength(16);
+    expect(new Set(CHECKS.map((c) => c.name)).size).toBe(16);
   });
   it('flags a non-200 with its status', async () => {
     const report = await run({ '/markets': { status: 503 } });
@@ -252,10 +357,12 @@ describe('stale-age (cached routes serving old data)', () => {
 
   it('leaves external checks alone: third-party JSON never promised a stamp', async () => {
     // version.json and the front door's changelog carry no envelope and never
-    // will; only our own routes are held to it.
+    // will (nor do their idlescreen twins); only our own routes are held to it.
     const report = await run();
     expect(byName(report, 'site').ok).toBe(true);
     expect(byName(report, 'frontdoor').ok).toBe(true);
+    expect(byName(report, 'site-idlescreen').ok).toBe(true);
+    expect(byName(report, 'frontdoor-idlescreen').ok).toBe(true);
     expect(byName(report, 'weather').ok).toBe(true);
   });
 

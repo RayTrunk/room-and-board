@@ -920,7 +920,10 @@ checks in `worker/src/health.js`:
 | Check | Asserts |
 |---|---|
 | `site` | `roomboard.app/version.json` returns a plausible version string |
-| `frontdoor` | `quadrille.io/data/changelog.json` returns a non-empty JSON array — the public guide is a separate Pages project with its own deploy job, probed **externally** on purpose, because DNS, TLS and routing are the failure modes under test, and a self-fetch would bypass all three |
+| `site-unsleep` | `unsleep.app/version.json` returns the same — the flagship name is a custom domain on the same Pages project as `site`'s roomboard.app, so only its attachment or DNS can fail alone |
+| `site-idlescreen` | `idlescreen.app/version.json` returns the same — a second custom domain on the *same* Pages project, so the content can never be what differs; what fails on its own is the alias's custom-domain attachment or its DNS record, and nobody watches that name closely enough to notice |
+| `frontdoor` | `unsleep.io/data/changelog.json` returns a non-empty JSON array — the public guide is a separate Pages project with its own deploy job, probed **externally** on purpose, because DNS, TLS and routing are the failure modes under test, and a self-fetch would bypass all three |
+| `frontdoor-idlescreen` | `idlescreen.io/data/changelog.json` returns the same array — the front door's alias, byte-identical because it rides the same Pages project, and probed externally for the identical reason. The third idlescreen name, `api.idlescreen.app`, deliberately gets no check: it is one of this worker's own custom domains, and a worker fetching those gets a Cloudflare 522 every time |
 | `markets` | `/markets` returns indices with a finite price (Yahoo is unofficial and the flakiest dependency) |
 | `weather` | Open-Meteo answers with a populated hourly temperature series (browser-direct, so not covered by any proxy check) |
 | `gdrive` | `/gdrive/album` returns photos for a curated folder, which also proves `GDRIVE_KEY` still works |

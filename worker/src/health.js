@@ -26,6 +26,28 @@ export const CHECKS = [
     ok: (j) => typeof j.version === 'string' && j.version.length > 3,
   },
   {
+    // The flagship's own name (added 2026-08-21, on the idlescreen review's
+    // finding): `site` still probes roomboard.app — the URL every existing
+    // board actually loads — but nothing watched unsleep.app, the name all
+    // the NEW copy points at. Same Pages project, so like the aliases below
+    // only the custom-domain attachment and DNS can fail alone.
+    name: 'site-unsleep',
+    url: 'https://unsleep.app/version.json',
+    ok: (j) => typeof j.version === 'string' && j.version.length > 3,
+  },
+  {
+    // The app's idlescreen alias (2026-08-20): a second custom domain on the
+    // SAME Pages project, so the bytes are identical to `site`'s and the
+    // content can never be what differs. What CAN differ is the alias's
+    // custom-domain attachment and its DNS record — a detach in the Pages
+    // dashboard or a zone edit drops this name alone while the primary keeps
+    // serving and `site` stays green. Nobody is looking at idlescreen.app often
+    // enough to notice, which is exactly the gap this closes.
+    name: 'site-idlescreen',
+    url: 'https://idlescreen.app/version.json',
+    ok: (j) => typeof j.version === 'string' && j.version.length > 3,
+  },
+  {
     name: 'markets', // Yahoo (unofficial) — the flakiest dependency
     path: '/markets',
     maxStaleSec: STALE_MAX,
@@ -57,13 +79,25 @@ export const CHECKS = [
     // Probed EXTERNALLY on purpose: DNS + TLS + routing are the failure modes
     // under test, which selfFetch would bypass. A check against ANY of this
     // worker's own custom domains (api.roomboard.app, api.quadrille.io,
-    // api.unsleep.app) must NEVER be added here: the worker fetching its OWN
-    // custom domain gets a Cloudflare 522 every time, proven live 2026-07-31
-    // after one night of false paging, while the domain serves perfectly from
-    // outside. (Replaced backup-site 2026-08-07 when rvc.tech was retired;
-    // followed the front door to unsleep.io 2026-08-18.)
+    // api.unsleep.app, api.idlescreen.app) must NEVER be added here: the worker
+    // fetching its OWN custom domain gets a Cloudflare 522 every time, proven
+    // live 2026-07-31 after one night of false paging, while the domain serves
+    // perfectly from outside. (Replaced backup-site 2026-08-07 when rvc.tech was
+    // retired; followed the front door to unsleep.io 2026-08-18.)
     name: 'frontdoor',
     url: 'https://unsleep.io/data/changelog.json',
+    ok: (j) => Array.isArray(j) && j.length > 0,
+  },
+  {
+    // The front door's idlescreen alias (2026-08-20), same Pages project as
+    // unsleep.io and therefore the same changelog byte for byte: the failure it
+    // catches is the alias's custom-domain attachment or DNS going away on its
+    // own, which the `frontdoor` check above cannot see. Probed externally for
+    // the identical reason — DNS, TLS and routing ARE the test. Note the third
+    // idlescreen name, api.idlescreen.app, deliberately gets NO check: it is one
+    // of this worker's own custom domains, and the 522 rule above governs it too.
+    name: 'frontdoor-idlescreen',
+    url: 'https://idlescreen.io/data/changelog.json',
     ok: (j) => Array.isArray(j) && j.length > 0,
   },
   {
