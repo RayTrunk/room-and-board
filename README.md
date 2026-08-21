@@ -62,7 +62,7 @@ with its ambient info band.*
 ┌─ Each Board Pro ─────────────────────────────────────────────┐
 │ Dashboard macro (paste-and-go) configures + shows signage    │
 │ localStorage (signage profile) = primary store               │
-│ URL fragment: #cfg=<config>&auth=<bridge creds>              │
+│ URL fragment: #cfg=<config> re-seeds a wiped board           │
 └──────────────────────────────────────────────────────────────┘
 ```
 
@@ -642,8 +642,12 @@ upgrades, and web-storage wipes by definition. To change the config later,
 regenerate the URL (it carries a fresh timestamp, so it always wins over the
 device's cached copy) and paste it again; the board picks it up at its next
 reload (hourly version check, nightly 4 AM, or a power cycle). The exported
-URL deliberately contains only `#cfg=` — never the `auth` credentials a
-macro-managed board's URL carries.
+URL contains only `#cfg=`. (Early macro builds also minted a rotating
+low-privilege device account and rode its credentials in an `auth` fragment
+for a page↔device back-channel; that feature was dropped — today's macro is
+standalone and no URL carries credentials. The client keeps a defensive
+parser for old `auth` fragments and quietly ignores them when no account
+answers.)
 
 ### Screensaver
 
@@ -990,9 +994,11 @@ is written to keep it that way.
   rather than a wrong answer.
 
 **Macro-managed boards (Cisco RoomOS)**
-- The page↔device bridge uses a **low-privilege account whose passphrase rotates
-  on every boot**; the passphrase is never placed on a JavaScript global, and the
-  device address is format-validated before use.
+- The macro is **standalone**: it creates no account on the device and the
+  signage URL carries no credentials (the page↔device bridge that once rode a
+  rotating low-privilege account in the URL fragment was dropped; the client
+  still refuses to surface an `auth` fragment's contents anywhere and
+  format-validates the device address before its legacy parser would use it).
 - Setup codes are short-lived (1 hour), best-effort single-use, and carry only
   widget preferences — no secrets.
 
