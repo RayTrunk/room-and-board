@@ -1110,6 +1110,7 @@ describe('destructive buttons arm visibly', () => {
     expect(hint.classList.contains('pane__hint')).toBe(true);
     expect(hint.textContent).toContain('#cfg');
     expect(hint.textContent).toContain('does not come back');
+    expect(hint.textContent).toContain('Get a code for this board');
     expect(hint.textContent).toContain('Show QR of current config');
   });
 

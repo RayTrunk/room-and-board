@@ -1976,7 +1976,7 @@ function renderDiag() {
     <div class="btnrow">
       <button class="btn" data-clear>Clear web storage</button>
     </div>
-    <p class="pane__hint">Wipes this board's saved data and reloads. If the signage URL carries its configuration (the #cfg fragment), the setup returns by itself; on a board pointed at the plain URL the layout does not come back, and there is no copy anywhere to restore from. Before clearing such a board, capture it at gear → Setup code → <b>Show QR of current config</b> and keep the signage URL it hands you; setup codes expire after an hour.</p>`;
+    <p class="pane__hint">Wipes this board's saved data and reloads. If the signage URL carries its configuration (the #cfg fragment), the setup returns by itself; on a board pointed at the plain URL the layout does not come back, and there is no copy anywhere to restore from. Before clearing such a board, get a code first (Setup code → <b>Get a code for this board</b>) and re-enter it after the reload — codes last an hour, so for a lasting copy use <b>Show QR of current config</b> and keep the signage URL it leads to.</p>`;
   pane().querySelector('[data-beacon]').addEventListener('click', () => {
     state.cfg.beacon = !state.cfg.beacon;
     renderDiag();
