@@ -993,13 +993,10 @@ is written to keep it that way.
   validate and cap their parameters; upstream failures degrade to stale-or-empty
   rather than a wrong answer.
 
-**Macro-managed boards (Cisco RoomOS)**
-- The macro is **standalone**: it creates no account on the device and the
-  signage URL carries no credentials (the page↔device bridge that once rode a
-  rotating low-privilege account in the URL fragment was dropped, and its
-  client code was deleted on 2026-08-21 — the page now reads exactly one
-  fragment key, `cfg`, and an `auth` fragment on an old URL is ignored along
-  with every other key it does not know).
+**Device setup**
+- The RoomOS macro is **standalone**: it creates no account on the device and
+  the signage URL carries no credentials. The page reads exactly one fragment
+  key, `cfg`.
 - Setup codes are short-lived (1 hour), best-effort single-use, and carry only
   widget preferences — no secrets.
 
