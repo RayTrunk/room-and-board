@@ -2207,9 +2207,13 @@ describe('setup-code canary: write cycle (cron only)', () => {
     await clearThrottle();
   });
 
-  const canary = async (codes) => {
+  // The canary waits out the /code throttle window before its one retry (see
+  // codeWriteCycle). Tests hand it a stub in place of that 11 s sleep: the
+  // default is a no-op, so the window is still shut when the retry mints, and a
+  // case that wants the window to have REOPENED clears the throttle inside it.
+  const canary = async (codes, sleep = async () => {}) => {
     const e = { ...env, CODES: codes };
-    const report = await runHealthChecks(e, selfFetchWith(e), fetch, { writeCycle: true });
+    const report = await runHealthChecks(e, selfFetchWith(e), fetch, { writeCycle: true, sleep });
     return report.results.find((r) => r.name === 'code');
   };
 
@@ -2244,12 +2248,46 @@ describe('setup-code canary: write cycle (cron only)', () => {
     expect(await canary(codes)).toMatchObject({ ok: false, detail: 'cfg mismatch' });
   });
 
-  it('treats a throttled mint as a failure, not a shrug', async () => {
-    // Unreachable at the 20-minute cron cadence (the window is 10 s), so a 429
-    // means something else is wrong and the operator should hear about it.
+  it('waits out a throttled mint and retries once — the duplicate-cron case', async () => {
+    // The 2026-08-21 page. Cron delivery is at-least-once; both twins mint with
+    // no CF-Connecting-IP, so both land in the 'anon' bucket and the second is
+    // rejected by the first. Nothing is wrong, so the retry (once the 10 s
+    // window has passed, here the sleep stub clearing it) must succeed — and say
+    // so, or a duplicate that starts firing every run becomes invisible.
+    const codes = mockCodes();
+    expect((await canary(codes)).ok).toBe(true); // the first twin
+    const sleep = vi.fn(() => clearThrottle()); // the window reopening
+    expect(await canary(codes, sleep)).toMatchObject({
+      ok: true,
+      detail: 'ok (mint+redeem, after throttle retry)',
+    });
+    expect(sleep).toHaveBeenCalledOnce();
+    expect(sleep.mock.calls[0][0]).toBeGreaterThan(10000); // past the 10 s window
+    expect(codes.puts).toHaveLength(2); // one code per successful cycle, no more
+  });
+
+  it('still fails when the retry is throttled too (one retry, never a loop)', async () => {
+    // The default no-op sleep leaves the window shut, so the retry draws the
+    // same 429 — which is now a real signal that something else is holding the
+    // bucket, and it pages.
     const codes = mockCodes();
     expect((await canary(codes)).ok).toBe(true);
     expect(await canary(codes)).toMatchObject({ ok: false, detail: 'mint HTTP 429' });
+    expect(codes.puts).toHaveLength(1); // the first cycle's; neither retry minted
+  });
+
+  it('never retries a non-429: a 503 mint fails at once, with no wait', async () => {
+    // The retry is a throttle affordance, not a general one. A 500/503/timeout
+    // is the outage signal this canary exists for and must not be softened by
+    // an 11-second second chance.
+    const attempts = [];
+    const sleep = vi.fn(async () => {});
+    const codes = mockCodes({
+      put: (k) => { attempts.push(k); return Promise.reject(new Error('KV PUT failed: 429')); },
+    });
+    expect(await canary(codes, sleep)).toMatchObject({ ok: false, detail: 'mint HTTP 503' });
+    expect(sleep).not.toHaveBeenCalled();
+    expect(attempts).toHaveLength(1); // one mint attempt, not two
   });
 });
 
@@ -2258,7 +2296,7 @@ describe('the setup-code write budget stays off the public path', () => {
   // fast as it likes, and KV writes are capped at 1000/day, a cap whose
   // exhaustion has already broken setup codes once. So the public route spends
   // zero writes while the cron, at 72 runs a day, spends two per run.
-  it('GET /health writes NOTHING to CODES; a cron run puts once and deletes once', async () => {
+  it('GET /health writes NOTHING to CODES; a cron run puts one code and deletes it', async () => {
     stubFetch([]);
     await clearThrottle('anon', 'https://api.roomboard.app'); // the monitor's own selfFetch origin
     const codes = mockCodes();
@@ -2273,7 +2311,174 @@ describe('the setup-code write budget stays off the public path', () => {
     const waits = [];
     await worker.scheduled({}, e, { waitUntil: (p) => waits.push(p), passThroughOnException() {} });
     await Promise.all(waits);
-    expect(codes.puts).toHaveLength(1);
+    // The cycle's own two writes. The cron's other KV write, the alert state,
+    // is counted separately below: it only spends a write when the failing set
+    // CHANGES, which this first-ever run does (empty → the dead network's set).
+    expect(codes.puts.filter((k) => k.startsWith('code:'))).toHaveLength(1);
     expect(codes.deletes).toHaveLength(1);
+    expect(codes.puts.filter((k) => k === 'health:laststate')).toHaveLength(1);
+  });
+});
+
+describe('the health alert state lives in KV, because the Cache API is colo-local', () => {
+  // The 2026-08-19 weather red and the 2026-08-21 code red both went out and
+  // never cleared. The alert state (which checks were failing last run) sat in
+  // the Cache API, which is per-colo: the run that saw the recovery landed
+  // somewhere else, read no prior state, saw all green, concluded nothing had
+  // changed and swallowed the all-clear forever. KV is global, so the recovering
+  // run finds the red no matter which colo it woke up in.
+  const SLACK = 'https://hooks.slack.com/services/T/B/x';
+  const STATE_KEY = 'health:laststate';
+  const SELF_ORIGIN = 'https://api.roomboard.app'; // selfFetch's own hostname (see index.js)
+  const stateKeys = (codes) => codes.puts.filter((k) => k === STATE_KEY);
+
+  // Every feed route rides cached(), so a seeded fresh entry answers its check
+  // without the route dialing an upstream at all — which is the only sane way to
+  // get a wholly green report (the alerts and ferry feeds are protobuf). gdrive
+  // and njt need no seed: with no GDRIVE_KEY and no NJT credentials both answer
+  // 503 *_not_configured, which the monitor scores as a skip, not an outage.
+  const GREEN_FEEDS = [
+    ['markets:^DJI,^GSPC,^IXIC', { indices: [{ symbol: '^DJI', price: 52376.73 }] }],
+    ['amtrak', { station: 'New York Penn', departures: [] }],
+    ['svc:m365', { services: [{ id: 'm365', state: 'ok' }] }],
+    ['sports:mlb:nyy', { row: { lg: 'mlb', abbr: 'NYY' } }],
+    ['path', { stations: { NWK: { ToNY: [], ToNJ: [] } } }],
+    ['alerts:subway', { alerts: [] }],
+    ['ferry', { trips: [] }],
+  ];
+  const feedKey = (key) => new Request(`${SELF_ORIGIN}/__cache/fresh/${encodeURIComponent(key)}`);
+  const seedGreenFeeds = () => Promise.all(GREEN_FEEDS.map(([key, body]) => caches.default.put(
+    feedKey(key),
+    new Response(JSON.stringify({ updatedAt: Math.floor(Date.now() / 1000), stale: false, ...body }), {
+      headers: {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'max-age=300',
+        'X-Fresh-Until': String(Date.now() + 300000),
+      },
+    }),
+  )));
+  // The seeds are this describe's alone; anything left behind would quietly
+  // green another file's report.
+  afterEach(() => Promise.all(GREEN_FEEDS.map(([key]) => caches.default.delete(feedKey(key)))));
+
+  // The green network: the six externally-probed origins. Built fresh per run —
+  // stubFetch consumes a route's `times` in place, so a shared table would run
+  // dry partway through the file.
+  const greenNet = () => [
+    { match: /roomboard\.app\/version\.json/, body: { version: '2026.08.21-abc1234' } },
+    { match: /unsleep\.app\/version\.json/, body: { version: '2026.08.21-abc1234' } },
+    { match: /idlescreen\.app\/version\.json/, body: { version: '2026.08.21-abc1234' } },
+    { match: /unsleep\.io\/data\/changelog\.json/, body: [{ date: 'August 18', items: [] }] },
+    { match: /idlescreen\.io\/data\/changelog\.json/, body: [{ date: 'August 18', items: [] }] },
+    { match: /api\.open-meteo\.com/, body: { hourly: { temperature_2m: [70, 71] } } },
+  ];
+  const slackRoute = () => ({ match: /hooks\.slack\.com/, times: 3, body: { ok: true } });
+
+  // One cron run. `env` is rebuilt every time and the Cache API is left to
+  // whatever the last run did, so the ONLY thing two runs share deliberately is
+  // the KV mock — the different-colo simulation. Returns the messages that
+  // actually went out, since the text is what an operator sees.
+  const cron = async (codes, routes = [], extraEnv = {}) => {
+    const posted = [];
+    stubFetch([...routes, slackRoute()]); // a case's own route wins the match
+    const inner = globalThis.fetch;
+    vi.stubGlobal('fetch', (input, init) => {
+      const url = typeof input === 'string' ? input : input.url;
+      if (url.includes('hooks.slack.com')) posted.push(JSON.parse(init.body).text);
+      return inner(input, init);
+    });
+    await clearThrottle('anon', SELF_ORIGIN); // the canary's own bucket, per run
+    const e = { ...env, CODES: codes, ALERT_WEBHOOK: SLACK, ...extraEnv };
+    const waits = [];
+    await worker.scheduled({}, e, { waitUntil: (p) => waits.push(p), passThroughOnException() {} });
+    await Promise.all(waits);
+    return posted;
+  };
+
+  it('the red pages, the recovery pages too — across a fresh isolate and a cold cache', async () => {
+    // The exact sequence that broke twice. Run one is red (the network is dead),
+    // run two is wholly green; nothing carries between them but the KV.
+    const codes = mockCodes();
+    const red = await cron(codes);
+    expect(red).toHaveLength(1);
+    expect(red[0]).toContain('🔴 unsleep health:');
+    expect(JSON.parse(codes.store.get(STATE_KEY)).failing.length).toBeGreaterThan(0);
+
+    // Wake up in another colo: the entry the alert state USED to live in is
+    // gone. (Only that entry — a real cold colo would also miss the feed caches
+    // seeded below, but those are scenery here; the alert state is the subject.)
+    await caches.default.delete(new Request(`${SELF_ORIGIN}/__health/laststate`));
+    await seedGreenFeeds();
+    const clear = await cron(codes, greenNet());
+    expect(clear).toHaveLength(1);
+    expect(clear[0]).toContain('✅ unsleep health: all clear');
+    expect(clear[0]).toContain('recovered:');
+    expect(JSON.parse(codes.store.get(STATE_KEY))).toEqual({ failing: [] });
+  });
+
+  it('never touches the Cache API key it used to live under', async () => {
+    // The old mechanism, named so a revert is loud: a colo-local state entry is
+    // precisely what swallowed the all-clear.
+    const codes = mockCodes();
+    await cron(codes);
+    expect(await caches.default.match(new Request(`${SELF_ORIGIN}/__health/laststate`))).toBeFalsy();
+    expect(codes.store.has(STATE_KEY)).toBe(true);
+  });
+
+  it('writes only when the failing set CHANGES (the 1000/day cap)', async () => {
+    // 72 runs a day through a namespace that broke setup codes once when its
+    // write cap was drained. An ongoing outage must cost nothing.
+    const codes = mockCodes();
+    await cron(codes);
+    expect(stateKeys(codes)).toHaveLength(1); // [] → the dead network's set
+    const silent = await cron(codes);
+    expect(silent).toEqual([]); // unchanged, so no page
+    expect(stateKeys(codes)).toHaveLength(1); // and no second write
+    await cron(codes);
+    expect(stateKeys(codes)).toHaveLength(1);
+  });
+
+  it('reserves a key no minted code can collide with, and lets it expire', async () => {
+    const codes = mockCodes();
+    const puts = [];
+    codes.put = (k, v, opts) => { puts.push([k, v, opts]); codes.store.set(k, v); return Promise.resolve(); };
+    await cron(codes);
+    const [key, , opts] = puts.find(([k]) => k === STATE_KEY);
+    expect(key.startsWith('code:')).toBe(false); // real codes are code: + 6 CODE_ALPHABET chars
+    expect(opts.expirationTtl).toBe(7 * 24 * 3600); // an abandoned deployment evaporates
+  });
+
+  it('degrades to no-prior-state when the KV read fails, without throwing', async () => {
+    // A read error must look like a first run (one duplicate page at worst),
+    // never an exception out of the scheduled handler — that would skip the
+    // heartbeat and make a healthy cron look dead.
+    const codes = mockCodes({ get: (k) => (k === 'health:laststate'
+      ? Promise.reject(new Error('KV GET failed: 429 daily limit'))
+      : Promise.resolve(null)) });
+    const posted = await cron(codes);
+    expect(posted).toHaveLength(1);
+    expect(posted[0]).toContain('🔴');
+  });
+
+  it('survives a KV write failure: the page still goes out', async () => {
+    const codes = mockCodes({ put: (k, v) => (k === 'health:laststate'
+      ? Promise.reject(new Error('KV PUT failed: 429'))
+      : (codes.store.set(k, v), Promise.resolve())) });
+    const posted = await cron(codes);
+    expect(posted).toHaveLength(1); // the alert is what matters; the state is best-effort
+  });
+
+  it('re-pages next run when the alert was NOT delivered (at-least-once, unregressed)', async () => {
+    // A Slack blip must not advance the state, or the only page for that outage
+    // is lost. The undelivered run also writes nothing: the set it would store
+    // is the one already there.
+    const codes = mockCodes();
+    const dead = { match: /hooks\.slack\.com/, times: 3, status: 500, body: { error: 'nope' } };
+    const posted = await cron(codes, [dead]);
+    expect(posted).toHaveLength(1); // attempted
+    expect(stateKeys(codes)).toHaveLength(0); // but not remembered
+    const again = await cron(codes);
+    expect(again).toHaveLength(1); // so the next run pages again
+    expect(again[0]).toContain('🔴');
   });
 });

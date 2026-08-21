@@ -437,6 +437,108 @@ describe('setup-code canary: read mode (what the public /health route runs)', ()
   });
 });
 
+// A selfFetch stand-in for the write-cycle canary: POST /code answers with the
+// scripted status for that attempt (the last one repeats), GET /code/:code
+// redeems what was minted, and every other path falls through to the ordinary
+// mock so the rest of the report still resolves.
+// `latencyMs` gives each /code call a fake-timer delay, so a case can measure
+// the cycle against the probe's own timeout.
+function writeCycleFetch(mintStatuses = [200], latencyMs = 0) {
+  const base = mockFetch();
+  const minted = new Map();
+  const res = (status, body) => {
+    const r = {
+      ok: status >= 200 && status < 300,
+      status,
+      json: () => Promise.resolve(body),
+      text: () => Promise.resolve(JSON.stringify(body)),
+    };
+    return latencyMs ? new Promise((resolve) => setTimeout(() => resolve(r), latencyMs)) : Promise.resolve(r);
+  };
+  let mints = 0;
+  const fn = vi.fn((path, init) => {
+    if (path === '/code' && init?.method === 'POST') {
+      const status = mintStatuses[Math.min(mints, mintStatuses.length - 1)];
+      mints += 1;
+      if (status !== 200) return res(status, { error: 'rate_limited' });
+      const code = `MINT0${mints}`;
+      minted.set(code, JSON.parse(init.body).cfg);
+      return res(200, { code });
+    }
+    if (path.startsWith('/code/')) {
+      const code = path.slice('/code/'.length);
+      return minted.has(code) ? res(200, { cfg: minted.get(code) }) : res(404, { error: 'not_found' });
+    }
+    return base(path);
+  });
+  fn.mints = () => mints;
+  return fn;
+}
+
+describe('setup-code canary: the write cycle\'s one throttle retry', () => {
+  // 2026-08-21: a double-fired cron (delivery is at-least-once) had both twins
+  // minting with no CF-Connecting-IP, so both shared the 'anon' throttle bucket
+  // and the second drew a 429 the monitor read as an outage. One 429 now buys
+  // one retry past the 10 s window — and nothing else does.
+  const run = (self, sleep) => runHealthChecks(okEnv(), self, mockFetch(), { writeCycle: true, ...(sleep && { sleep }) });
+  const codeRow = async (self, sleep) => (await run(self, sleep)).results.find((r) => r.name === 'code');
+
+  it('the ordinary cycle is untouched: no wait, one mint, the same detail', async () => {
+    const sleep = vi.fn(async () => {});
+    const self = writeCycleFetch([200]);
+    expect(await codeRow(self, sleep)).toMatchObject({ ok: true, detail: 'ok (mint+redeem)' });
+    expect(sleep).not.toHaveBeenCalled();
+    expect(self.mints()).toBe(1);
+  });
+
+  it('429 then success: reports ok, and SAYS it retried', async () => {
+    // The detail matters as much as the pass: a duplicate cron that starts
+    // firing every run has to stay legible in the reports, not hide behind 'ok'.
+    const sleep = vi.fn(async () => {});
+    const self = writeCycleFetch([429, 200]);
+    expect(await codeRow(self, sleep)).toMatchObject({ ok: true, detail: 'ok (mint+redeem, after throttle retry)' });
+    expect(sleep).toHaveBeenCalledOnce();
+    expect(sleep.mock.calls[0][0]).toBeGreaterThan(10000); // past the route's window
+    expect(self.mints()).toBe(2);
+  });
+
+  it('429 twice: fails, and retries exactly once (never a loop)', async () => {
+    const sleep = vi.fn(async () => {});
+    const self = writeCycleFetch([429, 429]);
+    expect(await codeRow(self, sleep)).toMatchObject({ ok: false, detail: 'mint HTTP 429' });
+    expect(sleep).toHaveBeenCalledOnce();
+    expect(self.mints()).toBe(2);
+  });
+
+  for (const status of [500, 503]) {
+    it(`${status} fails immediately: no wait, no second mint (a real outage is the signal)`, async () => {
+      const sleep = vi.fn(async () => {});
+      const self = writeCycleFetch([status, 200]); // a retry WOULD have succeeded
+      expect(await codeRow(self, sleep)).toMatchObject({ ok: false, detail: `mint HTTP ${status}` });
+      expect(sleep).not.toHaveBeenCalled();
+      expect(self.mints()).toBe(1);
+    });
+  }
+
+  it('the wait gets its own headroom, so a retry is never reported as a timeout', async () => {
+    // An 11 s wait plus three 1.5 s round trips is 15.5 s of a probe budget that
+    // is a flat 13 s for everything else — so without the write-cycle headroom
+    // (see probe) the retry would be cut off and page 'timeout', which is no
+    // more truthful than the 429 it replaced. Real timers would make this an
+    // 11-second test, so the whole cycle runs on fake time.
+    vi.useFakeTimers();
+    try {
+      const running = run(writeCycleFetch([429, 200], 1500)); // the REAL sleep, on fake time
+      await vi.advanceTimersByTimeAsync(20000);
+      const report = await running;
+      expect(report.results.find((r) => r.name === 'code'))
+        .toMatchObject({ ok: true, detail: 'ok (mint+redeem, after throttle retry)' });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
 describe('njt static-schedule health (age-agnostic)', () => {
   const nowSec = () => Math.floor(Date.now() / 1000);
   const run = (overrides = {}) => {

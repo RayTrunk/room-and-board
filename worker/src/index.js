@@ -323,24 +323,43 @@ const selfFetch = (env) => (routePath, init) =>
   handlers.fetch(new Request('https://api.roomboard.app' + routePath, init), env);
 
 // Last-alerted failing-check set, so the cron only alerts on a CHANGE (see
-// alertPlan). Kept in the Cache API, not KV — it's colo-local and evictable, but
-// a lost state just means one extra alert on the next run, which is harmless
-// (and keeps the CODES KV codes-only). 24h TTL.
-const HEALTH_STATE = new Request('https://api.roomboard.app/__health/laststate');
-async function readHealthFailing() {
+// alertPlan). Lives in the CODES KV, which is GLOBAL — the Cache API this
+// replaces is colo-local, and that lost the all-clear twice (the weather 503 of
+// 2026-08-19, the code 429 of 2026-08-21): the recovering run landed in a
+// different colo than the red one, read empty state, saw all green, concluded
+// nothing had changed, and the recovery notice was swallowed forever. A red that
+// never clears is the worst failure a monitor can have, since it teaches an
+// operator to distrust the channel.
+//
+// KV writes are the thing to be careful with here: the namespace is capped at
+// 1000/day and draining it broke setup-code minting outright once already (see
+// postCode). So this writes ONLY when the set actually changes. The cron runs 72
+// times a day; a quiet day spends ZERO writes, and even a bad day is a handful
+// (one per transition), against the ~144/day the code canary already costs. The
+// 72 reads/run land on the far higher read cap and are not worth counting.
+//
+// The key carries no `code:` prefix, so it cannot collide with a minted code by
+// construction (those are `code:` + six CODE_ALPHABET characters), and nothing
+// in this worker ever lists the namespace by prefix. 7-day TTL so an abandoned
+// deployment's state evaporates on its own; a read after expiry just re-pages an
+// ongoing outage once, which is the harmless direction.
+const HEALTH_STATE_KEY = 'health:laststate';
+const HEALTH_STATE_TTL_S = 7 * 24 * 3600;
+async function readHealthFailing(env) {
   try {
-    const hit = await caches.default.match(HEALTH_STATE);
-    if (hit) return (await hit.json()).failing ?? [];
-  } catch { /* first run / evicted — treat as no prior failures */ }
+    const raw = await env?.CODES?.get(HEALTH_STATE_KEY);
+    if (raw) return JSON.parse(raw).failing ?? [];
+  } catch { /* first run / KV unavailable — treat as no prior failures */ }
   return [];
 }
-async function writeHealthFailing(failing) {
+async function writeHealthFailing(env, failing, prevFailing = []) {
+  // Write-on-change only, per the cap note above. Order-insensitive, matching
+  // alertPlan's own comparison, so a reshuffled CHECKS list can't spend a write.
+  const same = failing.length === prevFailing.length && failing.every((n) => prevFailing.includes(n));
+  if (same) return;
   try {
-    await caches.default.put(
-      HEALTH_STATE,
-      new Response(JSON.stringify({ failing }), { headers: { 'Content-Type': 'application/json', 'Cache-Control': 'max-age=86400' } }),
-    );
-  } catch { /* best effort */ }
+    await env?.CODES?.put(HEALTH_STATE_KEY, JSON.stringify({ failing }), { expirationTtl: HEALTH_STATE_TTL_S });
+  } catch { /* best effort — a lost write costs one duplicate page next run */ }
 }
 
 // /health must stay public (external uptime monitors hit it), which leaves the
@@ -616,15 +635,17 @@ const handlers = {
     ctx.waitUntil(heartbeat(env));
     // Alert only when the failing set changes (see alertPlan), so an ongoing
     // outage doesn't page every 20 min.
-    const prevFailing = await readHealthFailing();
+    const prevFailing = await readHealthFailing(env);
     const plan = alertPlan(report, prevFailing);
     if (plan.changed && plan.text) {
       // At-least-once: only advance the persisted set once the page is actually
       // delivered (nextFailingState holds prevFailing on a delivery failure so
-      // the next run re-pages instead of silently swallowing the alert).
-      ctx.waitUntil(notify(env, plan.text).then((ok) => writeHealthFailing(nextFailingState(plan, prevFailing, ok))));
+      // the next run re-pages instead of silently swallowing the alert). Handing
+      // prevFailing to the write is what lets it skip a put that would store
+      // what is already there — an undelivered page lands here too.
+      ctx.waitUntil(notify(env, plan.text).then((ok) => writeHealthFailing(env, nextFailingState(plan, prevFailing, ok), prevFailing)));
     } else {
-      ctx.waitUntil(writeHealthFailing(nextFailingState(plan, prevFailing, true)));
+      ctx.waitUntil(writeHealthFailing(env, nextFailingState(plan, prevFailing, true), prevFailing));
     }
   },
 };

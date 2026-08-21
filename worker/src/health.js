@@ -217,8 +217,8 @@ const CANARY_KEY = 'code:HEALTH';
 //     costs 2 writes (the put plus the single-use delete) and 2 reads, so about
 //     144 writes/day against the 1000 cap, leaving ample room for real pairing
 //     volume.
-async function codeCanary({ env, selfFetch, writeCycle }) {
-  if (writeCycle) return codeWriteCycle(selfFetch);
+async function codeCanary({ env, selfFetch, writeCycle, sleep: sleepImpl }) {
+  if (writeCycle) return codeWriteCycle(selfFetch, sleepImpl);
   if (!env?.CODES) return { ok: false, detail: 'CODES binding missing' };
   await env.CODES.get(CANARY_KEY); // null is healthy: the read itself is the test
   return { ok: true, detail: 'ok (read)' };
@@ -226,23 +226,41 @@ async function codeCanary({ env, selfFetch, writeCycle }) {
 
 // Mint and redeem through the REAL route handlers (selfFetch, in-process). Each
 // failure names the half that broke, because a dead mint and a dead redemption
-// send an operator to different places. A 429 is a failure too: the per-IP
-// throttle window is 10 s and the cron runs every 20 min, so tripping it means
-// something else is already wrong.
-async function codeWriteCycle(selfFetch) {
+// send an operator to different places.
+//
+// A 429 buys ONE retry, and that exception is the lesson of 2026-08-21. Cron
+// delivery is at-least-once, so a run can double-fire; both twins mint through
+// POST /code, and an in-process synthetic request carries no CF-Connecting-IP,
+// so both land in the same 'anon' bucket of the route's 10 s per-IP throttle and
+// the second is rejected by the first. That paged as an outage while the code
+// service was perfectly healthy. So one 429 waits out the window and mints
+// again, and the detail says it did — a pattern that recurs stays legible in the
+// reports instead of hiding behind a plain 'ok'. Only 429 gets this: a 500, a
+// 503 or a timeout is a real outage signal and stays an immediate failure.
+const THROTTLE_RETRY_MS = 11000; // just past the route's 10 s window (see postCode)
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function codeWriteCycle(selfFetch, sleepImpl = sleep) {
   const cfg = JSON.stringify({ canary: true });
-  const mint = await selfFetch('/code', {
+  const mintOnce = () => selfFetch('/code', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ cfg }),
   });
+  let mint = await mintOnce();
+  let retried = false;
+  if (mint.status === 429) {
+    await sleepImpl(THROTTLE_RETRY_MS);
+    mint = await mintOnce();
+    retried = true;
+  }
   if (!mint.ok) return { ok: false, detail: `mint HTTP ${mint.status}` };
   const code = (await mint.json())?.code;
   if (typeof code !== 'string' || !code) return { ok: false, detail: 'mint returned no code' };
   const redeem = await selfFetch(`/code/${code}`);
   if (!redeem.ok) return { ok: false, detail: `redeem HTTP ${redeem.status}` };
   if ((await redeem.json())?.cfg !== cfg) return { ok: false, detail: 'cfg mismatch' };
-  return { ok: true, detail: 'ok (mint+redeem)' };
+  return { ok: true, detail: retried ? 'ok (mint+redeem, after throttle retry)' : 'ok (mint+redeem)' };
 }
 
 // Age of a payload in seconds. Every one of our own routes answers through
@@ -271,7 +289,14 @@ async function probe(check, selfFetch, extFetch, ctx = {}) {
     // A canary reports {ok, detail} from its own logic rather than from a
     // response body, and inherits the same timeout discipline as the two HTTP
     // kinds: a KV read that never settles must not hang the whole report.
-    if (check.canary) return { name: check.name, ...(await withTimeout(check.canary(ctx), 13000)) };
+    // The write-cycle canary may sleep out the /code throttle window and mint
+    // once more (see codeWriteCycle), so it gets that window as headroom on top
+    // of the flat 13 s every other probe lives by — otherwise the very retry
+    // that proves the service healthy would be cut off and reported a timeout.
+    if (check.canary) {
+      const budget = 13000 + (ctx.writeCycle ? THROTTLE_RETRY_MS : 0);
+      return { name: check.name, ...(await withTimeout(check.canary(ctx), budget)) };
+    }
     const res = check.path
       ? await withTimeout(selfFetch(check.path), 13000)
       : await extFetch(check.url, { signal: AbortSignal.timeout(12000), headers: { 'cache-control': 'no-cache' } });
@@ -321,8 +346,10 @@ async function probe(check, selfFetch, extFetch, ctx = {}) {
 // worker's own routes in-process; extFetch defaults to global fetch (injectable
 // for tests). opts.writeCycle opts the code canary into its full mint-and-redeem
 // path: the cron passes it, the public /health route must not (see codeCanary).
+// opts.sleep replaces the canary's throttle-retry wait, so a test can exercise
+// that path without spending 11 real seconds; production never passes it.
 export async function runHealthChecks(env, selfFetch, extFetch = fetch, opts = {}) {
-  const ctx = { env, selfFetch, writeCycle: opts.writeCycle === true };
+  const ctx = { env, selfFetch, writeCycle: opts.writeCycle === true, sleep: opts.sleep ?? sleep };
   const results = await Promise.all(CHECKS.map((c) => probe(c, selfFetch, extFetch, ctx)));
   return { ok: results.every((r) => r.ok), at: new Date().toISOString(), results };
 }
