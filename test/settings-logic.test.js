@@ -1078,20 +1078,49 @@ describe('destructive buttons arm visibly', () => {
     vi.useRealTimers();
   });
 
-  it('turns red and names the act it is about to commit, on both buttons', async () => {
+  it('turns red and names the act it is about to commit', async () => {
     document.body.innerHTML = '<div id="settings-root"></div>';
     await openSettings(normalizeConfig({}), { focus: 'diag' });
     await settle();
-    for (const [attr, resting, armed] of [
-      ['data-clear', 'Clear web storage (test recovery)', 'Tap again to clear web storage'],
-      ['data-reset', 'Reset this display', 'Tap again to reset'],
-    ]) {
-      expect(btn(attr).textContent).toBe(resting);
-      expect(btn(attr).classList.contains('btn--armed')).toBe(false);
-      btn(attr).click();
-      expect(btn(attr).textContent).toBe(armed); // the verb and its noun, not "confirm"
-      expect(btn(attr).classList.contains('btn--armed')).toBe(true);
-    }
+    expect(btn('data-clear').textContent).toBe('Clear web storage');
+    expect(btn('data-clear').classList.contains('btn--armed')).toBe(false);
+    btn('data-clear').click();
+    // the verb and its noun, not "confirm"
+    expect(btn('data-clear').textContent).toBe('Tap again to clear web storage');
+    expect(btn('data-clear').classList.contains('btn--armed')).toBe(true);
+  });
+
+  // Storage offers ONE button. It used to offer two with byte-identical
+  // handlers ("Clear web storage (test recovery)" and "Reset this display"),
+  // which taught the owner they did different things. Recovery is the hint's
+  // subject now, so a second button must not quietly grow back.
+  it('offers exactly one storage button, and its hint tells the truth', async () => {
+    document.body.innerHTML = '<div id="settings-root"></div>';
+    await openSettings(normalizeConfig({}), { focus: 'diag' });
+    await settle();
+    const pane = document.querySelector('.settings__pane');
+    const label = [...pane.querySelectorAll('.pane__label')].find((p) => p.textContent === 'Storage');
+    const row = label.nextElementSibling;
+    expect(row.classList.contains('btnrow')).toBe(true);
+    expect(row.querySelectorAll('button')).toHaveLength(1);
+    expect(row.querySelector('button').hasAttribute('data-clear')).toBe(true);
+    expect(pane.querySelector('[data-reset]')).toBe(null);
+    // The hint carries both outcomes and the capture that precedes the wipe.
+    const hint = row.nextElementSibling;
+    expect(hint.classList.contains('pane__hint')).toBe(true);
+    expect(hint.textContent).toContain('#cfg');
+    expect(hint.textContent).toContain('does not come back');
+    expect(hint.textContent).toContain('Show QR of current config');
+  });
+
+  // The hint names a menu path by its real labels. If that button is ever
+  // renamed, the hint sends the owner somewhere that isn't there.
+  it('cites a capture button that actually exists on the Setup code pane', async () => {
+    document.body.innerHTML = '<div id="settings-root"></div>';
+    await openSettings(normalizeConfig({}), { focus: 'code' });
+    await settle();
+    expect(document.querySelector('.settings__pane [data-qr]').textContent)
+      .toBe('Show QR of current config');
   });
 
   it('disarms itself after four seconds, red and label together', async () => {
@@ -1099,11 +1128,11 @@ describe('destructive buttons arm visibly', () => {
     document.body.innerHTML = '<div id="settings-root"></div>';
     openSettings(normalizeConfig({}), { focus: 'diag' });
     await vi.advanceTimersByTimeAsync(30);
-    btn('data-reset').click();
-    expect(btn('data-reset').classList.contains('btn--armed')).toBe(true);
+    btn('data-clear').click();
+    expect(btn('data-clear').classList.contains('btn--armed')).toBe(true);
     await vi.advanceTimersByTimeAsync(4000);
-    expect(btn('data-reset').textContent).toBe('Reset this display');
-    expect(btn('data-reset').classList.contains('btn--armed')).toBe(false);
+    expect(btn('data-clear').textContent).toBe('Clear web storage');
+    expect(btn('data-clear').classList.contains('btn--armed')).toBe(false);
   });
 
   it('has an armed style to wear, and a disabled style for a blocked toggle', () => {

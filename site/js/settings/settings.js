@@ -1974,10 +1974,9 @@ function renderDiag() {
     </div>
     <p class="pane__label">Storage</p>
     <div class="btnrow">
-      <button class="btn" data-clear>Clear web storage (test recovery)</button>
-      <button class="btn" data-reset>Reset this display</button>
+      <button class="btn" data-clear>Clear web storage</button>
     </div>
-    <p class="pane__hint">Clear wipes this page's saved data. If the board's signage URL carries its configuration (the #cfg fragment from "Get signage URL"), the setup returns by itself after the reload; on a setup-code board, re-enter a setup code to restore. Reset returns this display to the welcome screen.</p>`;
+    <p class="pane__hint">Wipes this board's saved data and reloads. If the signage URL carries its configuration (the #cfg fragment), the setup returns by itself; on a board pointed at the plain URL the layout does not come back, and there is no copy anywhere to restore from. Before clearing such a board, capture it at gear → Setup code → <b>Show QR of current config</b> and keep the signage URL it hands you; setup codes expire after an hour.</p>`;
   pane().querySelector('[data-beacon]').addEventListener('click', () => {
     state.cfg.beacon = !state.cfg.beacon;
     renderDiag();
@@ -1988,7 +1987,7 @@ function renderDiag() {
   });
   pane().querySelector('[data-reload]').addEventListener('click', () => location.reload());
   pane().querySelector('[data-displaytest]').addEventListener('click', showDisplayTest);
-  // Two taps for the two destructive buttons, the same arming the photo-album
+  // Two taps for the destructive button, the same arming the photo-album
   // and stream Remove buttons run: the first tap turns the button red
   // (.btn--armed) and relabels it, the second fires, and it disarms itself
   // after 4s if the user walks away. The armed label keeps its own verb and
@@ -2012,10 +2011,6 @@ function renderDiag() {
     });
   };
   confirmThen(pane().querySelector('[data-clear]'), 'Tap again to clear web storage', async () => {
-    window.localStorage.clear();
-    location.reload();
-  });
-  confirmThen(pane().querySelector('[data-reset]'), 'Tap again to reset', async () => {
     window.localStorage.clear();
     location.reload();
   });
