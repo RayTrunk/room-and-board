@@ -1,8 +1,5 @@
-<!-- The hero file is still docs/screenshots/unsleep-hero.png on purpose: the
-     capture shows the old wordmark, and renaming the path before the image is
-     re-shot would only break it. Re-capture and rename after the promote. -->
 <p align="center">
-  <a href="https://idlescreen.io"><img alt="idlescreen: a dashboard for the screen that never sleeps" src="docs/screenshots/unsleep-hero.png" width="720"></a>
+  <a href="https://idlescreen.io"><img alt="idlescreen: a dashboard for the screen that never sleeps" src="docs/screenshots/idlescreen-hero.png" width="720"></a>
 </p>
 
 A lightweight, personal signage dashboard, **idlescreen** (`idlescreen.io`), for
