@@ -17,11 +17,52 @@ document.body.innerHTML = `
   <nav class="nav"><div class="nav__inner">
     ${SECTIONS.map((id) => `<a class="nav__link" href="#${id}">${id}</a>`).join('')}
   </div></nav>
+  <h1 class="hero__title"><span class="imark imark--led"><span class="imark__idle">idle</span><span class="imark__screen">screen</span></span></h1>
   ${SECTIONS.map((id) => `<section id="${id}" data-nav-section="${id}"></section>`).join('')}
 `;
 for (const el of document.querySelectorAll('[data-nav-section]')) {
   el.getBoundingClientRect = () => ({ top: TOP[el.dataset.navSection] - view.scrollY });
 }
+
+// ---------- the power tittle's two measurements ----------
+// The probe reads two things a layout-less DOM cannot produce: where the line's
+// baseline landed (measured with a zero-size inline-block dropped into the
+// word) and an ink-scan of the rendered "i" on a canvas. Both are scripted
+// here, the same way the spy's geometry above is.
+const idleEl = document.querySelector('.hero__title .imark__idle');
+const IDLE_FS = parseFloat(getComputedStyle(idleEl).fontSize) || 16;
+// 0.9219em is the generic-sans figure from the mockup round: a real value from
+// a real face, so the assertions read as a face rather than as a magic number.
+const PROBE = { baseline: IDLE_FS * 0.9219 };
+Element.prototype.getBoundingClientRect = function boxOf() {
+  const bottom = this.style?.display === 'inline-block' ? PROBE.baseline : 0;
+  return { top: 0, bottom, left: 0, right: 0, width: 0, height: 0 };
+};
+
+// A synthetic 200x400 bitmap of "i" at weight 300, in exactly the frame the
+// scan draws in: pen at x=50, baseline at y=300. Tittle rows 156-173 over
+// columns 66-77, stem rows 190-299 over columns 68-75.
+const SCAN_S = 200;
+const SCAN_H = 400;
+function iBitmap() {
+  const data = new Uint8ClampedArray(SCAN_S * SCAN_H * 4);
+  const ink = (y0, y1, x0, x1) => {
+    for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) data[(y * SCAN_S + x) * 4 + 3] = 255;
+  };
+  ink(156, 173, 66, 77);
+  ink(190, 299, 68, 75);
+  return data;
+}
+// null is happy-dom's own answer and the one the page must survive: no canvas,
+// no measurement, and the stylesheet's static fallbacks left standing.
+let canvasCtx = null;
+document.createElement('canvas').constructor.prototype.getContext = () => canvasCtx;
+
+// The web font landing is what makes the probe run for real; hold the promise
+// so a test can decide when that happens.
+let fontsLanded;
+const fontsReady = new Promise((resolve) => { fontsLanded = resolve; });
+Object.defineProperty(document, 'fonts', { configurable: true, value: { ready: fontsReady } });
 Object.defineProperty(window, 'scrollY', { configurable: true, get: () => view.scrollY });
 Object.defineProperty(window, 'innerHeight', { configurable: true, get: () => view.innerHeight });
 Object.defineProperty(document.documentElement, 'scrollHeight', {
@@ -79,6 +120,55 @@ describe('/info scroll-spy', () => {
     } finally {
       view.scrollHeight = tall;
     }
+  });
+});
+
+describe('/info places the power tittle off the face it actually rendered', () => {
+  const h1 = document.querySelector('.hero__title');
+  const varsOf = () => ['--im-base', '--im-tx', '--im-ty', '--im-tb', '--im-st', '--im-td', '--im-sx']
+    .map((k) => h1.style.getPropertyValue(k));
+
+  it('publishes nothing at all when there is no canvas to scan with', () => {
+    // The module has already run once by now, with a perfectly good baseline
+    // available and getContext answering null. Publishing a half-measurement
+    // would place the ring off one real number and one invented one; the
+    // stylesheet's static fallbacks are the correct answer instead. Silence,
+    // and above all no throw, is the whole contract of the no-JS state.
+    expect(varsOf()).toEqual(['', '', '', '', '', '', '']);
+  });
+
+  it('publishes the six measurements once the face has landed', async () => {
+    canvasCtx = {
+      font: '',
+      textBaseline: '',
+      fillStyle: '',
+      fillText() {},
+      getImageData: () => ({ data: iBitmap() }),
+    };
+    fontsLanded();
+    await fontsReady;
+    await new Promise((r) => setTimeout(r, 0)); // let the .then run
+
+    // Every one of these falls out of the bitmap above, in em off the pen
+    // origin and the baseline: the tittle spans rows 156-173 (so its bottom
+    // edge is row 174) over columns 66-77, and the stem starts at row 190.
+    expect(h1.style.getPropertyValue('--im-base')).toBe('0.9219'); // 0.9219em, probed
+    expect(h1.style.getPropertyValue('--im-tx')).toBe('0.1100'); // tittle centre x
+    expect(h1.style.getPropertyValue('--im-ty')).toBe('0.6750'); // tittle centre y
+    expect(h1.style.getPropertyValue('--im-tb')).toBe('0.6300'); // tittle bottom
+    expect(h1.style.getPropertyValue('--im-st')).toBe('0.5500'); // stem top
+    expect(h1.style.getPropertyValue('--im-td')).toBe('0.1170'); // 1.3x the larger dimension
+    expect(h1.style.getPropertyValue('--im-sx')).toBe('0.1100'); // stem centre x
+  });
+
+  it('leaves the word itself untouched, probe and all', () => {
+    // The probe is a span appended INTO the mark and pulled straight back out.
+    // If it ever survived a run, the page would ship a stray element inside the
+    // wordmark, and the one thing this construction exists to protect is that
+    // the DOM keeps the plain word.
+    const mark = document.querySelector('.hero__title .imark--led');
+    expect(mark.textContent).toBe('idlescreen');
+    expect(mark.querySelectorAll('span').length).toBe(2);
   });
 });
 
@@ -164,6 +254,70 @@ describe('/info wears the brand', () => {
     // The modifier exists identically in both sheets.
     expect(css).toMatch(/\.imark--led \.imark__idle::before/);
     expect(shell).toMatch(/\.imark--led \.imark__idle::before/);
+  });
+
+  it('draws the LED tittle as the power symbol, over a cover the panel supplies', () => {
+    for (const sheet of [css, shell]) {
+      // Two pseudo-elements and no third element: ::before covers the letter's
+      // own tittle, ::after draws the ring on top of it.
+      expect(sheet).toMatch(/\.imark--led \.imark__idle::after/);
+      // The glyph is a MASK carrying the accent as a background-color, the
+      // same idiom --cog uses, so the ink stays themable and no <svg> has to
+      // enter the markup beside the word.
+      const after = /\.imark--led \.imark__idle::after\s*\{[^}]*\}/.exec(sheet)?.[0] ?? '';
+      expect(after).toContain('background-color: var(--accent)');
+      expect(after).toMatch(/-webkit-mask: var\(--im-power\)/);
+      expect(after).toMatch(/[^-]mask: var\(--im-power\)/);
+      // The IEC 5009 geometry itself, in the 24-unit box: the stem, the ring's
+      // arc, and the 2.6 stroke. These are the numbers the mockup round
+      // settled on and they are what makes the mark the mark.
+      expect(sheet).toContain("stroke-width='2.6'");
+      expect(sheet).toContain("d='M12 4.5 V12.6'");
+      expect(sheet).toContain("d='M7.76 8.94 A6.6 6.6 0 1 0 16.24 8.94'");
+
+      // THE COUPLING. The ring is hollow, so the cover disc is mandatory, and
+      // it can only be painted in the one background it is worn on. If this
+      // ever stops being #05070a the modifier has to move with it, so the
+      // colour and the sentence explaining it are both pinned.
+      const before = /\.imark--led \.imark__idle::before\s*\{[^}]*\}/.exec(sheet)?.[0] ?? '';
+      expect(before).toContain('background: #05070a');
+      expect(sheet).toMatch(/hollow[^]{0,400}#05070a|#05070a[^]{0,400}hollow/);
+
+      // The small-size fallback: below the size where the ring holds its hole,
+      // ::after stands down and the cover disc becomes the accent dot this
+      // modifier wore before. Keyed on device pixels as well as width.
+      const small = /@media \(max-width: 687px\) and \(max-resolution: 1\.5dppx\) \{[^]*?\n\}/.exec(sheet)?.[0] ?? '';
+      expect(small).toContain('.imark--led .imark__idle::before { background: var(--accent); }');
+      expect(small).toContain('.imark--led .imark__idle::after { display: none; }');
+    }
+    // On paper the panel is white, so the #05070a cover would print as a blot.
+    // Both halves stand down there and the letter prints its own tittle. (Only
+    // the guide has a print block; the shell has never had one.)
+    const print = /@media print \{[^]*$/.exec(css)?.[0] ?? '';
+    expect(print).toMatch(/\.imark--led \.imark__idle::before,\n\s*\.imark--led \.imark__idle::after \{ display: none; \}/);
+  });
+
+  it('states every tittle offset against a variable the probe can replace', () => {
+    // The lesson of the mockup round: three static baselines, each measured on
+    // a face the page does not actually render, each confidently wrong. Every
+    // offset is now a var() with a static fallback, so info.js can correct it
+    // per face and a page with no script still lands somewhere true.
+    for (const sheet of [css, shell]) {
+      // Line-anchored, so the indented overrides inside the small-size media
+      // query are not mistaken for the component's own two rules.
+      const led = /^\.imark--led \.imark__idle::(?:before|after)\s*\{[^}]*\}/gm;
+      const rules = sheet.match(led) ?? [];
+      expect(rules).toHaveLength(2);
+      for (const rule of rules) {
+        for (const decl of ['left', 'top']) {
+          const value = new RegExp(`\\n\\s*${decl}: ([^;]+);`).exec(rule)?.[1] ?? '';
+          expect(value).toMatch(/var\(--im-[a-z]+, [0-9.]+\)/); // a variable AND a fallback
+        }
+      }
+    }
+    // The one number that is not a property of the face stays a constant.
+    expect(css).toContain('--im-glyph: 0.26em');
+    expect(shell).toContain('--im-glyph: 0.26em');
   });
 
   it('lights exactly one card on the masthead panel, and nothing sits behind the word', () => {

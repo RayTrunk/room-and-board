@@ -138,36 +138,118 @@ button:focus-visible {
    THE ACCENT APPEARS ONCE PER SURFACE: wherever the mark is on the surface it
    is the mark's lit card that carries the accent, and the word beside it wears
    its own plain tittle at every size, including the largest. Two saturated
-   things on one surface read as decoration; one reads as a signal. So every
-   lockup on this page — nav brand, masthead panel, footer — is the plain form,
-   and this modifier is for a surface that shows the word with no mark and no
-   lit card anywhere on it. Floor is 28px: below that the disc is under 2.7px
-   and reads as a stuck subpixel rather than a decision.
-   The geometry is MEASURED, not inherited. Every number was read off the
-   rendered glyph in Chrome (an ink-scan of "i" at weight 300), because the
-   sheet's numbers describe where a tittle should sit, not how much of a real
-   one has to be covered:
-     Helvetica Neue  tittle spans x 0.060-0.125em, y 0.6125-0.715em off the baseline
-     SF (system-ui)  tittle spans x 0.050-0.140em, y 0.5975-0.68875em
-   which are the two faces the stack above actually resolves to on a Mac —
-   Chrome does not support -apple-system, so it falls through to Helvetica
-   Neue, while Safari takes SF. A 0.13em disc centred at 0.094em/0.661em is
-   the smallest circle covering BOTH, which is why it is wider than the 0.095em
-   the sheet quotes: the sheet had a dotless ı and nothing to cover. It is a
-   cover, so re-measure before trusting it on a third face.
-   0.9675em is the distance from this inline box's content-box top down to the
-   baseline (identical in both faces); `top` is stated against it so the disc
-   is placed off the BASELINE, which is what the tittle's position is fixed to. */
-.imark--led .imark__idle { position: relative; }
+   things on one surface read as decoration; one reads as a signal. So the nav
+   brand and the footer lockup stay the plain form, and this modifier is for a
+   surface that shows the word with no mark and no lit card anywhere on it: on
+   either sheet that is exactly one element, the /info masthead h1.
+
+   THE TITTLE IS THE IEC 5009 POWER SYMBOL (Sean's pick, 2026-08-21, after a
+   mockup round). The product's whole subject is a screen that refuses to go
+   dark, and the one glyph every reader already parses as "awake" happens to be
+   the shape that fits where the i's dot goes. It is DRAWN, never typed: the
+   markup stays two plain spans whose textContent is exactly "idlescreen", and
+   the ring is an SVG mask on a pseudo-element (the same idiom --cog uses
+   further down this sheet), so the ink rides background-color and stays
+   themable while copy, find and screen readers are untouched.
+
+   THE COVER DISC IS MANDATORY, AND IT WELDS THIS MODIFIER TO ONE SURFACE. The
+   ring is hollow, so the letter's own tittle would show straight THROUGH it;
+   ::before paints it out first with an opaque disc in the masthead panel's own
+   background colour, #05070a. That colour is a deliberate hard-coded coupling
+   rather than a token: this modifier may only be worn on ground that really is
+   #05070a (the .hero__screen panel), because on anything else the disc reads
+   as a grey fleck beside the blue. The retired accent-dot form needed no cover
+   at all, being opaque itself, which is the freedom this construction spends.
+
+   THE GEOMETRY IS FACE-DEPENDENT, AND IS PROBED AT RUNTIME. Three different
+   static baselines were each confidently wrong during the mockup round, for
+   the plain reason that every number here moves with whichever face the stack
+   above resolves to (all in em, all read off an ink-scan of "i" at weight 300,
+   y stated as height above the baseline):
+     Helvetica Neue    baseline 0.965, tittle (0.090, 0.665), box y 0.610-0.720, stem top 0.520
+     generic sans      baseline 0.920, tittle (0.113, 0.675), box y 0.625-0.725, stem top 0.525
+     SF (system-ui)    baseline unprobed, box y 0.5975-0.68875 (measured in Safari, 2026-08-18)
+   "baseline" is the distance from this inline box's content-box top down to
+   the text baseline, which is what an absolutely positioned child's top:0 is
+   measured from. Chrome does not support -apple-system and falls through to
+   Helvetica Neue (the first row, and what /info actually renders in Chrome on
+   a Mac), Safari takes SF, and a Windows or Android box lands somewhere in
+   Segoe UI or Roboto. Note the SECOND row is not a theoretical case: it is
+   what the mockup round measured while believing it had CiscoSansTT, since
+   this sheet loads NO webfont at all and the board face is only ever there if
+   a visitor happens to have it installed. Two faces one stack apart, and the
+   baseline alone moves 0.045em, which is 2.9px of misplacement at 64px.
+   So info.js measures the live box after document.fonts.ready and publishes
+   the answer as custom properties on the h1: --im-base, --im-tx / --im-ty
+   (tittle centre), --im-tb (tittle bottom), --im-st (stem top), --im-td (cover
+   diameter), --im-sx (stem centre). Every var() below carries the Helvetica
+   Neue number as its fallback, so a page with no script at all is still placed
+   correctly, just not per-face.
+
+   PLACEMENT, Sean's pick "2", the midway one: the ring's outer bottom, which
+   is 21.9/24 of the way down the glyph box, sits HALFWAY between the measured
+   tittle bottom and the measured stem top. Hanging it at the tittle bottom
+   (placement 1) is the air the font's own dot keeps, but the ring is more than
+   twice the dot's height, so at that anchor the whole glyph rides up over the
+   ascender line; splitting the gap settles it back into the word. Both ends of
+   that gap are per-face measurements, which is why --im-st is probed and not
+   assumed. The glyph is centred on the STEM and the cover on the TITTLE,
+   because those are not the same x in every face, and the cover is 1.3x the
+   tittle's larger dimension so it clears the antialiased edge.
+   These class names and values are shared verbatim with main.css: change one,
+   change both. */
+.imark--led .imark__idle {
+  position: relative;
+  --im-power: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.6' stroke-linecap='round'%3E%3Cpath d='M12 4.5 V12.6'/%3E%3Cpath d='M7.76 8.94 A6.6 6.6 0 1 0 16.24 8.94'/%3E%3C/svg%3E");
+  /* One constant, because it is the only number here that is not a property of
+     the face: the glyph's own box, in em. */
+  --im-glyph: 0.26em;
+}
+/* The cover: an opaque #05070a disc centred on the measured tittle. */
 .imark--led .imark__idle::before {
   content: '';
   position: absolute;
-  /* The disc's CENTRE: 0.094em right of the i's pen origin — which is this
-     span's own left content edge, the i being its first letter — and 0.661em
-     above the baseline. The negative margins pull the box back onto it. */
-  left: 0.094em; top: calc(0.9675em - 0.661em);
-  width: 0.13em; height: 0.13em; margin: -0.065em 0 0 -0.065em;
-  border-radius: 50%; background: var(--accent);
+  left: calc(var(--im-tx, 0.09) * 1em - var(--im-td, 0.143) * 0.5em);
+  top: calc((var(--im-base, 0.965) - var(--im-ty, 0.665)) * 1em - var(--im-td, 0.143) * 0.5em);
+  width: calc(var(--im-td, 0.143) * 1em); height: calc(var(--im-td, 0.143) * 1em);
+  border-radius: 50%;
+  background: #05070a;
+}
+/* The power symbol, drawn as a mask so the ink is a background-color. The top
+   term is the midway anchor: half of (tittle bottom + stem top) is where the
+   ring's outer bottom goes, and 21.9/24 of the box is how far that is from the
+   box's own top. */
+.imark--led .imark__idle::after {
+  content: '';
+  position: absolute;
+  left: calc(var(--im-sx, 0.09) * 1em - var(--im-glyph) * 0.5);
+  top: calc((var(--im-base, 0.965) - (var(--im-tb, 0.61) + var(--im-st, 0.52)) * 0.5) * 1em - var(--im-glyph) * 21.9 / 24);
+  width: var(--im-glyph); height: var(--im-glyph);
+  background-color: var(--accent);
+  -webkit-mask: var(--im-power) center / contain no-repeat;
+  mask: var(--im-power) center / contain no-repeat;
+}
+/* THE SMALL-SIZE FALLBACK, and the threshold is in DEVICE pixels, not CSS
+   ones. Rasterised at 1x and read back, the ring needs about 11 device pixels
+   across before its hole survives: at the h1's 38px floor the glyph box is
+   9.9px and comes out a mushy lozenge with a stub on top, which reads as a
+   dirty dot rather than as the mark; by 44px (11.4px of box) the hole is open
+   and the stem separates. On a 2x or 3x display the same 38px is 19.8 or 29.6
+   device pixels and the ring is crisp, and a 2x display is the only kind of
+   thing that reaches this width in practice. So the cutoff is keyed on BOTH
+   conditions, and the mark only stands down where it actually breaks down.
+   The h1 is clamp(38px, 6.4vw, 64px), so 6.4vw crosses 44px at 688px of
+   viewport; below that it is pinned at the 38px floor anyway.
+   What it falls back TO is the accent DOT this modifier wore until 2026-08-21,
+   on the same measured geometry: ::before is already a disc centred on the
+   measured tittle at the covering diameter, so it only has to change colour,
+   and an opaque disc covers the letter's own tittle by being opaque, the way
+   the dot always did. A browser too old to know max-resolution fails the whole
+   query and keeps the ring, which is the right way round: every browser that
+   old, at this width, is on a retina phone. */
+@media (max-width: 687px) and (max-resolution: 1.5dppx) {
+  .imark--led .imark__idle::before { background: var(--accent); }
+  .imark--led .imark__idle::after { display: none; }
 }
 
 /* ---------- hero ---------- */
@@ -729,6 +811,13 @@ code {
   .hero__card { display: none; }
   .hero__title, .nav__brand { color: #000; }
   .imark__idle { color: #5a5a5a; }
+  /* And the LED tittle goes with the panel that made it possible. Its cover
+     disc is painted #05070a because that is the panel's own background; with
+     the panel gone that disc is a near-black blot on white paper, with a blue
+     ring drawn over it. Both halves stand down and the letter prints its own
+     dot, which is the whole point of never having substituted the glyph. */
+  .imark--led .imark__idle::before,
+  .imark--led .imark__idle::after { display: none; }
   .hero { padding-top: 0; display: block; }
   .hero__shot { margin-top: 24px; }
   .section { padding-top: 28px; }

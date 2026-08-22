@@ -806,20 +806,75 @@ body.mode-ambient .topbar, body.mode-ambient #grid { visibility: hidden; }
 }
 .imark__idle { font-weight: 300; color: rgba(255, 255, 255, 0.50); }
 .imark__screen { font-weight: 600; color: var(--ink); }
-/* The standalone display form. Neither shell surface takes it and both are
-   right to refuse: the accent appears once per surface, the welcome lockup
-   already spends it on the mark's lit card, and the settings rail sets the
-   word at 27px, under the 28px floor where the disc stops reading as a
-   decision. It lives here so the two stylesheets stay one component. The
-   measured geometry and the faces it was measured against are documented in
-   info.css; change one, change both. */
-.imark--led .imark__idle { position: relative; }
+/* The standalone display form, whose tittle is the IEC 5009 power symbol.
+   NEITHER SHELL SURFACE TAKES IT, and both are right to refuse: the accent
+   appears once per surface, the welcome lockup already spends it on the mark's
+   lit card, and the settings rail sets the word at 27px, far under the size
+   where a ring holds its hole. It is unused on this sheet on purpose, and it
+   lives here anyway so the two stylesheets stay ONE component, verbatim: the
+   guide's masthead is the only element wearing it today, and a value that
+   drifts between the sheets ships two brands the day a shell surface adopts it.
+   Two things below are only true where it IS worn. The cover disc is painted
+   #05070a, the /info masthead panel's own background, because the ring is
+   hollow and the letter's own tittle would show through it, so this modifier
+   may only go on ground that really is that colour. And --im-base and friends
+   are published by info.js, which probes the rendered face; a host page with no
+   such probe gets the Helvetica Neue fallbacks baked into the var()s below.
+   The full construction, the per-face measurements, the placement Sean picked
+   and the small-size cutoff are all documented over info.css; change one,
+   change both. */
+.imark--led .imark__idle {
+  position: relative;
+  --im-power: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.6' stroke-linecap='round'%3E%3Cpath d='M12 4.5 V12.6'/%3E%3Cpath d='M7.76 8.94 A6.6 6.6 0 1 0 16.24 8.94'/%3E%3C/svg%3E");
+  /* One constant, because it is the only number here that is not a property of
+     the face: the glyph's own box, in em. */
+  --im-glyph: 0.26em;
+}
+/* The cover: an opaque #05070a disc centred on the measured tittle. */
 .imark--led .imark__idle::before {
   content: '';
   position: absolute;
-  left: 0.094em; top: calc(0.9675em - 0.661em);
-  width: 0.13em; height: 0.13em; margin: -0.065em 0 0 -0.065em;
-  border-radius: 50%; background: var(--accent);
+  left: calc(var(--im-tx, 0.09) * 1em - var(--im-td, 0.143) * 0.5em);
+  top: calc((var(--im-base, 0.965) - var(--im-ty, 0.665)) * 1em - var(--im-td, 0.143) * 0.5em);
+  width: calc(var(--im-td, 0.143) * 1em); height: calc(var(--im-td, 0.143) * 1em);
+  border-radius: 50%;
+  background: #05070a;
+}
+/* The power symbol, drawn as a mask so the ink is a background-color. The top
+   term is the midway anchor: half of (tittle bottom + stem top) is where the
+   ring's outer bottom goes, and 21.9/24 of the box is how far that is from the
+   box's own top. */
+.imark--led .imark__idle::after {
+  content: '';
+  position: absolute;
+  left: calc(var(--im-sx, 0.09) * 1em - var(--im-glyph) * 0.5);
+  top: calc((var(--im-base, 0.965) - (var(--im-tb, 0.61) + var(--im-st, 0.52)) * 0.5) * 1em - var(--im-glyph) * 21.9 / 24);
+  width: var(--im-glyph); height: var(--im-glyph);
+  background-color: var(--accent);
+  -webkit-mask: var(--im-power) center / contain no-repeat;
+  mask: var(--im-power) center / contain no-repeat;
+}
+/* THE SMALL-SIZE FALLBACK, and the threshold is in DEVICE pixels, not CSS
+   ones. Rasterised at 1x and read back, the ring needs about 11 device pixels
+   across before its hole survives: at the h1's 38px floor the glyph box is
+   9.9px and comes out a mushy lozenge with a stub on top, which reads as a
+   dirty dot rather than as the mark; by 44px (11.4px of box) the hole is open
+   and the stem separates. On a 2x or 3x display the same 38px is 19.8 or 29.6
+   device pixels and the ring is crisp, and a 2x display is the only kind of
+   thing that reaches this width in practice. So the cutoff is keyed on BOTH
+   conditions, and the mark only stands down where it actually breaks down.
+   The h1 is clamp(38px, 6.4vw, 64px), so 6.4vw crosses 44px at 688px of
+   viewport; below that it is pinned at the 38px floor anyway.
+   What it falls back TO is the accent DOT this modifier wore until 2026-08-21,
+   on the same measured geometry: ::before is already a disc centred on the
+   measured tittle at the covering diameter, so it only has to change colour,
+   and an opaque disc covers the letter's own tittle by being opaque, the way
+   the dot always did. A browser too old to know max-resolution fails the whole
+   query and keeps the ring, which is the right way round: every browser that
+   old, at this width, is on a retina phone. */
+@media (max-width: 687px) and (max-resolution: 1.5dppx) {
+  .imark--led .imark__idle::before { background: var(--accent); }
+  .imark--led .imark__idle::after { display: none; }
 }
 
 /* ---------- welcome ---------- */
