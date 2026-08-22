@@ -3,11 +3,11 @@
   *
   *
   * Date Created:            July 17, 2026
-  * Revised:                 August 19, 2026
-  * Version:                 1.3.1
+  * Revised:                 August 21, 2026
+  * Version:                 1.4.0
   *
   * Description:             Self-contained signage provisioning + Control
-  *                          Panel button for the unsleep dashboard.
+  *                          Panel button for the idlescreen dashboard.
   *                          init() configures the device for interactive
   *                          web signage (WebEngine, Standby Signage mode/
   *                          interaction/URL/audio, standby delay, meeting-
@@ -30,7 +30,7 @@
   *
   * AI Generation:           ~90%
   *                          Claude Fable 5 (claude-fable-5) — through 1.2.1
-  *                          Claude Opus 5 (claude-opus-5) — 1.3.0, 1.3.1
+  *                          Claude Opus 5 (claude-opus-5) — 1.3.0, 1.3.1, 1.4.0
   *                          Instruction file: RoomOS.md
   *                          AI-generated code — review and test on the
   *                          target device before production deployment.
@@ -43,17 +43,21 @@ import xapi from 'xapi';
  * and enable — init() applies every device setting signage needs, so
  * nothing else has to be configured by hand.
  *
- * The default URL opens unsleep's welcome screen (Quick Start + a QR
+ * The default URL opens idlescreen's welcome screen (Quick Start + a QR
  * to the /setup page). To load a saved configuration instead, replace it
  * with your board's URL from /setup -> "Get signage URL" (it carries the
  * display's configuration in the #cfg fragment).
+ *
+ * 1.4.0 moves the default off unsleep.app onto idlescreen.app. The old
+ * address still answers, so a board running an earlier version of this
+ * macro keeps working and never needs re-pasting.
  *
  * NOTE: don't run a second signage macro that also sets Standby Signage Url
  * alongside this one — they will fight over the value. This macro also toggles
  * WebEngine Mode off and on when the device's time zone changes, so anything
  * else driving that node will fight too.
  */
-const SIGNAGE_URL = 'https://unsleep.app';
+const SIGNAGE_URL = 'https://idlescreen.app';
 
 /*
  * Overridable defaults — safe to edit for your room. Everything else init()
@@ -166,7 +170,7 @@ async function ensureOptionalConfig(node, label, value) {
   * Applies every device setting interactive web signage needs. Macros
   * Mode/AutoStart are included so a hand-uploaded copy of this macro survives
   * reboots.
-  * The default URL opens the unsleep welcome screen, so an untouched
+  * The default URL opens the idlescreen welcome screen, so an untouched
   * install still lands somewhere useful.
   * @roomosxapi [xConfiguration Standby Delay](https://roomos.cisco.com/xapi/Configuration.Standby.Delay/)
   * @roomosxapi [xConfiguration Standby WakeupAtMeetingStart](https://roomos.cisco.com/xapi/Configuration.Standby.WakeupAtMeetingStart/)

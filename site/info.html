@@ -9,14 +9,14 @@
 <meta charset="utf-8">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https: data: blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>unsleep · A dashboard for the screen that never sleeps</title>
-<meta name="description" content="Every widget card the unsleep signage dashboard can show: commute, weather, markets, news, images, and the daily reads.">
+<title>idlescreen · A dashboard for your idle screen</title>
+<meta name="description" content="Every widget card the idlescreen signage dashboard can show: commute, weather, markets, news, images, and the daily reads.">
 <!-- The same icon trio the app shell wires: the scalable quad master, then
      PNG rasters for the slots that want pixels (iOS ignores an SVG
      apple-touch-icon and would fall back to a page screenshot). -->
-<link rel="icon" type="image/svg+xml" href="assets/unsleep-quad.svg">
-<link rel="icon" type="image/png" sizes="32x32" href="assets/unsleep-favicon-32.png">
-<link rel="apple-touch-icon" href="assets/unsleep-icon-180.png">
+<link rel="icon" type="image/svg+xml" href="assets/idlescreen-quad.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="assets/idlescreen-favicon-32.png">
+<link rel="apple-touch-icon" href="assets/idlescreen-icon-180.png">
 <link rel="stylesheet" href="css/info.css">
 </head>
 <body>
@@ -37,7 +37,7 @@
     <!-- The mark is inlined rather than linked so the rail never waits on an
          asset fetch (and never shows a broken icon on a partial deploy: Pages
          propagates PER-ASSET). Same 16-viewBox master the favicon uses. -->
-    <a class="nav__brand" href="#top"><svg class="nav__mark" width="18" height="18" viewBox="0 0 16 16" aria-hidden="true"><rect x="0.5" y="3.5" width="15" height="9" rx="2" fill="#0d1218" stroke="rgba(255,255,255,.16)"/><rect x="2.5" y="5.5" width="6" height="5" rx="1" fill="#64b4fa"/><rect x="10" y="5.5" width="3.5" height="5" rx="1" fill="rgba(100,180,250,.30)"/></svg><span class="umark"><span class="umark__un">un</span><span class="umark__sl">/</span><span class="umark__sleep">sleep</span></span></a>
+    <a class="nav__brand" href="#top"><svg class="nav__mark" width="18" height="18" viewBox="0 0 16 16" aria-hidden="true"><rect x="0.5" y="3.5" width="15" height="9" rx="2" fill="#0d1218" stroke="rgba(255,255,255,.16)"/><rect x="2.5" y="5.5" width="6" height="5" rx="1" fill="#64b4fa"/><rect x="10" y="5.5" width="3.5" height="5" rx="1" fill="rgba(100,180,250,.30)"/></svg><span class="imark"><span class="imark__idle">idle</span><span class="imark__screen">screen</span></span></a>
     <a class="nav__link" href="#board">Getting it on a board</a>
     <a class="nav__link" href="#yours">Making it yours</a>
     <a class="nav__link" href="#widgets">The widgets</a>
@@ -48,20 +48,23 @@
 
 <header id="top" class="wrap hero">
   <div class="hero__text">
-    <!-- The masthead: the unsleeping screen, at scale. One landscape panel with
-         four cards on it (one lit, three at descending light) and the name
+    <!-- The masthead: the idle screen itself, at scale. One landscape panel
+         with four cards on it (one lit, three at descending light) and the name
          read across the clear middle band. The word is plain, selectable text
-         in three spans, so find, copy, and screen readers all get "un/sleep"
-         with nothing clipped, overlaid, or aria-hidden. (The old masthead drew
-         the name as a ruled field, which was the old name's concept; it retired
-         whole, ruling and all.) Nothing sits BEHIND the letters. -->
+         in two spans, so find, copy, and screen readers all get "idlescreen"
+         with nothing clipped, overlaid, or aria-hidden.
+         The word wears its PLAIN tittle here, and the panel is why: the accent
+         appears once per surface, and on this one the lit card already spends
+         it. A blue tittle would put a second saturated thing inside the same
+         drawn screen, which is the reading the whole palette rule exists to
+         prevent. Nothing sits BEHIND the letters. -->
     <div class="hero__screen">
       <span class="hero__card hero__card--lit"></span>
       <span class="hero__card hero__card--b"></span>
       <span class="hero__card hero__card--c"></span>
       <span class="hero__card hero__card--d"></span>
-      <h1 class="hero__title"><span class="umark"><span class="umark__un">un</span><span class="umark__sl">/</span><span class="umark__sleep">sleep</span></span></h1>
-      <p class="hero__sub">A dashboard for the screen that never sleeps: your commute, your weather, your markets, your images.</p>
+      <h1 class="hero__title"><span class="imark"><span class="imark__idle">idle</span><span class="imark__screen">screen</span></span></h1>
+      <p class="hero__sub">A dashboard for your idle screen: your commute, your weather, your markets, your images.</p>
     </div>
     <!-- 33 = every widget a reader of this page can actually add today: the 34
          ids in config.js less the one still behind the beta gate (Live Video).
@@ -81,17 +84,17 @@
        activating it DOES; the image's alt still describes the board itself and
        travels with it into the lightbox. -->
   <figure class="hero__shot">
-    <button class="shot__btn" type="button" aria-label="Enlarge the unsleep dashboard screenshot">
-      <img src="assets/info/hero-board.webp" data-zoom data-caption="The unsleep dashboard" alt="An unsleep display showing Weather with hourly rain chances, Landscapes, World Clock, Cloud Services, Markets, Headlines, and Subway Status." width="1920" height="1080" loading="eager" fetchpriority="high" decoding="async">
+    <button class="shot__btn" type="button" aria-label="Enlarge the idlescreen dashboard screenshot">
+      <img src="assets/info/hero-board.webp" data-zoom data-caption="The idlescreen dashboard" alt="An idlescreen display showing Weather with hourly rain chances, Landscapes, World Clock, Cloud Services, Markets, Headlines, and Subway Status." width="1920" height="1080" loading="eager" fetchpriority="high" decoding="async">
     </button>
   </figure>
 </header>
 
 <!-- The front door's first question, and until now the page had no answer to
-     it: the guide lives on unsleep.io and the dashboard on unsleep.app, so a
-     newcomer could not even GUESS the address to point a board at (Sean's
+     it: the guide lives on idlescreen.io and the dashboard on idlescreen.app,
+     so a newcomer could not even GUESS the address to point a board at (Sean's
      catch, 2026-08-19). It leads the page because everything below it assumes
-     a board already showing unsleep.
+     a board already showing idlescreen.
      Organised by DEVICE rather than by address (Sean's pick, C of three
      mockups): the address is identical for all three doors, but which
      configurations a device needs is not, and "what is on my wall" is the
@@ -101,27 +104,28 @@
      its door apart. -->
 <section id="board" class="wrap section" data-nav-section="board">
   <h2 class="h2 h2--tight">Getting it on a board</h2>
-  <p class="section__lede">Nothing is installed on the board. It loads unsleep as its signage page, the way it would load any web address, so the setup is one address &mdash; <a href="https://unsleep.app">https://unsleep.app</a> &mdash; and the handful of configurations that let the device show it. Which ones depends on what is on your wall.</p>
+  <p class="section__lede">Nothing is installed on the board. It loads idlescreen as its signage page, the way it would load any web address, so the setup is one address &mdash; <a href="https://idlescreen.app">https://idlescreen.app</a> &mdash; and the handful of configurations that let the device show it. Which ones depends on what is on your wall. (A board already pointed at unsleep.app, app.quadrille.io or roomboard.app keeps working: same dashboard, earlier names, and none of them is going anywhere.)</p>
 
   <div class="tiles doors">
     <article class="card">
       <h3 class="card__h">Board Pro, Desk Pro</h3>
       <p class="card__p">Paste the macro and it does everything. Open <b>Settings &rarr; Macros</b> on the board, or Control Hub &rarr; Macro Editor, create a macro, paste it in, Save, enable. It sets the web engine, interactive signage, the standby delay and macro autostart, then adds a <b>Dashboard</b> button to the Control Panel.</p>
+      <!-- repo renames at promote -->
       <p class="card__code"><a href="https://github.com/scotty83/unsleep/blob/main/macro/Dashboard.js"><code>macro/Dashboard.js</code> on GitHub</a></p>
     </article>
     <article class="card">
       <h3 class="card__h">Any board, by hand</h3>
-      <p class="card__p">No macro needed. In Control Hub, or in the board&rsquo;s own web interface, turn on the web engine and signage, allow touch, and give the board the address. It comes up on the unsleep welcome screen, ready for a setup code.</p>
-      <p class="card__code"><code>Standby Signage Url: https://unsleep.app</code></p>
+      <p class="card__p">No macro needed. In Control Hub, or in the board&rsquo;s own web interface, turn on the web engine and signage, allow touch, and give the board the address. It comes up on the idlescreen welcome screen, ready for a setup code.</p>
+      <p class="card__code"><code>Standby Signage Url: https://idlescreen.app</code></p>
     </article>
     <article class="card">
       <h3 class="card__h">Room series on a TV</h3>
-      <p class="card__p">No touchscreen means no setup code, so here the configuration travels inside the address. Build a layout at <a href="https://unsleep.app/setup">unsleep.app/setup</a>, tap <b>Get signage URL</b>, and use that in place of the plain one. Do not install the macro here: it would overwrite the address.</p>
+      <p class="card__p">No touchscreen means no setup code, so here the configuration travels inside the address. Build a layout at <a href="https://idlescreen.app/setup">idlescreen.app/setup</a>, tap <b>Get signage URL</b>, and use that in place of the plain one. Do not install the macro here: it would overwrite the address.</p>
       <p class="card__code"><code>Standby Signage Url: &hellip;#cfg=</code></p>
     </article>
   </div>
 
-  <p class="section__aside">You are reading <b>unsleep.io</b>, which is this guide. <b>unsleep.app</b> is the dashboard a board loads. Two addresses, one product.</p>
+  <p class="section__aside">You are reading <b>idlescreen.io</b>, which is this guide. <b>idlescreen.app</b> is the dashboard a board loads. Two addresses, one product.</p>
 
   <div class="subhead subhead--gap">
     <h3 class="subhead__title">The configurations</h3>
@@ -130,7 +134,7 @@
   <!-- One line per element, because a hanging indent needs a block per line:
        text-indent on the <pre> itself only ever catches the first one, which
        leaves a wrapped xConfiguration reading as two settings on a phone. -->
-  <pre class="conf"><span class="conf__l">xConfiguration WebEngine Mode: On</span><span class="conf__l">xConfiguration Standby Signage Mode: On</span><span class="conf__l">xConfiguration Standby Signage InteractionMode: Interactive<span class="conf__note"> // touch boards only</span></span><span class="conf__l">xConfiguration Standby Signage Url: https://unsleep.app</span></pre>
+  <pre class="conf"><span class="conf__l">xConfiguration WebEngine Mode: On</span><span class="conf__l">xConfiguration Standby Signage Mode: On</span><span class="conf__l">xConfiguration Standby Signage InteractionMode: Interactive<span class="conf__note"> // touch boards only</span></span><span class="conf__l">xConfiguration Standby Signage Url: https://idlescreen.app</span></pre>
   <!-- The line itself now says who it is for (Sean's call, 2026-08-19), so
        what is left below is only what an inline comment cannot carry: the
        failure mode, and the values the other door needs instead. -->
@@ -140,7 +144,7 @@
 
 <section id="yours" class="wrap section" data-nav-section="yours">
   <h2 class="h2 h2--tight">Making it yours</h2>
-  <p class="section__lede">The board is a touchscreen: two buttons sit in the bottom-right corner, and the cards themselves are the third control. Rather set it up from your computer? <a href="https://unsleep.app/setup">unsleep.app/setup</a> lets you pick your widgets and hands you a code &mdash; on the board, tap the gear, choose Setup code, type it in, and Save. Codes last an hour.</p>
+  <p class="section__lede">The board is a touchscreen: two buttons sit in the bottom-right corner, and the cards themselves are the third control. Rather set it up from your computer? <a href="https://idlescreen.app/setup">idlescreen.app/setup</a> lets you pick your widgets and hands you a code &mdash; on the board, tap the gear, choose Setup code, type it in, and Save. Codes last an hour.</p>
   <div class="duo duo--trio">
     <article class="card card--row">
       <span class="fab" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 5.5l4 4L8 20l-4.6 1 1-4.6L14.5 5.5zM12.5 7.5l4 4"/></svg></span>
@@ -465,11 +469,12 @@
   <div class="footer__inner">
     <!-- The brand sheet's own footer lockup; the stale-stamp wink moved up
          to live beside the sentence it demonstrates. -->
-    <span class="footer__brand"><svg width="18" height="18" viewBox="0 0 16 16" aria-hidden="true"><rect x="0.5" y="3.5" width="15" height="9" rx="2" fill="#0d1218" stroke="rgba(255,255,255,.16)"/><rect x="2.5" y="5.5" width="6" height="5" rx="1" fill="#64b4fa"/><rect x="10" y="5.5" width="3.5" height="5" rx="1" fill="rgba(100,180,250,.30)"/></svg><span class="umark"><span class="umark__un">un</span><span class="umark__sl">/</span><span class="umark__sleep">sleep</span></span></span>
+    <span class="footer__brand"><svg width="18" height="18" viewBox="0 0 16 16" aria-hidden="true"><rect x="0.5" y="3.5" width="15" height="9" rx="2" fill="#0d1218" stroke="rgba(255,255,255,.16)"/><rect x="2.5" y="5.5" width="6" height="5" rx="1" fill="#64b4fa"/><rect x="10" y="5.5" width="3.5" height="5" rx="1" fill="rgba(100,180,250,.30)"/></svg><span class="imark"><span class="imark__idle">idle</span><span class="imark__screen">screen</span></span></span>
     <!-- Relative, and it has to stay relative: the front door serves this same
-         file from unsleep.io while the app serves it from unsleep.app, and the
-         filename is the one form that resolves on both. build-frontdoor.js
-         fails the build if terms.html ever stops shipping beside it. -->
+         file from idlescreen.io while the app serves it from idlescreen.app,
+         and the filename is the one form that resolves on both.
+         build-frontdoor.js fails the build if terms.html ever stops shipping
+         beside it. -->
     <a class="footer__link" href="terms.html">Terms</a>
   </div>
 </footer>

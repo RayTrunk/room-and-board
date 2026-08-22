@@ -112,7 +112,7 @@ const GROUPS = [
   // slot Ambient vacated, which had become a rump of leftovers once Images was
   // carved out of it.
   // NAMING — decided with Sean, 2026-07-29: this group is "Reference", never
-  // "Work". unsleep is his personal project and a "Work" label would imply an
+  // "Work". idlescreen is his personal project and a "Work" label would imply an
   // employer sponsors it. Do not rename it back.
   { label: 'Reference', ids: ['worldclock', 'services'] },
 ];

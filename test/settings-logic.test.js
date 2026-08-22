@@ -1057,7 +1057,7 @@ describe('Settings → What’s new', () => {
     // NOT the pane-level "Couldn't load this section" copy: loadChangelog's
     // never-throw contract turns a dead network into an absence, not an error.
     expect(document.querySelector('.pane__empty')).toBeNull();
-    expect(document.querySelector('.log__empty').textContent).toContain('unsleep.io');
+    expect(document.querySelector('.log__empty').textContent).toContain('idlescreen.io');
     expect(document.querySelector('.pane__title').textContent).toBe('What’s new');
     expect(document.querySelector('[data-log-more]')).toBeNull();
   });

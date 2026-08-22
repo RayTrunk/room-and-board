@@ -217,24 +217,24 @@ describe('paneHtml', () => {
     expect(html).toContain('aria-label="Back to settings"');
     expect(html).toContain('nothing to install');
     expect(html).toContain('version fa395c8b41d2');
-    expect(html).toContain('unsleep.io');
+    expect(html).toContain('idlescreen.io');
   });
 
   it('shows one quiet line, still under its own heading, when the notes are missing', () => {
     for (const groups of [null, undefined]) {
       const html = paneHtml(groups);
       expect(html).toContain('log__empty');
-      expect(html).toContain('unsleep.io');
+      expect(html).toContain('idlescreen.io');
       expect(html).toContain('What’s new'); // the pane never renders bare
       expect(html).not.toContain('data-log-more');
     }
-    expect(EMPTY_COPY).toContain('unsleep.io');
+    expect(EMPTY_COPY).toContain('idlescreen.io');
   });
 
   it('drops the version clause rather than printing an empty one', () => {
     // Scoped to the colophon: the notes themselves may well say "version".
     const foot = /<p class="log__foot">(.*?)<\/p>/.exec(paneHtml(shipped))[1];
-    expect(foot).toBe('unsleep · full guide at unsleep.io');
+    expect(foot).toBe('idlescreen · full guide at idlescreen.io');
     expect(foot).not.toMatch(/·\s*·/);
   });
 
@@ -274,23 +274,27 @@ describe('the rail-footer entry point', () => {
 
   it('keeps the wordmark decorative inside the control, not a second label', () => {
     // The lockup is the button's face; it is hidden from the accessibility tree
-    // so the accessible name is the caption alone, not "un/sleep What's new".
+    // so the accessible name is the caption alone, not "idlescreen What's new".
     // The wordmark is set in text rather than drawn as an image, which is why
     // hiding it takes aria-hidden instead of an empty alt.
     const html = railFootHtml();
-    expect(html).toMatch(/<span class="settings__lockup umark" aria-hidden="true">/);
+    expect(html).toMatch(/<span class="settings__lockup imark" aria-hidden="true">/);
     expect(html).not.toContain('<img');
     const host = document.createElement('div');
     host.innerHTML = html;
     const lockup = host.querySelector('.settings__lockup');
     expect(lockup.getAttribute('aria-hidden')).toBe('true');
-    // Three plain spans and nothing else: the whole mark is real text, so the
-    // DOM reads the name exactly once with no hidden or duplicated glyphs.
+    // Two plain spans and nothing else: the whole mark is real text, so the
+    // DOM reads the name exactly once with no hidden or duplicated glyphs —
+    // and no dotless ı standing in for the i, which would put "ıdlescreen" in
+    // the DOM of every board's settings rail.
     // Class names are shared with info.css, so a rename here is a rename there.
-    expect(lockup.querySelector('.umark__un').textContent).toBe('un');
-    expect(lockup.querySelector('.umark__sl').textContent).toBe('/');
-    expect(lockup.querySelector('.umark__sleep').textContent).toBe('sleep');
-    expect(lockup.textContent).toBe('un/sleep');
+    expect(lockup.querySelector('.imark__idle').textContent).toBe('idle');
+    expect(lockup.querySelector('.imark__screen').textContent).toBe('screen');
+    expect(lockup.textContent).toBe('idlescreen');
     expect(lockup.querySelector('[hidden]')).toBeNull();
+    // The rail sets the word at 27px, under the 28px floor the LED tittle
+    // needs, so this surface takes the plain form.
+    expect(html).not.toContain('imark--led');
   });
 });

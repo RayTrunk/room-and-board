@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" role="img" aria-label="idlescreen">
+  <!-- The small master, for favicon sizes (32 and below): the full mark
+       (idlescreen-mark.svg) reduced to one row of two cards, because four cards
+       and a 3-unit gutter turn to mud at 16px. Drawn on a 16 grid rather than
+       scaled down from 64 so every edge lands on a whole or half pixel: the
+       panel stroke is 1 wide on a .5 offset, which is what keeps it one crisp
+       pixel instead of two grey ones. -->
+  <title>idlescreen</title>
+  <rect x="0.5" y="3.5" width="15" height="9" rx="2" fill="#0d1218" stroke="rgba(255,255,255,.16)" stroke-width="1"/>
+  <rect x="2.5" y="5.5" width="6" height="5" rx="1" fill="#64b4fa"/>
+  <rect x="10" y="5.5" width="3.5" height="5" rx="1" fill="rgba(100,180,250,.30)"/>
+</svg>

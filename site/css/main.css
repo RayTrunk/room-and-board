@@ -788,22 +788,39 @@ body { position: relative; top: max(0px, calc((100dvh - 1080px) / 2)); }
 body.mode-ambient .topbar, body.mode-ambient #grid { visibility: hidden; }
 
 /* ---------- the wordmark ----------
-   unsleep as live text: "un" carries the weight, the slash is the only blue in
-   the word, and "sleep" recedes to half-strength white. Three plain spans with
-   nothing hidden and nothing overlaid, so copy, find and screen readers get the
-   name straight from the DOM and an unstyled page still reads it correctly.
+   idlescreen as live text: "idle" recedes to half-strength white, "screen"
+   carries the weight. Two plain spans with nothing hidden and nothing
+   overlaid, so copy, find and screen readers get the name straight from the
+   DOM — one word, exactly "idlescreen", never a dotless ı standing in for the
+   i — and an unstyled page still reads it correctly.
    Shared by the welcome screen and the settings rail; info.css carries an
    identical copy for the standalone guide, so the class names must not drift
    apart. Weights are absolute rather than inherited: this mark sets its own
    contrast and must not restate whatever the host line is set in. */
-.umark { line-height: 1; letter-spacing: -0.03em; }
-.umark__un { font-weight: 600; color: var(--ink); }
-/* Asymmetric on purpose (Sean's catch, 2026-08-18): the slash leans right,
-   so its foot crowds the n while its head leaves an open pocket before the
-   s. Equal margins read unequal; the left side carries the optical
-   correction. Same value as info.css, verbatim, always. */
-.umark__sl { color: var(--accent); font-weight: 300; margin: 0 0.05em 0 0.12em; }
-.umark__sleep { font-weight: 300; color: rgba(255, 255, 255, 0.50); }
+.imark {
+  line-height: 1; letter-spacing: -0.03em; white-space: nowrap;
+  /* Optical centring, the brand sheet's own numbers: the -0.03em tracking
+     hangs off the last letter too, so the ink sits a hair right of its box.
+     Same values as info.css, verbatim, always. */
+  margin-left: -0.0152em; margin-right: -0.0148em;
+}
+.imark__idle { font-weight: 300; color: rgba(255, 255, 255, 0.50); }
+.imark__screen { font-weight: 600; color: var(--ink); }
+/* The standalone display form. Neither shell surface takes it and both are
+   right to refuse: the accent appears once per surface, the welcome lockup
+   already spends it on the mark's lit card, and the settings rail sets the
+   word at 27px, under the 28px floor where the disc stops reading as a
+   decision. It lives here so the two stylesheets stay one component. The
+   measured geometry and the faces it was measured against are documented in
+   info.css; change one, change both. */
+.imark--led .imark__idle { position: relative; }
+.imark--led .imark__idle::before {
+  content: '';
+  position: absolute;
+  left: 0.094em; top: calc(0.9675em - 0.661em);
+  width: 0.13em; height: 0.13em; margin: -0.065em 0 0 -0.065em;
+  border-radius: 50%; background: var(--accent);
+}
 
 /* ---------- welcome ---------- */
 .welcome { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: var(--bg); }

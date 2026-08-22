@@ -88,6 +88,7 @@ import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 const html = await readFile(resolve(process.cwd(), 'site/info.html'), 'utf8');
 const css = await readFile(resolve(process.cwd(), 'site/css/info.css'), 'utf8');
+const shell = await readFile(resolve(process.cwd(), 'site/css/main.css'), 'utf8');
 const macro = await readFile(resolve(process.cwd(), 'macro/Dashboard.js'), 'utf8');
 const terms = await readFile(resolve(process.cwd(), 'site/terms.html'), 'utf8');
 const frontdoor = await readFile(resolve(process.cwd(), 'tools/build-frontdoor.js'), 'utf8');
@@ -98,26 +99,69 @@ describe('/info wears the brand', () => {
     // The tab carries the tagline, not "Widget Guide": the page is the
     // product's front door now, and this string is also what search results
     // and link previews show (Sean's call, 2026-08-18).
-    expect(html).toContain('<title>unsleep · A dashboard for the screen that never sleeps</title>');
-    // Lowercase, always. The one place a capital U could sneak back in is a
-    // sentence start, so the rule is checked against the whole file.
+    expect(html).toContain('<title>idlescreen · A dashboard for your idle screen</title>');
+    // Lowercase, always. The one place a capital I could sneak back in is a
+    // sentence start, so the rule is checked against the whole file — and the
+    // camel-cased "IdleScreen" is named too, because one word means one word.
+    expect(html).not.toMatch(/Idlescreen|IdleScreen/);
+    expect(css).not.toMatch(/Idlescreen|IdleScreen/);
+    // The retired name kept its own lowercase rule, and this still catches
+    // residue: a sentence that was rewritten around "unsleep" and left
+    // title-cased is a rename that only half landed.
     expect(html).not.toMatch(/Unsleep/);
     expect(css).not.toMatch(/Unsleep/);
   });
 
-  it('carries no display mention of the retired name (URLs are a separate phase)', () => {
-    const prose = html.replace(/https?:\/\/[^\s"'<>]+|>[^<]*quadrille\.io[^<]*</gi, '');
+  it('carries no display mention of the retired names (URLs are a separate phase)', () => {
+    // Addresses are exempt: quadrille.io and unsleep.app still answer, and the
+    // lede says so on purpose. What must not survive is either retired name as
+    // the PRODUCT's name in a sentence.
+    const prose = html.replace(/https?:\/\/[^\s"'<>]+|>[^<]*(?:quadrille\.io|unsleep\.(?:app|io))[^<]*</gi, '');
     expect(prose).not.toMatch(/quadrill/i);
     expect(css).not.toMatch(/quadrill/i);
+    expect(prose).not.toMatch(/unsleep/i);
+    expect(css).not.toMatch(/unsleep/i);
   });
 
-  it('sets the wordmark as three plain spans, not the old glyph-cover trick', () => {
+  it('sets the wordmark as two plain spans holding the exact word', () => {
     // Live, selectable text: no aria-hidden twin, no clip, nothing drawn twice.
     // The whole word has to come out of textContent in order.
-    const mark = /<span class="umark"><span class="umark__un">un<\/span><span class="umark__sl">\/<\/span><span class="umark__sleep">sleep<\/span><\/span>/g;
+    const mark = /<span class="imark"><span class="imark__idle">idle<\/span><span class="imark__screen">screen<\/span><\/span>/g;
     expect(html.match(mark)).toHaveLength(3); // nav brand, masthead, footer lockup
-    expect(html).not.toMatch(/qmark/);
-    expect(css).not.toMatch(/qmark/);
+    expect(html).not.toMatch(/qmark|umark/);
+    // Selectors, not the words: info.css still names the retired qmark in
+    // prose, because why that construction was abandoned is the reason this
+    // one is built the way it is.
+    expect(css).not.toMatch(/\.(?:qmark|umark)\b/);
+    expect(shell).not.toMatch(/\.(?:qmark|umark)\b/);
+
+    // What the reader COPIES, which is the whole reason the accent is drawn
+    // rather than typed. The brand sheet set the LED over a dotless ı (U+0131);
+    // that spells "ıdlescreen" into a clipboard, a find bar, and a screen
+    // reader, so it is banned on sight in both spellings.
+    const host = document.createElement('div');
+    host.innerHTML = html.match(mark)[0];
+    expect(host.firstElementChild.textContent).toBe('idlescreen');
+    // Comments are stripped first: both stylesheets name the glyph in prose,
+    // and the comment explaining the ban is not a breach of it.
+    expect(html.replace(/<!--[^]*?-->/g, '')).not.toMatch(/&#305;|ı/);
+    expect(css.replace(/\/\*[^]*?\*\//g, '')).not.toMatch(/&#305;|ı/);
+    expect(shell.replace(/\/\*[^]*?\*\//g, '')).not.toMatch(/&#305;|ı/);
+  });
+
+  it('spends the accent once per surface, so every lockup wears the plain tittle', () => {
+    // The rule the identity turns on: wherever the mark is present it is the
+    // mark's lit card that carries the blue, and the word beside it keeps its
+    // own plain tittle at every size. The LED modifier is the standalone
+    // exception, and NO surface on this page qualifies — the nav and footer set
+    // the word beside the inline mark, and the masthead sets it inside a drawn
+    // screen whose lit card has already spent the accent. A DECISION, not an
+    // oversight: changing it means putting two saturated things on one surface.
+    expect(html).not.toMatch(/imark--led/);
+    // The modifier still has to exist, and identically in both sheets, so a
+    // surface that does qualify has something to ask for.
+    expect(css).toMatch(/\.imark--led \.imark__idle::before/);
+    expect(shell).toMatch(/\.imark--led \.imark__idle::before/);
   });
 
   it('lights exactly one card on the masthead panel, and nothing sits behind the word', () => {
@@ -137,35 +181,46 @@ describe('/info wears the brand', () => {
   });
 
   it('points the head icons at the new masters', () => {
-    expect(html).toContain('href="assets/unsleep-quad.svg"');
+    expect(html).toContain('href="assets/idlescreen-quad.svg"');
     // PNGs, not SVGs, for the raster slots: iOS ignores an SVG
     // apple-touch-icon and would fall back to a page screenshot.
-    expect(html).toContain('href="assets/unsleep-favicon-32.png"');
-    expect(html).toContain('href="assets/unsleep-icon-180.png"');
+    expect(html).toContain('href="assets/idlescreen-favicon-32.png"');
+    expect(html).toContain('href="assets/idlescreen-icon-180.png"');
+  });
+
+  it('keeps the shell\'s copy of the wordmark identical to this one', () => {
+    // Two stylesheets, one component: the guide and the app shell both set the
+    // mark, and a value that drifts between them ships two brands. Compare the
+    // declarations rather than the prose around them.
+    const rules = (sheet) => [...sheet.matchAll(/^\.imark[^{]*\{[^}]*\}/gms)]
+      .map((m) => m[0].replace(/\/\*.*?\*\//gs, '').replace(/\s+/g, ' ').trim());
+    expect(rules(shell)).toEqual(rules(css));
+    expect(rules(css).length).toBeGreaterThan(3);
   });
 });
 
-describe('/info says how unsleep gets on a board', () => {
-  // The gap this closes: the guide serves from unsleep.io and the dashboard
-  // from unsleep.app, so before 2026-08-19 a stranger could not work out the
+describe('/info says how idlescreen gets on a board', () => {
+  // The gap this closes: the guide serves from idlescreen.io and the dashboard
+  // from idlescreen.app, so before 2026-08-19 a stranger could not work out the
   // address to point a board at from anything on the page.
   it('answers the question before the page assumes the answer', () => {
     const board = html.indexOf('id="board"');
     const yours = html.indexOf('id="yours"');
     expect(board).toBeGreaterThan(-1);
     // Everything under Making it yours assumes a board already showing
-    // unsleep, so the install cannot come after it.
+    // idlescreen, so the install cannot come after it.
     expect(board).toBeLessThan(yours);
     expect(html).toContain('<a class="nav__link" href="#board">');
   });
 
   it('agrees with the macro about the address', () => {
-    // The README claimed this default had already moved to unsleep.app while
-    // the macro still shipped app.quadrille.io — a drift nobody could see
-    // from either file alone. Two sources, one assertion.
+    // The README once claimed this default had already moved while the macro
+    // still shipped app.quadrille.io — a drift nobody could see from either
+    // file alone, and the page teaches whatever the macro does not. Two
+    // sources, one assertion, and it has now survived two renames.
     const shipped = /const SIGNAGE_URL = '([^']+)'/.exec(macro)?.[1];
-    expect(shipped).toBe('https://unsleep.app');
-    expect(html).toContain('xConfiguration Standby Signage Url: https://unsleep.app');
+    expect(shipped).toBe('https://idlescreen.app');
+    expect(html).toContain('xConfiguration Standby Signage Url: https://idlescreen.app');
   });
 
   it('spells out the touch setting RoomOS does not turn on for you', () => {
@@ -191,14 +246,34 @@ describe('/info says how unsleep gets on a board', () => {
 });
 
 describe('/terms', () => {
+  it('wears the same name and the same icons as the guide', () => {
+    expect(terms).toContain('<title>Terms · idlescreen</title>');
+    expect(terms).not.toMatch(/Idlescreen|IdleScreen|Unsleep/);
+    expect(terms).not.toMatch(/umark|&#305;|ı/);
+    expect(terms).toContain('href="assets/idlescreen-quad.svg"');
+    expect(terms).toContain('href="assets/idlescreen-favicon-32.png"');
+    expect(terms).toContain('href="assets/idlescreen-icon-180.png"');
+  });
+
+  it('names every address the terms actually cover, not just the current pair', () => {
+    // "The service" is the clause that says what you are agreeing about, and
+    // the older names still answer — a board pointed at one of them is bound
+    // by these terms too. Narrowing the clause to the newest pair would make
+    // it read as if the rest were something else.
+    const service = /The service<\/h2>\s*<p class="row__desc">([^]*?)<\/p>/.exec(terms)?.[1] ?? '';
+    for (const host of ['idlescreen.io', 'idlescreen.app', 'unsleep.io', 'unsleep.app', 'quadrille.io', 'roomboard.app']) {
+      expect(service).toContain(host);
+    }
+  });
+
   it('is reachable from the guide and reaches back', () => {
     expect(html).toContain('<a class="footer__link" href="terms.html">Terms</a>');
     expect(terms).toContain('href="info.html"');
   });
 
   it('keeps every internal link relative, because it serves from two origins', () => {
-    // The same bytes answer on unsleep.io (where the guide is the root) and
-    // unsleep.app (where it is /info). A root-absolute link resolves on one
+    // The same bytes answer on idlescreen.io (where the guide is the root) and
+    // idlescreen.app (where it is /info). A root-absolute link resolves on one
     // and 404s on the other, and nothing in CI would notice.
     const internal = [...terms.matchAll(/href="([^"]+)"/g)]
       .map((m) => m[1])
@@ -214,6 +289,20 @@ describe('/terms', () => {
     expect(frontdoor).toContain("['terms.html', 'terms.html']");
   });
 
+  it('keeps every superseded icon set shipping beside the current one', () => {
+    // The front door caches normally, and Pages propagates PER-ASSET, so HTML
+    // cached under an earlier name is still being served after the rename and
+    // still asks for the icons that name used. Dropping a set 404s them on a
+    // page nobody can force to refresh, so the list only ever grows.
+    for (const name of ['idlescreen', 'unsleep']) {
+      expect(frontdoor).toContain(`['assets/${name}-quad.svg', 'assets/${name}-quad.svg']`);
+      expect(frontdoor).toContain(`['assets/${name}-favicon-32.png', 'assets/${name}-favicon-32.png']`);
+      expect(frontdoor).toContain(`['assets/${name}-icon-180.png', 'assets/${name}-icon-180.png']`);
+    }
+    expect(frontdoor).toContain("['assets/quadrille-favicon-32.png', 'assets/quadrille-favicon-32.png']");
+    expect(frontdoor).toContain("['assets/quadrille-icon-180.png', 'assets/quadrille-icon-180.png']");
+  });
+
   it('carries the clauses a reviewer looks for, not just the honest ones', () => {
     expect(terms).toMatch(/as is and as available/i);
     expect(terms).toMatch(/warranties are disclaimed/i);
@@ -221,7 +310,7 @@ describe('/terms', () => {
     // The security posture is a strength and the page used to omit it, which
     // left a reviewer's most-asked question answered by silence.
     expect(terms).toMatch(/Content-Security-Policy/);
-    // The examples of "it got something wrong" have to be things unsleep
+    // The examples of "it got something wrong" have to be things idlescreen
     // actually shows. It has no calendar and never has (Sean's catch,
     // 2026-08-19), so a late meeting was promising a feature. The macro
     // clause's `wake-at-meeting-start` is a RoomOS config name and stays.

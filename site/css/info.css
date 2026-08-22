@@ -108,26 +108,67 @@ button:focus-visible {
 }
 
 /* ---------- the wordmark ----------
-   unsleep is set as live text, one family, two weights, and the word carries
-   its own meaning in the weight: "un" is the semibold half that stays awake,
-   "sleep" is the half held back at 50% ink, and the slash between them is the
-   only blue thing in the word. Three plain spans, no overlay, no clip, no
-   aria-hidden twin, so find, copy, and screen readers all get exactly
-   "un/sleep". (The old mark needed a glyph-cover construction to paint one
-   accent blue and took four iterations to stop clipping; nothing here can
-   regress the same way, because nothing is drawn twice.)
+   idlescreen is set as live text, one family, two weights, and the word
+   carries its own meaning in the weight: "idle" is the half held back at 50%
+   ink, "screen" is the semibold half that stays lit. Two plain spans holding
+   the exact word, so find, copy, and screen readers all get "idlescreen" —
+   one word, never divided, never title-cased.
+   Nothing here is a glyph substitution, and that is the load-bearing part.
+   The brand sheet drew the accent tittle over a DOTLESS ı (U+0131), which
+   copies out of the page as "ıdlescreen" and reads that way aloud; this repo
+   has already paid for that class of trick twice (the qmark's aria-hidden
+   twin, then the four iterations its glyph-cover took to stop clipping). The
+   accent form below instead COVERS the letter's own tittle with an opaque
+   disc, so the DOM keeps the plain word and nothing is drawn twice.
    The brand rule: lowercase, always. Never title-case it in copy or CSS.
    These class names and values are shared verbatim with the app shell's
    lockup: change one, change both. */
-.umark { line-height: 1; letter-spacing: -0.03em; }
-.umark__un { font-weight: 600; color: var(--ink); }
-/* Asymmetric on purpose (Sean's catch, 2026-08-18): the slash leans right,
-   so its foot crowds the n while its head leaves an open pocket before the
-   s. Equal margins read unequal; the left side carries the optical
-   correction. Chosen against 0.05/0.09/0.12/0.15 at 64px: 0.12 balances the
-   two pockets, 0.15 detaches the slash from the word. */
-.umark__sl { color: var(--accent); font-weight: 300; margin: 0 0.05em 0 0.12em; }
-.umark__sleep { font-weight: 300; color: rgba(255, 255, 255, 0.50); }
+.imark {
+  line-height: 1; letter-spacing: -0.03em; white-space: nowrap;
+  /* Optical centring, the brand sheet's own numbers: -0.03em tracking hangs
+     off the LAST letter as well as between them, so the ink sits a hair right
+     of the box it is centred in. These cancel that trailing space and pull the
+     left sidebearing onto the same optical edge. */
+  margin-left: -0.0152em; margin-right: -0.0148em;
+}
+.imark__idle { font-weight: 300; color: rgba(255, 255, 255, 0.50); }
+.imark__screen { font-weight: 600; color: var(--ink); }
+
+/* The standalone display form, and the only place the word may carry blue.
+   THE ACCENT APPEARS ONCE PER SURFACE: wherever the mark is on the surface it
+   is the mark's lit card that carries the accent, and the word beside it wears
+   its own plain tittle at every size, including the largest. Two saturated
+   things on one surface read as decoration; one reads as a signal. So every
+   lockup on this page — nav brand, masthead panel, footer — is the plain form,
+   and this modifier is for a surface that shows the word with no mark and no
+   lit card anywhere on it. Floor is 28px: below that the disc is under 2.7px
+   and reads as a stuck subpixel rather than a decision.
+   The geometry is MEASURED, not inherited. Every number was read off the
+   rendered glyph in Chrome (an ink-scan of "i" at weight 300), because the
+   sheet's numbers describe where a tittle should sit, not how much of a real
+   one has to be covered:
+     Helvetica Neue  tittle spans x 0.060-0.125em, y 0.6125-0.715em off the baseline
+     SF (system-ui)  tittle spans x 0.050-0.140em, y 0.5975-0.68875em
+   which are the two faces the stack above actually resolves to on a Mac —
+   Chrome does not support -apple-system, so it falls through to Helvetica
+   Neue, while Safari takes SF. A 0.13em disc centred at 0.094em/0.661em is
+   the smallest circle covering BOTH, which is why it is wider than the 0.095em
+   the sheet quotes: the sheet had a dotless ı and nothing to cover. It is a
+   cover, so re-measure before trusting it on a third face.
+   0.9675em is the distance from this inline box's content-box top down to the
+   baseline (identical in both faces); `top` is stated against it so the disc
+   is placed off the BASELINE, which is what the tittle's position is fixed to. */
+.imark--led .imark__idle { position: relative; }
+.imark--led .imark__idle::before {
+  content: '';
+  position: absolute;
+  /* The disc's CENTRE: 0.094em right of the i's pen origin — which is this
+     span's own left content edge, the i being its first letter — and 0.661em
+     above the baseline. The negative margins pull the box back onto it. */
+  left: 0.094em; top: calc(0.9675em - 0.661em);
+  width: 0.13em; height: 0.13em; margin: -0.065em 0 0 -0.065em;
+  border-radius: 50%; background: var(--accent);
+}
 
 /* ---------- hero ---------- */
 .hero { padding-top: 84px; padding-bottom: 12px; }
@@ -202,8 +243,9 @@ button:focus-visible {
 /* Nav brand is the mark and the wordmark at rail scale. min-height holds the
    same 44px thumb target the pills beside it keep, and it is a BORDER-box 44
    (the sheet sets box-sizing globally), so the 9px padding is inside it:
-   .umark sets line-height:1, which collapses the flex row to the em box and
-   would otherwise leave the brand a 39px target next to 44px neighbours. */
+   .imark sets line-height:1, which collapses the flex row to the em box and
+   would otherwise leave the brand a 39px target next to 44px neighbours.
+   Mark 18, wordmark 21, gap 10 — the brand sheet's rail metrics. */
 .nav__brand { font-size: 21px; color: var(--ink); gap: 10px; min-height: 44px; }
 .nav__mark { flex: none; display: block; }
 
@@ -566,7 +608,7 @@ code {
 .footer { margin-top: 96px; padding-top: 26px; padding-bottom: 72px; }
 .footer__inner { border-top: 1px solid var(--bg-card-2); padding-top: 24px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .footer__brand { display: flex; align-items: center; gap: 10px; }
-.footer__brand .umark { font-size: 17px; }
+.footer__brand .imark { font-size: 17px; }
 
 /* ---------- lightbox (built by info.js) ---------- */
 .lightbox {
@@ -676,17 +718,17 @@ code {
   a { color: #000; text-decoration: underline; }
   /* The screen panel is a dark slab and would print as one. On paper the
      masthead is just the name: panel chrome off, cards gone, the word set
-     left where a printed heading belongs. The slash keeps the accent, which
-     the palette flip above prints as a readable navy; "sleep" needs its own
-     ink, because its 50%-WHITE is invisible on paper, and a mid-gray holds
-     the same two-tone reading the screen has. */
+     left where a printed heading belongs. "screen" rides var(--ink), which
+     the palette flip above turns black; "idle" needs its own ink, because its
+     50%-WHITE is invisible on paper, and a mid-gray holds the same two-tone
+     reading the screen has. */
   .hero__screen {
     background: none; border: 1px solid #c8c8c8; padding: 18px 22px;
     display: block; min-height: 0;
   }
   .hero__card { display: none; }
   .hero__title, .nav__brand { color: #000; }
-  .umark__sleep { color: #5a5a5a; }
+  .imark__idle { color: #5a5a5a; }
   .hero { padding-top: 0; display: block; }
   .hero__shot { margin-top: 24px; }
   .section { padding-top: 28px; }

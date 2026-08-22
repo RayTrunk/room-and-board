@@ -222,7 +222,7 @@ function showWelcome() {
   welcome.innerHTML = `
     <div class="welcome__inner">
       <div class="welcome__brand" aria-hidden="true">
-        <!-- Inlined rather than <img src="assets/unsleep-mark.svg">: the welcome
+        <!-- Inlined rather than <img src="assets/idlescreen-mark.svg">: the welcome
              screen is the first paint of a cold boot and this must not cost a
              round trip. Geometry is the 64 master verbatim; keep the two in
              step. -->
@@ -233,7 +233,7 @@ function showWelcome() {
           <rect x="9" y="34" width="14" height="11" rx="3" fill="rgba(100,180,250,.14)"/>
           <rect x="26" y="34" width="29" height="11" rx="3" fill="rgba(100,180,250,.22)"/>
         </svg>
-        <span class="umark welcome__word"><span class="umark__un">un</span><span class="umark__sl">/</span><span class="umark__sleep">sleep</span></span>
+        <span class="imark welcome__word"><span class="imark__idle">idle</span><span class="imark__screen">screen</span></span>
       </div>
       <h1>Welcome to your office display</h1>
       <p>Set it up from your phone or desktop, or start with sensible defaults and fine-tune later.</p>

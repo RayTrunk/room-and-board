@@ -1,4 +1,4 @@
-// Assemble the unsleep.io front door from site/ into dist/frontdoor.
+// Assemble the idlescreen.io front door from site/ into dist/frontdoor.
 //
 // The front door is the public widget guide served on its own origin so it
 // can cache normally while the app keeps `no-cache` (see site/_headers). It
@@ -7,9 +7,10 @@
 // script makes it a build product of the same commit instead. CI deploys the
 // output to the `quadrille-site` Pages project on every push to main
 // (.github/workflows/test.yml), and `npm run deploy:frontdoor` is the manual
-// fallback. That project name predates the unsleep rename and is deliberately
-// frozen: unsleep.io is a custom domain attached to it, so renaming the
-// project would break the attachment to rename a string nobody sees.
+// fallback. That project name predates two renames now and is deliberately
+// frozen: idlescreen.io and unsleep.io are both custom domains attached to it,
+// so renaming the project would break those attachments to rename a string
+// nobody sees.
 //
 // There are no brand rewrites here, and that absence is the design. The guide
 // carries its own title, copy and app links, and this script serves the same
@@ -34,7 +35,7 @@ const FILES = [
   ['info.html', 'index.html'], // the guide IS the front door's root...
   ['info.html', 'info.html'], // ...and /info keeps working for old links
   // The guide's footer links this relatively, so it must exist on BOTH
-  // origins — unsleep.io/terms and unsleep.app/terms are the same bytes. The
+  // origins — idlescreen.io/terms and idlescreen.app/terms are the same bytes. The
   // reference guard below is what enforces that it keeps being shipped.
   ['terms.html', 'terms.html'],
   ['css/info.css', 'css/info.css'],
@@ -42,12 +43,17 @@ const FILES = [
   ['data/changelog.json', 'data/changelog.json'], // also the health probe
   // Icon filenames track site/assets and the guide's <link rel="icon">; they
   // are brand-named, so a rename on either side has to land on both.
+  ['assets/idlescreen-quad.svg', 'assets/idlescreen-quad.svg'],
+  ['assets/idlescreen-favicon-32.png', 'assets/idlescreen-favicon-32.png'],
+  ['assets/idlescreen-icon-180.png', 'assets/idlescreen-icon-180.png'],
+  // Every superseded set still ships, and the list only ever grows. The front
+  // door caches normally (that is its point), so HTML cached under an earlier
+  // name keeps resolving its icons until it expires instead of 404ing them —
+  // and Pages propagates PER-ASSET, so a copy that stops shipping goes missing
+  // while the page that references it is still being served.
   ['assets/unsleep-quad.svg', 'assets/unsleep-quad.svg'],
   ['assets/unsleep-favicon-32.png', 'assets/unsleep-favicon-32.png'],
   ['assets/unsleep-icon-180.png', 'assets/unsleep-icon-180.png'],
-  // The old pair still ships: the front door caches normally (that is its
-  // point), so HTML cached before the rename keeps resolving its icons until
-  // it expires instead of 404ing them.
   ['assets/quadrille-favicon-32.png', 'assets/quadrille-favicon-32.png'],
   ['assets/quadrille-icon-180.png', 'assets/quadrille-icon-180.png'],
 ];

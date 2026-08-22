@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="idlescreen">
+  <!-- The full master, used at 40px and up: a screen that is awake, drawn as
+       four cards on a lit panel. Geometry rules (do not eyeball-edit): the
+       panel keeps a constant inset of 5 to every card, the two rows are 12 and
+       11 tall with a 3 gutter between them, and card rx 3 sits inside panel
+       rx 7. The panel is centred in the 64 box (y 14..50) so the mark aligns on
+       its own optical centre wherever it is dropped. Below 40px use
+       idlescreen-quad.svg: four cards at that size blur into one grey block. -->
+  <title>idlescreen</title>
+  <rect x="4" y="14" width="56" height="36" rx="7" fill="#0d1218" stroke="rgba(255,255,255,.14)" stroke-width="1.5"/>
+  <rect x="9" y="19" width="24" height="12" rx="3" fill="#64b4fa"/>
+  <rect x="36" y="19" width="19" height="12" rx="3" fill="rgba(100,180,250,.22)"/>
+  <rect x="9" y="34" width="14" height="11" rx="3" fill="rgba(100,180,250,.14)"/>
+  <rect x="26" y="34" width="29" height="11" rx="3" fill="rgba(100,180,250,.22)"/>
+</svg>

@@ -1,5 +1,5 @@
 // Settings → What's new. The board's own copy of the release notes that
-// unsleep.io publishes: the SAME data file (site/data/changelog.json),
+// idlescreen.io publishes: the SAME data file (site/data/changelog.json),
 // the same rhythm — a date gutter, lead + prose to its right, one hairline per
 // dated group — retuned for a 6 ft reading distance.
 //
@@ -112,7 +112,7 @@ export function fitChangelog(pane) {
 // purpose: it is an absence, not an error, and it names the place the reader
 // can always get them (their phone, which is where a board with no browser
 // sends you).
-export const EMPTY_COPY = 'Couldn’t load the update notes just now. They are always at unsleep.io.';
+export const EMPTY_COPY = 'Couldn’t load the update notes just now. They are always at idlescreen.io.';
 
 export function emptyHtml(copy = EMPTY_COPY) {
   return `<div class="log"><p class="log__empty">${escapeHtml(copy)}</p></div>`;
@@ -172,7 +172,7 @@ export function paneHtml(groups, { build = '' } = {}) {
       </div>
       <p class="pane__hint">Updates to this board, newest first. It keeps itself up to date, so there is nothing to install.</p>
       ${list || emptyHtml()}
-      <p class="log__foot">unsleep${build ? ` · version ${escapeHtml(build)}` : ''} · full guide at unsleep.io</p>
+      <p class="log__foot">idlescreen${build ? ` · version ${escapeHtml(build)}` : ''} · full guide at idlescreen.io</p>
     </div>`;
 }
 
@@ -192,7 +192,7 @@ export function paneHtml(groups, { build = '' } = {}) {
 // wants it will look.
 export function railFootHtml() {
   return `<button class="settings__whatsnew" type="button" data-whatsnew>
-      <span class="settings__lockup umark" aria-hidden="true"><span class="umark__un">un</span><span class="umark__sl">/</span><span class="umark__sleep">sleep</span></span>
+      <span class="settings__lockup imark" aria-hidden="true"><span class="imark__idle">idle</span><span class="imark__screen">screen</span></span>
       <span class="settings__wnline">What’s new</span>
     </button>`;
 }
