@@ -255,15 +255,15 @@ describe('/terms', () => {
     expect(terms).toContain('href="assets/idlescreen-icon-180.png"');
   });
 
-  it('names every address the terms actually cover, not just the current pair', () => {
-    // "The service" is the clause that says what you are agreeing about, and
-    // the older names still answer — a board pointed at one of them is bound
-    // by these terms too. Narrowing the clause to the newest pair would make
-    // it read as if the rest were something else.
+  it('the service clause names the current pair and stays quiet about the rest', () => {
+    // Sean's call at the rename vet (2026-08-21): the roll-call of every
+    // earlier address read as archaeology, and the page serves on all of
+    // those domains anyway — whoever reads it from unsleep.app/terms is
+    // reading THIS page. The clause names the current pair only.
     const service = /The service<\/h2>\s*<p class="row__desc">([^]*?)<\/p>/.exec(terms)?.[1] ?? '';
-    for (const host of ['idlescreen.io', 'idlescreen.app', 'unsleep.io', 'unsleep.app', 'quadrille.io', 'roomboard.app']) {
-      expect(service).toContain(host);
-    }
+    for (const host of ['idlescreen.io', 'idlescreen.app']) expect(service).toContain(host);
+    expect(service).not.toContain('quadrille');
+    expect(service).not.toContain('roomboard');
   });
 
   it('is reachable from the guide and reaches back', () => {
