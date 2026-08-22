@@ -126,8 +126,8 @@ describe('/info wears the brand', () => {
   it('sets the wordmark as two plain spans holding the exact word', () => {
     // Live, selectable text: no aria-hidden twin, no clip, nothing drawn twice.
     // The whole word has to come out of textContent in order.
-    const mark = /<span class="imark"><span class="imark__idle">idle<\/span><span class="imark__screen">screen<\/span><\/span>/g;
-    expect(html.match(mark)).toHaveLength(3); // nav brand, masthead, footer lockup
+    const mark = /<span class="imark(?: imark--led)?"><span class="imark__idle">idle<\/span><span class="imark__screen">screen<\/span><\/span>/g;
+    expect(html.match(mark)).toHaveLength(3); // nav brand, masthead (LED), footer lockup
     expect(html).not.toMatch(/qmark|umark/);
     // Selectors, not the words: info.css still names the retired qmark in
     // prose, because why that construction was abandoned is the reason this
@@ -149,17 +149,19 @@ describe('/info wears the brand', () => {
     expect(shell.replace(/\/\*[^]*?\*\//g, '')).not.toMatch(/&#305;|ı/);
   });
 
-  it('spends the accent once per surface, so every lockup wears the plain tittle', () => {
-    // The rule the identity turns on: wherever the mark is present it is the
-    // mark's lit card that carries the blue, and the word beside it keeps its
-    // own plain tittle at every size. The LED modifier is the standalone
-    // exception, and NO surface on this page qualifies — the nav and footer set
-    // the word beside the inline mark, and the masthead sets it inside a drawn
-    // screen whose lit card has already spent the accent. A DECISION, not an
-    // oversight: changing it means putting two saturated things on one surface.
-    expect(html).not.toMatch(/imark--led/);
-    // The modifier still has to exist, and identically in both sheets, so a
-    // surface that does qualify has something to ask for.
+  it('spends the accent once per lockup, and the masthead alone wears the LED', () => {
+    // The rule: wherever the mark is present it is the mark's lit card that
+    // carries the blue, and the word beside it keeps its plain tittle at
+    // every size — so the nav and footer lockups never take the modifier.
+    // The masthead DOES (Sean's call at the rename vet, 2026-08-21): the
+    // word stands alone at display scale there, the panel's cards being the
+    // hero illustration's scenery rather than a lockup mark, and the LED
+    // tittle is the wordmark's signature. Exactly one instance, on the h1.
+    expect(html.match(/imark--led/g)).toHaveLength(1);
+    expect(html).toMatch(/hero__title"><span class="imark imark--led"/);
+    expect(html).not.toMatch(/nav__brand[^\n]*imark--led/);
+    expect(html).not.toMatch(/footer__brand[^\n]*imark--led/);
+    // The modifier exists identically in both sheets.
     expect(css).toMatch(/\.imark--led \.imark__idle::before/);
     expect(shell).toMatch(/\.imark--led \.imark__idle::before/);
   });
