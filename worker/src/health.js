@@ -26,23 +26,22 @@ export const CHECKS = [
     ok: (j) => typeof j.version === 'string' && j.version.length > 3,
   },
   {
-    // The flagship's own name (added 2026-08-21, on the idlescreen review's
-    // finding): `site` still probes roomboard.app — the URL every existing
-    // board actually loads — but nothing watched unsleep.app, the name all
-    // the NEW copy points at. Same Pages project, so like the aliases below
-    // only the custom-domain attachment and DNS can fail alone.
+    // The earlier flagship name (added 2026-08-21, when nothing watched it;
+    // the copy has since moved on to idlescreen.app but boards configured
+    // during the unsleep era still load this URL, so it is watched for as
+    // long as it serves). Same Pages project, so like the aliases only the
+    // custom-domain attachment and DNS can fail alone.
     name: 'site-unsleep',
     url: 'https://unsleep.app/version.json',
     ok: (j) => typeof j.version === 'string' && j.version.length > 3,
   },
   {
-    // The app's idlescreen alias (2026-08-20): a second custom domain on the
-    // SAME Pages project, so the bytes are identical to `site`'s and the
-    // content can never be what differs. What CAN differ is the alias's
-    // custom-domain attachment and its DNS record — a detach in the Pages
-    // dashboard or a zone edit drops this name alone while the primary keeps
-    // serving and `site` stays green. Nobody is looking at idlescreen.app often
-    // enough to notice, which is exactly the gap this closes.
+    // The flagship name since the 2026-08-21 rename (added 2026-08-20 as an
+    // alias): a second custom domain on the SAME Pages project, so the bytes
+    // are identical to `site`'s and the content can never be what differs.
+    // What CAN differ is the custom-domain attachment and its DNS record — a
+    // detach or a zone edit drops this name alone while the others keep
+    // serving, and this is the address all the current copy points at.
     name: 'site-idlescreen',
     url: 'https://idlescreen.app/version.json',
     ok: (j) => typeof j.version === 'string' && j.version.length > 3,
@@ -367,10 +366,10 @@ export function alertPlan(report, prevFailing = []) {
   const recovered = prevFailing.filter((n) => !names.includes(n));
   let text;
   if (failing.length) {
-    text = `🔴 unsleep health: ${failing.map((r) => `${r.name} (${r.detail})`).join(', ')}`;
+    text = `🔴 idlescreen health: ${failing.map((r) => `${r.name} (${r.detail})`).join(', ')}`;
     if (recovered.length) text += ` (recovered: ${recovered.join(', ')})`;
   } else {
-    text = `✅ unsleep health: all clear (recovered: ${recovered.join(', ')})`;
+    text = `✅ idlescreen health: all clear (recovered: ${recovered.join(', ')})`;
   }
   return { changed: true, failing: names, text: `${text} — ${report.at}` };
 }
@@ -420,7 +419,7 @@ export async function notify(env, text, fetchImpl = fetch) {
   try {
     const res = await fetchImpl(url, {
       method: 'POST',
-      headers: ntfy ? { Title: 'unsleep health' } : { 'content-type': 'application/json' },
+      headers: ntfy ? { Title: 'idlescreen health' } : { 'content-type': 'application/json' },
       body: ntfy ? text : JSON.stringify({ text }),
       signal: AbortSignal.timeout(8000),
     });

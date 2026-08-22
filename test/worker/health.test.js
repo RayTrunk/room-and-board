@@ -581,7 +581,7 @@ describe('notify', () => {
     const fetchImpl = mockFetch();
     await notify({ ALERT_WEBHOOK: 'https://ntfy.sh/roomboard-alerts' }, 'markets (HTTP 503)', fetchImpl);
     const [, init] = fetchImpl.mock.calls[0];
-    expect(init.headers.Title).toBe('unsleep health');
+    expect(init.headers.Title).toBe('idlescreen health');
     expect(init.body).toBe('markets (HTTP 503)');
   });
   // Delivery signal drives at-least-once persistence (see nextFailingState).
@@ -634,7 +634,7 @@ describe('alertPlan (alert only on change)', () => {
     const plan = alertPlan(rep([mk('njt', false, 'stale 500 min old'), mk('site', true)]), []);
     expect(plan.changed).toBe(true);
     expect(plan.text).toContain('🔴');
-    expect(plan.text).toContain('unsleep health:'); // lowercase always, brand rule
+    expect(plan.text).toContain('idlescreen health:'); // lowercase always, brand rule
     expect(plan.text).toContain('njt (stale 500 min old)');
     expect(plan.failing).toEqual(['njt']);
   });
@@ -642,7 +642,7 @@ describe('alertPlan (alert only on change)', () => {
     const plan = alertPlan(rep([mk('njt', true), mk('site', true)]), ['njt']);
     expect(plan.changed).toBe(true);
     expect(plan.text).toContain('✅');
-    expect(plan.text).toContain('unsleep health:');
+    expect(plan.text).toContain('idlescreen health:');
     expect(plan.text).toContain('all clear');
     expect(plan.text).toContain('recovered: njt');
     expect(plan.failing).toEqual([]);

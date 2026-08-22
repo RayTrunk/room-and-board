@@ -2401,7 +2401,7 @@ describe('the health alert state lives in KV, because the Cache API is colo-loca
     const codes = mockCodes();
     const red = await cron(codes);
     expect(red).toHaveLength(1);
-    expect(red[0]).toContain('🔴 unsleep health:');
+    expect(red[0]).toContain('🔴 idlescreen health:');
     expect(JSON.parse(codes.store.get(STATE_KEY)).failing.length).toBeGreaterThan(0);
 
     // Wake up in another colo: the entry the alert state USED to live in is
@@ -2411,7 +2411,7 @@ describe('the health alert state lives in KV, because the Cache API is colo-loca
     await seedGreenFeeds();
     const clear = await cron(codes, greenNet());
     expect(clear).toHaveLength(1);
-    expect(clear[0]).toContain('✅ unsleep health: all clear');
+    expect(clear[0]).toContain('✅ idlescreen health: all clear');
     expect(clear[0]).toContain('recovered:');
     expect(JSON.parse(codes.store.get(STATE_KEY))).toEqual({ failing: [] });
   });

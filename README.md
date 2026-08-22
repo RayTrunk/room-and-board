@@ -1,8 +1,11 @@
+<!-- The hero file is still docs/screenshots/unsleep-hero.png on purpose: the
+     capture shows the old wordmark, and renaming the path before the image is
+     re-shot would only break it. Re-capture and rename after the promote. -->
 <p align="center">
-  <a href="https://unsleep.io"><img alt="unsleep: a dashboard for the screen that never sleeps" src="docs/screenshots/unsleep-hero.png" width="720"></a>
+  <a href="https://idlescreen.io"><img alt="idlescreen: a dashboard for the screen that never sleeps" src="docs/screenshots/unsleep-hero.png" width="720"></a>
 </p>
 
-A lightweight, personal signage dashboard, **unsleep** (`unsleep.io`), for
+A lightweight, personal signage dashboard, **idlescreen** (`idlescreen.io`), for
 touch enabled Cisco RoomOS endpoints such as the Board Pro and Desk Pro:
 worldwide weather and surf, transit boards (NYC Subway status, LIRR,
 Metro-North, NJ Transit, Amtrak, PATH, NYC Ferry, Express Bus, Citi Bike;
@@ -12,12 +15,11 @@ the day, Statista's chart of the day, and more). Hosted entirely on the
 public internet, personalized per device **without authentication**, with
 preferences that survive reboots and RoomOS upgrades.
 
-**unsleep.io** is the site and **unsleep.app** is the app. Those two addresses
-go live with the rename release; every address already in use keeps working
-afterwards, so a board pointed at `app.quadrille.io` or `roomboard.app` needs no
-attention.
+**idlescreen.io** is the site and **idlescreen.app** is the app. Every address
+the board has ever answered to keeps working, so one pointed at `unsleep.app`,
+`app.quadrille.io` or `roomboard.app` needs no attention.
 
-![An unsleep dashboard in the Momentum theme: weather, public-domain art, world clock, subway status, markets, quote of the day, and cloud-service status](docs/screenshots/dashboard-classic.png)
+![An idlescreen dashboard in the Momentum theme: weather, public-domain art, world clock, subway status, markets, quote of the day, and cloud-service status](docs/screenshots/dashboard-classic.png)
 
 <table>
   <tr>
@@ -614,7 +616,7 @@ settings.
   heavier than it needs to be. If you are testing on a board, try re-setting
   the signage URL first and simplify the macro if that works.
 
-Leave the URL on `https://unsleep.app` (the earlier `https://app.quadrille.io` and `https://roomboard.app` keep working) for the welcome screen, or paste a
+Leave the URL on `https://idlescreen.app` (the earlier `https://unsleep.app`, `https://app.quadrille.io` and `https://roomboard.app` keep working) for the welcome screen, or paste a
 board's own URL from `/setup` → "Get signage URL" to load a saved
 configuration. Pilot on one board first. Recommended extra per Cisco guidance:
 configure `Time OfficeHours` so signage runs ≤ 12 h/day.
@@ -924,10 +926,10 @@ checks in `worker/src/health.js`:
 | Check | Asserts |
 |---|---|
 | `site` | `roomboard.app/version.json` returns a plausible version string |
-| `site-unsleep` | `unsleep.app/version.json` returns the same — the flagship name is a custom domain on the same Pages project as `site`'s roomboard.app, so only its attachment or DNS can fail alone |
-| `site-idlescreen` | `idlescreen.app/version.json` returns the same — a second custom domain on the *same* Pages project, so the content can never be what differs; what fails on its own is the alias's custom-domain attachment or its DNS record, and nobody watches that name closely enough to notice |
+| `site-unsleep` | `unsleep.app/version.json` returns the same — the earlier flagship name, still live as a custom domain on the same Pages project as `site`'s roomboard.app, so only its attachment or DNS can fail alone |
+| `site-idlescreen` | `idlescreen.app/version.json` returns the same — the name the app answers to now, a custom domain on the *same* Pages project, so the content can never be what differs; what fails on its own is that domain's attachment or its DNS record, which can go dark while every other name keeps serving and `site` stays green |
 | `frontdoor` | `unsleep.io/data/changelog.json` returns a non-empty JSON array — the public guide is a separate Pages project with its own deploy job, probed **externally** on purpose, because DNS, TLS and routing are the failure modes under test, and a self-fetch would bypass all three |
-| `frontdoor-idlescreen` | `idlescreen.io/data/changelog.json` returns the same array — the front door's alias, byte-identical because it rides the same Pages project, and probed externally for the identical reason. The third idlescreen name, `api.idlescreen.app`, deliberately gets no check: it is one of this worker's own custom domains, and a worker fetching those gets a Cloudflare 522 every time |
+| `frontdoor-idlescreen` | `idlescreen.io/data/changelog.json` returns the same array — the name the front door answers to now, byte-identical to `frontdoor`'s unsleep.io because it rides the same Pages project, and probed externally for the identical reason. The third idlescreen name, `api.idlescreen.app`, deliberately gets no check: it is one of this worker's own custom domains, and a worker fetching those gets a Cloudflare 522 every time |
 | `markets` | `/markets` returns indices with a finite price (Yahoo is unofficial and the flakiest dependency) |
 | `weather` | Open-Meteo answers with a populated hourly temperature series (browser-direct, so not covered by any proxy check) |
 | `gdrive` | `/gdrive/album` returns photos for a curated folder, which also proves `GDRIVE_KEY` still works |
@@ -957,7 +959,7 @@ outage it watches for.
 
 ## Security
 
-unsleep is a **read-only** signage app that renders **public** data feeds.
+idlescreen is a **read-only** signage app that renders **public** data feeds.
 It has no user accounts, no passwords, and holds no personal data beyond an
 optional first-name greeting — a deliberately small attack surface, and the code
 is written to keep it that way.

@@ -1,6 +1,6 @@
 // The beta worker's router. Assets-only until 2026-08-18; this script exists
-// for ONE mapping rule: the beta origins mirror production. unsleep.io serves
-// the guide at its root, so beta.unsleep.io does too (Sean caught it serving
+// for ONE mapping rule: the beta origins mirror production. idlescreen.io and
+// unsleep.io serve the guide at their roots, so their beta twins do too (Sean caught it serving
 // the app there, which broke the symmetry). Every other request on every
 // domain passes straight through to the assets, so beta.unsleep.app,
 // beta.roomboard.app and beta.quadrille.io behave exactly as before.

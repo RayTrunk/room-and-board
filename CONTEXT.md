@@ -1,6 +1,6 @@
 # Domain glossary
 
-The ubiquitous language of unsleep. Use these words in code, comments, tests,
+The ubiquitous language of idlescreen. Use these words in code, comments, tests,
 and commit messages; if a concept needs a different word, add it here first.
 PRODUCT.md holds the product framing, DESIGN.md the visual system. This file
 holds the nouns.

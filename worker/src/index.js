@@ -611,7 +611,7 @@ const handlers = {
     if (path === '/health' && request.method === 'GET') {
       const report = await runHealthChecks(env, selfFetch(env));
       if (url.searchParams.get('test') === 'alert' && await testAlertAllowed()) {
-        await notify(env, `🔴 unsleep health: test (manual channel-wiring check, not a real outage), ${report.at}`);
+        await notify(env, `🔴 idlescreen health: test (manual channel-wiring check, not a real outage), ${report.at}`);
       }
       return json(report, report.ok ? 200 : 503);
     }
