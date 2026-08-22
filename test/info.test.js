@@ -493,7 +493,7 @@ describe('/info says how idlescreen gets on a board', () => {
 
   it('sends the reader somewhere the macro can actually be got', () => {
     // The page names the file; naming it without a source is a dead end.
-    expect(html).toContain('https://github.com/scotty83/unsleep/blob/main/macro/Dashboard.js');
+    expect(html).toContain('https://github.com/scotty83/idlescreen/blob/main/macro/Dashboard.js');
   });
 
   it('gives every quoted line its own block, so a hanging indent can hold', () => {
