@@ -183,6 +183,13 @@ const macro = await readFile(resolve(process.cwd(), 'macro/Dashboard.js'), 'utf8
 const terms = await readFile(resolve(process.cwd(), 'site/terms.html'), 'utf8');
 const frontdoor = await readFile(resolve(process.cwd(), 'tools/build-frontdoor.js'), 'utf8');
 const settings = await readFile(resolve(process.cwd(), 'site/js/settings/settings.js'), 'utf8');
+// The shell's boot script, read as TEXT: it boots a board at module scope, so
+// importing it here would run the whole thing. The welcome card is a template
+// literal inside it, which makes main.js the index.html of that surface.
+const shellJs = await readFile(resolve(process.cwd(), 'site/js/main.js'), 'utf8');
+const whatsnew = await readFile(resolve(process.cwd(), 'site/js/settings/whatsnew.js'), 'utf8');
+const infoJs = await readFile(resolve(process.cwd(), 'site/js/info.js'), 'utf8');
+const probeJs = await readFile(resolve(process.cwd(), 'site/js/tittle-probe.js'), 'utf8');
 
 describe('/info wears the brand', () => {
   it('is titled for the product, and never title-cases it', () => {
@@ -256,7 +263,7 @@ describe('/info wears the brand', () => {
     expect(shell).toMatch(/\.imark--led \.imark__idle::before/);
   });
 
-  it('draws the LED tittle as the power symbol, over a cover the panel supplies', () => {
+  it('draws the LED tittle as the power symbol, over a cover the surface supplies', () => {
     for (const sheet of [css, shell]) {
       // Two pseudo-elements and no third element: ::before covers the letter's
       // own tittle, ::after draws the ring on top of it.
@@ -276,12 +283,16 @@ describe('/info wears the brand', () => {
       expect(sheet).toContain("d='M7.76 8.94 A6.6 6.6 0 1 0 16.24 8.94'");
 
       // THE COUPLING. The ring is hollow, so the cover disc is mandatory, and
-      // it can only be painted in the one background it is worn on. If this
-      // ever stops being #05070a the modifier has to move with it, so the
-      // colour and the sentence explaining it are both pinned.
+      // it can only be painted in the background it is actually worn on. That
+      // used to be the literal #05070a of the guide's masthead panel; the
+      // welcome card adopting the modifier made a second colour true at once,
+      // so the constant became --im-cover, which every surface sets for itself.
+      // What is pinned is that the disc still reads its colour from the surface
+      // and still falls back to a real opaque one, plus the sentence saying why
+      // a hollow ring forces the whole arrangement.
       const before = /\.imark--led \.imark__idle::before\s*\{[^}]*\}/.exec(sheet)?.[0] ?? '';
-      expect(before).toContain('background: #05070a');
-      expect(sheet).toMatch(/hollow[^]{0,400}#05070a|#05070a[^]{0,400}hollow/);
+      expect(before).toContain('background: var(--im-cover, #05070a)');
+      expect(sheet).toMatch(/hollow[^]{0,600}--im-cover|--im-cover[^]{0,600}hollow/);
 
       // The small-size fallback: below the size where the ring holds its hole,
       // ::after stands down and the cover disc becomes the accent dot this
@@ -290,9 +301,10 @@ describe('/info wears the brand', () => {
       expect(small).toContain('.imark--led .imark__idle::before { background: var(--accent); }');
       expect(small).toContain('.imark--led .imark__idle::after { display: none; }');
     }
-    // On paper the panel is white, so the #05070a cover would print as a blot.
-    // Both halves stand down there and the letter prints its own tittle. (Only
-    // the guide has a print block; the shell has never had one.)
+    // On paper the panel is white, so the cover disc would print as a blot in
+    // whatever near-black --im-cover resolved to. Both halves stand down there
+    // and the letter prints its own tittle. (Only the guide has a print block;
+    // the shell has never had one, and a board does not print.)
     const print = /@media print \{[^]*$/.exec(css)?.[0] ?? '';
     expect(print).toMatch(/\.imark--led \.imark__idle::before,\n\s*\.imark--led \.imark__idle::after \{ display: none; \}/);
   });
@@ -352,6 +364,99 @@ describe('/info wears the brand', () => {
       .map((m) => m[0].replace(/\/\*.*?\*\//gs, '').replace(/\s+/g, ' ').trim());
     expect(rules(shell)).toEqual(rules(css));
     expect(rules(css).length).toBeGreaterThan(3);
+  });
+});
+
+// The second surface to wear the standalone form, and the first one on the
+// product itself. Read as source text on both sides: main.js boots a board at
+// module scope, so the welcome card can only be inspected as the template
+// literal it is.
+describe('the board\'s welcome card wears the standalone wordmark', () => {
+  const brand = /<div class="welcome__brand"[^]*?<\/div>/.exec(shellJs)?.[0] ?? '';
+
+  it('shows the word alone, with no mark left to compete with the tittle', () => {
+    // The accent-once rule, applied to the board's one brand moment: with no
+    // mark on the surface the word takes the accent, so the little SVG mark
+    // that used to lead this lockup is gone from it entirely. Not shrunk, not
+    // dimmed, but gone, because two saturated things read as decoration.
+    expect(brand).toContain('<span class="imark imark--led welcome__word">');
+    expect(brand).not.toMatch(/<svg/);
+    expect(shellJs).not.toContain('welcome__mark');
+    expect(shell).not.toContain('.welcome__mark');
+    // Exactly one, the same guard the guide's masthead carries: a second LED
+    // anywhere in the shell would be a second accent on some surface.
+    expect(shellJs.match(/imark--led/g)).toHaveLength(1);
+    // ...and every OTHER shell lockup keeps mark and plain word. The settings
+    // rail is the one that could plausibly drift, so it is named.
+    expect(whatsnew).toContain('<span class="settings__lockup imark" aria-hidden="true">');
+    expect(whatsnew).not.toContain('imark--led');
+  });
+
+  it('keeps the word plain, copyable text spelling exactly "idlescreen"', () => {
+    // Same contract as the masthead's: no glyph substitution, no dotless i, no
+    // aria-hidden twin. The accent is DRAWN over the letter, so the DOM holds
+    // the ordinary word and a board's find/copy/read-aloud all get it.
+    const word = /<span class="imark imark--led welcome__word">.*?<\/span><\/span>/.exec(brand)?.[0];
+    expect(word).toBeTruthy();
+    const host = document.createElement('div');
+    host.innerHTML = word;
+    expect(host.firstElementChild.textContent).toBe('idlescreen');
+    expect(host.firstElementChild.querySelectorAll('span').length).toBe(2);
+    expect(shellJs.replace(/\/\*[^]*?\*\/|<!--[^]*?-->/g, '')).not.toMatch(/&#305;|ı/);
+  });
+
+  it('paints the cover disc in the card\'s own background, not the guide\'s panel', () => {
+    // The whole reason #05070a became a variable. This surface is #121212, and
+    // a cover painted in the guide's panel colour would read as a dark fleck
+    // beside the blue ring at 72px on a board nobody can zoom.
+    const rule = /^\.welcome__brand \{[^}]*\}/m.exec(shell)?.[0] ?? '';
+    expect(rule).toContain('--im-cover: var(--bg-card)');
+    // And --bg-card has to stay OPAQUE: an alpha surface colour would let the
+    // letter's own tittle show through the disc that exists to hide it.
+    expect(shell).toContain('--bg-card: #121212');
+  });
+
+  it('sets the word big enough that the ring holds its hole at 1x', () => {
+    // The sharp constraint, and the reason this size is not a taste call. A
+    // Board Pro is 1920x1080 LOGICAL on a 1920x1080 panel: one CSS pixel is one
+    // device pixel, with no retina density to hide a soft raster in. The glyph
+    // box is 0.26em and the ring needs ~11 device px across before its hole
+    // survives (info.css's raster study), so the word has a hard floor of about
+    // 44px and no reason to sit anywhere near it.
+    const rule = /^\.welcome__word \{[^}]*\}/m.exec(shell)?.[0] ?? '';
+    const px = Number(/font-size: (\d+)px/.exec(rule)?.[1]);
+    expect(px).toBeGreaterThanOrEqual(48);
+    expect(px * 0.26).toBeGreaterThan(11);
+  });
+
+  it('runs the guide\'s probe rather than a second copy of it', () => {
+    // 150 lines of canvas ink-scanning that must produce the same mark on two
+    // very different faces (a desktop Helvetica Neue or SF, and the board's
+    // CiscoSansTT). Two copies would be two marks the first time one is fixed.
+    expect(infoJs).toContain("import { trackTittle } from './tittle-probe.js'");
+    expect(infoJs).toContain("trackTittle(document.querySelector('.hero__title'))");
+    expect(shellJs).toContain("import { trackTittle } from './tittle-probe.js'");
+    expect(shellJs).toContain("trackTittle(welcome.querySelector('.welcome__brand'))");
+    // The scan lives in exactly one file.
+    expect(probeJs).toContain('getImageData');
+    expect(infoJs).not.toContain('getImageData');
+    expect(shellJs).not.toContain('getImageData');
+    // Gen1 Qt WebEngine safety, which is the same posture as the no-JS case:
+    // every capability is felt for, and a panel that cannot answer keeps the
+    // stylesheet's static placement instead of getting a broken one.
+    expect(probeJs).toContain("cv.getContext?.('2d')");
+    expect(probeJs).toContain("typeof ctx.fillText !== 'function'");
+    expect(probeJs).toContain('document.fonts?.ready?.then?.');
+  });
+
+  it('ships the probe to the front door, which no HTML reference could catch', () => {
+    // info.js imports it, and build-frontdoor's original guard only reads
+    // index.html's href/src, so a module extracted out of info.js would 404 on
+    // idlescreen.io with every HTML reference still resolving. The list entry
+    // and the guard that enforces it are both pinned.
+    expect(frontdoor).toContain("['js/tittle-probe.js', 'js/tittle-probe.js']");
+    expect(frontdoor).toContain('RELATIVE_IMPORT');
+    expect(frontdoor).toMatch(/front door modules import files it does not ship/);
   });
 });
 

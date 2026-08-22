@@ -17,6 +17,7 @@ import { initExpand } from './expand.js';
 import { CLOCK_SOURCES } from './clockfaces.js';
 import { icon } from './icons.js';
 import { ensureOceanProbe } from './surf-gate.js';
+import { trackTittle } from './tittle-probe.js';
 
 import * as clock from './widgets/clock.js';
 import * as weather from './widgets/weather.js';
@@ -221,19 +222,22 @@ function showWelcome() {
   $('#grid').hidden = true;
   welcome.innerHTML = `
     <div class="welcome__inner">
+      <!-- The welcome screen is the board's ONE brand moment: the only surface
+           in the shell a stranger meets before the product is anything, and the
+           only one that shows the wordmark at display scale. So this lockup
+           spends the accent on the word's own power tittle, and the little SVG
+           mark that used to sit beside it is GONE from here (it still leads
+           every other shell lockup, and the icon masters are untouched).
+           The rule it obeys is the one info.css writes out in full: THE ACCENT
+           APPEARS ONCE PER SURFACE. A lit mark and a lit tittle side by side
+           are two saturated things reading as decoration; one reads as a
+           signal. Where a mark shares the surface the mark carries the accent
+           and the word stays plain, which is why the settings rail's lockup
+           and the guide's nav and footer never take this modifier. Here nothing
+           shares the surface, so the word takes it and the mark leaves rather
+           than compete. -->
       <div class="welcome__brand" aria-hidden="true">
-        <!-- Inlined rather than <img src="assets/idlescreen-mark.svg">: the welcome
-             screen is the first paint of a cold boot and this must not cost a
-             round trip. Geometry is the 64 master verbatim; keep the two in
-             step. -->
-        <svg class="welcome__mark" viewBox="0 0 64 64" width="72" height="72">
-          <rect x="4" y="14" width="56" height="36" rx="7" fill="#0d1218" stroke="rgba(255,255,255,.14)" stroke-width="1.5"/>
-          <rect x="9" y="19" width="24" height="12" rx="3" fill="#64b4fa"/>
-          <rect x="36" y="19" width="19" height="12" rx="3" fill="rgba(100,180,250,.22)"/>
-          <rect x="9" y="34" width="14" height="11" rx="3" fill="rgba(100,180,250,.14)"/>
-          <rect x="26" y="34" width="29" height="11" rx="3" fill="rgba(100,180,250,.22)"/>
-        </svg>
-        <span class="imark welcome__word"><span class="imark__idle">idle</span><span class="imark__screen">screen</span></span>
+        <span class="imark imark--led welcome__word"><span class="imark__idle">idle</span><span class="imark__screen">screen</span></span>
       </div>
       <h1>Welcome to your office display</h1>
       <p>Set it up from your phone or desktop, or start with sensible defaults and fine-tune later.</p>
@@ -244,6 +248,11 @@ function showWelcome() {
         <button class="btn" data-action="quick-start">Quick start</button>
       </div>
     </div>`;
+  // The tittle's placement is a property of the face the BOARD rendered, which
+  // is CiscoSansTT where it is installed and something else everywhere else, so
+  // it is measured here rather than assumed. Feature-detected end to end: a
+  // panel that cannot answer keeps the stylesheet's static placement.
+  trackTittle(welcome.querySelector('.welcome__brand'));
   // The board's URL isn't visible to the person standing in front of it, so a
   // /setup hint alone can't get them there — the QR carries the full address.
   // Best-effort: if the QR module fails to load, the text hint still names the host.

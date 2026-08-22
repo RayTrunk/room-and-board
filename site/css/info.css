@@ -152,14 +152,22 @@ button:focus-visible {
    further down this sheet), so the ink rides background-color and stays
    themable while copy, find and screen readers are untouched.
 
-   THE COVER DISC IS MANDATORY, AND IT WELDS THIS MODIFIER TO ONE SURFACE. The
-   ring is hollow, so the letter's own tittle would show straight THROUGH it;
-   ::before paints it out first with an opaque disc in the masthead panel's own
-   background colour, #05070a. That colour is a deliberate hard-coded coupling
-   rather than a token: this modifier may only be worn on ground that really is
-   #05070a (the .hero__screen panel), because on anything else the disc reads
-   as a grey fleck beside the blue. The retired accent-dot form needed no cover
-   at all, being opaque itself, which is the freedom this construction spends.
+   THE COVER DISC IS MANDATORY, AND IT WELDS THIS MODIFIER TO KNOWN-SOLID
+   GROUND. The ring is hollow, so the letter's own tittle would show straight
+   THROUGH it; ::before paints it out first with an OPAQUE disc in the colour of
+   whatever the mark is standing on. That colour cannot be derived from anything
+   (the disc sits over text, not over a box whose background it could inherit),
+   so the surface has to declare it: --im-cover, set by the element that owns
+   the background, with this sheet's own masthead panel as the fallback because
+   /info is where the modifier was born. Naming it does not loosen the coupling,
+   only makes it portable: the modifier may still only be worn where the ground
+   really is one flat opaque colour, because on anything else the disc reads as
+   a fleck beside the blue. Two surfaces wear it today and they are not the same
+   colour, which is the whole reason the constant became a variable (2026-08-22):
+   the guide's masthead panel (#05070a, .hero__screen) and the board's welcome
+   card (--bg-card, #121212, set on .welcome__brand in main.css). The retired
+   accent-dot form needed no cover at all, being opaque itself, which is the
+   freedom this construction spends.
 
    THE GEOMETRY IS FACE-DEPENDENT, AND IS PROBED AT RUNTIME. Three different
    static baselines were each confidently wrong during the mockup round, for
@@ -205,7 +213,8 @@ button:focus-visible {
      the face: the glyph's own box, in em. */
   --im-glyph: 0.26em;
 }
-/* The cover: an opaque #05070a disc centred on the measured tittle. */
+/* The cover: an opaque disc in the surface's own colour, centred on the
+   measured tittle. */
 .imark--led .imark__idle::before {
   content: '';
   position: absolute;
@@ -213,7 +222,7 @@ button:focus-visible {
   top: calc((var(--im-base, 0.965) - var(--im-ty, 0.665)) * 1em - var(--im-td, 0.143) * 0.5em);
   width: calc(var(--im-td, 0.143) * 1em); height: calc(var(--im-td, 0.143) * 1em);
   border-radius: 50%;
-  background: #05070a;
+  background: var(--im-cover, #05070a);
 }
 /* The power symbol, drawn as a mask so the ink is a background-color. The top
    term is the midway anchor: half of (tittle bottom + stem top) is where the

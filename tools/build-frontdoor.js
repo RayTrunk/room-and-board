@@ -24,7 +24,7 @@
 // info.html without being shipped here — a silent partial copy would serve a
 // broken page with a green build.
 import { cpSync, mkdirSync, rmSync, readFileSync, existsSync } from 'node:fs';
-import { resolve, dirname } from 'node:path';
+import { resolve, dirname, posix } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -40,6 +40,10 @@ const FILES = [
   ['terms.html', 'terms.html'],
   ['css/info.css', 'css/info.css'],
   ['js/info.js', 'js/info.js'],
+  // info.js's only static import: the wordmark's power-tittle probe, shared
+  // with the board shell. Nothing in index.html references it, so only the
+  // module-import guard below can catch it going missing.
+  ['js/tittle-probe.js', 'js/tittle-probe.js'],
   ['data/changelog.json', 'data/changelog.json'], // also the health probe
   // Icon filenames track site/assets and the guide's <link rel="icon">; they
   // are brand-named, so a rename on either side has to land on both.
@@ -87,6 +91,29 @@ const refs = [...html.matchAll(/(?:href|src)="([^"#][^"]*)"/g)].map((m) => m[1])
 const missing = refs.filter((r) => !/^https?:/.test(r) && !FILES.some(([, d]) => d === r) && !r.startsWith('assets/info/'));
 if (missing.length) {
   console.error('front door references files it does not ship:', missing);
+  process.exit(1);
+}
+
+// The same guard one level down, because the scan above cannot see it. The
+// guide's script is an ES MODULE, and a module's imports are requests the front
+// door has to answer just as much as a <script src> is, but they live in the
+// JavaScript, not in the HTML, so a shared module extracted out of info.js
+// would 404 on this origin with every test and every HTML reference still
+// green. That is the exact "broken page with a green build" this file exists to
+// prevent, so relative specifiers get resolved against each shipped module's
+// own destination and checked against the list too. Bare and absolute
+// specifiers are somebody else's problem by construction: only a leading dot
+// can name a file this build is responsible for.
+const RELATIVE_IMPORT = /(?:\bfrom|\bimport)\s*\(?\s*['"](\.[^'"]+)['"]/g;
+const unshipped = FILES.filter(([, d]) => d.endsWith('.js')).flatMap(([, dest]) => {
+  const src = readFileSync(resolve(out, dest), 'utf8');
+  return [...src.matchAll(RELATIVE_IMPORT)]
+    .map((m) => posix.resolve('/', posix.dirname(dest), m[1]).slice(1))
+    .filter((r) => !FILES.some(([, d]) => d === r))
+    .map((r) => `${r} (imported by ${dest})`);
+});
+if (unshipped.length) {
+  console.error('front door modules import files it does not ship:', unshipped);
   process.exit(1);
 }
 console.log(`front door assembled: ${FILES.length} files + assets/info -> ${out}`);
