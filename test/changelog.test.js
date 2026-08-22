@@ -47,7 +47,10 @@ describe('changelog.json', () => {
   });
 
   it('reads newest first, and starts at the latest shipped day', () => {
-    expect(groups[0].date).toBe('August 18');
+    // August 18's rename note was removed 2026-08-21 with the idlescreen
+    // rename (each rename retires the previous rename's entry — the Quadrillé
+    // note went the same way); the idlescreen entry lands at promote.
+    expect(groups[0].date).toBe('August 11');
     expect(groups[groups.length - 1].date).toBe('Early July');
   });
 });

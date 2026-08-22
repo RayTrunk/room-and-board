@@ -1,14 +1,5 @@
 [
   {
-    "date": "August 18",
-    "items": [
-      {
-        "lead": "A new name: unsleep",
-        "text": "The board is now called unsleep, for the thing it actually does: it keeps your screen from sleeping and fills it with your day instead. The look is new to match, but nothing about your setup changes, and every address you already use keeps working."
-      }
-    ]
-  },
-  {
     "date": "August 11",
     "items": [
       {
@@ -156,7 +147,7 @@
       },
       {
         "lead": "On the board",
-        "text": "You can now read what is new on the board itself: open the gear and tap What’s new at the bottom of the settings list. The board also shows which version it is running."
+        "text": "You can now read what is new on the board itself: open the gear and tap What\u2019s new at the bottom of the settings list. The board also shows which version it is running."
       }
     ]
   },
@@ -202,7 +193,7 @@
       },
       {
         "lead": "Trains",
-        "text": "LIRR, Metro-North, and NJ Transit departures now show each train’s line as a colored badge in its official line colors, so the line is easy to tell apart from the destination."
+        "text": "LIRR, Metro-North, and NJ Transit departures now show each train\u2019s line as a colored badge in its official line colors, so the line is easy to tell apart from the destination."
       },
       {
         "lead": "Trains and ferries",
@@ -249,7 +240,7 @@
     "items": [
       {
         "lead": "Markets and Weather",
-        "text": "Sparklines and the temperature trend draw as smooth curves, tinted by the day’s direction."
+        "text": "Sparklines and the temperature trend draw as smooth curves, tinted by the day\u2019s direction."
       },
       {
         "lead": "Word of the Day",
@@ -300,7 +291,7 @@
       },
       {
         "lead": "LIRR",
-        "text": "Grand Central support, and departures stay live even when the MTA’s data feed stalls."
+        "text": "Grand Central support, and departures stay live even when the MTA\u2019s data feed stalls."
       },
       {
         "lead": "Denser cards",
@@ -313,7 +304,7 @@
     "items": [
       {
         "lead": "A new look",
-        "text": "The Momentum theme became the board’s look. Pure black, calmer type, quieter color."
+        "text": "The Momentum theme became the board\u2019s look. Pure black, calmer type, quieter color."
       },
       {
         "lead": "Clocks",
