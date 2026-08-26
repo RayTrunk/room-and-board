@@ -10,7 +10,7 @@ Hyderabad, Hong Kong — are replaceable like anything else.
 **Tap the card** to see every city you follow at full size.
 
 Your World Clock cities also power the **World clocks**
-[screensaver face](/docs/using/screensavers-and-display-modes/).
+[screensaver face](/docs/using/screensavers/).
 
 ## Configure
 

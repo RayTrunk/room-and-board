@@ -10,7 +10,7 @@ photography. It requires **no setup**: add the card and it works.
 cards, the full-screen view stays until tapped.
 
 It can also drive the
-[screensaver](/docs/using/screensavers-and-display-modes/).
+[screensaver](/docs/using/screensavers/).
 
 ## Configure
 

@@ -1,12 +1,13 @@
 ---
-title: Screensavers & display modes
-description: "Slideshows, three clock faces, an info strip with your weather and trains — and a schedule for when each appears."
+title: Screensavers
+description: "Slideshows, three clock faces, and an info strip with your weather and next departures."
 ---
 
 ![The art screensaver: a full-screen painting with a slim clock and temperature band](../../../assets/art-screensaver.jpeg)
 
 **Settings → Screensaver** picks what fills the screen when the dashboard
-rests. **Settings → Display** decides when that happens.
+rests. When it appears is decided separately, under
+[Display modes](/docs/using/display-modes/).
 
 ## Screensaver options
 
@@ -26,7 +27,8 @@ rests. **Settings → Display** decides when that happens.
 
 Every option has a full-screen **Preview** — tap anywhere to exit it.
 
-**Off** is also an option.
+There is no "Off" here: a board that should never show a screensaver sets
+[Display mode](/docs/using/display-modes/) to **Always dashboard** instead.
 
 ## Three toggles
 
@@ -36,18 +38,9 @@ Every option has a full-screen **Preview** — tap anywhere to exit it.
 | **Hour markers** | Tick marks on the clock faces |
 | **Backdrop image** | A curated photo behind a clock face — one per day |
 
-## Display modes
-
-| Mode | What the board shows |
-| --- | --- |
-| **Always dashboard** | The dashboard whenever the board is idle |
-| **Always screensaver** | The screensaver whenever the board is idle |
-| **Scheduled** | The dashboard during your chosen daily windows, the screensaver outside them |
-
-Scheduled mode takes up to four windows a day, in 15-minute steps — for
-example, the dashboard during office hours and a clock face in the evening.
-
 ## Fallback behavior
 
 If a photo album becomes unreachable, the screensaver falls back to Art, and
 failing that to the Big clock. The screen never goes blank.
+
+Clocks repaint once per minute, aligned to the minute boundary.

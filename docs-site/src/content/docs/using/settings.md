@@ -13,7 +13,7 @@ section for every widget that has options.
   location drives Weather, Air & Sky and Surf together. Choosing a US
   location defaults to °F, elsewhere °C, and a toggle overrides that.
 - **Display** — when the dashboard shows versus the screensaver; see
-  [Screensavers & display modes](/docs/using/screensavers-and-display-modes/).
+  [Display modes](/docs/using/display-modes/).
 - **Setup code** — enter a new code, or show the QR that
   [backs up your board](/docs/codes/back-up-your-board/).
 

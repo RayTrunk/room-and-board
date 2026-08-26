@@ -8,7 +8,7 @@ board, without any account connected to the board itself. On the dashboard
 the card is titled simply "Photos".
 
 **Tap the card** for full screen; swipe to browse. It can also drive the
-[screensaver](/docs/using/screensavers-and-display-modes/).
+[screensaver](/docs/using/screensavers/).
 
 ## Configure
 

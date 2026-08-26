@@ -12,7 +12,7 @@ The full-screen view stays until tapped — the picture viewer has no idle
 timeout.
 
 This rotation is also the default
-[screensaver](/docs/using/screensavers-and-display-modes/) source.
+[screensaver](/docs/using/screensavers/) source.
 
 ## Configure
 

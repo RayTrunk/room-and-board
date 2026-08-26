@@ -41,7 +41,8 @@ export default defineConfig({
             { label: 'Buttons & navigation', slug: 'using/buttons-and-navigation' },
             { label: 'Edit your layout', slug: 'using/edit-your-layout' },
             { label: 'Settings', slug: 'using/settings' },
-            { label: 'Screensavers & display modes', slug: 'using/screensavers-and-display-modes' },
+            { label: 'Screensavers', slug: 'using/screensavers' },
+            { label: 'Display modes', slug: 'using/display-modes' },
           ],
         },
         {
