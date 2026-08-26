@@ -1,5 +1,5 @@
 ---
-title: What is idlescreen
+title: About the app
 description: A personal dashboard for the Cisco board in your office, shown whenever the screen would otherwise sit dark.
 ---
 

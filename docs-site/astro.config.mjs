@@ -25,7 +25,7 @@ export default defineConfig({
       ],
       lastUpdated: true,
       sidebar: [
-        { label: 'What is idlescreen', slug: 'index' },
+        { label: 'About the app', slug: 'index' },
         {
           label: 'Getting it on the board',
           items: [
