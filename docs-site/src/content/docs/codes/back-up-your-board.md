@@ -1,41 +1,42 @@
 ---
 title: Back up your board
-description: "Two minutes now saves rebuilding your dashboard later. Do this before any reset, wipe or move."
+description: Save your board's configuration before a reset, wipe or move.
 ---
 
-Your dashboard lives on the board. A factory reset, a storage wipe, or a
-board swap loses it — **unless you've taken the backup first**. It takes two
-minutes.
+Your dashboard's configuration lives on the board. A factory reset, a storage
+wipe, or a board swap loses it unless the configuration has been saved first.
 
 ## Take the backup
 
-1. On the board: **<span class="glyph glyph--gear" aria-hidden="true"></span> gear → Setup code → Show QR of current config**.
-2. Scan the QR with your phone. Your phone now holds your entire dashboard —
-   every widget, setting and arrangement — as a page you can return to.
-3. Keep that page: bookmark it, or share the link to yourself.
+1. On the board:
+   <span class="glyph glyph--gear" aria-hidden="true"></span> gear →
+   **Setup code** → **Show QR of current config**.
+2. Scan the QR with your phone. It opens a page holding the entire
+   configuration — every widget, setting and arrangement.
+3. Keep that page: bookmark it, or send the link to yourself.
 
-Do this **before** the reset, not after. There is nothing to recover from a
+Do this **before** the reset, not after — there is nothing to recover from a
 wiped board.
 
 ## Restore from the backup
 
-Open your saved page, tap **Get my setup code**, and type the six characters
-into the board (welcome screen → **I have a setup code**). Your dashboard
-returns exactly as it was.
+Open the saved page, tap **Get my setup code**, and enter the six characters
+on the board (welcome screen → **I have a setup code**). The dashboard is
+restored in full.
 
-## The stronger option: put the config in the board's address
+## Alternative: carry the configuration in the board's address
 
-That same saved page has a second button: **Get signage URL**. It produces a
-board address with your whole configuration folded inside it. If whoever
-administers your board [sets that as the signage address](/docs/board/point-your-board/),
-the board can rebuild its dashboard **by itself** after a wipe — the address
-is the backup, applied automatically.
+The same saved page has a second button, **Get signage URL**. It produces a
+signage address with the whole configuration embedded in it. If whoever
+administers the board
+[sets that as the signage address](/docs/board/point-your-board/), the board
+rebuilds its dashboard by itself after a wipe — the address is the backup,
+applied automatically.
 
-This is exactly how [non-touch devices](/docs/board/non-touch-devices/)
-work all the time, and it's worth doing for any board you'd rather not think
-about again.
+This is how [non-touch devices](/docs/board/non-touch-devices/) are
+configured, and it suits any board that should recover without attention.
 
-:::tip[When to re-take the backup]
-The backup captures the dashboard as it is today. After a burst of changes
-you care about, take a fresh one — same two minutes.
+:::note[Keeping the backup current]
+The backup captures the dashboard as of the moment it is taken. After
+significant changes, take a new one.
 :::

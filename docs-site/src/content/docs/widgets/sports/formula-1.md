@@ -14,4 +14,4 @@ positions, gaps, retirements, fastest lap; and both championship tables.
 
 ## Configure
 
-Nothing to set — the season is the season.
+Nothing to set.

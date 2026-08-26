@@ -15,11 +15,10 @@ touch, directly on the glass.
   each card has a minimum size it won't shrink past.
 - **The <span class="glyph glyph--remove" aria-hidden="true"></span> button
   removes** a card — the grey circle with the minus, in the card's top-left
-  corner. It isn't gone — it drops into the tray at the bottom,
-  ready to come back whenever you want.
+  corner. The card moves to the tray at the bottom and can be re-added later.
 
-A drop that doesn't fit flashes red and snaps back — you can't break the
-layout by trying.
+A drop that doesn't fit flashes red and snaps back; an invalid arrangement is
+never saved.
 
 ## Bigger cards show more
 

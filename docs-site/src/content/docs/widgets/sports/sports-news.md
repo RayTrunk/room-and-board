@@ -14,7 +14,7 @@ Two ways to narrow it:
   MLS, F1, Golf, Tennis).
 - **Only my teams** goes further: it keeps only stories that name a team you
   follow on [My Teams](/docs/widgets/sports/my-teams/). While it's on, the
-  sport chips step aside.
+  sport chips are disabled.
 
 **Tap the card** for the reading list; stories open with a summary and a QR
 code for your phone.

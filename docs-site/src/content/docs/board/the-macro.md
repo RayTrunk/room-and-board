@@ -3,12 +3,12 @@ title: "The macro (optional)"
 description: "What the Dashboard macro actually does, why you might want it, and how to install it. Not required."
 ---
 
-The macro is **optional**. Everything idlescreen does works with
-[the plain address setup](/docs/board/point-your-board/). What the macro adds
-is convenience: it sets a handful of board settings to signage-friendly
-values in one go, and it puts a **Dashboard** button in the board's Control
-Panel so anyone can bring the dashboard up on demand instead of waiting for
-the board to go idle.
+The macro is **optional** — everything idlescreen does works with
+[the plain address setup](/docs/board/point-your-board/). It does two things:
+it sets a handful of board settings to signage-friendly values in one step,
+and it adds a **Dashboard** button to the board's Control Panel so the
+dashboard can be opened on demand rather than waiting for the board to go
+idle.
 
 ## What it actually does
 
@@ -19,14 +19,14 @@ On load, the macro:
   [manual setup](/docs/board/point-your-board/) walks through;
 - stretches the board's standby delay to the maximum (eight hours), so the
   dashboard stays up through the workday;
-- turns **off** wake-at-meeting-start, so the dashboard doesn't vanish for a
-  stretch of every meeting on the room calendar (you can turn that back on at
-  the top of the macro file if you want Cisco's join prompt);
+- turns **off** wake-at-meeting-start, so the dashboard is not replaced by
+  the join prompt ahead of every meeting on the room calendar (this can be
+  turned back on at the top of the macro file);
 - adds the **Dashboard** button to the Control Panel;
-- watches the board's time zone and refreshes the page if the board moves,
-  so the clock is never wrong.
+- watches the board's time zone and refreshes the page if it changes, keeping
+  the clock correct.
 
-Nothing else. It reads no data and talks to nothing but the board itself.
+It reads no data and communicates only with the board itself.
 
 ## Installing it
 
@@ -39,7 +39,7 @@ Nothing else. It reads no data and talks to nothing but the board itself.
 The settings it applies are listed at the top of the file and can be adjusted
 there before saving.
 
-:::caution[One macro rule]
+:::caution[Non-touch devices]
 Do not install the macro on a
 [non-touch device](/docs/board/non-touch-devices/) — those carry their
 configuration in the signage address itself, and the macro would overwrite it.

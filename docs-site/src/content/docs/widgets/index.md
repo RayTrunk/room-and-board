@@ -28,14 +28,14 @@ see it all.
 the whole board, the full forecast, every story. The per-widget pages describe
 what's behind the tap where it's interesting.
 
-## Stale never means blank
+## Stale data is shown, not hidden
 
-A card that can't refresh dims a little and shows "as of …" with the time of
-its last good data, then recovers on its own. A dead feed never leaves a hole
-in your dashboard.
+A card that can't refresh dims slightly and shows "as of …" with the time of
+its last good data, then recovers when its source does. A failed feed never
+leaves an empty card.
 
-## Some cards ask before they show data
+## Cards that require a choice
 
-A few widgets need a choice from you before they have anything to say — a
-station, a destination, a stream link. Those cards prompt until you've chosen,
-and their pages say so.
+A few widgets require a choice before they can show data — a station, a
+destination, a stream link. Those cards prompt until configured, and their
+pages say so.

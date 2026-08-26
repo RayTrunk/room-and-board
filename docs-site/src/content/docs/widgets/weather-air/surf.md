@@ -11,16 +11,16 @@ chart of how the day builds.
 local wind chop, the week's peaks, and the water paired with the air
 temperature.
 
-The data is a forecast model, not a buoy — the card says how far offshore the
-model's nearest point sits, and occasionally a spot reports one number
-without another. That's the model being honest, not the card being broken.
+The data is a forecast model, not a buoy — the card notes how far offshore
+the model's nearest point sits, and occasionally a spot reports one value
+without another. That reflects the model's data, not an error.
 
 ## Configure
 
 Nothing to set — it follows your
 [Weather location](/docs/widgets/weather-air/weather/).
 
-:::note[Why you might not see this card]
-Surf is only offered where there's open water near your weather location. If
-your location is inland, the card simply doesn't appear in the tray.
+:::note[Availability]
+Surf is only offered where there is open water near your weather location. If
+your location is inland, the card doesn't appear in the tray.
 :::

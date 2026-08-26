@@ -44,11 +44,10 @@ Every option has a full-screen **Preview** — tap anywhere to exit it.
 | **Always screensaver** | The screensaver whenever the board is idle |
 | **Scheduled** | The dashboard during your chosen daily windows, the screensaver outside them |
 
-Scheduled mode takes up to four windows a day, in 15-minute steps — dashboard
-during office hours, art in the evening, say.
+Scheduled mode takes up to four windows a day, in 15-minute steps — for
+example, the dashboard during office hours and a clock face in the evening.
 
-## It never goes blank
+## Fallback behavior
 
-If a photo album becomes unreachable, the screensaver quietly falls back to
-Art, and failing that to the Big clock. A resting board always shows
-*something* composed.
+If a photo album becomes unreachable, the screensaver falls back to Art, and
+failing that to the Big clock. The screen never goes blank.

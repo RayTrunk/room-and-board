@@ -47,9 +47,9 @@ train board, the whole forecast, every ticker, the reading list.
   </div>
 </div>
 
-You don't need to learn which cards do this; it's the house rule. The handful
-that don't open anything (like Air & Sky, or the Quote of the Day) simply have
-nothing more to show than what's already on the card.
+This applies to nearly every card, so there is nothing to memorize per card.
+The few that don't open anything (Air & Sky, Quote of the Day, Word of the
+Day) have nothing more to show than what is already on the card.
 
 Cards showing pictures open a full-screen picture viewer instead.
 
@@ -63,10 +63,9 @@ opens that story.
 - **Swipe right** — previous item.
 - **Tap** — close the view, or follow a row deeper (a story, an alert).
 
-Views tidy up after themselves: walk away, and the board returns to the
-dashboard on its own within a minute or so. The one exception is the picture
-viewer — a photo or artwork filling the screen stays until someone taps it,
-on purpose.
+An untouched view closes on its own within about a minute and the board
+returns to the dashboard. The exception is the picture viewer, which stays
+until tapped.
 
 ## The "+N" in a card's corner
 

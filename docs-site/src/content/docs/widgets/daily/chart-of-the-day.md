@@ -3,8 +3,8 @@ title: Chart of the Day
 description: "Statista's daily infographic, filtered to the topics you care about."
 ---
 
-Statista's latest daily infographic — one clear chart about the world,
-different every day.
+Statista's latest daily infographic — a data chart on a different topic each
+day.
 
 **Tap the card** for full screen with the chart's description.
 

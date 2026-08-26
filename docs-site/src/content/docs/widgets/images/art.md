@@ -8,8 +8,8 @@ Museum of Art, the Art Institute of Chicago and the Cleveland Museum of Art.
 Images cross-fade gently; nothing half-loaded ever reaches the screen.
 
 **Tap the card** to view the artwork full screen, and swipe there to browse.
-The full-screen view stays up until you tap it — art filling the glass is the
-one thing the board never dismisses on its own.
+The full-screen view stays until tapped — the picture viewer has no idle
+timeout.
 
 This rotation is also the default
 [screensaver](/docs/using/screensavers-and-display-modes/) source.

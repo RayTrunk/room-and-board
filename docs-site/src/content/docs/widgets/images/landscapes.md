@@ -4,10 +4,9 @@ description: "A curated folder of landscape photography. Zero setup — add the 
 ---
 
 A rotating slideshow from a built-in, hand-curated folder of landscape
-photography. Its whole story is that it needs **no setup at all**: add the
-card and it works.
+photography. It requires **no setup**: add the card and it works.
 
-**Tap the card** for full screen; swipe to browse. Like all the picture
+**Tap the card** for full screen; swipe to browse. As with all the picture
 cards, the full-screen view stays until tapped.
 
 It can also drive the

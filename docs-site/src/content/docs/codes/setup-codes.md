@@ -1,37 +1,38 @@
 ---
 title: Setup codes explained
-description: "The six-character codes that move a configuration from your phone or desktop onto the board — how they work and what they change."
+description: The six-character codes that move a configuration from your phone or desktop onto the board.
 ---
 
-A setup code is how a dashboard you built on your phone or desktop gets onto
-the board: six characters, typed once. It exists because the board has no
-login — the code **is** the handoff, and it's the only one there is.
+A setup code moves a configuration built on your phone or desktop onto the
+board: six characters, entered once. Because the board has no login, a code is
+the only mechanism for moving configuration onto it.
 
 ## The rules
 
-- A code lives for **one hour** and works **once**.
-- An expired code costs you nothing — generate a fresh one and the
-  configuration you built is still there.
+- A code is valid for **one hour** and can be used **once**.
+- If a code expires, generate a new one — the configuration you built is
+  retained.
 - Entering a code changes **only what the code carries** (see below).
 
 ## Where codes come from
 
 | Page | What its code carries |
 | --- | --- |
-| **idlescreen.app/setup** | Your whole dashboard — widgets, layout, locations, everything |
+| **idlescreen.app/setup** | The whole dashboard — widgets, layout, locations, everything |
 | **idlescreen.app/photo-setup** | Only the photo slideshows — [iCloud](/docs/widgets/images/icloud-photos/), [Google Drive](/docs/widgets/images/gdrive-photos/), or both |
 | **idlescreen.app/video-setup** | Only the [Live Video](/docs/widgets/images/live-video/) stream |
 
-The narrower codes are the point of the "only what it carries" rule: entering
-a photo code swaps your photo album and touches nothing else you've set up.
+Entering a photo or video code changes only that part of the configuration
+and leaves the rest of the dashboard unchanged.
 
 ## Where codes go in
 
 - On a fresh board: the welcome screen's **I have a setup code** button.
-- On a configured board: **<span class="glyph glyph--gear" aria-hidden="true"></span> gear → Setup code**.
+- On a configured board:
+  <span class="glyph glyph--gear" aria-hidden="true"></span> gear →
+  **Setup code**.
 
-## The other direction
+## Retrieving a configuration
 
-The same Setup code section can also hand your board's current configuration
-**back** to a phone — that's the backup story, and it has
-[its own page](/docs/codes/back-up-your-board/).
+The same Setup code section can also hand the board's current configuration
+back to a phone — see [Back up your board](/docs/codes/back-up-your-board/).

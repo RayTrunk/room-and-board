@@ -16,17 +16,16 @@ updates. Everything on it is optional and everything is rearrangeable by touch.
 
 ## Where to go
 
-- **[Set up your board](/docs/get-started/set-up-your-board/)** — the five
-  minute walkthrough.
-- **[Getting it on the board](/docs/board/point-your-board/)** — for whoever
-  administers the board: pointing it at idlescreen.
-- **[Using the dashboard](/docs/using/buttons-and-navigation/)** — the buttons,
-  the editor, the settings.
+- **[Getting it on the board](/docs/board/point-your-board/)** — pointing a
+  board at idlescreen. For whoever administers the device.
+- **[Set up your board](/docs/set-up-your-board/)** — building your dashboard.
+- **[Using the dashboard](/docs/using/buttons-and-navigation/)** — the
+  buttons, the editor, the settings.
 - **[The widgets](/docs/widgets/)** — every card, in detail.
 - **[Codes & backup](/docs/codes/setup-codes/)** — how setup codes work, and
   how to back up your board before a reset.
 
-## One line for developers
+## For developers
 
-idlescreen is open source. Everything about running your own copy lives in the
-[GitHub repository](https://github.com/scotty83/idlescreen).
+idlescreen is open source. Self-hosting and development documentation live in
+the [GitHub repository](https://github.com/scotty83/idlescreen).

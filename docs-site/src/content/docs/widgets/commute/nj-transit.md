@@ -6,7 +6,7 @@ description: "Scheduled departures from New York Penn, filtered to the lines you
 Scheduled NJ Transit departures from **New York Penn Station**: time,
 destination, and line (as a colored chip in NJ Transit's line colors).
 
-One honest caveat: NJ Transit's schedule data carries no live track numbers or
+One caveat: NJ Transit's schedule data carries no live track numbers or
 per-train status. Delays and disruptions arrive as a **service-alert banner**
 on the card instead — tap the banner for the full text. Amtrak trains sharing
 Penn Station aren't shown here; they have [their own card](/docs/widgets/commute/amtrak/).

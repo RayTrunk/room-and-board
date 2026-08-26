@@ -1,6 +1,6 @@
 ---
 title: Cloud Services
-description: "Is Webex up? One row per cloud service your office depends on, with trouble sorted to the top."
+description: Status of the cloud services your office depends on, one row per service, with problems sorted to the top.
 ---
 
 One row per cloud service your office depends on — Webex, Zoom, Slack,

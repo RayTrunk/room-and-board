@@ -6,10 +6,8 @@ description: "Departures from Moynihan Train Hall, filtered to trains that stop 
 Amtrak departures from **Moynihan Train Hall / New York Penn**: route, train
 number, status, and platform when one is assigned.
 
-The card is built around *your* trip: it shows only trains that stop at your
-chosen destination, along with the arrival time there — so it reads "the
-2:35 Northeast Regional gets me to Philadelphia at 4:05", not just a wall of
-departures.
+The card is filtered to your trip: it shows only trains that stop at your
+chosen destination, with the arrival time there.
 
 **Tap the card** for the full board.
 

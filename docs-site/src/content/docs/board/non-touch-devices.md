@@ -7,11 +7,10 @@ A Room series device driving a TV has no touchscreen, so it can't type a setup
 code. It can still run idlescreen: the whole configuration travels **inside
 the signage address itself**.
 
-## The one limitation
+## Limitation
 
-Without touch there is no tapping, so **widgets can't expand** — no card opens
-full screen. The dashboard is a pure glanceable display. Everything else
-works: live data, the screensaver, all of it.
+Without touch, **widgets cannot be expanded** — no card opens full screen.
+Live data and the screensaver work as normal.
 
 ## Getting the address
 
@@ -23,14 +22,14 @@ You need a configured dashboard to copy. Either:
 - Build a fresh configuration at **idlescreen.app/setup** and tap the same
   button.
 
-Either way your phone or browser now holds a long address with the whole
-configuration inside it.
+Either way, your phone or browser now holds an address carrying the full
+configuration.
 
 ## Applying it
 
 In Collaboration Control Hub: find the device under **Devices**, open
 **Digital signage** on its Overview tab, toggle on **Enable Digital Signage**
-— leaving **Enable Interactivity** off, since there's nothing to touch —
+— leave **Enable Interactivity** off —
 choose **URL**, paste the generated address, and **Save**.
 
 Or via commands:
@@ -54,6 +53,5 @@ generating a fresh address (same steps as above) and pasting it in again. The
 device picks it up at its next page reload — boards check hourly and reload
 overnight, and a power cycle forces it.
 
-The upside of this arrangement: the configuration survives absolutely
-anything, including a full device wipe, because it lives in the device's
-settings rather than on the device's screen.
+Because the configuration lives in the device's settings rather than in the
+page's storage, it survives reboots, upgrades and storage wipes.

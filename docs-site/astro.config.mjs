@@ -25,13 +25,7 @@ export default defineConfig({
       ],
       lastUpdated: true,
       sidebar: [
-        {
-          label: 'Get started',
-          items: [
-            { label: 'What is idlescreen', slug: 'index' },
-            { label: 'Set up your board', slug: 'get-started/set-up-your-board' },
-          ],
-        },
+        { label: 'What is idlescreen', slug: 'index' },
         {
           label: 'Getting it on the board',
           items: [
@@ -40,6 +34,7 @@ export default defineConfig({
             { label: 'Non-touch devices', slug: 'board/non-touch-devices' },
           ],
         },
+        { label: 'Set up your board', slug: 'set-up-your-board' },
         {
           label: 'Using the dashboard',
           items: [
@@ -135,10 +130,7 @@ export default defineConfig({
             { label: 'Back up your board', slug: 'codes/back-up-your-board' },
           ],
         },
-        {
-          label: 'FAQ & Troubleshooting',
-          items: [{ label: 'FAQ & Troubleshooting', slug: 'faq' }],
-        },
+        { label: 'FAQ & Troubleshooting', slug: 'faq' },
       ],
     }),
   ],
