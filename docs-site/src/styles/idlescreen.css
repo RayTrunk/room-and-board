@@ -16,8 +16,21 @@
   --sl-color-gray-6: #121212;
   --sl-color-black: #000000;
 
-  --sl-font: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto,
-    'Helvetica Neue', Arial, sans-serif;
+  /* The stack from site/css/info.css verbatim: CiscoSansTT leads (present on
+     boards and Cisco-managed machines; everyone else gets the same system
+     faces the rest of the brand falls back to). */
+  --sl-font: 'CiscoSansTT', 'Cisco SansTT', -apple-system, 'SF Pro Display',
+    'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+
+  /* Heading ramp: the brand's own scale, not Starlight's. The largest heading
+     idlescreen sets anywhere is 30px/700 (info.css .h2) — the docs' page
+     title adopts it as the cap, sections sit a clear step below, and
+     sub-sections use the board's card-title idiom (small, 600, uppercase,
+     +0.08em, dimmed ink) so depth reads as a register change, not more volume. */
+  --sl-text-h1: 1.875rem;   /* 30px — the brand cap */
+  --sl-text-h2: 1.375rem;   /* 22px */
+  --sl-text-h3: 1.0625rem;  /* 17px, carried by the uppercase idiom below */
+  --sl-text-h4: 1rem;
 }
 
 :root[data-theme='light'] {
@@ -117,3 +130,47 @@
 .fab-row { display: flex; gap: 1rem; align-items: flex-start; margin-top: 1rem; }
 .fab-row > div { min-width: 0; }
 .fab-row p { margin-top: 0.25rem !important; }
+
+/* ---------- headings ----------
+   Weights and tracking to match the ramp above. Starlight's default is 600
+   across the board; the brand differentiates: page title 700 with the
+   wordmark's slight tightening, sections 600, sub-sections the uppercase
+   card-title idiom from site/css/info.css (.subhead__title). */
+.content-panel h1 {
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.sl-markdown-content h2 {
+  font-weight: 600;
+  letter-spacing: -0.005em;
+}
+.sl-markdown-content h3 {
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--sl-color-gray-2);
+}
+
+/* Sidebar group labels take the settings-rail register (info.css .fold__name:
+   small, 600, uppercase, wide-tracked, quiet), so sections and pages separate
+   by register — uppercase for groups, sentence case for pages. */
+#starlight__sidebar .group-label .large {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--sl-color-gray-2);
+}
+
+/* Top-level bare links (the intro, Set up your board, FAQ) are pages, not
+   sections: give them the same register as the page links inside groups so
+   nothing in the rail looks like an unclickable header when it is a link. */
+#starlight__sidebar > div > ul > li > a .large {
+  font-size: var(--sl-text-sm);
+  font-weight: 400;
+  color: var(--sl-color-gray-2);
+}
+#starlight__sidebar > div > ul > li > a[aria-current='page'] .large {
+  color: var(--sl-color-text-invert);
+  font-weight: 600;
+}
