@@ -10,24 +10,22 @@ nothing downloaded onto the device — though there is an
 
 ## In Collaboration Control Hub
 
-1. Sign in at **admin.webex.com** and open **Devices**.
-2. Select the board, then open **Configurations** → **All configurations**.
-3. Search for and set:
+1. Sign in at **admin.webex.com**, open **Devices**, and find your board.
+2. On the device's **Overview** tab, under **Configurations**, click
+   **Digital signage**.
+3. Toggle on **Enable Digital Signage** and **Enable Interactivity**, choose
+   **URL** as the signage service, paste `https://idlescreen.app`, and click
+   **Save**.
 
-| Configuration | Value |
-| --- | --- |
-| WebEngine → Mode | **On** |
-| Standby → Signage → Mode | **On** |
-| Standby → Signage → InteractiveMode | **Interactive** |
-| Standby → Signage → Url | `https://idlescreen.app` |
-
-That's the whole install. The next time the board goes idle (half-wake, about
-two minutes of inactivity by default), the idlescreen welcome screen appears
-and [setup](/docs/get-started/set-up-your-board/) takes it from there.
+That's the whole install — the toggle also turns the web engine on and sets a
+sensible standby delay for you. The next time the board goes idle (half-wake,
+about two minutes of inactivity by default), the idlescreen welcome screen
+appears and [setup](/docs/get-started/set-up-your-board/) takes it from there.
 
 :::tip[Audio]
-**Standby → Signage → Audio** is off by default. Leave it off unless you plan
-to use the Live Video widget with sound.
+Signage audio is off by default, and the panel doesn't surface it. If you plan
+to use the Live Video widget with sound, set **Standby → Signage → Audio** to
+On under **All configurations**.
 :::
 
 ## The same thing as commands

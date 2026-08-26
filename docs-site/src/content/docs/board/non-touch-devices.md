@@ -28,8 +28,12 @@ configuration inside it.
 
 ## Applying it
 
-In Collaboration Control Hub (**Devices** → the device → **Configurations**),
-or via commands:
+In Collaboration Control Hub: find the device under **Devices**, open
+**Digital signage** on its Overview tab, toggle on **Enable Digital Signage**
+— leaving **Enable Interactivity** off, since there's nothing to touch —
+choose **URL**, paste the generated address, and **Save**.
+
+Or via commands:
 
 ```
 xConfiguration WebEngine Mode: On
