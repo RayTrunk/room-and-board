@@ -14,8 +14,8 @@ The clock and greeting across the top is always on.
 
 | Group | Cards | What it answers |
 | --- | --- | --- |
-| [Commute](/widgets/commute/) | 10 | When is my train, and is the line running |
-| [Weather & Air](/widgets/weather-and-air/) | 3 | Do I need a coat |
+| [Commute](/docs/widgets/commute/) | 10 | When is my train, and is the line running |
+| [Weather & Air](/docs/widgets/weather-and-air/) | 3 | Do I need a coat |
 | Markets | 2 | Where are the indices, and what is the finance news |
 | Sports | 5 | How did my teams do |
 | News & Social | 4 | What happened |

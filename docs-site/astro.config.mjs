@@ -3,7 +3,11 @@ import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
 
 export default defineConfig({
-  site: 'https://docs.idlescreen.app',
+  // The decision (2026-08-26): docs land at idlescreen.io/docs, beside the
+  // marketing front door, inside the same Pages project. `base` makes every
+  // generated URL, asset and the Pagefind index live under /docs.
+  site: 'https://idlescreen.io',
+  base: '/docs',
   integrations: [
     starlight({
       title: 'idlescreen',

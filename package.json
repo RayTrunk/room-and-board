@@ -18,7 +18,8 @@
     "deploy:frontdoor": "node tools/build-frontdoor.js && wrangler pages deploy dist/frontdoor --project-name quadrille-site --branch main --commit-dirty=true",
     "docs:dev": "npm --prefix docs-site run dev",
     "docs:build": "npm --prefix docs-site run build",
-    "docs:preview": "npm --prefix docs-site run preview"
+    "docs:preview": "npm --prefix docs-site run preview",
+    "docs:stage": "node tools/build-frontdoor.js && npm run docs:build && rm -rf dist/frontdoor/docs && cp -R docs-site/dist dist/frontdoor/docs"
   },
   "keywords": [
     "signage",

@@ -62,4 +62,4 @@ cache layer.
 Your configuration is deflate plus base64url JSON, roughly 200 characters.
 `localStorage` is the primary store, and the same string can ride the signage
 URL as a `#cfg=` fragment so a wiped board re-seeds itself. See
-[the configuration string](/reference/configuration/).
+[the configuration string](/docs/reference/configuration/).

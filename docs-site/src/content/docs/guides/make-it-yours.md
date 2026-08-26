@@ -8,7 +8,7 @@ which is always on, and nothing else until you add it.
 
 ## The editor
 
-Tap the ✎ pencil. See [the editor gestures](/reference/gestures/#the-layout-editor)
+Tap the ✎ pencil. See [the editor gestures](/docs/reference/gestures/#the-layout-editor)
 for the full list.
 
 Each widget has a minimum size and shows more content as its card grows. The

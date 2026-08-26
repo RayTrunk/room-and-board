@@ -59,6 +59,6 @@ which would overwrite the URL you just pasted.
 
 ## Next
 
-- [Get it on a board](/guides/get-it-on-a-board/) covers the macro settings in full.
-- [Make it yours](/guides/make-it-yours/) covers the editor and settings.
-- [Gestures and touch](/reference/gestures/) is the whole interaction model.
+- [Get it on a board](/docs/guides/get-it-on-a-board/) covers the macro settings in full.
+- [Make it yours](/docs/guides/make-it-yours/) covers the editor and settings.
+- [Gestures and touch](/docs/reference/gestures/) is the whole interaction model.

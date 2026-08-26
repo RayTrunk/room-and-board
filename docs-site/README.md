@@ -26,8 +26,16 @@ npm run docs:build     # static output into docs-site/dist
 - **Not real:** the sidebar covers a representative slice, not the whole
   product. Markets, Sports, News & Social, Images, Daily and Reference have no
   widget pages yet.
-- **Not real:** `site: 'https://docs.idlescreen.app'` in `astro.config.mjs` is a
-  placeholder. No such host exists.
+- **Decided (2026-08-26):** the docs land at **idlescreen.io/docs**, beside the
+  marketing front door, inside the same Pages project (`quadrille-site`).
+  `astro.config.mjs` carries `site: 'https://idlescreen.io'` + `base: '/docs'`,
+  and every internal link is written with the `/docs` prefix (Astro does not
+  rewrite absolute markdown links under a base). `npm run docs:stage` builds the
+  front door, builds the docs, and copies `docs-site/dist` to
+  `dist/frontdoor/docs` — the exact layout Pages will serve. On graduation,
+  `deploy:frontdoor` becomes `docs:stage` + the existing wrangler line.
+  Since every front-door alias rides the same project, `unsleep.io/docs` and
+  `quadrille.io/docs` come along for free.
 - **Not decided:** the wordmark font. The board uses RB Centred, which is not
   cleared for web redistribution here, so this falls back to a system stack.
 

@@ -38,7 +38,7 @@ Every option has a full-screen **Preview**. Tap anywhere to exit.
 
 The screensaver shows when Display mode is **Always screensaver**, or when it is
 **Scheduled** and you are outside the dashboard windows. See
-[display modes](/guides/make-it-yours/#display-modes).
+[display modes](/docs/guides/make-it-yours/#display-modes).
 
 ## It falls back rather than blanking
 
