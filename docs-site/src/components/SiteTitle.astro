@@ -1,0 +1,35 @@
+---
+// The masthead lockup, matching the app and info.html: the lit-card mark
+// leads, the wordmark splits idle 300/50% + screen 600/full (the B wordmark),
+// -0.03em. The word stays plain — no power tittle — because the mark shares
+// the surface (the accent-once rule: lockups plain, only the standalone
+// display wordmark wears the glyph).
+const base = import.meta.env.BASE_URL.replace(/\/?$/, '/');
+---
+<a href={base} class="site-title sl-flex" aria-label="idlescreen">
+  <img src={`${base}idlescreen-mark.svg`} alt="" class="mark" width="28" height="28" />
+  <span class="imark" aria-hidden="true"><span class="idle">idle</span><span class="screen">screen</span></span>
+</a>
+<style>
+  .site-title {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    text-decoration: none;
+    min-width: 0;
+  }
+  .mark {
+    height: 1.75rem;
+    width: auto;
+    flex-shrink: 0;
+  }
+  .imark {
+    font-size: 1.3125rem;
+    line-height: 1;
+    letter-spacing: -0.03em;
+    white-space: nowrap;
+    color: var(--sl-color-white);
+  }
+  .idle { font-weight: 300; opacity: 0.5; }
+  .screen { font-weight: 600; }
+</style>

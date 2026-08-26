@@ -15,7 +15,7 @@ export default defineConfig({
     starlight({
       title: 'idlescreen',
       tagline: 'A dashboard for your idle screen',
-      logo: { src: './public/idlescreen-mark.svg', alt: 'idlescreen' },
+      components: { SiteTitle: './src/components/SiteTitle.astro' },
       favicon: '/idlescreen-favicon-32.png',
       description:
         'How to put idlescreen on your Cisco board and make it yours: setup, widgets, codes and backup.',
