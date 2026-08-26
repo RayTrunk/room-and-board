@@ -478,31 +478,29 @@ describe('/info says how idlescreen gets on a board', () => {
     // The README once claimed this default had already moved while the macro
     // still shipped app.quadrille.io — a drift nobody could see from either
     // file alone, and the page teaches whatever the macro does not. Two
-    // sources, one assertion, and it has now survived two renames.
-    const shipped = /const SIGNAGE_URL = '([^']+)'/.exec(macro)?.[1];
-    expect(shipped).toBe('https://idlescreen.app');
-    expect(html).toContain('xConfiguration Standby Signage Url: https://idlescreen.app');
+    // sources, one assertion, and it has now survived two renames AND the
+    // 2026-08-26 slimming: the xConfiguration block moved to the docs, so the
+    // page's copy of the address is now the lede's link.
+    const macroUrl = /const SIGNAGE_URL = '([^']+)'/.exec(macro)?.[1];
+    expect(macroUrl).toBe('https://idlescreen.app');
+    expect(html).toContain('<a href="https://idlescreen.app">https://idlescreen.app</a>');
   });
 
-  it('spells out the touch setting RoomOS does not turn on for you', () => {
-    // InteractionMode defaults to NonInteractive: the board shows the
-    // dashboard perfectly and ignores every tap, which reads as a broken
-    // dashboard rather than a missing setting (Sean's catch, 2026-08-19).
-    expect(html).toContain('xConfiguration Standby Signage InteractionMode: Interactive');
+  it('sends the reader to the install detail it no longer carries', () => {
+    // The section slimmed to a teaser 2026-08-26 (Sean's pick, variant B);
+    // the contract it took on in exchange: every door it closed opens in the
+    // docs. The touch setting, the configurations, the macro file and the
+    // non-touch path all live behind these three links now, so the links ARE
+    // the content — a teaser that loses one silently strands that reader.
+    expect(html).toContain('https://idlescreen.io/docs/board/point-your-board/');
+    expect(html).toContain('https://idlescreen.io/docs/board/the-macro/');
+    expect(html).toContain('https://idlescreen.io/docs/board/non-touch-devices/');
   });
 
-  it('sends the reader somewhere the macro can actually be got', () => {
-    // The page names the file; naming it without a source is a dead end.
-    expect(html).toContain('https://github.com/scotty83/idlescreen/blob/main/macro/Dashboard.js');
-  });
-
-  it('gives every quoted line its own block, so a hanging indent can hold', () => {
-    // text-indent on the <pre> catches the first line only, which leaves a
-    // wrapped xConfiguration reading as two settings on a phone.
-    const pre = /<pre class="conf">(.*?)<\/pre>/s.exec(html)?.[1] ?? '';
-    expect((pre.match(/<span class="conf__l">/g) || []).length).toBe(4);
-    expect(pre).not.toMatch(/\n/);
-    expect(css).toMatch(/\.conf__l\s*\{[^}]*text-indent/);
+  it('keeps the anchors old deep links land on', () => {
+    // Display Modes moved to the docs, but /info#modes is in the wild; the
+    // bare anchor keeps it landing inside Making it yours.
+    expect(html).toContain('id="modes"');
   });
 });
 

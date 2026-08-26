@@ -75,13 +75,12 @@
       <h1 class="hero__title"><span class="imark imark--led"><span class="imark__idle">idle</span><span class="imark__screen">screen</span></span></h1>
       <p class="hero__sub">A dashboard for your idle screen: your commute, your weather, your markets, your images.</p>
     </div>
-    <!-- 33 = every widget a reader of this page can actually add today: the 34
-         ids in config.js less the one still behind the beta gate (Live Video).
-         (It was 35 less a retired World Cup less Live Video until the World Cup
-         code left the tree on 2026-07-29 — same 33 either way.) No group count:
-         the taxonomy moves every few weeks and a number here is a promise to
-         keep it. -->
-    <p class="hero__note">Every widget is added and configured right on the board, or from your phone. 33 to choose from &mdash; take the ones you want.</p>
+    <!-- 34 = every widget a reader of this page can actually add today: the 35
+         ids in the catalogue less the one still behind the beta gate (Live
+         Video). Recounted 2026-08-26 when the number had gone stale at 33. No
+         group count: the taxonomy moves every few weeks and a number here is a
+         promise to keep it. -->
+    <p class="hero__note">Every widget is added and configured right on the board, or from your phone. 34 to choose from &mdash; take the ones you want.</p>
   </div>
   <!-- The hero image is the LCP: eager and high priority. The asset name is
        stable on purpose: hero-board.webp is swapped on disk, never here.
@@ -115,39 +114,26 @@
   <h2 class="h2 h2--tight">Getting it on a board</h2>
   <p class="section__lede">Nothing is installed on the board. It loads idlescreen as its signage page, the way it would load any web address, so the setup is one address &mdash; <a href="https://idlescreen.app">https://idlescreen.app</a> &mdash; and the handful of configurations that let the device show it. Which ones depends on what is on your wall. (A board already pointed at unsleep.app, app.quadrille.io or roomboard.app keeps working: same dashboard, earlier names, and none of them is going anywhere.)</p>
 
+  <!-- Slimmed to a teaser 2026-08-26 (Sean's pick, variant B of three
+       mockups): the full install detail — Collaboration Control Hub steps,
+       the macro's settings, non-touch devices — moved to the docs, and this
+       section's job became showing that the install is small. The old
+       three-door layout and the xConfiguration block live on at
+       /docs/board/. -->
   <div class="tiles doors">
     <article class="card">
-      <h3 class="card__h">Board Pro, Desk Pro</h3>
-      <p class="card__p">Paste the macro and it does everything. Open <b>Settings &rarr; Macros</b> on the board, or Control Hub &rarr; Macro Editor, create a macro, paste it in, Save, enable. It sets the web engine, interactive signage, the standby delay and macro autostart, then adds a <b>Dashboard</b> button to the Control Panel.</p>
-      <p class="card__code"><a href="https://github.com/scotty83/idlescreen/blob/main/macro/Dashboard.js"><code>macro/Dashboard.js</code> on GitHub</a></p>
+      <h3 class="card__h">Point it at the address</h3>
+      <p class="card__p">In Collaboration Control Hub, or the board&rsquo;s own web interface: turn on the web engine and signage, allow touch, and give the board the address. It comes up on the welcome screen, ready for a setup code.</p>
+      <p class="card__code"><a href="https://idlescreen.io/docs/board/point-your-board/">The install guide &rarr;</a></p>
     </article>
     <article class="card">
-      <h3 class="card__h">Any board, by hand</h3>
-      <p class="card__p">No macro needed. In Control Hub, or in the board&rsquo;s own web interface, turn on the web engine and signage, allow touch, and give the board the address. It comes up on the idlescreen welcome screen, ready for a setup code.</p>
-      <p class="card__code"><code>Standby Signage Url: https://idlescreen.app</code></p>
-    </article>
-    <article class="card">
-      <h3 class="card__h">Room series on a TV</h3>
-      <p class="card__p">No touchscreen means no setup code, so here the configuration travels inside the address. Build a layout at <a href="https://idlescreen.app/setup">idlescreen.app/setup</a>, tap <b>Get signage URL</b>, and use that in place of the plain one. Do not install the macro here: it would overwrite the address.</p>
-      <p class="card__code"><code>Standby Signage Url: &hellip;#cfg=</code></p>
+      <h3 class="card__h">Or paste the macro</h3>
+      <p class="card__p">Optional. One macro sets every signage-friendly configuration in one go and adds a <b>Dashboard</b> button to the Control Panel. Non-touch Room series devices take the configuration in the address instead.</p>
+      <p class="card__code"><a href="https://idlescreen.io/docs/board/the-macro/">The macro</a> &middot; <a href="https://idlescreen.io/docs/board/non-touch-devices/">non-touch devices</a></p>
     </article>
   </div>
 
   <p class="section__aside">You are reading <b>idlescreen.io</b>, which is this guide. <b>idlescreen.app</b> is the dashboard a board loads. Two addresses, one product.</p>
-
-  <div class="subhead subhead--gap">
-    <h3 class="subhead__title">The configurations</h3>
-    <span class="subhead__note">Control Hub &rarr; device configurations, or the board&rsquo;s own web interface.</span>
-  </div>
-  <!-- One line per element, because a hanging indent needs a block per line:
-       text-indent on the <pre> itself only ever catches the first one, which
-       leaves a wrapped xConfiguration reading as two settings on a phone. -->
-  <pre class="conf"><span class="conf__l">xConfiguration WebEngine Mode: On</span><span class="conf__l">xConfiguration Standby Signage Mode: On</span><span class="conf__l">xConfiguration Standby Signage InteractionMode: Interactive<span class="conf__note"> // touch boards only</span></span><span class="conf__l">xConfiguration Standby Signage Url: https://idlescreen.app</span></pre>
-  <!-- The line itself now says who it is for (Sean's call, 2026-08-19), so
-       what is left below is only what an inline comment cannot carry: the
-       failure mode, and the values the other door needs instead. -->
-  <p class="conf__after">Without that third line the board shows the dashboard and ignores every tap. A Room series on a TV takes <code>NonInteractive</code> and the generated URL instead.</p>
-  <p class="conf__after">Cisco&rsquo;s own guidance for any of them: set <code>Time OfficeHours</code> so signage runs no more than twelve hours a day.</p>
 </section>
 
 <section id="yours" class="wrap section" data-nav-section="yours">
@@ -190,36 +176,9 @@
       </div>
     </article>
   </div>
-  <!-- Moved up from the page footer (Sean's call, 2026-08-18): a fact about
-       how the widgets behave belongs with the section that explains the
-       board. The amber stamp is the sentence's own demonstration, the exact
-       treatment a stale card wears, so it travels WITH the sentence (his
-       second catch: the wink is meaningless anywhere else). -->
-  <p class="section__aside">Widgets update themselves. Stale data dims with a timestamp rather than disappearing. <span class="aside__stamp">as of 9:41</span></p>
-
-  <!-- Display modes are one of the things you set behind the gear, so they sit
-       inside this section rather than standing above it with a nav pill of their
-       own. The id stays on the subhead so older /info#modes links still land.
-       Same card surface as the three controls above: one section, one card
-       treatment. -->
-  <div id="modes" class="subhead subhead--gap">
-    <h3 class="subhead__title">Display Modes</h3>
-    <span class="subhead__note">Three ways the board can spend its day.</span>
-  </div>
-  <div class="tiles tiles--cards">
-    <article class="card card--pad">
-      <h4 class="card__h">Dashboard</h4>
-      <p class="card__p">The board always shows your widget grid.</p>
-    </article>
-    <article class="card card--pad">
-      <h4 class="card__h">Screensaver</h4>
-      <p class="card__p">The board always shows full-screen ambient scenes (see <a href="#screensavers">Screensavers</a> below).</p>
-    </article>
-    <article class="card card--pad">
-      <h4 class="card__h">Scheduled</h4>
-      <p class="card__p">The dashboard shows during the daily windows you set; the screensaver takes over the rest of the time.</p>
-    </article>
-  </div>
+  <!-- Display Modes moved to the docs 2026-08-26 (display-modes page); the
+       bare anchor keeps old /info#modes deep links landing at this section. -->
+  <span id="modes"></span>
 </section>
 
 <!-- The whole catalogue, one section.

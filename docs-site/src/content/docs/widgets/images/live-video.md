@@ -10,6 +10,11 @@ A live video stream playing (muted) as a card. It accepts either:
 
 No stream is built in; the card appears once one is configured.
 
+:::note[Currently in beta]
+Live Video is not yet offered on production boards — it is live on the beta
+hosts while its interaction model settles.
+:::
+
 This card does not expand on tap — it plays in place.
 
 ## Configure
