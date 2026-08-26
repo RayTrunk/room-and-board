@@ -156,15 +156,17 @@
   color: var(--sl-color-gray-2);
 }
 
-/* Top-level bare links (the intro, Set up your board, FAQ) are pages, not
-   sections: give them the same register as the page links inside groups so
-   nothing in the rail looks like an unclickable header when it is a link. */
+/* Top-level bare links (the intro, Set up your board, FAQ) sit at the same
+   level as the group labels, so they wear the same register — one uniform
+   top-level rail, uppercase and quiet. The current-page pill still marks
+   the active one. */
 #starlight__sidebar ul.top-level > li > a.large {
-  font-size: var(--sl-text-sm);
-  font-weight: 400;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
   color: var(--sl-color-gray-2);
 }
 #starlight__sidebar ul.top-level > li > a.large[aria-current='page'] {
   color: var(--sl-color-text-invert);
-  font-weight: 600;
 }
