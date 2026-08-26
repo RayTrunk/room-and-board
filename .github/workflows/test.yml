@@ -52,6 +52,9 @@ jobs:
         with:
           node-version: 22
       - run: npm ci
+      # The docs (idlescreen.io/docs) are an Astro build with its own dep
+      # tree; docs:stage (inside deploy:frontdoor) needs it installed.
+      - run: npm ci --prefix docs-site
       - run: npm run deploy:frontdoor
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
