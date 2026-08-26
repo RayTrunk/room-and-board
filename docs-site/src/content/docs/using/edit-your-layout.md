@@ -13,7 +13,9 @@ touch, directly on the glass.
 - **Drag a card** to move it. Cards in the way slide aside as you go.
 - **Drag a card's corner handle** to resize it. Cards snap to the grid, and
   each card has a minimum size it won't shrink past.
-- **✕ removes** a card. It isn't gone — it drops into the tray at the bottom,
+- **The <span class="glyph glyph--remove" aria-hidden="true"></span> button
+  removes** a card — the grey circle with the minus, in the card's top-left
+  corner. It isn't gone — it drops into the tray at the bottom,
   ready to come back whenever you want.
 
 A drop that doesn't fit flashes red and snaps back — you can't break the
