@@ -1,0 +1,20 @@
+{
+  "name": "idlescreen-docs-prototype",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "PROTOTYPE — Astro Starlight docs site for idlescreen. Throwaway; lives on proto/starlight-docs.",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview"
+  },
+  "dependencies": {
+    "@astrojs/starlight": "^0.41.9",
+    "astro": "^7.2.7",
+    "sharp": "^0.35.3"
+  },
+  "allowScripts": {
+    "esbuild@0.28.2": true
+  }
+}
