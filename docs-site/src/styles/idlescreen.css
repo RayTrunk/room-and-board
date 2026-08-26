@@ -1,0 +1,172 @@
+/* PROTOTYPE — idlescreen brand tokens over Starlight defaults.
+   Mapped from site/css/main.css: --accent #64b4fa, --bg #000, --bg-card #121212. */
+
+:root {
+  /* Dark is the native register: the board idles on black. */
+  --sl-color-accent-low: #0d2b45;
+  --sl-color-accent: #2e7fc1;
+  --sl-color-accent-high: #a9d6fc;
+
+  --sl-color-white: #ffffff;
+  --sl-color-gray-1: #eceef2;
+  --sl-color-gray-2: #c2c4ca;
+  --sl-color-gray-3: #8b8e98;
+  --sl-color-gray-4: #55585f;
+  --sl-color-gray-5: #242424;
+  --sl-color-gray-6: #121212;
+  --sl-color-black: #000000;
+
+  /* The stack from site/css/info.css verbatim: CiscoSansTT leads (present on
+     boards and Cisco-managed machines; everyone else gets the same system
+     faces the rest of the brand falls back to). */
+  --sl-font: 'CiscoSansTT', 'Cisco SansTT', -apple-system, 'SF Pro Display',
+    'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+
+  /* Heading ramp: the brand's own scale, not Starlight's. The largest heading
+     idlescreen sets anywhere is 30px/700 (info.css .h2) — the docs' page
+     title adopts it as the cap, sections sit a clear step below, and
+     sub-sections use the board's card-title idiom (small, 600, uppercase,
+     +0.08em, dimmed ink) so depth reads as a register change, not more volume. */
+  --sl-text-h1: 1.875rem;   /* 30px — the brand cap */
+  --sl-text-h2: 1.375rem;   /* 22px */
+  --sl-text-h3: 1.0625rem;  /* 17px, carried by the uppercase idiom below */
+  --sl-text-h4: 1rem;
+}
+
+:root[data-theme='light'] {
+  --sl-color-accent-low: #d6e9fb;
+  --sl-color-accent: #1a6aab;
+  --sl-color-accent-high: #0b3a63;
+
+  --sl-color-white: #16181d;
+  --sl-color-gray-1: #24262c;
+  --sl-color-gray-2: #3f424a;
+  --sl-color-gray-3: #6b6e78;
+  --sl-color-gray-4: #9497a0;
+  --sl-color-gray-5: #dcdee3;
+  --sl-color-gray-6: #f2f3f6;
+  --sl-color-gray-7: #f8f9fb;
+  --sl-color-black: #ffffff;
+}
+
+/* Gesture and shortcut tables read like the board does: data first, chrome quiet. */
+.sl-markdown-content kbd {
+  display: inline-block;
+  min-width: 1.9em;
+  padding: 0.18em 0.5em;
+  border: 1px solid var(--sl-color-gray-5);
+  border-bottom-width: 2px;
+  border-radius: 0.35rem;
+  background: var(--sl-color-gray-6);
+  color: var(--sl-color-gray-1);
+  font-family: var(--sl-font-system-mono);
+  font-size: 0.85em;
+  line-height: 1.5;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.sl-markdown-content table {
+  width: 100%;
+}
+
+/* The first column of a reference table is the key, not prose. */
+.sl-markdown-content table td:first-child {
+  white-space: nowrap;
+}
+
+/* Starlight ships tip asides in purple. The board's accent is blue, and the
+   accent-once rule says the brand colour appears deliberately, so the tip
+   aside is retuned rather than left generic. caution and danger keep their
+   conventional amber and red: those carry meaning, not brand. */
+.starlight-aside--tip {
+  --sl-color-asides-text-accent: var(--sl-color-accent-high);
+  --sl-color-asides-border: var(--sl-color-accent);
+  background-color: var(--sl-color-accent-low);
+}
+
+/* Screenshots of the board are mostly black, which melts into the dark page.
+   A hairline and a slight lift give every content image an edge in both themes. */
+.sl-markdown-content img {
+  border: 1px solid var(--sl-color-gray-5);
+  border-radius: 0.5rem;
+}
+
+
+/* ---------- the app's own glyphs ----------
+   The pencil, gear and fingertip below are the EXACT SVG paths the board and
+   site/info.html draw (1.6px stroke, round caps) — the docs must never invent
+   lookalikes. Registered once here as mask-image glyphs so markdown can use
+   them inline as <span class="glyph glyph--pencil"></span> without pasting
+   paths into content. currentColor via background-color, so they follow the
+   text they sit in, in both themes. */
+.glyph {
+  display: inline-block; width: 1.1em; height: 1.1em;
+  vertical-align: -0.2em; background-color: currentColor;
+  -webkit-mask: var(--glyph) center / contain no-repeat;
+  mask: var(--glyph) center / contain no-repeat;
+}
+.glyph--pencil { --glyph: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%20fill='none'%20stroke='black'%20stroke-width='1.6'%20stroke-linecap='round'%20stroke-linejoin='round'%3E%3Cpath%20d='M14.5%205.5l4%204L8%2020l-4.6%201%201-4.6L14.5%205.5zM12.5%207.5l4%204'/%3E%3C/svg%3E"); }
+.glyph--gear   { --glyph: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%20fill='none'%20stroke='black'%20stroke-width='1.6'%20stroke-linecap='round'%20stroke-linejoin='round'%3E%3Ccircle%20cx='12'%20cy='12'%20r='3'/%3E%3Cpath%20d='M19.4%2015a1.65%201.65%200%200%200%20.33%201.82l.06.06a2%202%200%200%201%200%202.83%202%202%200%200%201-2.83%200l-.06-.06a1.65%201.65%200%200%200-1.82-.33%201.65%201.65%200%200%200-1%201.51V21a2%202%200%200%201-2%202%202%202%200%200%201-2-2v-.09A1.65%201.65%200%200%200%209%2019.4a1.65%201.65%200%200%200-1.82.33l-.06.06a2%202%200%200%201-2.83%200%202%202%200%200%201%200-2.83l.06-.06a1.65%201.65%200%200%200%20.33-1.82%201.65%201.65%200%200%200-1.51-1H3a2%202%200%200%201-2-2%202%202%200%200%201%202-2h.09A1.65%201.65%200%200%200%204.6%209a1.65%201.65%200%200%200-.33-1.82l-.06-.06a2%202%200%200%201%200-2.83%202%202%200%200%201%202.83%200l.06.06a1.65%201.65%200%200%200%201.82.33H9a1.65%201.65%200%200%200%201-1.51V3a2%202%200%200%201%202-2%202%202%200%200%201%202%202v.09a1.65%201.65%200%200%200%201%201.51%201.65%201.65%200%200%200%201.82-.33l.06-.06a2%202%200%200%201%202.83%200%202%202%200%200%201%200%202.83l-.06.06a1.65%201.65%200%200%200-.33%201.82V9a1.65%201.65%200%200%200%201.51%201H21a2%202%200%200%201%202%202%202%202%200%200%201-2%202h-.09a1.65%201.65%200%200%200-1.51%201z'/%3E%3C/svg%3E"); }
+.glyph--remove { --glyph: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%3E%3Cpath%20fill-rule='evenodd'%20d='M12%201a11%2011%200%201%200%200%2022%2011%2011%200%200%200%200-22zM8.75%2011.25h6.5a.75.75%200%200%201%200%201.5h-6.5a.75.75%200%200%201%200-1.5z'/%3E%3C/svg%3E"); }
+.glyph--tap    { --glyph: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%20fill='none'%20stroke='black'%20stroke-width='1.6'%20stroke-linecap='round'%20stroke-linejoin='round'%3E%3Cpath%20d='M9%2011V6.5a1.5%201.5%200%200%201%203%200V11'/%3E%3Cpath%20d='M12%2011V9.5a1.5%201.5%200%200%201%203%200V12'/%3E%3Cpath%20d='M15%2012v-1a1.5%201.5%200%200%201%203%200v5.5a5.5%205.5%200%200%201-5.5%205.5h-1a5.5%205.5%200%200%201-4.6-2.5L4.6%2015.6a1.5%201.5%200%200%201%202.4-1.8L9%2016'/%3E%3C/svg%3E"); }
+
+/* The FAB presentation from info.html: the 56px circle the two buttons
+   actually wear on the board, for the buttons-and-navigation page. */
+.fab-docs {
+  width: 56px; height: 56px; border-radius: 999px; flex-shrink: 0;
+  background: var(--sl-color-gray-6);
+  border: 1px solid var(--sl-color-gray-5);
+  display: inline-flex; align-items: center; justify-content: center;
+  color: var(--sl-color-white);
+}
+.fab-docs .glyph { width: 26px; height: 26px; }
+.fab-row { display: flex; gap: 1rem; align-items: flex-start; margin-top: 1rem; }
+.fab-row > div { min-width: 0; }
+.fab-row p { margin-top: 0.25rem !important; }
+
+/* ---------- headings ----------
+   Weights and tracking to match the ramp above. Starlight's default is 600
+   across the board; the brand differentiates: page title 700 with the
+   wordmark's slight tightening, sections 600, sub-sections the uppercase
+   card-title idiom from site/css/info.css (.subhead__title). */
+.content-panel h1 {
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.sl-markdown-content h2 {
+  font-weight: 600;
+  letter-spacing: -0.005em;
+}
+.sl-markdown-content h3 {
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--sl-color-gray-2);
+}
+
+/* Sidebar group labels take the settings-rail register (info.css .fold__name:
+   small, 600, uppercase, wide-tracked, quiet), so sections and pages separate
+   by register — uppercase for groups, sentence case for pages. */
+#starlight__sidebar .group-label .large {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--sl-color-gray-2);
+}
+
+/* Top-level bare links (the intro, Set up your board, FAQ) sit at the same
+   level as the group labels, so they wear the same register — one uniform
+   top-level rail, uppercase and quiet. The current-page pill still marks
+   the active one. */
+#starlight__sidebar ul.top-level > li > a.large {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--sl-color-gray-2);
+}
+#starlight__sidebar ul.top-level > li > a.large[aria-current='page'] {
+  color: var(--sl-color-text-invert);
+}
