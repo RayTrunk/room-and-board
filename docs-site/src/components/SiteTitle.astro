@@ -5,8 +5,12 @@
 // the surface (the accent-once rule: lockups plain, only the standalone
 // display wordmark wears the glyph).
 const base = import.meta.env.BASE_URL.replace(/\/?$/, '/');
+// The lockup links to the front door, not the docs root (Sean's call,
+// 2026-08-26): the docs are one room of the idlescreen.io house, and the
+// masthead is the way back out. The docs root stays one tap away as the
+// sidebar's first entry.
 ---
-<a href={base} class="site-title sl-flex" aria-label="idlescreen">
+<a href="https://idlescreen.io/" class="site-title sl-flex" aria-label="idlescreen.io home">
   <img src={`${base}idlescreen-mark.svg`} alt="" class="mark" width="28" height="28" />
   <span class="imark" aria-hidden="true"><span class="idle">idle</span><span class="screen">screen</span></span>
 </a>

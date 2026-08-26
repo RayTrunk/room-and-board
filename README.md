@@ -1039,3 +1039,11 @@ PRODUCT.md  what the product is for, and what it deliberately is not
 SECURITY.md how to report a vulnerability
 LICENSE
 ```
+
+## License, and the name
+
+Everything here is MIT — see [LICENSE](LICENSE). The idlescreen **name**,
+**wordmark** and **logo** are the one exception: they identify this project and
+its hosted service, and the MIT grant does not extend to them. Use them to
+refer to idlescreen; don't brand a fork or a derived service with them — give
+yours its own name.
