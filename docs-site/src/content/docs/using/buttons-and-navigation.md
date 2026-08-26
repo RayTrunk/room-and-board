@@ -78,3 +78,6 @@ the card to see everything, or [make the card bigger](/docs/using/edit-your-layo
 
 Open a story from any news card and the full-screen view includes a QR code —
 scan it to keep reading on your phone.
+
+The QR simply takes you to the story on the outlet's own site. If the outlet
+is paywalled, its paywall applies as usual — the code doesn't bypass it.
