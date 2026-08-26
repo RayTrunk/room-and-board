@@ -16,28 +16,23 @@ npm run docs:dev       # http://localhost:4321
 npm run docs:build     # static output into docs-site/dist
 ```
 
-## What is real and what is not
+## State (2026-08-26, after the IA grilling session)
 
-- **Real:** every page's content is drawn from `README.md`, `CONTEXT.md`,
-  `PRODUCT.md` and `site/info.html`. The gesture numbers come from
-  `site/js/gesture.js`.
-- **Real:** the brand tokens in `src/styles/idlescreen.css` are mapped from
-  `site/css/main.css` (`--accent: #64b4fa`, `--bg: #000`, `--bg-card: #121212`).
-- **Not real:** the sidebar covers a representative slice, not the whole
-  product. Markets, Sports, News & Social, Images, Daily and Reference have no
-  widget pages yet.
-- **Decided (2026-08-26):** the docs land at **idlescreen.io/docs**, beside the
-  marketing front door, inside the same Pages project (`quadrille-site`).
-  `astro.config.mjs` carries `site: 'https://idlescreen.io'` + `base: '/docs'`,
-  and every internal link is written with the `/docs` prefix (Astro does not
-  rewrite absolute markdown links under a base). `npm run docs:stage` builds the
-  front door, builds the docs, and copies `docs-site/dist` to
-  `dist/frontdoor/docs` — the exact layout Pages will serve. On graduation,
-  `deploy:frontdoor` becomes `docs:stage` + the existing wrangler line.
-  Since every front-door alias rides the same project, `unsleep.io/docs` and
-  `quadrille.io/docs` come along for free.
-- **Not decided:** the wordmark font. The board uses RB Centred, which is not
-  cleared for web redistribution here, so this falls back to a system stack.
+The IA was settled with Sean in a grilling session and the site fully rebuilt
+to it: 47 pages, end-user audience only, non-technical register. Decisions of
+record: no splash (the intro page IS /docs/); install docs lead with the
+no-macro path (Collaboration Control Hub terminology per Cisco's rebrand) and
+frame the macro as optional; per-widget pages nested under the app's own eight
+group labels, with exactly two shared pages (LIRR + Metro-North, Quote + Word
+of the Day); Codes & backup is its own group; FAQ carries the Cisco 200%-zoom
+bug (trigger: after a setup code loads; fix: tap the bottom bar to exit
+signage, Dashboard button or ~2-min half-wake to relaunch); no self-hosting
+content (GitHub carries that audience); no old-domain mentions anywhere.
+
+Still open before graduation:
+
+- The wordmark font (RB Centred not assumed cleared for web; system stack).
+- Sean's visual vet, and his go to wire `docs:stage` into `deploy:frontdoor`.
 
 ## If this graduates
 

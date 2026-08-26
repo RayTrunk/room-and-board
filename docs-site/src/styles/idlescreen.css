@@ -77,3 +77,10 @@
   --sl-color-asides-border: var(--sl-color-accent);
   background-color: var(--sl-color-accent-low);
 }
+
+/* Screenshots of the board are mostly black, which melts into the dark page.
+   A hairline and a slight lift give every content image an edge in both themes. */
+.sl-markdown-content img {
+  border: 1px solid var(--sl-color-gray-5);
+  border-radius: 0.5rem;
+}

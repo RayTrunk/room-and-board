@@ -1,0 +1,41 @@
+---
+title: How widgets work
+description: "Thirty-five cards in eight groups, all optional. What's common to every one of them, before the per-widget detail."
+---
+
+Everything on the dashboard is a widget you chose. There are thirty-five,
+sorted into the eight groups in the sidebar — the same groups you'll see in
+the editor's tray and in Settings.
+
+A few things are true of every widget, so the per-widget pages don't repeat
+them:
+
+## They're all optional
+
+Add and remove any card with the [✎ pencil editor](/docs/using/edit-your-layout/).
+Only the clock and greeting across the top are always there.
+
+## Bigger shows more
+
+Most cards show more content as you give them room. The
+[editor](/docs/using/edit-your-layout/) tells you how many rows fit at any
+size, and a **+N** in a card's corner means there's more than fits — tap to
+see it all.
+
+## Tap to open
+
+[Nearly every card opens full screen on a tap](/docs/using/buttons-and-navigation/) —
+the whole board, the full forecast, every story. The per-widget pages describe
+what's behind the tap where it's interesting.
+
+## Stale never means blank
+
+A card that can't refresh dims a little and shows "as of …" with the time of
+its last good data, then recovers on its own. A dead feed never leaves a hole
+in your dashboard.
+
+## Some cards ask before they show data
+
+A few widgets need a choice from you before they have anything to say — a
+station, a destination, a stream link. Those cards prompt until you've chosen,
+and their pages say so.
