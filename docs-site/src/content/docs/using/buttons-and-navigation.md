@@ -8,21 +8,48 @@ else.
 
 ## The two buttons
 
-| Button | What it opens |
-| --- | --- |
-| **✎ pencil** | The layout editor — [move, resize, add and remove cards](/docs/using/edit-your-layout/) |
-| **⚙ gear** | [Settings](/docs/using/settings/) — per-widget options, screensaver, setup codes |
+They sit in the bottom-right corner of the board.
+
+<div class="fab-row">
+  <span class="fab-docs" aria-hidden="true"><span class="glyph glyph--pencil"></span></span>
+  <div>
+
+**Edit layout** — [move, resize, add and remove cards](/docs/using/edit-your-layout/).
+The board shows each card's minimum size while you work, so nothing ends up
+too small to read.
+
+  </div>
+</div>
+
+<div class="fab-row">
+  <span class="fab-docs" aria-hidden="true"><span class="glyph glyph--gear"></span></span>
+  <div>
+
+**Settings** — [everything else](/docs/using/settings/): your stations, teams,
+tickers and news outlets, the screensaver and display schedule, °F or °C, and
+[setup codes](/docs/codes/setup-codes/).
+
+  </div>
+</div>
 
 The clock and greeting across the top are always there; everything else on the
 screen is a card you chose.
 
-## The one rule: tap a card to open it
+## The third control: the cards themselves
 
-Almost every card opens full screen when you tap it — the full train board,
-the whole forecast, every ticker, the reading list. You don't need to learn
-which cards do this; it's the house rule. The handful that don't open
-anything (like Air & Sky, or the Quote of the Day) simply have nothing more
-to show than what's already on the card.
+<div class="fab-row">
+  <span class="fab-docs" aria-hidden="true"><span class="glyph glyph--tap"></span></span>
+  <div>
+
+**Tap a card to open it.** Almost every card opens full screen — the full
+train board, the whole forecast, every ticker, the reading list.
+
+  </div>
+</div>
+
+You don't need to learn which cards do this; it's the house rule. The handful
+that don't open anything (like Air & Sky, or the Quote of the Day) simply have
+nothing more to show than what's already on the card.
 
 Cards showing pictures open a full-screen picture viewer instead.
 

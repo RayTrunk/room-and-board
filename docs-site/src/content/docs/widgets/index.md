@@ -12,7 +12,7 @@ them:
 
 ## They're all optional
 
-Add and remove any card with the [✎ pencil editor](/docs/using/edit-your-layout/).
+Add and remove any card with the [<span class="glyph glyph--pencil" aria-hidden="true"></span> pencil editor](/docs/using/edit-your-layout/).
 Only the clock and greeting across the top are always there.
 
 ## Bigger shows more

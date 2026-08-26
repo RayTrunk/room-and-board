@@ -17,7 +17,7 @@ works: live data, the screensaver, all of it.
 
 You need a configured dashboard to copy. Either:
 
-- On a board that's already set up the way you want: ⚙ gear → **Setup code**
+- On a board that's already set up the way you want: <span class="glyph glyph--gear" aria-hidden="true"></span> gear → **Setup code**
   → **Show QR of current config**, scan it with your phone, then tap
   **Get signage URL (non-touch boards)** — or
 - Build a fresh configuration at **idlescreen.app/setup** and tap the same

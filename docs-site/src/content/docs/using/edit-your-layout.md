@@ -5,7 +5,7 @@ description: "Tap the pencil: drag cards to move them, drag the corner to resize
 
 ![The layout editor: cards on the grid with drag handles, and the add tray along the bottom](../../../assets/edit-mode.png)
 
-Tap the **✎ pencil** and the dashboard becomes editable. Everything happens by
+Tap the **<span class="glyph glyph--pencil" aria-hidden="true"></span> pencil** and the dashboard becomes editable. Everything happens by
 touch, directly on the glass.
 
 ## Moving and resizing

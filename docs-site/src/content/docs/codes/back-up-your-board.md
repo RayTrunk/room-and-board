@@ -9,7 +9,7 @@ minutes.
 
 ## Take the backup
 
-1. On the board: **⚙ gear → Setup code → Show QR of current config**.
+1. On the board: **<span class="glyph glyph--gear" aria-hidden="true"></span> gear → Setup code → Show QR of current config**.
 2. Scan the QR with your phone. Your phone now holds your entire dashboard —
    every widget, setting and arrangement — as a page you can return to.
 3. Keep that page: bookmark it, or share the link to yourself.

@@ -10,8 +10,8 @@ account.
 ## The fastest road: Quick start, on the glass
 
 Tap **Quick start** on the welcome screen. The board starts with a sensible
-default dashboard immediately, and you fine-tune it by touch: the ✎ pencil
-rearranges the cards, the ⚙ gear opens settings.
+default dashboard immediately, and you fine-tune it by touch: the <span class="glyph glyph--pencil" aria-hidden="true"></span> pencil
+rearranges the cards, the <span class="glyph glyph--gear" aria-hidden="true"></span> gear opens settings.
 
 Good for: getting something on the screen right now.
 
@@ -33,7 +33,7 @@ The same setup page works in any browser — go to **idlescreen.app/setup** on
 your computer. Build the full configuration with a keyboard and a big screen,
 tap **Get my setup code**, then walk over and type the six characters into the
 board (welcome screen → **I have a setup code**, or on a configured board:
-⚙ gear → **Setup code**).
+<span class="glyph glyph--gear" aria-hidden="true"></span> gear → **Setup code**).
 
 Good for: the full custom build, or setting up several boards to a pattern.
 

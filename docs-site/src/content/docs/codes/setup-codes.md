@@ -28,7 +28,7 @@ a photo code swaps your photo album and touches nothing else you've set up.
 ## Where codes go in
 
 - On a fresh board: the welcome screen's **I have a setup code** button.
-- On a configured board: **⚙ gear → Setup code**.
+- On a configured board: **<span class="glyph glyph--gear" aria-hidden="true"></span> gear → Setup code**.
 
 ## The other direction
 

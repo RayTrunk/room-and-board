@@ -3,7 +3,7 @@ title: Settings
 description: "The gear: your name, your location, each widget's own options, the screensaver, and setup codes."
 ---
 
-Tap the **⚙ gear**. Settings is organized as one section per topic, with a
+Tap the **<span class="glyph glyph--gear" aria-hidden="true"></span> gear**. Settings is organized as one section per topic, with a
 section for every widget that has options.
 
 ## The essentials
@@ -28,6 +28,6 @@ sensible starter entries; remove them like anything else.
 
 ## The Widgets section
 
-**Settings → Widgets** points you to the ✎ pencil editor — adding and
+**Settings → Widgets** points you to the <span class="glyph glyph--pencil" aria-hidden="true"></span> pencil editor — adding and
 removing cards happens [there](/docs/using/edit-your-layout/), where you can
 see what fits.
