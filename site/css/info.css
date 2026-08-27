@@ -630,10 +630,6 @@ code {
 /* Every clause is a link target (/terms#security is what gets sent to a
    reviewer), so it needs the same nav clearance the folds and subheads carry. */
 .terms .row { scroll-margin-top: 76px; }
-/* The one group label on the page. It keeps the guide's subhead type, but the
-   row below brings its own hairline, so the label drops its bottom margin and
-   lets that rule underline it. */
-.terms .subhead { margin-bottom: 0; padding: 30px 2px 10px; }
 /* The widget list gets its measure from being two columns; a single-column
    clause list has to bring its own, or the prose runs to ~100 characters and
    the eye starts hunting for the next line. */

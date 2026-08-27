@@ -75,18 +75,13 @@
       <p class="row__desc">idlescreen displays these feeds; it doesn&rsquo;t republish them, sell them or pass them on, and what lands on a board is the same public information you could pull up on the agency&rsquo;s own site. Using it doesn&rsquo;t give you any rights to that data, though. Most of them are free for any use; the weather, air quality and surf data, and the location search, come from Open-Meteo&rsquo;s free non-commercial API. The <a href="https://github.com/scotty83/idlescreen#data-sources--care">full list of feeds</a>, widget by widget, is in the README.</p>
     </div>
 
-    <div class="subhead" id="privacy">
-      <h2 class="subhead__title">Privacy</h2>
-      <span class="subhead__note">What leaves a board, and what doesn&rsquo;t.</span>
-    </div>
-
-    <div class="row" id="keeps">
-      <h2 class="row__name">What it keeps</h2>
+    <div class="row" id="privacy">
+      <h2 class="row__name">Privacy: what it keeps</h2>
       <p class="row__desc">No accounts, no logins, no passwords. Your layout lives in that board&rsquo;s own browser storage, or inside the signage URL you pasted into the device. A setup code holds widget choices and nothing else, and it dies after an hour. The only personal thing anywhere in it is the first name you can type in for the greeting, and that never leaves the board.</p>
     </div>
 
     <div class="row" id="counts">
-      <h2 class="row__name">What it counts</h2>
+      <h2 class="row__name">Privacy: what it counts</h2>
       <p class="row__desc">Once an hour a board sends a small heartbeat: a random id the board makes up for itself, which widgets are on it, its display mode, its build version, its time zone, which cards are currently broken, and a few counters about how it&rsquo;s running. It describes a screen, not a person &mdash; no name, no account, no location beyond the time zone, and nothing off the cards themselves. It&rsquo;s how anyone knows which widgets are worth keeping, and how a widget that broke on every board at once gets noticed. The data points go to Cloudflare Analytics Engine, which keeps them for three months.
       <span class="row__fine">It&rsquo;s on by default and you can switch it off on the board at <b>Settings &rarr; Diagnostics &rarr; Anonymous usage ping</b>. The id is random, generated on the board and stored only there; clearing web storage gives it a new one. For a fleet, switch it off on one board and take that board&rsquo;s signage URL (gear &rarr; Setup code &rarr; Show QR of current config &rarr; Get signage URL); every board pointed at that address starts with the ping off.</span></p>
     </div>

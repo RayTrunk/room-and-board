@@ -616,7 +616,13 @@ describe('/terms', () => {
     // reviewer ticks off have to be findable by their names. Each fact here
     // was checked before it was written; a test keeps the copy from drifting
     // away from the code it describes.
-    for (const id of ['privacy', 'security', 'counts', 'keeps', 'liability']) expect(terms).toContain(`id="${id}"`);
+    for (const id of ['privacy', 'security', 'counts', 'liability']) expect(terms).toContain(`id="${id}"`);
+    // Privacy is a NAME on two rows, not a group label: a subhead over the
+    // middle of a flat list claimed every row after it (Sean's catch,
+    // 2026-08-27), so the pair carries the word in its own labels instead.
+    expect(terms).not.toMatch(/class="subhead/);
+    expect(terms).toMatch(/Privacy: what it keeps/);
+    expect(terms).toMatch(/Privacy: what it counts/);
     expect(terms).toMatch(/no cookies/i); // no document.cookie / Set-Cookie anywhere in site or worker
     expect(terms).toMatch(/three months/); // Analytics Engine's documented retention
     expect(terms).toMatch(/capped at what you.{1,7}ve paid/); // the cap behind the exclusion
