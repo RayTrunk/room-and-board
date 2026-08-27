@@ -1,5 +1,14 @@
 [
   {
+    "date": "August 27",
+    "items": [
+      {
+        "lead": "The board comes back at the right size",
+        "text": "A board could come back zoomed in after a restart or after saving a change, showing a corner of the dashboard blown up until someone woke the screen and let it go back to sleep. It comes back at the right size now."
+      }
+    ]
+  },
+  {
     "date": "August 22",
     "items": [
       {
