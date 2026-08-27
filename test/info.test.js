@@ -26,17 +26,29 @@ for (const el of document.querySelectorAll('[data-nav-section]')) {
 
 // ---------- the power tittle's two measurements ----------
 // The probe reads two things a layout-less DOM cannot produce: where the line's
-// baseline landed (measured with a zero-size inline-block dropped into the
-// word) and an ink-scan of the rendered "i" on a canvas. Both are scripted
-// here, the same way the spy's geometry above is.
+// baseline landed (measured with a 1em-wide inline-block dropped into the
+// word, whose own rect width is the em ruler) and an ink-scan of the rendered
+// "i" on a canvas. Both are scripted here, the same way the spy's geometry
+// above is.
 const idleEl = document.querySelector('.hero__title .imark__idle');
 const IDLE_FS = parseFloat(getComputedStyle(idleEl).fontSize) || 16;
 // 0.9219em is the generic-sans figure from the mockup round: a real value from
 // a real face, so the assertions read as a face rather than as a magic number.
-const PROBE = { baseline: IDLE_FS * 0.9219 };
+// `zoom` models util.js's fitViewport scaling <html> to fit a desktop window:
+// getBoundingClientRect comes back multiplied by it, computed font-size does
+// not. Every rect this mock hands out is in that zoomed space, the way a real
+// browser's are.
+const PROBE = { baseline: IDLE_FS * 0.9219, zoom: 1 };
 Element.prototype.getBoundingClientRect = function boxOf() {
-  const bottom = this.style?.display === 'inline-block' ? PROBE.baseline : 0;
-  return { top: 0, bottom, left: 0, right: 0, width: 0, height: 0 };
+  const probe = this.style?.display === 'inline-block';
+  return {
+    top: 0,
+    bottom: probe ? PROBE.baseline * PROBE.zoom : 0,
+    left: 0,
+    right: 0,
+    width: probe ? IDLE_FS * PROBE.zoom : 0,
+    height: 0,
+  };
 };
 
 // A synthetic 200x400 bitmap of "i" at weight 300, in exactly the frame the
@@ -128,13 +140,15 @@ describe('/info places the power tittle off the face it actually rendered', () =
   const varsOf = () => ['--im-base', '--im-tx', '--im-ty', '--im-tb', '--im-st', '--im-td', '--im-sx']
     .map((k) => h1.style.getPropertyValue(k));
 
-  it('publishes nothing at all when there is no canvas to scan with', () => {
+  it('publishes the baseline alone when there is no canvas to scan with', () => {
     // The module has already run once by now, with a perfectly good baseline
-    // available and getContext answering null. Publishing a half-measurement
-    // would place the ring off one real number and one invented one; the
-    // stylesheet's static fallbacks are the correct answer instead. Silence,
-    // and above all no throw, is the whole contract of the no-JS state.
-    expect(varsOf()).toEqual(['', '', '', '', '', '', '']);
+    // available and getContext answering null. The two measurements fail
+    // separately, so they publish separately (2026-08-26; the first stance
+    // here was all-or-nothing, and a Desk Pro wearing the welcome mark
+    // visibly low off the Helvetica Neue static baseline is what refuted it):
+    // the baseline is real and the construction's dominant term, so it stands,
+    // and the six ink offsets stay silent for the stylesheet's fallbacks.
+    expect(varsOf()).toEqual(['0.9219', '', '', '', '', '', '']);
   });
 
   it('publishes the six measurements once the face has landed', async () => {
@@ -159,6 +173,23 @@ describe('/info places the power tittle off the face it actually rendered', () =
     expect(h1.style.getPropertyValue('--im-st')).toBe('0.5500'); // stem top
     expect(h1.style.getPropertyValue('--im-td')).toBe('0.1170'); // 1.3x the larger dimension
     expect(h1.style.getPropertyValue('--im-sx')).toBe('0.1100'); // stem centre x
+  });
+
+  it('reads the same baseline through a desktop fit-to-window zoom', async () => {
+    // util.js's fitViewport lays a zoom on <html> for any window narrower than
+    // 1920px, and getBoundingClientRect comes back multiplied by it while the
+    // computed font-size does not. Dividing across the two spaces is how the
+    // welcome mark shipped ~7.5px high on every desktop preview (2026-08-26:
+    // base read 0.9664 times the 0.891 of zoom, so 0.8611). The probe measures
+    // its em with its own zoomed rect width, so the answer is zoom-invariant.
+    const { placeTittle } = await import('../site/js/tittle-probe.js');
+    PROBE.zoom = 0.891;
+    try {
+      placeTittle(h1);
+    } finally {
+      PROBE.zoom = 1;
+    }
+    expect(h1.style.getPropertyValue('--im-base')).toBe('0.9219');
   });
 
   it('leaves the word itself untouched, probe and all', () => {

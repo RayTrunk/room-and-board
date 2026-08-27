@@ -22,13 +22,21 @@
 // be two copies of 150 lines drifting apart over a mark that must be one mark.
 //
 // It is a progressive enhancement and must stay one. A DOM with no layout
-// (happy-dom) and a browser with no canvas both leave the fallbacks standing,
+// (happy-dom) and a browser with no canvas both leave fallbacks standing,
 // which is a correct wordmark, only not a per-face one: everything below
-// feature-detects, sanity-checks its own answer, and publishes nothing at all
-// rather than publish a number it does not believe. That posture is also what
-// makes it safe on the board's gen1 Qt WebEngine, whose only requirement here
-// is a 2D canvas it can read back, and which gets the stylesheet's static
-// placement, not a broken one, if it cannot.
+// feature-detects, sanity-checks its own answer, and publishes each number it
+// believes and nothing it does not. THE TWO MEASUREMENTS PUBLISH SEPARATELY
+// (2026-08-26): the baseline needs only layout, the ink scan also needs a
+// canvas it can read back, and those fail separately. The first stance here
+// was all-or-nothing, on the theory that one real number under six static ones
+// is worse than seven static ones; the Desk Pro wore the refutation. The six
+// scan numbers are offsets FROM the baseline and vary a little across faces,
+// while the baseline itself is where the whole construction hangs and varies a
+// lot (the Helvetica Neue fallback is 0.965em; the welcome card's face on a
+// Desk Pro renders visibly lower), so a panel whose canvas cannot answer but
+// whose layout can still gets the mark hung off the true baseline, with only
+// the ink offsets assumed. Silence remains the answer for a number that fails
+// its own sanity check.
 
 const SCAN_PX = 200; // ink-scan at 200px, so one scanned pixel is 1/200 em
 const SCAN_H = SCAN_PX * 2;
@@ -107,19 +115,33 @@ function scanTittle(cs) {
   }
 }
 
-// An empty inline-block's bottom margin edge IS its baseline, so a zero-size one
-// dropped into the word reports where the line's baseline actually landed. It
-// carries no text, so textContent stays exactly "idlescreen" while it is in
-// there, and the finally is what guarantees it leaves again: this construction
-// exists to keep the DOM holding the plain word, and a probe stranded inside
-// the mark by a throw would be a worse bug than a misplaced dot.
-function probeBaseline(el, size) {
+// An empty inline-block's bottom margin edge IS its baseline, so a zero-height
+// one dropped into the word reports where the line's baseline actually landed.
+// BOTH RECTS ARRIVE IN VISUAL COORDINATES, AND ON A DESKTOP THOSE ARE NOT
+// LAYOUT PIXELS: util.js's fitViewport lays a zoom on <html> to fit the fixed
+// 1920 page into whatever window is watching, and getBoundingClientRect
+// multiplies by it while the computed font-size does not. Dividing across the
+// two spaces is how the welcome mark shipped ~7.5px high on every desktop
+// preview (2026-08-26: base read 0.8611 in a 1710px window, which is the true
+// 0.9664 times the 0.891 of zoom). So the em is measured with the same ruler
+// the baseline is: the probe is 1em wide, and its own rect width is the
+// denominator, zoomed exactly as the numerator is. Width, not height, because
+// a baseline-aligned box a full em tall can grow the line box and move the
+// very baseline it is reading.
+// The probe carries no text, so textContent stays exactly "idlescreen" while
+// it is in there, and the finally is what guarantees it leaves again: this
+// construction exists to keep the DOM holding the plain word, and a probe
+// stranded inside the mark by a throw would be a worse bug than a misplaced
+// dot.
+function probeBaseline(el) {
   const probe = document.createElement('span');
   probe.setAttribute('aria-hidden', 'true');
-  probe.style.cssText = 'display:inline-block;width:0;height:0';
+  probe.style.cssText = 'display:inline-block;width:1em;height:0';
   el.appendChild(probe);
   try {
-    return (probe.getBoundingClientRect().bottom - el.getBoundingClientRect().top) / size;
+    const r = probe.getBoundingClientRect();
+    if (!(r.width > 0)) return 0; // no layout (happy-dom): unmeasurable, not 0/0
+    return (r.bottom - el.getBoundingClientRect().top) / r.width;
   } finally {
     probe.remove();
   }
@@ -137,19 +159,24 @@ export function placeTittle(host) {
   if (!size) return;
   let base = 0;
   try {
-    base = probeBaseline(idle, size);
+    base = probeBaseline(idle);
   } catch {
     return;
   }
-  const m = scanTittle(cs);
-  if (!m) return;
   // Sanity, not superstition. Every value here is a fraction of an em with a
   // known neighbourhood across every face a browser can hand us; one outside it
   // means the measurement measured something else (no layout, a fallback face
   // that never loaded, a canvas that returned an empty bitmap), and a mark
   // placed off a wrong number is worse than one placed off the sheet's default.
+  if (!(base > 0.6 && base < 1.4)) return;
+  // The baseline publishes on its own, ahead of the scan: it is the number the
+  // whole construction hangs from, it needs nothing but layout to measure, and
+  // a panel whose canvas cannot answer (the module comment has the Desk Pro
+  // account) is exactly the panel whose face the static baseline is wrong for.
+  host.style.setProperty('--im-base', base.toFixed(4));
+  const m = scanTittle(cs);
+  if (!m) return;
   const ok =
-    base > 0.6 && base < 1.4 &&
     m.ty > 0.4 && m.ty < 0.95 &&
     m.tb > 0.35 && m.tb < m.ty &&
     m.st > 0.25 && m.st < m.tb &&
@@ -157,7 +184,6 @@ export function placeTittle(host) {
     m.tx > -0.1 && m.tx < 0.5 &&
     m.sx > -0.1 && m.sx < 0.5;
   if (!ok) return;
-  host.style.setProperty('--im-base', base.toFixed(4));
   host.style.setProperty('--im-tx', m.tx.toFixed(4));
   host.style.setProperty('--im-ty', m.ty.toFixed(4));
   host.style.setProperty('--im-tb', m.tb.toFixed(4));
