@@ -5,7 +5,7 @@ import { mapHistory } from '../site/js/widgets/history.js';
 import { quoteOfDay, quoteFit, pickQuote } from '../site/js/widgets/quote.js';
 import { mapMarkets } from '../site/js/widgets/markets.js';
 import { mapBus } from '../site/js/widgets/bus.js';
-import { fitViewport } from '../site/js/util.js';
+import { fitViewport, narrowViewportToGlass } from '../site/js/util.js';
 import { mapSiriStop } from '../worker/src/bus.js';
 import { mapYahooChart } from '../worker/src/markets.js';
 import { pickChart, currentTopic } from '../site/js/widgets/chart.js';
@@ -339,7 +339,18 @@ describe('mapBus (legs)', () => {
 });
 
 describe('fitViewport (RoomOS panel fit — Room Navigator)', () => {
-  const fakeRoot = (clientWidth) => ({ clientWidth, style: {} });
+  // `style` carries the custom-property methods a real CSSStyleDeclaration has,
+  // so the --fit-zoom the centring rule in main.css reads is assertable here.
+  const fakeRoot = (clientWidth) => {
+    const props = {};
+    return {
+      clientWidth, props,
+      style: {
+        setProperty: (k, v) => { props[k] = v; },
+        removeProperty: (k) => { delete props[k]; },
+      },
+    };
+  };
 
   it('no-ops on the Board Pro (1920 wide) so production is untouched', () => {
     const root = fakeRoot(1920);
@@ -356,8 +367,56 @@ describe('fitViewport (RoomOS panel fit — Room Navigator)', () => {
   });
   it('ignores an implausible or zero measurement rather than scaling to nothing', () => {
     expect(fitViewport(fakeRoot(0))).toBeNull();
-    expect(fitViewport(fakeRoot(100))).toBeNull(); // < 0.25 scale
+    expect(fitViewport(fakeRoot(100))).toBeNull(); // < 0.15 scale: garbage, not glass
     expect(fitViewport(fakeRoot(Number.NaN))).toBeNull();
+  });
+  it('still fits a phone opening the board URL (the floor is for garbage)', () => {
+    // 390px is an iPhone. It sits under the old 0.25 floor, and it stopped
+    // being the engine's problem when initial-scale=1 went back into the meta
+    // on 2026-08-26, so the floor moved below every real device.
+    expect(fitViewport(fakeRoot(390))).toBeCloseTo(0.203, 3);
+  });
+
+  // The 2026-08-26 half. With `width=1920, initial-scale=1` in the meta, the
+  // LAYOUT viewport reads 1920 on every engine that honors the tag, whatever
+  // the glass actually measures, so clientWidth alone no-ops on exactly the
+  // device this function exists for. See the note in util.js.
+  const fakeView = (width) => ({ visualViewport: { width } });
+
+  it('fits a Room Navigator from the VISUAL viewport, which the layout one hides', () => {
+    expect(fitViewport(fakeRoot(1920), fakeView(1280))).toBeCloseTo(0.667, 3);
+  });
+  it('compensates a page scale the engine picked on its own (the safety net)', () => {
+    // Board Pro after an in-place reload: layout still a correct 1920, visual
+    // 960 because the engine scaled the page 2x. zoom 0.5 under scale 2 is 1:1
+    // on the glass, so the board is legible instead of quartered.
+    expect(fitViewport(fakeRoot(1920), fakeView(960))).toBeCloseTo(0.5, 3);
+  });
+  it('takes the SMALLER of the two, never the visual alone', () => {
+    // A desktop window ignores the meta entirely, so its layout viewport is the
+    // window and is the smaller number. Trusting the visual reading blindly
+    // would un-fit the desktop preview.
+    expect(fitViewport(fakeRoot(1280), fakeView(1920))).toBeCloseTo(0.667, 3);
+  });
+  it('falls back to the layout viewport when the visual reading is unusable', () => {
+    // 0 or NaN is an engine that has not laid out yet, not a zero-width screen.
+    expect(fitViewport(fakeRoot(1920), fakeView(0))).toBeNull();
+    expect(fitViewport(fakeRoot(1280), fakeView(Number.NaN))).toBeCloseTo(0.667, 3);
+    expect(fitViewport(fakeRoot(1280), {})).toBeCloseTo(0.667, 3); // no visualViewport at all
+  });
+  it('publishes the scale to CSS, and withdraws it when it does not apply', () => {
+    // main.css centres the page on a viewport taller than 1080, and that sum is
+    // in page px while `100dvh` is raw viewport px. Without this the rule
+    // silently compares two rulers and never fires (fixed 2026-08-27).
+    const nav = fakeRoot(1280);
+    fitViewport(nav);
+    expect(nav.props['--fit-zoom']).toBe('0.667');
+    const board = fakeRoot(1920);
+    fitViewport(board);
+    expect(board.props['--fit-zoom']).toBeUndefined(); // no zoom, no correction
+    nav.clientWidth = 1920; // moved to a board / window widened
+    fitViewport(nav);
+    expect(nav.props['--fit-zoom']).toBeUndefined(); // withdrawn, not left stale
   });
   it('is idempotent: re-measuring after a resize resets the previous zoom first', () => {
     const root = fakeRoot(1280);
@@ -366,6 +425,65 @@ describe('fitViewport (RoomOS panel fit — Room Navigator)', () => {
     root.clientWidth = 1920; // e.g. moved to a Board Pro / window widened
     expect(fitViewport(root)).toBeNull();
     expect(root.style.zoom).toBe(''); // cleared, not left stale
+  });
+});
+
+describe('narrowViewportToGlass (the layout viewport IS the glass)', () => {
+  // The other half of the 2026-08-26 fix, and the half that is easy to miss:
+  // fitViewport scales the DASHBOARD, but every full-bleed overlay is sized by
+  // being position:fixed, and a fixed element sizes to the LAYOUT viewport, not
+  // to the zoomed page. Pinning `width=1920` in the markup is correct on a
+  // Board Pro and 640px too wide on a Room Navigator, so the overlays would
+  // have hung off the side of a panel whose dashboard looked perfectly fitted.
+  const PINNED = 'width=1920, initial-scale=1, maximum-scale=1';
+  const fakeDoc = (clientWidth, content = PINNED) => {
+    const meta = { content };
+    return {
+      meta,
+      querySelector: (sel) => (sel === 'meta[name="viewport"]' ? meta : null),
+      documentElement: { clientWidth },
+    };
+  };
+  const fakeView = (width) => ({ visualViewport: { width } });
+
+  it('never touches a Board Pro, whose glass already IS the layout viewport', () => {
+    const doc = fakeDoc(1920);
+    expect(narrowViewportToGlass(doc, fakeView(1920))).toBeNull();
+    expect(doc.meta.content).toBe(PINNED); // untouched to the character
+  });
+  it('narrows to a Room Navigator\'s 1280 of glass', () => {
+    const doc = fakeDoc(1920);
+    expect(narrowViewportToGlass(doc, fakeView(1280))).toBe(1280);
+    expect(doc.meta.content).toBe('width=1280, initial-scale=1, maximum-scale=1');
+  });
+  it('keeps the pinned scale while rewriting the width', () => {
+    // Losing initial-scale here would hand the engine back the discretion the
+    // whole fix exists to take away, on the reload path, silently.
+    const doc = fakeDoc(1920);
+    narrowViewportToGlass(doc, fakeView(1280));
+    expect(doc.meta.content).toContain('initial-scale=1');
+    expect(doc.meta.content).toContain('maximum-scale=1');
+  });
+  it('follows a page scale the engine picked on its own', () => {
+    // Board Pro after an in-place reload at scale 2: 960 of visible glass, so
+    // laying out to 1920 puts three quarters of every overlay off-screen.
+    const doc = fakeDoc(1920);
+    expect(narrowViewportToGlass(doc, fakeView(960))).toBe(960);
+  });
+  it('rewrites once and then stops, even if the engine ignored it', () => {
+    const doc = fakeDoc(1920);
+    expect(narrowViewportToGlass(doc, fakeView(1280))).toBe(1280);
+    // clientWidth still 1920: the engine did not honour the rewrite. Trying
+    // again forever would be a boot-time loop on the resize handler.
+    expect(narrowViewportToGlass(doc, fakeView(1280))).toBeNull();
+  });
+  it('refuses a missing tag, a missing viewport object, or a garbage reading', () => {
+    const noMeta = { querySelector: () => null, documentElement: { clientWidth: 1920 } };
+    expect(narrowViewportToGlass(noMeta, fakeView(1280))).toBeNull();
+    expect(narrowViewportToGlass(fakeDoc(1920), {})).toBeNull();      // no visualViewport
+    expect(narrowViewportToGlass(fakeDoc(1920), fakeView(0))).toBeNull();
+    expect(narrowViewportToGlass(fakeDoc(1920), fakeView(Number.NaN))).toBeNull();
+    expect(narrowViewportToGlass(fakeDoc(1920), fakeView(100))).toBeNull(); // implausible
   });
 });
 

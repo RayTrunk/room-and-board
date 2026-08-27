@@ -3,7 +3,7 @@
 import { normalizeConfig, decodeConfig, CURATED_SOURCES } from './config.js';
 import { loadConfig, saveConfig, loadCache, saveCache, takePendingEdit, applyConfig, isDemoSession } from './store.js';
 import { fetchJSON, fetchBuffer, fetchText } from './net.js';
-import { fitViewport } from './util.js';
+import { fitViewport, narrowViewportToGlass } from './util.js';
 import { cardFor, markFresh, markStale, setCardConfigSource } from './card.js';
 import { blockZoomGestures } from './zoomguard.js';
 import { schedule } from './scheduler.js';
@@ -87,10 +87,19 @@ let fixturesPromise = null;
 const loadFixtures = () =>
   (fixturesPromise ??= import('../demo/fixtures.js').then((m) => (fixtures = m)));
 
-// Scale the fixed 1920x1080 layout down onto smaller RoomOS panels (Cisco Room
-// Navigator). No-op on the Board Pro. See fitViewport in util.js for why.
-fitViewport();
-window.addEventListener('resize', () => fitViewport());
+// Bring the page into agreement with the glass on smaller RoomOS panels (Cisco
+// Room Navigator): first the layout viewport, so the full-bleed overlays are the
+// screen, then the 1920x1080 layout itself, scaled down to fit inside it. Both
+// no-ops on the Board Pro. See util.js for why each one exists.
+const refit = () => { narrowViewportToGlass(); fitViewport(); };
+refit();
+window.addEventListener('resize', refit);
+// The visual viewport can change WITHOUT a window resize, and that is the whole
+// failure being guarded here: an engine that picks its own page scale shrinks
+// the glass while the layout viewport sits still, so `resize` never fires.
+// Optional chaining because happy-dom and older engines may not carry the
+// object at all.
+window.visualViewport?.addEventListener('resize', refit);
 
 // …and having sized the page for the device, refuse to let anyone resize it by
 // hand. An accidental pinch on a board zoomed the dashboard to ~200% and the

@@ -120,18 +120,31 @@ html, body {
   touch-action: pan-x pan-y;
 }
 
-/* …and on a viewport TALLER than the page (a Room Navigator's 1200), the
-   leftover splits evenly instead of pooling at the bottom as a band. Purely
-   cosmetic — the page block keeps its exact 1080px height, so nothing about
-   capacity, the grid or any card moves. `max()` clamps the offset to 0 on every
-   viewport at or below 1080 (a board's 1040 would otherwise compute -20px), so
-   the board and the desktop preview are untouched to the pixel; an engine with
-   no dvh support drops the declaration and lands on that same 0. Deliberately
-   `top`, not `transform`: a transformed body would become the containing block
-   for every position:fixed overlay and re-anchor them to the page we are
-   trying to escape. --bg is #000, the same colour the root canvas paints, so
-   the split reads as margin rather than as two bars. */
-body { position: relative; top: max(0px, calc((100dvh - 1080px) / 2)); }
+/* …and on a viewport TALLER than the page, the leftover splits evenly instead of
+   pooling at the bottom as a band. Purely cosmetic — the page block keeps its
+   exact 1080px height, so nothing about capacity, the grid or any card moves.
+   `max()` clamps the offset to 0 on every viewport at or below 1080 (a board's
+   1040 would otherwise compute -20px), so the board and the desktop preview are
+   untouched to the pixel; an engine with no dvh support drops the declaration
+   and lands on that same 0. Deliberately `top`, not `transform`: a transformed
+   body would become the containing block for every position:fixed overlay and
+   re-anchor them to the page we are trying to escape. --bg is #000, the same
+   colour the root canvas paints, so the split reads as margin rather than as
+   two bars.
+
+   DIVIDED BY --fit-zoom, and until 2026-08-27 it was not, which is why this
+   rule had never once fired on the device it was written for. It compared two
+   different rulers: `100dvh` is the raw viewport height, but util.js's
+   fitViewport lays a `zoom` on <html> to fit the 1920 page onto a smaller panel,
+   and inside a zoomed subtree a viewport unit still computes RAW while the
+   1080px it is measured against is page px. Measured on a Room Navigator
+   (2026-08-27): 1280x800 of glass at zoom 0.667, so `100dvh` read 800 against a
+   1080px page and clamped to 0, while the page's true visible height was
+   800/0.667 = 1199 and the board sat with all 80px of its slack in one band at
+   the bottom. The earlier note here claimed a Navigator viewport of 1200 — that
+   was `screen.height`, never the layout viewport. Dividing puts both sides in
+   page px, and the fallback of 1 is every device that never gets zoomed. */
+body { position: relative; top: max(0px, calc((100dvh / var(--fit-zoom, 1) - 1080px) / 2)); }
 
 #app { position: relative; width: 100%; height: 100%; padding: 32px 40px; padding-bottom: var(--safe-bottom); display: flex; flex-direction: column; }
 

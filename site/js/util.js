@@ -3,6 +3,49 @@ export function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 }
 
+// THE INVARIANT THE PAGE IS BUILT ON: the layout viewport is the glass.
+//
+// Every full-bleed surface (the ambient screensaver, the image and story
+// viewers, the settings overlay, an expanded card) is sized by being
+// position:fixed rather than by asking what device this is, and a fixed element
+// sizes to the LAYOUT viewport. Measured in Chrome 2026-08-26: under a 0.891
+// zoom on <html>, `position:fixed; inset:0` still renders at the full 1710x866
+// layout viewport, i.e. the zoom that fits the dashboard does NOT shrink the
+// overlays with it. So wherever the layout viewport is wider than the glass,
+// every one of those surfaces hangs off the side of the screen while the
+// dashboard underneath looks perfectly fitted.
+//
+// index.html pins `width=1920` because it is a constant no engine can
+// miscompute, which is exactly right for a Board Pro (1920 of glass) and one
+// value too wide for a Room Navigator (1280). This narrows it, once, from the
+// measurement rather than from a guess:
+//
+//   Board Pro        glass 1920 == layout 1920 -> null, never touched
+//   Room Navigator   glass 1280 <  layout 1920 -> width=1280, so a fixed
+//                    overlay is the screen again and fitViewport does the rest
+//   a page scale     glass is layout/scale, so a board that came back
+//                    magnified regardless is brought back into agreement with
+//                    itself instead of laying out into space it cannot show
+//
+// Mutating this tag re-runs the layout-size half of the viewport calculation.
+// It does NOT re-run initial-scale selection, which is why the scale itself has
+// to be pinned in the markup (docs/signage-zoom-bug.md). Idempotent, and a
+// no-op on the production board by construction, which is the only reason it is
+// safe to run at boot on every device.
+export function narrowViewportToGlass(doc = document, view = doc?.defaultView) {
+  const meta = doc?.querySelector?.('meta[name="viewport"]');
+  const layout = doc?.documentElement?.clientWidth;
+  const glass = view?.visualViewport?.width;
+  if (!meta?.content || !Number.isFinite(layout) || !Number.isFinite(glass)) return null;
+  if (!(glass > 0) || glass >= layout) return null; // already in agreement: nothing to do
+  const w = Math.round(glass);
+  if (w < 240) return null; // implausible measurement, same posture as fitViewport
+  const current = /width=(\d+)/.exec(meta.content);
+  if (current && Number(current[1]) === w) return null; // engine ignored the last rewrite
+  meta.content = meta.content.replace(/width=[^,]+/, `width=${w}`);
+  return w;
+}
+
 // Fit the fixed 1920x1080 layout (main.css pins html/body to exactly that, with
 // overflow hidden) onto a smaller RoomOS panel such as a Cisco Room Navigator,
 // which otherwise renders only the top-left corner and needs a pinch-zoom to see
@@ -14,27 +57,65 @@ export function escapeHtml(s) {
 // their fixed positioning and break them.
 //
 // WIDTH ONLY, deliberately, and the 2026-07-28 on-device measurements are why:
-// a Board Pro lays the page out in 1920x1040 and a Room Navigator in 1920x1200,
-// so the page's fixed 1080px height is TALLER than the board's viewport. A
-// height term would read 1040/1080 and shrink the production board to 96% — the
-// one device this must never touch. The page overflowing a board by 40px is
-// deliberate and covered by the 84px --safe-bottom reserve (the grid ends at
-// y=996). Guarded to only ever shrink and to never touch a viewport already
+// a Board Pro lays the page out in 1920x1040 (a Room Navigator read 1920x1200
+// then, and reads 1920x800 since the scale was pinned, which is the same glass
+// either way), so the page's fixed 1080px height is TALLER than the board's
+// viewport. A height term would read 1040/1080 and shrink the production board
+// to 96%, the one device this must never touch. The page overflowing a board by
+// 40px is deliberate and covered by the 84px --safe-bottom reserve (the grid
+// ends at y=996). Guarded to only ever shrink and to never touch a viewport already
 // >= 1920 wide, so the Board Pro is untouched by construction.
 //
-// `documentElement.clientWidth` is the LAYOUT viewport width. That makes this
-// complementary to index.html's `width=1920` viewport meta rather than
-// redundant: where the meta is honored this reads 1920 and no-ops (the engine
-// already fit the page), and where the meta is ignored it reads the true panel
-// width and does the fitting here. Exactly one half ever applies.
-export function fitViewport(root = document.documentElement) {
+// MEASURED FROM THE VISUAL VIEWPORT AS WELL AS THE LAYOUT ONE (2026-08-26), and
+// this is now the ONLY thing fitting the page. It used to be the fallback half
+// of a pair: index.html carried a scale-free `width=1920`, engines that honored
+// it shrink-to-fit the page themselves, and this covered the engines that
+// ignored it. That pairing died when the RoomOS in-place reload path turned out
+// to pick a page scale of 2 on a Board Pro, so the meta now pins the scale and
+// no engine fits anything (see the long note above that tag).
+//
+// `documentElement.clientWidth` is the LAYOUT viewport, which with `width=1920`
+// in the meta reads 1920 on every engine that honors the tag, INCLUDING a Room
+// Navigator whose glass is 1280 wide. A clientWidth-only measurement therefore
+// no-ops on the one device this function exists for. `visualViewport.width` is
+// the glass. Taking the smaller of the two is correct in every combination we
+// ship into:
+//
+//   Board Pro        layout 1920, visual 1920 -> null, production untouched
+//   Room Navigator   layout 1920, visual 1280 -> 0.667, the fit the engine
+//                    used to do for free before initial-scale=1 went back
+//   desktop preview  the meta is ignored outright, so both read the window
+//   page scale > 1   visual is layout/scale, so a board that came back
+//                    magnified regardless is COMPENSATED rather than clipped:
+//                    zoom 0.5 under scale 2 is 1:1 on the glass again. That is
+//                    the safety net under the meta, not a substitute for it.
+//
+// The window is passed in (defaulting to the one owning `root`) so the tests
+// can hand this a viewport without a browser; a bare object root has no
+// ownerDocument, which lands on the clientWidth-only path.
+export function fitViewport(root = document.documentElement, view = root?.ownerDocument?.defaultView) {
   if (!root?.style) return null;
   root.style.zoom = ''; // reset first, so a resize re-measures unscaled (idempotent)
-  const w = root.clientWidth;
+  // …and publish the scale, because the stylesheet cannot see it. `zoom` is the
+  // ONE thing that makes page px and viewport units disagree: inside a zoomed
+  // subtree `100dvh` still computes to the raw viewport height, which is the
+  // visible page height MULTIPLIED by the zoom, so any CSS comparing a viewport
+  // unit against the page's own 1080px is comparing two different rulers. The
+  // body centring rule in main.css divides by this to get back into page space.
+  root.style.removeProperty?.('--fit-zoom');
+  const layout = root.clientWidth;
+  const visual = view?.visualViewport?.width;
+  // A visual measurement of 0/NaN is an engine that has not laid out yet, not a
+  // zero-width screen: fall back to the layout viewport rather than believe it.
+  const w = Number.isFinite(visual) && visual > 0 ? Math.min(layout, visual) : layout;
   if (!Number.isFinite(w) || w <= 0 || w >= 1920) return null; // Board Pro and larger
   const scale = Math.round((w / 1920) * 1000) / 1000;
-  if (scale < 0.25) return null; // implausible measurement — leave the page alone
+  // Implausible measurement: leave the page alone. The floor is for garbage,
+  // NOT for small glass, so it sits below any real device (0.15 is ~290px) and
+  // a phone opening the board URL at 390px still gets fitted.
+  if (scale < 0.15) return null;
   root.style.zoom = String(scale);
+  root.style.setProperty?.('--fit-zoom', String(scale));
   return scale;
 }
 

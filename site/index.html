@@ -12,14 +12,42 @@
 <head>
 <meta charset="utf-8">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https: data: blob:; media-src https: blob:; connect-src 'self' https: wss:; frame-src https://monitor.ui.com; object-src 'none'; base-uri 'none'; frame-ancestors 'none'">
-<!-- The layout is a fixed 1920x1080 box (see main.css). `width=1920` keeps that
-     the layout viewport; `initial-scale=1` was REMOVED 2026-07-25 because it
-     pinned the zoom at 1:1 on every device, so a smaller RoomOS panel (e.g. a
-     Cisco Room Navigator) showed only the top-left ~1280px and needed a
-     pinch-zoom. Without it the engine fits the 1920 layout to the device width:
-     a no-op on the Board Pro (device width already 1920, so scale stays 1).
-     main.js fitViewport() covers the case where this meta is ignored. -->
-<meta name="viewport" content="width=1920">
+<!-- The layout is a fixed 1920x1080 box (see main.css), and `width=1920` keeps
+     that the layout viewport on any engine that honors this tag. It is a
+     constant on purpose: `device-width` would hand the engine back the very
+     number it computes wrong below.
+
+     `initial-scale=1` has now been removed once and put back once, and both
+     halves of that history are load-bearing:
+
+       2026-07-25 REMOVED. Pinning the scale at 1:1 left a smaller RoomOS panel
+         (a Room Navigator, 1280x800 of glass) showing only the top-left
+         ~1280px of the page and needing a pinch to read. Dropping it let
+         Blink shrink-to-fit the 1920 layout onto the panel for free, and that
+         was a no-op on a Board Pro, whose device width is already 1920.
+
+       2026-08-26 RESTORED. That free fit is computed wrong on the RoomOS
+         reload path. Navigating a live QQuickWebEngineView IN PLACE, which is
+         every location.reload() this app does (a settings save, an activation
+         code, the hourly version poll, the 4 AM refresh, the watchdog), makes
+         Blink select an initial page scale of exactly 2 on a Board Pro, i.e.
+         devicePixelRatio, so the board comes back magnified with a quarter of
+         the content visible and stays that way until someone wakes the device.
+         Measured over CDP on a Desk Pro G2 (RoomOS ce26.9): visualViewport
+         .scale 2 with browser zoom 1 and a correct 1920x1040 layout viewport,
+         reproducible from a programmatic reload with no touch input at all.
+         docs/signage-zoom-bug.md carries the full account.
+
+     The engine's discretion IS the bug, so this tag takes it away, and the fit
+     the Navigator needs moved into util.js fitViewport(), which measures the
+     VISUAL viewport instead of trusting the engine to have fitted anything.
+     Both halves are required: alone, this tag is the 2026-07-25 regression and
+     that function is the 2026-08-26 one. `maximum-scale=1` is a second lock on
+     the same bug, since the initial scale is clamped to it. `minimum-scale` is
+     deliberately absent (a small panel must still be allowed to shrink) and
+     `user-scalable` deliberately unused: the pinch is refused in main.css
+     (touch-action) and js/zoomguard.js, which is where that reasoning lives. -->
+<meta name="viewport" content="width=1920, initial-scale=1, maximum-scale=1">
 <title>idlescreen</title>
 <!-- Warm the two hosts every board talks to before the module graph has even
      parsed: the API worker (transit, markets, news, …) and Open-Meteo, which

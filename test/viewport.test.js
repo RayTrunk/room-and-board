@@ -67,9 +67,14 @@ const px = (v) => {
 
 // Every supported viewport HEIGHT, measured on-device 2026-07-28/29. Width is
 // 1920 on all three, which is why only the height is ever in question.
+// PAGE px, every one of them: the height of the page box each device can show.
+// On a device that fitViewport has zoomed, that is NOT the same number as the
+// viewport height the engine reports — a Navigator measured 1280x800 of glass on
+// 2026-08-27, which is these 1920x1200 page px at the 0.667 fit. Anything
+// comparing a raw viewport unit against one of these is comparing two rulers.
 const BOARD = 1040;      // Cisco Board Pro / Desk Pro (the bar sits BELOW this)
 const DESKTOP = 1080;    // the browser preview a change is authored in
-const NAVIGATOR = 1200;  // Cisco Room Navigator (PWA)
+const NAVIGATOR = 1200;  // Cisco Room Navigator (PWA), = 800 glass px at 0.667
 const VIEWPORTS = [BOARD, DESKTOP, NAVIGATOR];
 
 describe('the dashboard canvas is viewport-INDEPENDENT', () => {
@@ -156,19 +161,52 @@ describe('the page cannot be zoomed, and the fix is not in the viewport meta', (
       expect(decl(sel, 'touch-action', bare)).toBe('none');
     });
 
-  it('never puts a scale constraint back in the viewport meta (regression: 2026-07-25)', () => {
-    // The landmine. `initial-scale=1` was removed on 2026-07-25 because it
-    // pinned zoom at 1:1 on EVERY device, so a Room Navigator rendered only the
-    // top-left ~1280px of the 1920 page and needed a pinch to read. Any of
-    // these four, however well intentioned, brings that back on live hardware.
-    // Zoom is refused in CSS and JS instead, which costs no device its fit.
+  it('centres the page in page px, not in raw viewport px (regression: 2026-08-27)', () => {
+    // The rule that had never fired: on a Room Navigator (1280x800 of glass at
+    // zoom 0.667) `100dvh` reads 800 against a 1080px page and clamps to 0,
+    // while the page's true visible height is 800/0.667 = 1199. Both sides have
+    // to be in the same ruler, and --fit-zoom (published by fitViewport) is the
+    // only thing that converts one into the other.
+    expect(decl('body', 'top', bare), 'the centring sum compares raw viewport px against page px')
+      .toContain('var(--fit-zoom');
+    // …and the other end of that wire, which no stylesheet assertion can see.
+    expect(read('../site/js/util.js'), 'nothing publishes --fit-zoom any more')
+      .toContain("setProperty?.('--fit-zoom'");
+  });
+
+  it('pins the page scale, and leaves the fit to JS (regressions: 2026-07-25 AND 2026-08-26)', () => {
+    // The landmine, and it has a live mine on BOTH sides now. Two devices pull
+    // this one tag in opposite directions and only the pair of fixes is safe:
+    //
+    //   2026-07-25, Room Navigator. `initial-scale=1` pins 1:1 on every device,
+    //     so a panel with 1280 of glass rendered only the top-left ~1280px of
+    //     the 1920 page and needed a pinch to read. It was dropped, and the
+    //     engine's own shrink-to-fit did the fitting instead.
+    //   2026-08-26, Board Pro. That shrink-to-fit picks a scale of exactly 2
+    //     (== devicePixelRatio) on the RoomOS in-place reload path, so EVERY
+    //     location.reload() this app does brought the board back magnified 2x
+    //     with a quarter of the content visible. Measured over CDP on a Desk
+    //     Pro G2; docs/signage-zoom-bug.md.
+    //
+    // So the engine gets no discretion here, and fitViewport() does the fitting
+    // from the visual viewport. Deleting either half restores one of the bugs.
     const html = read('../site/index.html');
     const meta = /<meta\s+name="viewport"\s+content="([^"]*)"/i.exec(html);
     expect(meta, 'no viewport meta in index.html').not.toBeNull();
-    expect(meta[1]).toBe('width=1920');
-    for (const banned of ['user-scalable', 'maximum-scale', 'minimum-scale', 'initial-scale']) {
-      expect(meta[1]).not.toContain(banned);
-    }
+    const tokens = meta[1].split(',').map((t) => t.trim());
+    expect(tokens).toContain('width=1920');      // the fixed layout box, a constant
+    expect(tokens).toContain('initial-scale=1'); // the 2026-08-26 fix itself
+    expect(tokens).toContain('maximum-scale=1'); // second lock: initial scale clamps to it
+    // `device-width` would hand the engine back the very quantity it gets wrong
+    // on the reload path. `minimum-scale` would forbid the shrink a small panel
+    // may still legitimately want from the engine.
+    expect(meta[1]).not.toContain('device-width');
+    expect(meta[1]).not.toContain('minimum-scale');
+    // And the other half has to still be there: with the scale pinned and
+    // nothing measuring the glass, this tag IS the 2026-07-25 regression. The
+    // behaviour of that measurement is pinned in misc-widgets.test.js.
+    expect(read('../site/js/util.js'), 'fitViewport no longer reads the visual viewport')
+      .toContain('visualViewport');
   });
 });
 
@@ -221,7 +259,11 @@ describe('the page block centres in a taller viewport, and cannot move a board',
   it('is clamped at zero so 1040 and 1080 are untouched to the pixel', () => {
     // Parsed out of the stylesheet and re-computed, rather than eyeballed: the
     // clamp is the entire safety argument for shipping this to live boards.
-    const m = /^max\(\s*0px\s*,\s*calc\(\s*\(\s*100dvh\s*-\s*(\d+)px\s*\)\s*\/\s*2\s*\)\s*\)$/.exec(top);
+    // The `/ var(--fit-zoom, 1)` is what puts the left-hand side in page px, so
+    // that NAVIGATOR's 1200 below is a quantity this sum can actually see. It
+    // was missing until 2026-08-27, and without it the rule had never fired on
+    // the one device it was written for.
+    const m = /^max\(\s*0px\s*,\s*calc\(\s*\(\s*100dvh\s*\/\s*var\(--fit-zoom,\s*1\)\s*-\s*(\d+)px\s*\)\s*\/\s*2\s*\)\s*\)$/.exec(top);
     expect(m, `body top is not the clamped centring formula: ${top}`).not.toBeNull();
     const page = Number(m[1]);
     expect(page).toBe(px(decl('html, body', 'height')));
