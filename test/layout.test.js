@@ -133,6 +133,36 @@ describe('contentMaxH (content-aware height caps)', () => {
   });
 });
 
+describe('advisory caps (SOFT_CAPPED)', () => {
+  // A count-derived cap asks "how tall to show N items", which is the wrong
+  // question for Cloud Services: one Microsoft row is a line per degraded
+  // workload, so a card sized to 3 services can still spill. The cap stays for
+  // auto-layout and steps out of the way of a person resizing by hand.
+  const cfg = { services: { list: ['webex', 'slack', 'm365'] }, worldclock: { cities: ['a', 'b', 'c', 'd', 'e'] } };
+
+  it('keeps the services cap for auto-layout and drops it for hand edits', () => {
+    expect(contentMaxH(cfg).services).toBe(3); // the optimizer still avoids dead air
+    expect(contentMaxH(cfg, { soft: false }).services).toBeUndefined();
+    // Only the advisory ids move; every other cap is untouched by the flag.
+    expect(contentMaxH(cfg, { soft: false }).worldclock).toBe(3);
+  });
+
+  it('lets a hand-set height through, and lets it SURVIVE a reload', () => {
+    const tall = { id: 'services', x: 0, y: 0, w: 3, h: 6 };
+    const soft = contentMaxH(cfg, { soft: false });
+    expect(clampRect(tall, soft)).toMatchObject({ h: 6 });
+    // The stored-layout path is the one that used to undo it on the next boot.
+    expect(normalizeLayout([tall], soft)[0]).toMatchObject({ h: 6 });
+    // ...which is exactly what the advisory cap would still do.
+    expect(normalizeLayout([tall], contentMaxH(cfg))[0]).toMatchObject({ h: 3 });
+  });
+
+  it('does not loosen a widget whose rows really are fixed height', () => {
+    const soft = contentMaxH(cfg, { soft: false });
+    expect(clampRect({ id: 'worldclock', x: 0, y: 0, w: 3, h: 8 }, soft)).toMatchObject({ h: 3 });
+  });
+});
+
 describe('rectsOverlap / canPlace', () => {
   const layout = [
     { id: 'weather', x: 0, y: 0, w: 6, h: 4 },

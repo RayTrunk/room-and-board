@@ -162,7 +162,24 @@ export const CONTENT_CAPPED = [
 // neither may grow a table of its own again.
 export const capHeadroom = (id) => Math.min(1, trimOf(id));
 
-export function contentMaxH(cfg) {
+// Widgets whose content height is NOT a function of item count. The cap search
+// below asks "how tall must this be to show N items", which is the right
+// question for a list of fixed-height rows (a city, a ticker) and the wrong one
+// for a card whose single row can be six lines deep: one Microsoft 365 row
+// carries a line per degraded workload, so the height that fits 3 services is
+// nowhere near the height that fits what those 3 services have to SAY. Users
+// reported exactly this spilling over (2026-08-27, Microsoft mostly to blame).
+//
+// Their cap still guides AUTO-LAYOUT, so a fresh board is not handed dead air,
+// but it never blocks a person resizing by hand and never re-clamps a layout
+// they already chose. capHeadroom's single spare row was the old approximation
+// of this and is no longer load-bearing for these ids.
+export const SOFT_CAPPED = new Set(['services']);
+
+// `soft: false` drops the advisory caps, which is what the manual-edit and
+// stored-layout paths want: the cap is guidance for the optimizer, not a
+// ceiling on a person's own choice.
+export function contentMaxH(cfg, { soft = true } = {}) {
   const caps = {};
   const fit = (id, n, fromH) => {
     const slack = capHeadroom(id);
@@ -173,6 +190,7 @@ export function contentMaxH(cfg) {
     return GRID.rows;
   };
   for (const [id, countOf, fromH] of CONTENT_CAPPED) {
+    if (!soft && SOFT_CAPPED.has(id)) continue;
     const n = countOf(cfg);
     if (n) caps[id] = fit(id, n, Math.max(fromH, MIN_SIZE[id][1]));
   }

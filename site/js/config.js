@@ -212,7 +212,11 @@ export function normalizeConfig(raw) {
     citibike: { stations: rawList(raw.citibike?.stations, DEFAULT_CONFIG.citibike.stations) },
     tfl: { lines: rawList(raw.tfl?.lines, DEFAULT_CONFIG.tfl.lines) },
     subway: { lines: rawList(raw.subway?.lines, DEFAULT_CONFIG.subway.lines) },
-  });
+  // soft:false so a height the user chose by hand SURVIVES the round trip. This
+  // path re-clamps every stored layout on load, so leaving the advisory caps in
+  // would quietly undo a taller Cloud Services card the next time the board
+  // booted, which is the same as never having allowed it.
+  }, { soft: false });
   let layout =
     // An explicitly-present layout (even empty — the user removed every widget)
     // is honored; only a truly ABSENT layout falls back to the legacy widgets

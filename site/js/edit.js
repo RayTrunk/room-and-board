@@ -111,8 +111,11 @@ export function openEditMode(cfg, { root, onDone, onCancel, cellSize } = {}) {
   };
 
   // Content-aware height caps (worldclock/markets): computed once — the
-  // followed lists can't change while edit mode is open.
-  const caps = contentMaxH(cfg);
+  // followed lists can't change while edit mode is open. soft:false drops the
+  // advisory caps (services), whose height is set by what a card SAYS rather
+  // than how many things it lists: a person resizing by hand is answering that
+  // question better than the count-based search can.
+  const caps = contentMaxH(cfg, { soft: false });
   const rectOf = (id) => layout.find((r) => r.id === id);
   const capOf = (id, w, h) => capacityLabel(id, w, h, cfg) ?? '';
   const sizeLabel = (r) => {
