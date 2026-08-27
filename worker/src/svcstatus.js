@@ -131,6 +131,25 @@ const MIRROR_MAX_AGE_MS = 6 * 3600e3;
 // goes to see the whole picture.
 const M365_INCIDENT_CAP = 6;
 
+// Microsoft's own split, from serviceHealthIssue.classification ('advisory' |
+// 'incident' | 'unknownFutureValue'), and the mirror republishes the same word.
+// An ADVISORY is a narrow, long-running known issue; Microsoft leaves them open
+// for months, so rendering one like a live outage is what kept this row
+// permanently amber (measured 2026-08-27: 14 of 15 open issues were advisories,
+// the oldest 58 days old, against exactly one real incident). Only incidents
+// set the row's state now; advisories still ride along for the tap view.
+//
+// Anything that is not literally 'advisory' counts as an incident, including a
+// missing value and 'unknownFutureValue'. A status board must never fake green,
+// so an unrecognized classification errs toward reporting, the same reading
+// every other unknown in this file takes.
+const isAdvisory = (c) => humanize(c) === 'advisory';
+
+// Advisories are one compact line each (name, feature, date), so the ledger can
+// carry more of them than it can full incident paragraphs. A backlog longer
+// than this is a Microsoft problem, not a board problem.
+const M365_ADVISORY_CAP = 8;
+
 // Returns null (source ABSENT) rather than a state when the payload is not the
 // shape this feed promises — a top-level ARRAY of service rows. An object here
 // means Microsoft reshaped the endpoint, and guessing at a reshaped payload is
@@ -182,22 +201,53 @@ function gradeM365Workloads(workloads, openIssues) {
   const isCore = (g) => M365_CORE.has(g.name.toLowerCase());
   const bad = graded.filter((g) => g.state !== 'ok')
     .sort((a, b) => (isCore(b) - isCore(a)) || (RANK[b.state] - RANK[a.state]));
-  const core = bad.filter(isCore);
-  // A degraded workload with no matching open issue still gets its row: the
-  // verdict is the finding, the issue only supplies prose and a start time.
-  const incidents = bad.map((g) => {
-    const issue = openIssues.find((i) => i.name.toLowerCase() === g.name.toLowerCase());
+
+  const issuesFor = (g) => openIssues.filter((i) => i.name.toLowerCase() === g.name.toLowerCase());
+
+  // A degraded workload is ADVISORY-ONLY when it has open issues and every one
+  // of them is an advisory. Two cases deliberately fall the other way:
+  // a workload with no matching issue at all (the verdict is unexplained, and
+  // an unexplained degradation is reported rather than hushed), and a mixed
+  // workload carrying both kinds (the incident is the part a reader feels).
+  // A MAJOR workload is never hushed, whatever its issues are classified as.
+  // serviceInterruption is Microsoft saying users cannot access the service and
+  // that it reproduces consistently; no classification outranks that, and a
+  // board that swallowed it to keep a tidy row would be faking green on the one
+  // state that matters most. The advisory split exists to stop a permanent
+  // amber, not to buy silence on an outage.
+  const advisoryOnly = (g) => {
+    if (g.state === 'major') return false;
+    const mine = issuesFor(g);
+    return mine.length > 0 && mine.every((i) => isAdvisory(i.classification));
+  };
+
+  // The issue only supplies prose, a start time and a feature name; the
+  // workload's own verdict is what titles the row.
+  const rowFor = (g) => {
+    const issue = issuesFor(g)[0];
     return {
       title: `${text(g.name)}: ${humanize(g.status)}`,
       since: String(issue?.since ?? ''),
       update: clamp(issue?.update),
+      service: text(g.name),
+      feature: text(issue?.feature ?? ''),
     };
-  });
-  if (!core.length) return { state: 'ok', note: 'All systems operational', incidents };
+  };
+
+  const incidentRows = bad.filter((g) => !advisoryOnly(g));
+  const incidents = incidentRows.map(rowFor);
+  const advisories = bad.filter(advisoryOnly).map(rowFor);
+
+  // Only incident-backed workloads set the state. A row whose whole trouble is
+  // advisories reads Operational, which is the entire point of the split: the
+  // backlog is still one tap away, it just stops painting the wall amber.
+  const core = incidentRows.filter(isCore);
+  if (!core.length) return { state: 'ok', note: 'All systems operational', incidents, advisories };
   return {
     state: core[0].state,
     note: `${text(core[0].name)}: ${humanize(core[0].status)}`,
     incidents,
+    advisories,
   };
 }
 
@@ -218,7 +268,10 @@ export function mapM365Mirror(json, nowMs) {
     json.services.map((s) => ({ name: svcName(s.service), status: s.status })),
     (json.issues ?? [])
       .filter((i) => i && !i.is_resolved)
-      .map((i) => ({ name: svcName(i.service), since: i.start_time, update: i.impact || i.title })),
+      .map((i) => ({
+        name: svcName(i.service), since: i.start_time, update: i.impact || i.title,
+        classification: i.classification, feature: i.feature,
+      })),
   );
 }
 
@@ -252,6 +305,8 @@ export function mapM365Graph(json) {
         name: svcName(issue.service || r.service),
         since: issue.startDateTime,
         update: issue.impactDescription || issue.title,
+        classification: issue.classification,
+        feature: issue.feature,
       });
     }
   }
@@ -276,12 +331,15 @@ export function mapM365(consumerJson, mirrorJson, nowMs, graphJson = null) {
   // Enterprise first: on an equal-severity tie its note wins, because the
   // workload an office actually feels is the more useful sentence for the wall.
   const sources = [enterprise, mapM365Consumer(consumerJson)].filter(Boolean);
-  if (!sources.length) return { state: 'unknown', note: 'Status unavailable', incidents: [] };
+  if (!sources.length) return { state: 'unknown', note: 'Status unavailable', incidents: [], advisories: [] };
   const worst = sources.reduce((a, b) => (RANK[b.state] > RANK[a.state] ? b : a));
   return {
     state: worst.state,
     note: worst.state === 'ok' ? 'All systems operational' : worst.note,
     incidents: sources.flatMap((s) => s.incidents).slice(0, M365_INCIDENT_CAP),
+    // The consumer feed has no notion of an advisory, so its half contributes
+    // none; ?? [] keeps that source shape-compatible rather than special-cased.
+    advisories: sources.flatMap((s) => s.advisories ?? []).slice(0, M365_ADVISORY_CAP),
   };
 }
 

@@ -250,6 +250,62 @@ describe('Cloud Services expand', () => {
 
 // ------------------------------------------------------------------ tfl status
 
+describe('Cloud Services advisories', () => {
+  // Microsoft's long-running advisories (Sean's pick 2026-08-27, mockup A):
+  // kept out of the row's state by the Worker, kept ON this surface because
+  // "why is Outlook odd this week" is exactly what a tap is asking.
+  const withAdvisories = (state, extra = {}) => svc('m365', state, {
+    label: 'Microsoft 365',
+    advisories: [
+      { service: 'Exchange Online', feature: 'Mailbox Migrations', since: '2026-08-20T12:23:15Z' },
+      { service: 'Microsoft Teams', feature: 'Teams and Channels', since: '2026-06-30T07:00:00Z' },
+    ],
+    ...extra,
+  });
+
+  it('renders the advisory group under the incident, one compact line each', () => {
+    const [item] = serviceItems([withAdvisories('minor', {
+      incidents: [{ title: 'SharePoint Online: service degradation', since: '2026-08-25T16:58:38Z', update: 'Search is down.' }],
+    })]);
+    expect(item.advisories).toHaveLength(2);
+    expect(item.advisories[0]).toMatchObject({ text: 'Exchange Online \u00b7 Mailbox Migrations', meta: 'Aug 20' });
+    // The heading states the size and the AGE, which is what tells a reader
+    // this is a standing backlog rather than this morning's news.
+    expect(item.advisoriesNote).toBe('2 open \u00b7 oldest Jun 30');
+
+    const html = ledgerBody([item]);
+    expect(html).toContain('ledger__adv');
+    expect(html).toContain('Exchange Online \u00b7 Mailbox Migrations');
+    // The incident still leads; advisories never take the alert colour.
+    expect(html).toContain('SharePoint Online: service degradation');
+    expect(html).not.toMatch(/ledger__advrow[^>]*ledger__state--minor/);
+  });
+
+  it('a green service carrying advisories still LEADS, so the backlog is never hidden', () => {
+    // The ordinary day: nothing is actually broken, but the backlog exists. An
+    // ok row normally sinks into the quiet two-column group, which has no room
+    // to show it, so advisories promote the row to a lead.
+    const items = serviceItems([withAdvisories('ok'), svc('slack', 'ok')]);
+    const html = ledgerBody(items);
+    const lead = html.slice(html.indexOf('ledger__lead'), html.indexOf('ledger__quiet'));
+    expect(lead).toContain('Microsoft 365');
+    expect(lead).toContain('ledger__adv');
+    // Leading costs it no alarm: an ok row has no tone, so the state word is
+    // the plain one and nothing on the row goes amber.
+    expect(html).toContain('Operational');
+    expect(lead).not.toContain('ledger__state--minor');
+    // The service with nothing to say still settles into the quiet group.
+    expect(html.slice(html.indexOf('ledger__quiet'))).toContain('SLACK');
+  });
+
+  it('no advisories means no group and no reserved space', () => {
+    const [plain] = serviceItems([svc('slack', 'minor')]);
+    expect(plain.advisories).toEqual([]);
+    expect(plain.advisoriesNote).toBe('');
+    expect(ledgerBody([plain])).not.toContain('ledger__adv');
+  });
+});
+
 describe('TfL Status expand', () => {
   const lines = ['central', 'victoria', 'district', 'circle'];
   const tflVm = { updatedAt: 1783000000, lines: [

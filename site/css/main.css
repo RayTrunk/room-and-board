@@ -2460,6 +2460,30 @@ body.mode-ambient .gear--edit { display: none; }
 .ledger__note + .ledger__note { margin-top: 14px; }
 .ledger__since { color: var(--ink-faint); }
 .ledger__update { display: block; margin-top: 6px; color: var(--ink-faint); }
+/* The advisory group (Sean's pick 2026-08-27, mockup A). Everything here is
+   deliberately below the incident prose in the visual order: the heading is
+   faint and lettered like the card titles, the rows are one line of --ink-dim
+   with a hairline lighter than the ledger's own row rule, and nothing takes
+   --warn. Colour is reserved for the thing a reader must act on, and a
+   two-month-old advisory is not it. 20px/18px keeps both above the 18px floor
+   below which --ink-faint fails AA. */
+.ledger__adv { margin-top: 30px; }
+.ledger__advhead {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 24px;
+  padding-bottom: 9px; border-bottom: 1px solid rgba(255, 255, 255, 0.10);
+}
+.ledger__advhead span:first-child {
+  font-size: 15px; letter-spacing: 0.15em; text-transform: uppercase;
+  color: var(--ink-faint); font-weight: 600;
+}
+.ledger__advhead span:last-child { font-size: 15px; color: var(--ink-faint); flex: none; }
+.ledger__advrow {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 24px;
+  padding: 11px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+.ledger__advname { font-size: 20px; color: var(--ink-dim); min-width: 0; }
+.ledger__advsince { font-size: 18px; color: var(--ink-faint); flex: none; font-variant-numeric: tabular-nums; }
+
 /* The all-clear, in two columns dealt by ledger.js (not multi-column layout:
    the wall deals its own columns for the same reason subway does, so the split
    is testable and the reading order is fixed). */

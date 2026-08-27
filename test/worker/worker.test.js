@@ -1266,6 +1266,15 @@ import m365MirrorFx from './fixtures/svc-m365-mirror.json';
 // The mirror is only believed for 6 hours, so every test that wants it BELIEVED
 // must reckon from the moment it was generated, not from the wall clock.
 const MIRROR_NOW = Date.parse(m365MirrorFx.generated_at) + 60e3;
+// The recorded mirror's four open issues are all ADVISORIES, which is what
+// Microsoft's backlog genuinely looks like on an ordinary day (measured
+// 2026-08-27: 14 of 15 open, oldest 58 days). Only incidents set the row's
+// state now, so a test about the core/non-core rule promotes them first,
+// keeping that rule's coverage independent of the classification split below.
+const mirrorAllIncidents = () => ({
+  ...m365MirrorFx,
+  issues: m365MirrorFx.issues.map((i) => ({ ...i, classification: 'incident' })),
+});
 // The optional third source: a tenant's OWN Graph healthOverviews answer. This
 // one is HAND-BUILT from Microsoft's reference docs, not recorded — the repo
 // ships no credentials to record with (its _provenance field says so too). It
@@ -1473,7 +1482,7 @@ describe('service status adapters', () => {
   it('m365 mirror: core workloads set the state, back-office ones only add incidents', () => {
     // The recorded incident: Exchange, Teams and the M365 suite degraded (all
     // core), Defender and Purview also unhappy (neither is core).
-    const out = mapM365Mirror(m365MirrorFx, MIRROR_NOW);
+    const out = mapM365Mirror(mirrorAllIncidents(), MIRROR_NOW);
     expect(out.state).toBe('minor');
     expect(out.note).toBe('Exchange Online: service degradation');
     // Every degraded workload is listed, core or not, so the ledger shows the
@@ -1493,6 +1502,7 @@ describe('service status adapters', () => {
     // Prose and start time come from the matching open issue.
     const exchange = out.incidents.find((i) => i.title.startsWith('Exchange Online'));
     expect(exchange.since).toBe(m365MirrorFx.issues.find((i) => i.service === 'Exchange Online').start_time);
+    expect(exchange.feature).toBe('Performance degradation'); // Microsoft's own feature name rides along
     expect(exchange.update.length).toBeGreaterThan(0);
   });
 
@@ -1550,7 +1560,7 @@ describe('service status adapters', () => {
       { ServiceDisplayName: 'Outlook.com', Status: 'Service interruption', Title: '', Message: 'Cannot sign in.' },
     ];
     // Mirror says minor (degradation), consumer says major (interruption).
-    const out = mapM365(consumerDown, m365MirrorFx, MIRROR_NOW);
+    const out = mapM365(consumerDown, mirrorAllIncidents(), MIRROR_NOW);
     expect(out.state).toBe('major');
     expect(out.note).toBe('Outlook.com: service interruption'); // the more severe finding speaks
     expect(out.incidents.some((i) => i.title.startsWith('Outlook.com'))).toBe(true);
@@ -1562,7 +1572,7 @@ describe('service status adapters', () => {
     const consumerMinor = [
       { ServiceDisplayName: 'Outlook.com', Status: 'Service degradation', Title: '', Message: '' },
     ];
-    expect(mapM365(consumerMinor, m365MirrorFx, MIRROR_NOW).note).toBe('Exchange Online: service degradation');
+    expect(mapM365(consumerMinor, mirrorAllIncidents(), MIRROR_NOW).note).toBe('Exchange Online: service degradation');
 
     // All green on both halves reads as one plain sentence, not a service name.
     const allGood = mapM365(m365Fx, {
@@ -1572,19 +1582,111 @@ describe('service status adapters', () => {
     expect(allGood).toMatchObject({ state: 'ok', note: 'All systems operational' });
   });
 
+  // ---- Microsoft's advisory/incident split (Sean's pick 2026-08-27) ----
+  // The row used to read amber more or less forever, because Microsoft keeps a
+  // standing backlog of long-running low-impact advisories and we graded them
+  // like live outages. serviceHealthIssue.classification is Microsoft's own
+  // answer to which is which, and only 'incident' colours the row now.
+
+  it('m365 advisories: a workload whose only open issues are advisories leaves the row green', () => {
+    // The recorded fixture as-is: four open issues, every one an advisory.
+    const out = mapM365Mirror(m365MirrorFx, MIRROR_NOW);
+    expect(out.state).toBe('ok');
+    expect(out.note).toBe('All systems operational');
+    // Green, but not silent: the backlog is still there for the tap to show,
+    // carrying Microsoft's own feature name and the date it opened.
+    const services = out.advisories.map((a) => a.service);
+    expect(services).toContain('Exchange Online');
+    expect(services).toContain('Microsoft Teams');
+    expect(out.advisories.find((a) => a.service === 'Microsoft Teams')).toMatchObject({
+      feature: 'Teams and Channels', since: '2026-06-30T07:00:00+00:00',
+    });
+    // ...and it must not be smuggled into the incident list.
+    expect(out.incidents.some((i) => i.title.startsWith('Exchange Online'))).toBe(false);
+  });
+
+  it('m365 advisories: one incident among advisories still colours the workload', () => {
+    const mixed = {
+      ...m365MirrorFx,
+      issues: m365MirrorFx.issues.map((i) => (
+        i.service === 'Exchange Online' ? { ...i, classification: 'incident' } : i)),
+    };
+    const out = mapM365Mirror(mixed, MIRROR_NOW);
+    expect(out.state).toBe('minor');
+    expect(out.note).toBe('Exchange Online: service degradation');
+    // Teams and the suite are advisory-only, so they leave the incident list.
+    expect(out.incidents.map((i) => i.title)).toContain('Exchange Online: service degradation');
+    expect(out.advisories.map((a) => a.service)).toContain('Microsoft Teams');
+  });
+
+  it('m365 advisories: an unrecognized classification is an INCIDENT, never green', () => {
+    // A status board must never fake green: a missing value, a word Microsoft
+    // adds later, and the documented 'unknownFutureValue' all report.
+    for (const classification of [undefined, null, '', 'unknownFutureValue', 'somethingNew']) {
+      const odd = {
+        ...m365MirrorFx,
+        issues: m365MirrorFx.issues.map((i) => (
+          i.service === 'Exchange Online' ? { ...i, classification } : i)),
+      };
+      expect(mapM365Mirror(odd, MIRROR_NOW).state).toBe('minor');
+    }
+    // Only the literal word buys silence, and casing does not matter (Graph
+    // serves it PascalCase live and camelCase in its docs).
+    for (const classification of ['advisory', 'Advisory']) {
+      const quiet = {
+        ...m365MirrorFx,
+        issues: m365MirrorFx.issues.map((i) => ({ ...i, classification })),
+      };
+      expect(mapM365Mirror(quiet, MIRROR_NOW).state).toBe('ok');
+    }
+  });
+
+  it('m365 advisories: a MAJOR workload is never hushed by its classification', () => {
+    // serviceInterruption means users cannot reach the service. No advisory
+    // label outranks that.
+    const down = {
+      ...m365MirrorFx,
+      services: m365MirrorFx.services.map((s) => (
+        s.service === 'Microsoft Teams' ? { ...s, status: 'serviceInterruption' } : s)),
+    };
+    const out = mapM365Mirror(down, MIRROR_NOW);
+    expect(out.state).toBe('major');
+    expect(out.note).toBe('Microsoft Teams: service interruption');
+    expect(out.advisories.some((a) => a.service === 'Microsoft Teams')).toBe(false);
+  });
+
+  it('m365 advisories: the composed row caps the backlog and survives a source with none', () => {
+    const many = {
+      ...m365MirrorFx,
+      services: Array.from({ length: 12 }, (_, k) => ({ service: `Workload ${k}`, status: 'serviceDegradation' })),
+      issues: Array.from({ length: 12 }, (_, k) => ({
+        service: `Workload ${k}`, classification: 'advisory', is_resolved: false,
+        start_time: '2026-07-01T00:00:00Z', impact: 'x', feature: 'F',
+      })),
+    };
+    const out = mapM365(m365Fx, many, MIRROR_NOW, null);
+    expect(out.state).toBe('ok'); // none of them are core, and all are advisories
+    expect(out.advisories.length).toBeLessThanOrEqual(8);
+    // The consumer half has no notion of an advisory and must not break the shape.
+    expect(Array.isArray(mapM365(m365Fx, null, MIRROR_NOW, null).advisories)).toBe(true);
+  });
+
   it('m365 graph: a tenant grades exactly like the mirror, and only OPEN issues speak', () => {
     const out = mapM365Graph(m365GraphFx);
     expect(out.state).toBe('minor');
     expect(out.note).toBe('Exchange Online: service degradation'); // same sentence as the mirror path
-    expect(out.incidents).toHaveLength(2);
-    const [first, second] = out.incidents;
+    // One INCIDENT (Exchange) and one ADVISORY (Intune, investigating): only the
+    // incident is an incident row, and only it could have set the state.
+    expect(out.incidents).toHaveLength(1);
+    const [first] = out.incidents;
     expect(first.title).toBe('Exchange Online: service degradation'); // core workload leads
     expect(first.since).toBe('2026-08-02T09:14:00Z'); // the OPEN issue's start, not the resolved one's
     expect(first.update).toContain('delays of several minutes');
     // $expand hands back resolved history alongside the news; it must not speak.
     expect(first.update).not.toContain('migrate');
-    // Non-core trouble still shows up in the ledger, it just doesn't set state.
-    expect(second.title).toBe('Microsoft Intune: investigating');
+    // Non-core trouble still reaches the ledger, now under the advisory group.
+    expect(out.advisories).toHaveLength(1);
+    expect(out.advisories[0]).toMatchObject({ service: 'Microsoft Intune', feature: 'Reporting' });
   });
 
   it('m365 graph: a degraded workload with no open issue still gets its verdict row', () => {
@@ -1614,7 +1716,7 @@ describe('service status adapters', () => {
     expect(own.state).toBe('minor');
     expect(own.note).toBe('Exchange Online: service degradation');
     expect(own.incidents.some((i) => i.title.startsWith('Microsoft Teams'))).toBe(false);
-    expect(own.incidents.some((i) => i.title.startsWith('Microsoft Intune'))).toBe(true);
+    expect(own.advisories.some((a) => a.service === 'Microsoft Intune')).toBe(true);
 
     // Own tenant healthy: a stranger's outage does not amber a row about YOUR
     // Microsoft, even though the mirror is fresh and degraded.
@@ -1624,7 +1726,7 @@ describe('service status adapters', () => {
 
     // No tenant configured, or its fetch failed: the mirror speaks, exactly as
     // it did before any of this existed.
-    const fallback = mapM365(m365Fx, m365MirrorFx, MIRROR_NOW, null);
+    const fallback = mapM365(m365Fx, mirrorAllIncidents(), MIRROR_NOW, null);
     expect(fallback.note).toBe('Exchange Online: service degradation');
     expect(fallback.incidents.some((i) => i.title.startsWith('Microsoft Teams'))).toBe(true);
   });
@@ -1684,7 +1786,14 @@ describe('/services/status route', () => {
   });
   // The recorded mirror carries its REAL generated_at, which the freshness gate
   // would eventually reject — so route tests that want it believed re-stamp it.
-  const freshMirror = (extra = {}) => ({ ...m365MirrorFx, generated_at: new Date().toISOString(), ...extra });
+  // These route tests are about WHICH source answers (fallback, caching,
+  // mending), not about Microsoft's advisory/incident split, and they need the
+  // mirror to actually report trouble. The recorded issues are all advisories,
+  // which now grade green, so the route helper promotes them; the split itself
+  // is covered by the adapter tests above.
+  const freshMirror = (extra = {}) => ({
+    ...mirrorAllIncidents(), generated_at: new Date().toISOString(), ...extra,
+  });
   const allGreenMirror = () => freshMirror({
     services: m365MirrorFx.services.map((s) => ({ ...s, status: 'serviceOperational' })), issues: [],
   });

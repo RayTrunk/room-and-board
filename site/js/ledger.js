@@ -51,9 +51,28 @@ const stateHtml = (i, lead) =>
     escapeHtml(i.state)
   }</span>`;
 
+// The advisory group (Sean's pick 2026-08-27, mockup A). Microsoft publishes a
+// standing backlog of long-running low-impact advisories, and the Worker keeps
+// them out of the row's state so they stop painting the wall amber. They still
+// belong on this surface, because "why is Outlook odd this week" is exactly the
+// question a tap is asking, so they sit under their own heading as one compact
+// line each: no prose, no colour, nothing that competes with the incident above.
+const advisoryRow = (a) => `<div class="ledger__advrow">
+        <span class="ledger__advname">${escapeHtml(a.text ?? '')}</span>
+        <span class="ledger__advsince">${escapeHtml(a.meta ?? '')}</span>
+      </div>`;
+
+const advisoryHtml = (i) => ((i.advisories ?? []).length ? `<div class="ledger__adv">
+      <div class="ledger__advhead">
+        <span>Advisories</span><span>${escapeHtml(i.advisoriesNote ?? '')}</span>
+      </div>
+      ${i.advisories.map(advisoryRow).join('')}
+    </div>` : '');
+
 const leadRow = (i) => `<div class="ledger__row ledger__row--lead">
       <div class="ledger__head">${nameHtml(i)}${stateHtml(i, true)}</div>
       ${(i.notes ?? []).map(noteHtml).join('')}
+      ${advisoryHtml(i)}
     </div>`;
 
 const quietRow = (i) => `<div class="ledger__row">${nameHtml(i)}${stateHtml(i, false)}</div>`;
@@ -62,8 +81,14 @@ const quietRow = (i) => `<div class="ledger__row">${nameHtml(i)}${stateHtml(i, f
 // board is the two columns alone and a total outage is all lead rows — the same
 // "no empty band, no reserved space" rule the subway wall follows.
 export function ledgerBody(items) {
-  const lead = items.filter((i) => i.alert);
-  const quiet = items.filter((i) => !i.alert);
+  // `alert` decides the group, with one addition: a service that is fine but
+  // carries advisories still leads, because the quiet two-column group has no
+  // room to show them and dropping them there would hide the backlog on exactly
+  // the ordinary day a reader goes looking for it. Its state word stays neutral
+  // (tone is '' for an ok row), so leading costs it no alarm.
+  const isLead = (i) => i.alert || (i.advisories ?? []).length > 0;
+  const lead = items.filter(isLead);
+  const quiet = items.filter((i) => !isLead(i));
   const cols = ledgerColumns(quiet)
     .map((col) => `<div class="ledger__col">${col.map(quietRow).join('')}</div>`)
     .join('');

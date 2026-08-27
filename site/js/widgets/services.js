@@ -73,6 +73,35 @@ const sinceLabel = (iso) => {
 // reader reads — the status page's real incidents when it lists any, the
 // one-line summary note when it does not — so the expansion shows everything
 // the per-row reader used to and nothing is lost to the deferral.
+// An advisory line is deliberately terse: the workload, Microsoft's own feature
+// name for the thing that is off ('Mailbox Migrations', 'Teams and Channels'),
+// and the date it opened. No prose, because the whole point of the group is
+// that these are the items a reader does NOT need to act on today; the count
+// and the age are the information.
+const shortDate = (iso) => {
+  const t = Date.parse(iso);
+  return Number.isFinite(t)
+    ? new Date(t).toLocaleString('en-US', { month: 'short', day: 'numeric' })
+    : '';
+};
+
+export function serviceAdvisories(s) {
+  return (s.advisories ?? []).map((a) => ({
+    text: [a.service || a.title, a.feature].filter(Boolean).join(' \u00b7 '),
+    meta: shortDate(a.since),
+  }));
+}
+
+// "5 open \u00b7 oldest Aug 19". The age is the honest part: it is what tells a
+// reader these are a standing backlog rather than this morning's news.
+export function advisoryNote(s) {
+  const rows = s.advisories ?? [];
+  if (!rows.length) return '';
+  const times = rows.map((a) => Date.parse(a.since)).filter(Number.isFinite);
+  const oldest = times.length ? shortDate(new Date(Math.min(...times)).toISOString()) : '';
+  return `${rows.length} open${oldest ? ` \u00b7 oldest ${oldest}` : ''}`;
+}
+
 export function serviceNotes(s) {
   if (s.incidents?.length) {
     return s.incidents.map((i) => ({ text: i.title ?? '', meta: sinceText(i.since), more: i.update ?? '' }));
@@ -103,6 +132,10 @@ export const serviceItems = (all) => all.map((s) => ({
   // status page can never invent a selector.
   tone: s.state === 'ok' ? '' : (TONE[s.state] ?? 'unknown'),
   notes: serviceNotes(s),
+  // Microsoft's long-running advisories, kept out of the state entirely (see
+  // the classification split in the Worker) but still reachable here.
+  advisories: serviceAdvisories(s),
+  advisoriesNote: advisoryNote(s),
 }));
 
 export function render(el, vm, cfg) {
