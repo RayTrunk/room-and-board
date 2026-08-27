@@ -3,6 +3,14 @@
     "date": "August 27",
     "items": [
       {
+        "lead": "Microsoft 365 stops crying wolf",
+        "text": "The Microsoft 365 row reported a problem almost permanently, because Microsoft keeps a standing backlog of long-running minor advisories and the board treated them like live outages. Only real incidents color the row now. The advisories are still there under their own heading when you tap the card, with the date each one opened."
+      },
+      {
+        "lead": "Cloud Services can be made taller",
+        "text": "The card would not grow past the height needed for the number of services you follow, which was too short whenever one of them had a bad day and printed several lines. You can drag it taller now, and the size sticks."
+      },
+      {
         "lead": "The board comes back at the right size",
         "text": "A board could come back zoomed in after a restart or after saving a change, showing a corner of the dashboard blown up until someone woke the screen and let it go back to sleep. It comes back at the right size now."
       }
@@ -165,7 +173,7 @@
       },
       {
         "lead": "On the board",
-        "text": "You can now read what is new on the board itself: open the gear and tap What\u2019s new at the bottom of the settings list. The board also shows which version it is running."
+        "text": "You can now read what is new on the board itself: open the gear and tap What’s new at the bottom of the settings list. The board also shows which version it is running."
       }
     ]
   },
@@ -211,7 +219,7 @@
       },
       {
         "lead": "Trains",
-        "text": "LIRR, Metro-North, and NJ Transit departures now show each train\u2019s line as a colored badge in its official line colors, so the line is easy to tell apart from the destination."
+        "text": "LIRR, Metro-North, and NJ Transit departures now show each train’s line as a colored badge in its official line colors, so the line is easy to tell apart from the destination."
       },
       {
         "lead": "Trains and ferries",
@@ -258,7 +266,7 @@
     "items": [
       {
         "lead": "Markets and Weather",
-        "text": "Sparklines and the temperature trend draw as smooth curves, tinted by the day\u2019s direction."
+        "text": "Sparklines and the temperature trend draw as smooth curves, tinted by the day’s direction."
       },
       {
         "lead": "Word of the Day",
@@ -309,7 +317,7 @@
       },
       {
         "lead": "LIRR",
-        "text": "Grand Central support, and departures stay live even when the MTA\u2019s data feed stalls."
+        "text": "Grand Central support, and departures stay live even when the MTA’s data feed stalls."
       },
       {
         "lead": "Denser cards",
@@ -322,7 +330,7 @@
     "items": [
       {
         "lead": "A new look",
-        "text": "The Momentum theme became the board\u2019s look. Pure black, calmer type, quieter color."
+        "text": "The Momentum theme became the board’s look. Pure black, calmer type, quieter color."
       },
       {
         "lead": "Clocks",
