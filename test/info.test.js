@@ -557,7 +557,7 @@ describe('/terms', () => {
   });
 
   it('is reachable from the guide and reaches back', () => {
-    expect(html).toContain('<a class="footer__link" href="terms.html">Terms</a>');
+    expect(html).toContain('<a class="footer__link" href="terms.html">Terms &amp; privacy</a>');
     expect(terms).toContain('href="info.html"');
   });
 
@@ -609,6 +609,23 @@ describe('/terms', () => {
     // exclusion runs to "the maintainer", and LICENSE stays the one place
     // the copyright holder is named (MIT requires that notice be kept).
     expect(terms).not.toMatch(/Sean Scott/);
+  });
+
+  it('answers the corporate checklist by name, with facts verified in-tree', () => {
+    // 2026-08-27: the page is what an employee sends to legal, so the items a
+    // reviewer ticks off have to be findable by their names. Each fact here
+    // was checked before it was written; a test keeps the copy from drifting
+    // away from the code it describes.
+    for (const id of ['privacy', 'security', 'counts', 'keeps', 'liability']) expect(terms).toContain(`id="${id}"`);
+    expect(terms).toMatch(/no cookies/i); // no document.cookie / Set-Cookie anywhere in site or worker
+    expect(terms).toMatch(/three months/); // Analytics Engine's documented retention
+    expect(terms).toMatch(/capped at what you.{1,7}ve paid/); // the cap behind the exclusion
+    expect(terms).toMatch(/the rest still stand/); // severability
+    expect(terms).toMatch(/the licence wins/); // MIT governs the code, the terms govern the service
+    // The fleet off-switch is only true because encodeConfig keeps a non-default
+    // beacon on the wire; if that strip line ever flips, this sentence is a lie.
+    expect(terms).toMatch(/Get signage URL/);
+    expect(html).toContain('id="whatsnew"'); // the Changes clause links here
   });
 
   it('names the beacon opt-out exactly as the board spells it', () => {

@@ -34,83 +34,90 @@
 
 <main class="wrap section section--terms">
   <h1 class="h2 h2--tight">Terms</h1>
-  <p class="section__lede">The short, honest version, because terms nobody reads protect nobody. Point a board at idlescreen.app, or just use this site, and you&rsquo;re accepting them. If you&rsquo;d rather not, don&rsquo;t &mdash; it&rsquo;s open source, go run your own copy.</p>
-  <p class="section__stamp">Last updated 21 August 2026.</p>
+  <p class="section__lede">The short, honest version, because terms nobody reads protect nobody. Point a board at idlescreen.app, or just use this site, and you&rsquo;re accepting them; if it&rsquo;s your employer&rsquo;s board, you&rsquo;re accepting them for your employer. If you&rsquo;d rather not, don&rsquo;t &mdash; it&rsquo;s open source, go run your own copy.</p>
+  <p class="section__stamp">Last updated 27 August 2026.</p>
 
   <div class="terms">
-    <div class="row">
+    <div class="row" id="who">
       <h2 class="row__name">Who runs this</h2>
       <p class="row__desc">One person, in their spare time. There&rsquo;s no company behind idlescreen, no support desk and nobody on call, so treat it as something useful on a wall rather than something your day depends on.</p>
     </div>
 
-    <div class="row">
+    <div class="row" id="software">
       <h2 class="row__name">The software</h2>
-      <p class="row__desc">idlescreen is open source under the MIT licence, so you&rsquo;re welcome to run your own copy, and you probably should if it matters to you. It comes with no warranty. You run it, you own the risk.</p>
+      <p class="row__desc">idlescreen is open source under the MIT licence, so you&rsquo;re welcome to run your own copy, and you probably should if it matters to you. It comes with no warranty. You run it, you own the risk.
+      <span class="row__fine">Two documents, one line between them: the MIT licence governs the code, and these terms govern the hosted service at idlescreen.io and idlescreen.app. Where they disagree about the code, the licence wins.</span></p>
     </div>
 
-    <div class="row">
+    <div class="row" id="service">
       <h2 class="row__name">The service</h2>
       <p class="row__desc">idlescreen.io and idlescreen.app are free, and they are <b>as is and as available</b>. No uptime promise, no support promise, no service level, nothing. They can change, break, forget your layout, or be switched off for good, at any time, without warning. Don&rsquo;t put anything on a board you&rsquo;d be upset to lose.</p>
     </div>
 
-    <div class="row">
+    <div class="row" id="liability">
       <h2 class="row__name">If it gets something wrong</h2>
       <p class="row__desc">The risk is yours. A train missed, a price read wrong, a coat left at home, a board sitting there blank &mdash; that&rsquo;s the deal you take on by pointing a board at it.
-      <span class="row__fine">The formal version: to the fullest extent the law allows, all warranties are disclaimed, express or implied, including merchantability, fitness for a particular purpose and non-infringement, and neither the maintainer nor any contributor is liable for any loss or damage arising out of idlescreen or its use, whether direct, indirect, incidental or consequential. Where a jurisdiction doesn&rsquo;t allow that, it applies as far as it does.</span></p>
+      <span class="row__fine">The formal version: to the fullest extent the law allows, all warranties are disclaimed, express or implied, including merchantability, fitness for a particular purpose and non-infringement, and neither the maintainer nor any contributor is liable for any loss or damage arising out of idlescreen or its use, whether direct, indirect, incidental or consequential. Where a jurisdiction doesn&rsquo;t allow that, it applies as far as it does, and any liability that survives is capped at what you&rsquo;ve paid for idlescreen, which is nothing.</span></p>
     </div>
 
-    <div class="row">
+    <div class="row" id="cloudflare">
       <h2 class="row__name">Where it runs</h2>
       <p class="row__desc">All of it sits on Cloudflare: Pages for the pages, Workers for the API, their cache and Analytics Engine behind. So Cloudflare&rsquo;s limits are idlescreen&rsquo;s limits. When they have a bad day, cards go stale or empty and there&rsquo;s no second provider to fall over to. Requests cross their network too, which terminates TLS, so their terms and privacy policy cover that leg alongside these.</p>
     </div>
 
-    <div class="row">
+    <div class="row" id="data">
       <h2 class="row__name">The data on the cards</h2>
       <p class="row__desc">Almost none of it is idlescreen&rsquo;s. Departures, weather, prices, scores, headlines, artwork: it comes from the free and public APIs and feeds that transit agencies, weather services, exchanges, publishers and museums put out, a couple of them behind a free key. idlescreen fetches it, caches it and draws it. It doesn&rsquo;t check it, doesn&rsquo;t own it, and can&rsquo;t promise it&rsquo;s right. Feeds change shape and disappear without telling anyone.</p>
     </div>
 
-    <div class="row">
+    <div class="row" id="data-rights">
       <h2 class="row__name">Rights in that data</h2>
-      <p class="row__desc">idlescreen displays these feeds; it doesn&rsquo;t republish them, sell them or pass them on, and what lands on a board is the same public information you could pull up on the agency&rsquo;s own site. Using it doesn&rsquo;t give you any rights to that data, though. Most of them are free for any use; the weather, air quality and surf data, and the location search, come from Open-Meteo&rsquo;s free non-commercial API.</p>
+      <p class="row__desc">idlescreen displays these feeds; it doesn&rsquo;t republish them, sell them or pass them on, and what lands on a board is the same public information you could pull up on the agency&rsquo;s own site. Using it doesn&rsquo;t give you any rights to that data, though. Most of them are free for any use; the weather, air quality and surf data, and the location search, come from Open-Meteo&rsquo;s free non-commercial API. The <a href="https://github.com/scotty83/idlescreen#data-sources--care">full list of feeds</a>, widget by widget, is in the README.</p>
     </div>
 
-    <div class="row">
+    <div class="subhead" id="privacy">
+      <h2 class="subhead__title">Privacy</h2>
+      <span class="subhead__note">What leaves a board, and what doesn&rsquo;t.</span>
+    </div>
+
+    <div class="row" id="keeps">
       <h2 class="row__name">What it keeps</h2>
       <p class="row__desc">No accounts, no logins, no passwords. Your layout lives in that board&rsquo;s own browser storage, or inside the signage URL you pasted into the device. A setup code holds widget choices and nothing else, and it dies after an hour. The only personal thing anywhere in it is the first name you can type in for the greeting, and that never leaves the board.</p>
     </div>
 
-    <div class="row">
+    <div class="row" id="counts">
       <h2 class="row__name">What it counts</h2>
-      <p class="row__desc">Once an hour a board sends a small heartbeat: a random id the board makes up for itself, which widgets are on it, its display mode, its build version, its time zone, which cards are currently broken, and a few counters about how it&rsquo;s running. It describes a screen, not a person &mdash; no name, no account, no location beyond the time zone, and nothing off the cards themselves. It&rsquo;s how anyone knows which widgets are worth keeping, and how a widget that broke on every board at once gets noticed. The data points go to Cloudflare Analytics Engine.
-      <span class="row__fine">It&rsquo;s on by default and you can switch it off on the board at <b>Settings &rarr; Diagnostics &rarr; Anonymous usage ping</b>. The id is random, generated on the board and stored only there; clearing web storage gives it a new one.</span></p>
+      <p class="row__desc">Once an hour a board sends a small heartbeat: a random id the board makes up for itself, which widgets are on it, its display mode, its build version, its time zone, which cards are currently broken, and a few counters about how it&rsquo;s running. It describes a screen, not a person &mdash; no name, no account, no location beyond the time zone, and nothing off the cards themselves. It&rsquo;s how anyone knows which widgets are worth keeping, and how a widget that broke on every board at once gets noticed. The data points go to Cloudflare Analytics Engine, which keeps them for three months.
+      <span class="row__fine">It&rsquo;s on by default and you can switch it off on the board at <b>Settings &rarr; Diagnostics &rarr; Anonymous usage ping</b>. The id is random, generated on the board and stored only there; clearing web storage gives it a new one. For a fleet, switch it off on one board and take that board&rsquo;s signage URL (gear &rarr; Setup code &rarr; Show QR of current config &rarr; Get signage URL); every board pointed at that address starts with the ping off.</span></p>
     </div>
 
-    <div class="row">
+    <div class="row" id="macro">
       <h2 class="row__name">The macro</h2>
       <p class="row__desc">Worth knowing before you paste it: the macro reconfigures the device. It turns on the web engine and interactive signage, sets the signage URL and the standby delay, enables macro autostart, changes wake-at-meeting-start, and puts a button on the Control Panel. It also restarts the web engine when the device&rsquo;s time zone changes. It&rsquo;s short and commented and it&rsquo;s on GitHub, so read it first &mdash; and if your Cisco devices are managed centrally, this is the part to run past whoever manages them.</p>
     </div>
 
-    <div class="row">
+    <div class="row" id="security">
       <h2 class="row__name">Security</h2>
-      <p class="row__desc">There are no accounts, no logins and no passwords anywhere in idlescreen, so there&rsquo;s nothing to breach and nothing to phish. Boards only read: every feed is public, nothing is written back to them, and the only things a board sends out are the requests it needs to fill a card &mdash; which station, which ticker &mdash; plus the heartbeat above. Every page ships a strict Content-Security-Policy, every string that arrives from a feed is escaped before it&rsquo;s drawn, and API keys stay server-side. If you find a hole, report it privately through GitHub&rsquo;s security advisories rather than a public issue.</p>
+      <p class="row__desc">There are no accounts, no logins and no passwords anywhere in idlescreen, so there&rsquo;s nothing to breach and nothing to phish. Boards only read: every feed is public, nothing is written back to them, and the only things a board sends out are the requests it needs to fill a card &mdash; which station, which ticker &mdash; plus the heartbeat above. There are no cookies, no trackers, and no third-party scripts or fonts: every page loads code from its own origin only, and a strict Content-Security-Policy on every page enforces that. Every string that arrives from a feed is escaped before it&rsquo;s drawn, and API keys stay server-side. If you find a hole, report it privately through GitHub&rsquo;s security advisories rather than a public issue.</p>
     </div>
 
-    <div class="row">
+    <div class="row" id="fair-use">
       <h2 class="row__name">Fair use</h2>
       <p class="row__desc">Don&rsquo;t use idlescreen or its API to attack, abuse or harm anyone, or to break the law. And don&rsquo;t hammer the API: it&rsquo;s a free proxy sitting in front of other people&rsquo;s rate limits, so abusing it throttles every board, not just yours.</p>
     </div>
 
-    <div class="row">
+    <div class="row" id="affiliation">
       <h2 class="row__name">No affiliation</h2>
       <p class="row__desc">idlescreen isn&rsquo;t affiliated with, endorsed by, or sponsored by Cisco, or by any of the transit agencies, exchanges, publishers or museums whose data it shows. Their names and marks are theirs, and they appear here only to say whose data you&rsquo;re looking at.</p>
     </div>
 
-    <div class="row">
+    <div class="row" id="changes">
       <h2 class="row__name">Changes</h2>
-      <p class="row__desc">These will change as idlescreen does. The date up top says when they last did, and carrying on using it after a change means you&rsquo;re fine with the new version. There&rsquo;s no mailing list to warn you, because there&rsquo;s no mailing list.</p>
+      <p class="row__desc">These will change as idlescreen does. The date up top says when they last did, and carrying on using it after a change means you&rsquo;re fine with the new version. There&rsquo;s no mailing list to warn you; a change to these gets a line in the guide&rsquo;s <a href="info.html#whatsnew">changelog</a> instead.
+      <span class="row__fine">If a court throws out one of these, the rest still stand.</span></p>
     </div>
 
-    <div class="row">
+    <div class="row" id="contact">
       <h2 class="row__name">Contact</h2>
       <p class="row__desc">Open an issue at <a href="https://github.com/scotty83/idlescreen">github.com/scotty83/idlescreen</a>. If you&rsquo;re on Webex, there&rsquo;s a <a href="https://eurl.io/#CnWyZzamf">feedback space</a> you&rsquo;re welcome to join.</p>
     </div>
