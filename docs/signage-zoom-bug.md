@@ -1,6 +1,7 @@
 # Bug: RoomOS signage webview renders at page scale 2 after in-place reload
 
-**Status:** shipped to `dev`, 2026-08-26. Awaiting an on-device vet (see Vetting below).
+**Status:** shipped to `dev` and verified on both devices over CDP, 2026-08-27.
+One open question: the scale-2 state no longer reproduces on demand (see below).
 **Fix location:** the served viewport `<meta>` tag, plus two functions in `site/js/util.js`.
 
 ---
@@ -192,6 +193,14 @@ in `main.css` (`touch-action: pan-x pan-y`) and `js/zoomguard.js`.
   tag, so it no-opped on exactly the device it exists for. It now does the fit
   the engine used to do for free. Its floor moved from 0.25 to 0.15 so a phone
   opening the board URL still fits.
+- **The page centring**, which had never once fired on the device it was written
+  for. `body { top: max(0px, calc((100dvh - 1080px) / 2)) }` compared two rulers:
+  `100dvh` is raw viewport px, while the 1080px it is measured against is page
+  px, and `zoom` is exactly what makes those disagree. On a Navigator that read
+  800 against 1080 and clamped to 0. `fitViewport()` now publishes `--fit-zoom`
+  and the sum divides by it. The old note claiming a Navigator viewport of 1200
+  was reading `screen.height`; 1200 is right, but as PAGE px (1200 x 0.667 = the
+  800 of glass).
 
 Together these hold `layout viewport == glass == fitted page` on a Board Pro, a
 Room Navigator, a desktop preview, and a phone, with no engine discretion left in
@@ -203,25 +212,54 @@ Tests: `test/viewport.test.js` (the meta contract, now pinned from both
 directions with both regressions written out) and `test/misc-widgets.test.js`
 (11 cases across the two functions). 1605 site + 308 worker green.
 
-### Vetting still needed on real hardware
+### On-device verification (2026-08-27, beta at `2c64a62a456c`)
 
-Verified in Chrome only, which ignores the viewport meta and therefore exercises
-the JS half alone. Nothing below can be checked without the devices:
+Measured over CDP after an in-place reload on each device. Every number is where
+the design says it should be.
 
-1. **Board Pro / Desk Pro:** enter an activation code and confirm the board comes
-   back at 1:1. `[devicePixelRatio, visualViewport.scale, document.documentElement.clientWidth]`
-   should read `[2, 1, 1920]`.
-2. **Room Navigator:** confirm the dashboard still fits AND that the settings
-   overlay and an expanded card cover the screen rather than hanging off the
-   right. This is the case the meta rewrite exists for and it has never run on
-   the hardware.
-3. Known cosmetic delta on a Navigator: the page's vertical centering
-   (`body { top: max(0px, calc((100dvh - 1080px) / 2)) }`) resolves to 0 once the
-   layout viewport is the glass, so the board sits ~40px higher with all the
-   slack at the bottom instead of split. Invisible on black; a one-line CSS
-   change restores it if it reads wrong.
-4. The fleet beacon's `viewport` string for a Navigator changes from `1920x1200`
-   to `1280x800`. Telemetry only, but the stats dashboard buckets on it.
+**Desk Pro G2** (glass 1920x1040, DPR 2)
+
+| | value |
+|---|---|
+| meta as served | `width=1920, initial-scale=1, maximum-scale=1` (never rewritten: glass == layout) |
+| `[dpr, scale, clientWidth]` | `[2, 1, 1920]`, the doc's own "correct" signature |
+| layout / glass | 1920x1040 / 1920x1040 |
+| CSS zoom, `--fit-zoom` | none, unset |
+| `body { top }` | `0px` |
+| fixed overlay | 1920x1040, exactly the glass |
+
+Untouched to the pixel, and stable across four consecutive programmatic reloads.
+
+**Room Navigator** (glass 1280x800, DPR 1.5)
+
+| | value |
+|---|---|
+| meta after boot | `width=1280, …` — `narrowViewportToGlass()` fired, as designed |
+| layout / glass | 1280x800 / 1280x800, in agreement |
+| CSS zoom, `--fit-zoom` | 0.667 / 0.667 |
+| `body { top }` | `59.7px` of page px = 40px on the glass |
+| fixed overlay | 1281x801, exactly the glass |
+| black above / below the grid | 118 / 96 px (was 78 / 136) |
+
+The 80px of letterbox now splits 40/40 instead of pooling at the bottom. The
+remaining asymmetry is `--safe-bottom`, which is a Board Pro clearance the
+Navigator does not need; Sean's call, deliberately left alone.
+
+### The repro is gone, and the original evidence does not support "the reload causes it"
+
+Four consecutive programmatic reloads on the Desk Pro, on the OLD build,
+measured `scale: 1` every time. The device had been through a full sleep in
+between, which recreates the WebEngineView.
+
+Re-reading the evidence above: the CDP reload test recorded `scale: 2` **before**
+and after. That shows the scale is STICKY across an in-place reload, not that a
+reload creates it. What puts the view into scale 2 in the first place is still
+unknown, and nothing here has reproduced it since.
+
+This does not change the fix, and if anything sharpens what each part is doing:
+`initial-scale=1` should stop the state being entered, and `maximum-scale=1`
+clamps the initial scale if something tries. But it does mean the fix has not
+been proven against a live failure, only against the geometry it produces.
 
 ### Not done
 
