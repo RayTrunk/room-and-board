@@ -2413,7 +2413,6 @@ body.mode-ambient .gear--edit { display: none; }
    and 3x8; do not widen this gap without re-checking the 3x2 floor, where the
    card has room for one service and nothing to spare. */
 .svc__note { font-size: 17px; color: var(--warn); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; }
-.svc--tap { cursor: pointer; }
 
 /* ---------- the ledger, full screen (Cloud Services + TfL Status) ----------
    Sean's pick 2026-08-01, mockup 6B: a TYPOGRAPHIC ledger, deliberately not the

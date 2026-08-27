@@ -1,14 +1,13 @@
 // Cloud Services: subway-board-style rows for the cloud services the office
 // depends on, from their public status pages via the Worker's whitelisted
-// /services/status proxy. Degraded rows are tappable — the existing
-// full-screen text viewer shows the incident detail. Rows sort worst-first
-// (see SEVERITY) so a problem survives the capacity slice.
+// /services/status proxy. A tap anywhere on the card opens the full-screen
+// ledger; rows are not individual targets. Rows sort worst-first (see
+// SEVERITY) so a problem survives the capacity slice.
 
 import { escapeHtml, fmtClock, setupPrompt } from '../util.js';
 import { setCardNote } from '../card.js';
 import { WORKER_URL } from '../env.js';
 import { fitList } from '../capacity.js';
-import { openTextViewer, defersToExpand } from '../textviewer.js';
 import { setExpandSource } from '../expand.js';
 import { ledgerBody } from '../ledger.js';
 
@@ -60,14 +59,6 @@ const sinceText = (iso) => {
     : '';
 };
 
-// The text reader's own phrasing, which joins the stamp onto the incident title
-// with a dash. Byte-for-byte what it always was: a card with nothing hidden is
-// not expandable, so its rows still open the reader and this is still what
-// they say.
-const sinceLabel = (iso) => {
-  const text = sinceText(iso);
-  return text ? ` — ${text}` : '';
-};
 
 // The prose a degraded row's tap reveals, as ledger notes. Same source the
 // reader reads — the status page's real incidents when it lists any, the
@@ -142,8 +133,8 @@ export function render(el, vm, cfg) {
   // Freshness note in the card header (worker check time, not render time) —
   // a clock reading, so it honors cfg.clock24.
   if (vm.updatedAt) setCardNote(el, `as of ${fmtClock(vm.updatedAt, cfg?.clock24)}`);
-  // Severity-ordered once, up front: every slice, the +N count and the tap
-  // handler's data-svc index all read this same array, so they stay in sync.
+  // Severity-ordered once, up front: every slice, the +N count and the ledger
+  // the expansion builds all read this same array, so they stay in sync.
   const all = bySeverity(vm.services ?? []);
   if (!all.length) {
     el.innerHTML = setupPrompt('services', 'pick services', 'Cloud Services');
@@ -167,7 +158,7 @@ export function render(el, vm, cfg) {
     const lines = titles.length ? titles : (s.note ? [s.note] : []);
     return maxLines > 0 ? lines.slice(0, maxLines) : lines;
   };
-  const rowHtml = (s, i, dropNote, maxLines) => `<div class="svc ${s.state !== 'ok' ? 'svc--tap' : ''}" data-svc="${i}">
+  const rowHtml = (s, i, dropNote, maxLines) => `<div class="svc">
         <div class="svc__row">
           <span class="svc__name ${s.state === 'minor' || s.state === 'major' ? 'svc__name--alert' : ''}">${escapeHtml(s.label)}</span>
           <span class="svc__state svc__state--${escapeHtml(s.state)}">${STATE_LABEL[s.state] ?? escapeHtml(s.state)}</span>
@@ -221,10 +212,19 @@ export function render(el, vm, cfg) {
     }
   }
   const hidden = all.length - n;
-  // The corner badge and the expansion must agree exactly: no badge, no
-  // expansion (the subway/rail contract). A card showing every service keeps
-  // its per-row reader instead, which loses nothing — the reader shows that
-  // one service's prose in full, and there is no hidden row to reveal.
+  // The card ALWAYS opens (Sean 2026-08-27), which is the rule the board
+  // already teaches: every card opens, and expandability is never per-card
+  // chrome. This one used to follow "no badge, no expansion" and keep a
+  // per-row reader when nothing overflowed, which cost two things. A reader
+  // had to learn that one card sometimes answers a row tap and sometimes the
+  // whole card, and the ledger is where Microsoft's advisories live, so a
+  // card that happened to fit every service could not reach them at all.
+  //
+  // Nothing is lost with the per-row reader gone: it showed ONE service's
+  // prose, and the ledger shows every service's prose uncut, including the
+  // note the card clamps to a single line. The badge still counts only what
+  // overflowed, so badge and expansion no longer agree — the badge is pure
+  // information about hidden ROWS, which is what it always claimed to be.
   // The closure captures THIS render's list, so the ledger always shows what
   // the card was showing when it was tapped.
   const trouble = all.filter((s) => s.state !== 'ok').length;
@@ -234,27 +234,7 @@ export function render(el, vm, cfg) {
   ]
     .filter(Boolean)
     .join(' · ');
-  setExpandSource(
-    el,
-    hidden > 0 ? () => ({ title: meta.title, note, bodyHtml: ledgerBody(serviceItems(all)) }) : null,
-  );
-  // Tap a degraded row for the full incident picture (existing text viewer;
-  // 20s idle auto-dismiss keeps an abandoned board on the dashboard). Attached
-  // once on the settled DOM; data-svc indexes into the full services array.
-  el.querySelectorAll('.svc--tap').forEach((row) =>
-    row.addEventListener('click', () => {
-      // One tap, one destination. On an expandable card the ledger shows this
-      // very prose, uncut, alongside every other service — so the row tap
-      // defers and lets the card's own expansion take it.
-      if (defersToExpand(row)) return;
-      const s = all[Number(row.dataset.svc)];
-      const items = s.incidents?.length ? s.incidents : [{ title: s.note, since: '', update: '' }];
-      const body = items
-        .map((i) => `${i.title}${sinceLabel(i.since)}${i.update ? `\n${i.update}` : ''}`)
-        .join('\n\n');
-      openTextViewer(`${s.label} — ${STATE_LABEL[s.state] ?? s.state}`, body);
-    }),
-  );
+  setExpandSource(el, () => ({ title: meta.title, note, bodyHtml: ledgerBody(serviceItems(all)) }));
 }
 
 export async function fetchData(cfg, net) {

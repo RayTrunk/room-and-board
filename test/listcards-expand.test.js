@@ -192,34 +192,40 @@ describe('Cloud Services expand', () => {
     expect(quiet.map((n) => n.textContent)).toEqual(['A', 'B', 'C', 'D']);
   });
 
-  it('a degraded row now DEFERS to the expand: one tap, one destination', () => {
+  it('a tap on a row goes to the ledger, like a tap anywhere else', () => {
     const { card } = board('services', renderServices, servicesVm(seven));
     expect(card.classList.contains('is-expandable')).toBe(true);
-    card.querySelector('.svc--tap').click();
-    expect(readerOpen()).toBe(false); // the single-line reader stepped aside
-    expect(isExpandOpen()).toBe(true); // the card's own ledger took the tap
+    card.querySelector('.svc').click();
+    expect(readerOpen()).toBe(false); // there is no per-row reader any more
+    expect(isExpandOpen()).toBe(true); // one tap, one destination, from anywhere
   });
 
-  it('but a card with nothing hidden keeps its per-row reader', () => {
-    // Nothing is lost by the deferral: with no overflow there is no expansion
-    // to defer TO, and the reader still completes that one service's prose.
+  it('a card with nothing hidden STILL opens (Sean 2026-08-27)', () => {
+    // The badge counts hidden rows and the expansion is the card's one
+    // destination; they are answering different questions, so a card that
+    // happens to fit every service still opens. It has to: the ledger is the
+    // only place the note appears uncut, and the only place Microsoft's
+    // advisories appear at all.
     const { card } = board('services', renderServices, servicesVm([
       svc('down', 'major', { note: 'Everything is on fire' }), svc('a', 'ok'),
     ]));
-    expect(card.querySelector('.card__more')).toBeNull();
-    expect(card.classList.contains('is-expandable')).toBe(false);
-    card.querySelector('.svc--tap').click();
-    expect(readerOpen()).toBe(true);
-    expect(reader().textContent).toContain('Everything is on fire');
-    expect(isExpandOpen()).toBe(false);
+    expect(card.querySelector('.card__more')).toBeNull(); // nothing hidden, no badge
+    expect(card.classList.contains('is-expandable')).toBe(true); // but it opens
+    card.querySelector('.svc').click();
+    expect(readerOpen()).toBe(false);
+    expect(isExpandOpen()).toBe(true);
+    expect(overlay().textContent).toContain('Everything is on fire');
   });
 
-  it('a single-service card is inert: no count, no expansion, and nobody arrives', () => {
+  it('a single-service card carries no count but still opens', () => {
     const { card } = board('services', renderServices, servicesVm([svc('only', 'ok')]));
     expect(card.querySelector('.card__more')).toBeNull();
-    expect(card.classList.contains('is-expandable')).toBe(false);
+    expect(card.classList.contains('is-expandable')).toBe(true);
     card.querySelector('.card__body').click();
-    expect(isExpandOpen()).toBe(false);
+    // Even one service has more to say here than the card shows: the ledger
+    // is where its note runs uncut.
+    expect(isExpandOpen()).toBe(true);
+    expect(overlay().textContent).toContain('ONLY');
   });
 
   it('an unconfigured card taps into Settings, never an empty ledger', () => {
@@ -229,12 +235,12 @@ describe('Cloud Services expand', () => {
     expect(isExpandOpen()).toBe(false);
   });
 
-  it('drops the expansion when a refresh leaves nothing hidden', () => {
+  it('drops the BADGE when a refresh leaves nothing hidden, and keeps the expansion', () => {
     const { card, body } = board('services', renderServices, servicesVm(seven));
     expect(card.classList.contains('is-expandable')).toBe(true);
     renderServices(body, servicesVm([svc('a', 'ok')]), {});
-    expect(card.querySelector('.card__more')).toBeNull();
-    expect(card.classList.contains('is-expandable')).toBe(false);
+    expect(card.querySelector('.card__more')).toBeNull(); // the count is honest about hidden rows
+    expect(card.classList.contains('is-expandable')).toBe(true); // the destination does not move
   });
 
   it('carries the card stale stamp through to the overlay', () => {

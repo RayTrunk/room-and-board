@@ -13,8 +13,10 @@ outrank everything healthy, so the row that matters is never hidden behind a
 service prints one line **per incident** — when Microsoft has three products
 down, you see all three without tapping.
 
-**Tap the card** for the full ledger: troubled services first with their
-status text in full, everything healthy in quiet columns beneath.
+**Tap anywhere on the card** for the full ledger: troubled services first with
+their status text in full, everything healthy in quiet columns beneath. The
+card always opens, whether or not it is showing a "+N" count, because the
+ledger is the only place a service's status text appears uncut.
 
 ## Microsoft 365 advisories
 

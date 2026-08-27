@@ -750,8 +750,11 @@ describe('services severity ordering', () => {
     c.remove();
   });
 
-  it('keeps the tap target pointing at the service its row shows after the reorder', () => {
-    document.querySelector('#text-viewer')?.remove();
+  it('the reorder carries each row\'s own prose with it', () => {
+    // Rows stopped being individual tap targets (Sean 2026-08-27), so the
+    // property to hold is no longer an index: it is that the severity sort
+    // floats the degraded service to the top AND that the ledger the card
+    // opens shows that service's own words, not a neighbour's.
     const c = card(3, 5);
     document.body.appendChild(c);
     const body = c.querySelector('.card__body');
@@ -761,11 +764,7 @@ describe('services severity ordering', () => {
     ] }, CFG);
     const first = body.querySelector('.svc');
     expect(first.querySelector('.svc__name').textContent).toBe('BROKEN');
-    first.click();
-    const viewer = document.querySelector('#text-viewer');
-    expect(viewer.textContent).toContain('BROKEN');
-    expect(viewer.textContent).toContain('Everything is on fire');
-    viewer.remove();
+    expect(first.querySelector('.svc__note').textContent).toBe('Everything is on fire');
     c.remove();
   });
 });
