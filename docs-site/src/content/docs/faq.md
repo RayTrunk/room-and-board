@@ -3,22 +3,6 @@ title: FAQ & Troubleshooting
 description: Common questions and known issues, each with the fix.
 ---
 
-## The dashboard is suddenly zoomed way in
-
-A known RoomOS issue: sometime after a setup code loads a configuration, the
-board may zoom the page to 200%. The fix is to exit signage and let it
-relaunch:
-
-1. **Exit signage:** tap the bar at the very bottom of the screen (the strip
-   the board itself owns, where "Tap here to start" appears).
-2. **Relaunch it:**
-   - With [the macro](/docs/board/the-macro/): swipe open the Control Panel
-     and tap **Dashboard**.
-   - Without the macro: no action needed — the board re-enters signage on its
-     own after about two minutes of inactivity.
-
-The dashboard returns at the correct size.
-
 ## The dashboard disappears on its own during the day
 
 The board is waking itself for meetings. A device setting called **wake at
